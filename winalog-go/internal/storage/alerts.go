@@ -173,6 +173,199 @@ func (r *AlertRepo) List(query *AlertQuery) ([]*types.Alert, int64, error) {
 	return alerts, total, nil
 }
 
+func (r *AlertRepo) InsertBatch(alerts []*types.Alert) error {
+	if len(alerts) == 0 {
+		return nil
+	}
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO alerts (rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, alert := range alerts {
+		eventIDsJSON, _ := json.Marshal(alert.EventIDs)
+		mitreJSON, _ := json.Marshal(alert.MITREAttack)
+
+		var resolvedTime interface{}
+		if alert.ResolvedTime != nil {
+			resolvedTime = alert.ResolvedTime
+		}
+
+		_, err := stmt.Exec(
+			alert.RuleName,
+			alert.Severity,
+			alert.Message,
+			string(eventIDsJSON),
+			alert.FirstSeen,
+			alert.LastSeen,
+			alert.Count,
+			string(mitreJSON),
+			alert.Resolved,
+			resolvedTime,
+			alert.Notes,
+			alert.FalsePositive,
+			alert.LogName,
+			alert.RuleScore,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+type AlertFilter struct {
+	RuleName      string
+	Severity      string
+	Resolved      *bool
+	FalsePositive *bool
+	StartTime     *time.Time
+	EndTime       *time.Time
+	Limit         int
+	Offset        int
+}
+
+func (r *AlertRepo) Query(filter *AlertFilter) ([]*types.Alert, error) {
+	var conditions []string
+	var args []interface{}
+
+	if filter.RuleName != "" {
+		conditions = append(conditions, "rule_name = ?")
+		args = append(args, filter.RuleName)
+	}
+
+	if filter.Severity != "" {
+		conditions = append(conditions, "severity = ?")
+		args = append(args, filter.Severity)
+	}
+
+	if filter.Resolved != nil {
+		conditions = append(conditions, "resolved = ?")
+		args = append(args, *filter.Resolved)
+	}
+
+	if filter.FalsePositive != nil {
+		conditions = append(conditions, "false_positive = ?")
+		args = append(args, *filter.FalsePositive)
+	}
+
+	if filter.StartTime != nil {
+		conditions = append(conditions, "first_seen >= ?")
+		args = append(args, *filter.StartTime)
+	}
+
+	if filter.EndTime != nil {
+		conditions = append(conditions, "first_seen <= ?")
+		args = append(args, *filter.EndTime)
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	limit := 100
+	if filter.Limit > 0 {
+		limit = filter.Limit
+	}
+
+	offset := 0
+	if filter.Offset > 0 {
+		offset = filter.Offset
+	}
+
+	selectQuery := fmt.Sprintf(`
+		SELECT id, rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
+		FROM alerts %s
+		ORDER BY first_seen DESC
+		LIMIT ? OFFSET ?`, whereClause)
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(selectQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var alerts []*types.Alert
+	for rows.Next() {
+		alert, err := scanAlertFromRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		alerts = append(alerts, alert)
+	}
+
+	return alerts, nil
+}
+
+func (r *AlertRepo) GetStats() (*types.AlertStatsData, error) {
+	stats := &types.AlertStatsData{
+		BySeverity: make(map[string]int64),
+		ByStatus:   make(map[string]int64),
+		ByRule:     make(map[string]int64),
+	}
+
+	var total int64
+	err := r.db.QueryRow("SELECT COUNT(*) FROM alerts").Scan(&total)
+	if err != nil {
+		return nil, err
+	}
+	stats.TotalCount = total
+
+	severityCounts, err := r.CountBySeverity()
+	if err != nil {
+		return nil, err
+	}
+	stats.BySeverity = severityCounts
+
+	statusCounts, err := r.CountByStatus()
+	if err != nil {
+		return nil, err
+	}
+	stats.ByStatus = statusCounts
+
+	query := "SELECT rule_name, COUNT(*) FROM alerts GROUP BY rule_name"
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ruleName string
+		var count int64
+		if err := rows.Scan(&ruleName, &count); err != nil {
+			return nil, err
+		}
+		stats.ByRule[ruleName] = count
+	}
+
+	ruleCounts, err := r.CountByRule()
+	if err != nil {
+		return nil, err
+	}
+	stats.TopRules = ruleCounts
+
+	if total > 0 {
+		stats.AvgPerDay = float64(total) / 30.0
+	}
+
+	return stats, nil
+}
+
 func (r *AlertRepo) Resolve(id int64, notes string) error {
 	query := "UPDATE alerts SET resolved = 1, resolved_time = ?, notes = ? WHERE id = ?"
 	_, err := r.db.Exec(query, time.Now(), notes, id)

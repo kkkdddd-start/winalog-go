@@ -202,3 +202,24 @@ type CorrelationResult struct {
 	EndTime     time.Time `json:"end_time"`
 	MITREAttack []string  `json:"mitre_attack,omitempty"`
 }
+
+type AlertStatsData struct {
+	TotalCount   int64
+	BySeverity   map[string]int64
+	ByStatus     map[string]int64
+	ByRule       map[string]int64
+	TopRules     []*RuleCount
+	AvgPerDay    float64
+	RuleScoreAvg float64
+}
+
+type AttackChain struct {
+	ID          string    `json:"id"`
+	EventIDs    []int64   `json:"event_ids"`
+	StartTime   time.Time `json:"start_time"`
+	EndTime     time.Time `json:"end_time"`
+	Severity    Severity  `json:"severity"`
+	Description string    `json:"description"`
+	Technique   string    `json:"technique"`
+	Events      []*Event  `json:"events"`
+}
