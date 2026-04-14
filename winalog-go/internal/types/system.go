@@ -140,3 +140,42 @@ type WMISubscription struct {
 	Created      time.Time `json:"created"`
 	LastModified time.Time `json:"last_modified"`
 }
+
+type PrefetchEntry struct {
+	Name        string    `json:"name"`
+	Path        string    `json:"path"`
+	LastRunTime time.Time `json:"last_run_time"`
+	RunCount    int       `json:"run_count"`
+	CollectedAt time.Time `json:"collected_at"`
+}
+
+type ShimCacheEntry struct {
+	Path          string    `json:"path"`
+	LastModified  time.Time `json:"last_modified"`
+	ExecutionTime time.Time `json:"execution_time"`
+	CollectedAt   time.Time `json:"collected_at"`
+}
+
+type AmcacheEntry struct {
+	Path        string    `json:"path"`
+	SHA1        string    `json:"sha1"`
+	BinaryType  string    `json:"binary_type"`
+	CollectedAt time.Time `json:"collected_at"`
+}
+
+type UserAssistEntry struct {
+	Name        string    `json:"name"`
+	Path        string    `json:"path"`
+	FocusCount  int       `json:"focus_count"`
+	TimeFocused int64     `json:"time_focused"`
+	LastUsed    time.Time `json:"last_used"`
+	CollectedAt time.Time `json:"collected_at"`
+}
+
+type USNJournalEntry struct {
+	Name        string    `json:"name"`
+	Path        string    `json:"path"`
+	Reason      string    `json:"reason"`
+	Timestamp   time.Time `json:"timestamp"`
+	CollectedAt time.Time `json:"collected_at"`
+}

@@ -147,61 +147,61 @@
 
 ### 7. 采集器系统 (`internal/collectors/`)
 
-- [ ] 7.1 实现采集器接口 (`collector.go`)
+- [x] 7.1 实现采集器接口 (`collector.go`)
   - 定义 `Collector` 接口
   - 定义 `RequiresAdmin` 方法
 
-- [ ] 7.2 实现系统信息采集 (`system_info.go`)
+- [x] 7.2 实现系统信息采集 (`system_info.go`)
   - 实现 `SystemInfo` 采集
   - 采集主机名、OS、架构、时区等
 
-- [ ] 7.3 实现进程信息采集 (`process_info.go`)
+- [x] 7.3 实现进程信息采集 (`process_info.go`)
   - 实现 `ProcessInfo` 采集
   - 采集 PID、PPID、路径、签名等
 
-- [ ] 7.4 实现网络连接采集 (`network_info.go`)
+- [x] 7.4 实现网络连接采集 (`network_info.go`)
   - 实现 `NetworkConnection` 采集
   - 采集 TCP/UDP 连接状态
 
-- [ ] 7.5 实现用户账户采集 (`user_info.go`)
+- [x] 7.5 实现用户账户采集 (`user_info.go`)
   - 实现 `UserAccount` 采集
   - 采集 SID、最后登录、账户状态等
 
-- [ ] 7.6 实现注册表采集 (`registry_info.go`)
+- [x] 7.6 实现注册表采集 (`registry_info.go`)
   - 实现 `RegistryPersistence` 采集
   - 采集 Run 键、UserInit MPR 等持久化位置
 
-- [ ] 7.7 实现计划任务采集 (`task_info.go`)
+- [x] 7.7 实现计划任务采集 (`task_info.go`)
   - 实现 `ScheduledTask` 采集
   - 采集任务名称、触发器、动作等
 
-- [ ] 7.8 实现驱动信息采集 (`driver_info.go`)
+- [x] 7.8 实现驱动信息采集 (`driver_info.go`)
   - 实现 `DriverInfo` 采集
   - 采集驱动名称、签名状态等
 
-- [ ] 7.9 实现环境变量采集 (`env_info.go`)
+- [x] 7.9 实现环境变量采集 (`env_info.go`)
   - 实现 `EnvInfo` 采集
   - 采集系统/用户环境变量
 
-- [ ] 7.10 实现 DLL 模块采集 (`dll_info.go`)
+- [x] 7.10 实现 DLL 模块采集 (`dll_info.go`)
   - 实现 `DLLModule` 采集
   - 采集进程加载的 DLL
 
-- [ ] 7.11 实现持久化检测 (`persistence/`)
+- [x] 7.11 实现持久化检测 (`persistence/`)
   - 实现 Prefetch 采集 (`prefetch.go`)
   - 实现 ShimCache 采集 (`shimcache.go`)
   - 实现 Amcache 采集 (`amcache.go`)
   - 实现 UserAssist 采集 (`userassist.go`)
   - 实现 USN Journal 采集 (`usnjournal.go`)
 
-- [ ] 7.12 实现一键采集 (`one_click.go`)
+- [x] 7.12 实现一键采集 (`one_click.go`)
   - 实现日志源自动发现
   - 实现文件锁定检测
   - 实现并行采集
   - 实现 ZIP 打包和 SHA256 校验
   - 参考：`dev-pkg/FEATURES.md` 4.3 节
 
-- [ ] 7.13 实现实时采集 (`live/`)
+- [x] 7.13 实现实时采集 (`live/`)
   - 实现 `LiveCollector` (`collector.go`)
   - 实现书签支持 (`bookmark.go`)
   - 实现过滤采集 (`filtered.go`)
