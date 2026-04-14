@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== WinLogAnalyzer Phase 4 Verification ===\n")
+	fmt.Println("=== WinLogAnalyzer Phase 4 Verification ===")
 
 	tests := []struct {
 		name string
