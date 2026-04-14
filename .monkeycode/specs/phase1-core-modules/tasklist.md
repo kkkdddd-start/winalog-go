@@ -15,12 +15,12 @@
 
 ### 1. 项目初始化
 
-- [ ] 1.1 初始化 Go 模块结构
+- [x] 1.1 初始化 Go 模块结构
   - 创建 `winalog-go/` 目录结构
   - 初始化 `go.mod`：cobra, viper, gin, modernc.org/sqlite, zap, bubbletea
   - 配置 `go.sum` 和依赖版本锁定
 
-- [ ] 1.2 配置 Makefile 和构建脚本
+- [x] 1.2 配置 Makefile 和构建脚本
   - 添加 `make build`, `make test`, `make lint`
   - 添加跨平台编译支持
 
