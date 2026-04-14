@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/engine"
+	"github.com/kkkdddd-start/winalog-go/internal/exporters"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
@@ -155,20 +156,80 @@ func (h *AlertHandler) SearchEvents(c *gin.Context) {
 	})
 }
 
-func (h *AlertHandler) ExportEvents(c *gin.Context) {
-	format := c.DefaultQuery("format", "json")
+type ExportRequest struct {
+	Format  string        `json:"format"` // "json" | "csv" | "excel"
+	Filters ExportFilters `json:"filters"`
+}
 
-	events, _, err := h.db.SearchEvents("", 10000)
+type ExportFilters struct {
+	EventIDs  []int32  `json:"event_ids"`
+	Levels    []int    `json:"levels"`
+	LogNames  []string `json:"log_names"`
+	Computers []string `json:"computers"`
+	Users     []string `json:"users"`
+	StartTime string   `json:"start_time"`
+	EndTime   string   `json:"end_time"`
+	Keywords  string   `json:"keywords"`
+	Limit     int      `json:"limit"`
+}
+
+type ExportResponse struct {
+	Success bool   `json:"success"`
+	Total   int    `json:"total"`
+	Message string `json:"message,omitempty"`
+}
+
+func (h *AlertHandler) ExportEvents(c *gin.Context) {
+	var req ExportRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		return
+	}
+
+	if req.Format == "" {
+		req.Format = "json"
+	}
+	if req.Filters.Limit <= 0 || req.Filters.Limit > 100000 {
+		req.Filters.Limit = 10000
+	}
+
+	filter := &storage.EventFilter{
+		Limit:     req.Filters.Limit,
+		EventIDs:  req.Filters.EventIDs,
+		Levels:    req.Filters.Levels,
+		LogNames:  req.Filters.LogNames,
+		Computers: req.Filters.Computers,
+	}
+
+	if req.Filters.StartTime != "" {
+		if t, err := time.Parse(time.RFC3339, req.Filters.StartTime); err == nil {
+			filter.StartTime = &t
+		}
+	}
+	if req.Filters.EndTime != "" {
+		if t, err := time.Parse(time.RFC3339, req.Filters.EndTime); err == nil {
+			filter.EndTime = &t
+		}
+	}
+
+	events, _, err := h.db.ListEvents(filter)
 	if err != nil {
 		c.JSON(500, ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	switch format {
+	factory := &exporters.ExporterFactory{}
+	exporter := factory.Create(req.Format)
+
+	switch req.Format {
 	case "csv":
-		c.Header("Content-Type", "text/csv")
-		c.Header("Content-Disposition", "attachment; filename=events.csv")
-		c.String(200, exportEventsToCSV(events))
+		c.Header("Content-Type", exporter.ContentType())
+		c.Header("Content-Disposition", "attachment; filename=events_export.csv")
+		exporter.Export(events, c.Writer)
+	case "excel", "xlsx":
+		c.Header("Content-Type", exporter.ContentType())
+		c.Header("Content-Disposition", "attachment; filename=events_export.xlsx")
+		exporter.Export(events, c.Writer)
 	default:
 		c.JSON(200, gin.H{
 			"events": events,

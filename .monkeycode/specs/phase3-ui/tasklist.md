@@ -150,9 +150,10 @@
   - 事件列表 (虚拟滚动 Table)
   - 筛选面板
   - 分页导航
+  - 导出 CSV/Excel 功能
   - 路由：`/events`
 
-- [ ] 4.4 实现 Event Detail 页面
+- [x] 4.4 实现 Event Detail 页面
   - 事件详情面板
   - XML 原始数据
   - 路由：`/events/:id`
@@ -162,7 +163,7 @@
   - 告警管理
   - 路由：`/alerts`
 
-- [ ] 4.6 实现 Alert Detail 页面
+- [x] 4.6 实现 Alert Detail 页面
   - 告警详情
   - 告警处置
   - 路由：`/alerts/:id`
@@ -172,29 +173,29 @@
   - 时间线组件
   - 路由：`/timeline`
 
-- [ ] 4.8 实现 Reports 页面
+- [x] 4.8 实现 Reports 页面
   - 报告生成
   - 路由：`/reports`
 
-- [ ] 4.9 实现 Forensics 页面
+- [x] 4.9 实现 Forensics 页面
   - 取证采集
   - Hash 验证
   - 路由：`/forensics`
 
-- [ ] 4.10 实现 SystemInfo 页面
+- [x] 4.10 实现 SystemInfo 页面
   - 系统信息采集
   - 路由：`/system-info`
 
-- [ ] 4.11 实现 Rules 页面
+- [x] 4.11 实现 Rules 页面
   - 规则管理
   - 规则编辑器
   - 路由：`/rules`
 
-- [ ] 4.12 实现 Settings 页面
+- [x] 4.12 实现 Settings 页面
   - 配置管理
   - 路由：`/settings`
 
-- [ ] 4.13 实现 Metrics 页面
+- [x] 4.13 实现 Metrics 页面
   - Prometheus 指标
   - 路由：`/metrics`
 
@@ -214,7 +215,7 @@
 
 ### 5. 检查点
 
-- [ ] 确保 TUI 所有视图正常工作
-- [ ] 确保 API 所有端点正常响应
-- [ ] 确保 Web UI 所有页面正常加载
-- [ ] 确保前后端联调正常
+- [x] 确保 TUI 所有视图正常工作
+- [x] 确保 API 所有端点正常响应
+- [x] 确保 Web UI 所有页面正常加载
+- [x] 确保前后端联调正常

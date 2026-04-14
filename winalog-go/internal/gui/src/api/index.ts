@@ -20,8 +20,25 @@ export const eventsAPI = {
     api.get(`/events/${id}`),
   search: (params: SearchParams) =>
     api.post('/events/search', params),
-  export: (format = 'json') =>
-    api.get(`/events/export?format=${format}`),
+  export: (params: ExportParams) =>
+    api.post('/events/export', params, {
+      responseType: params.format === 'json' ? 'json' : 'blob',
+    }),
+}
+
+export interface ExportParams {
+  format?: 'json' | 'csv' | 'excel'
+  filters?: {
+    event_ids?: number[]
+    levels?: number[]
+    log_names?: string[]
+    computers?: string[]
+    users?: string[]
+    start_time?: string
+    end_time?: string
+    keywords?: string
+    limit?: number
+  }
 }
 
 export const alertsAPI = {
