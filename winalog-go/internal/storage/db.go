@@ -82,7 +82,21 @@ func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 
 func (d *DB) Begin() (*sql.Tx, error) {
 	d.writeMu.Lock()
-	return d.conn.Begin()
+	tx, err := d.conn.Begin()
+	if err != nil {
+		d.writeMu.Unlock()
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (d *DB) Unlock() {
+	d.writeMu.Unlock()
+}
+
+func (d *DB) BeginWithUnlock() (*sql.Tx, func()) {
+	d.writeMu.Lock()
+	return nil, func() { d.writeMu.Unlock() }
 }
 
 func (d *DB) CreateTables() error {
@@ -106,13 +120,14 @@ func (d *DB) createTables() error {
 		session_id TEXT,
 		ip_address TEXT,
 		import_time TEXT NOT NULL,
-		import_id INTEGER DEFAULT 0,
-		INDEX idx_timestamp (timestamp),
-		INDEX idx_event_id (event_id),
-		INDEX idx_level (level),
-		INDEX idx_log_name (log_name),
-		INDEX idx_import_id (import_id)
+		import_id INTEGER DEFAULT 0
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
+	CREATE INDEX IF NOT EXISTS idx_events_event_id ON events(event_id);
+	CREATE INDEX IF NOT EXISTS idx_events_level ON events(level);
+	CREATE INDEX IF NOT EXISTS idx_events_log_name ON events(log_name);
+	CREATE INDEX IF NOT EXISTS idx_events_import_id ON events(import_id);
 
 	CREATE TABLE IF NOT EXISTS alerts (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,12 +144,13 @@ func (d *DB) createTables() error {
 		notes TEXT,
 		false_positive INTEGER DEFAULT 0,
 		log_name TEXT,
-		rule_score REAL DEFAULT 0.0,
-		INDEX idx_severity (severity),
-		INDEX idx_resolved (resolved),
-		INDEX idx_rule_name (rule_name),
-		INDEX idx_first_seen (first_seen)
+		rule_score REAL DEFAULT 0.0
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);
+	CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON alerts(resolved);
+	CREATE INDEX IF NOT EXISTS idx_alerts_rule_name ON alerts(rule_name);
+	CREATE INDEX IF NOT EXISTS idx_alerts_first_seen ON alerts(first_seen);
 
 	CREATE TABLE IF NOT EXISTS import_log (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,9 +160,10 @@ func (d *DB) createTables() error {
 		import_time TEXT NOT NULL,
 		import_duration INTEGER DEFAULT 0,
 		status TEXT DEFAULT 'success',
-		error_message TEXT,
-		INDEX idx_import_time (import_time)
+		error_message TEXT
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_import_log_import_time ON import_log(import_time);
 
 	CREATE TABLE IF NOT EXISTS machine_context (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,9 +174,10 @@ func (d *DB) createTables() error {
 		role TEXT,
 		first_seen TEXT NOT NULL,
 		last_seen TEXT NOT NULL,
-		os_version TEXT,
-		INDEX idx_machine_id (machine_id)
+		os_version TEXT
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_machine_context_machine_id ON machine_context(machine_id);
 
 	CREATE TABLE IF NOT EXISTS multi_machine_analysis (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -170,9 +188,10 @@ func (d *DB) createTables() error {
 		start_time TEXT NOT NULL,
 		end_time TEXT,
 		events_count INTEGER DEFAULT 0,
-		created_at TEXT NOT NULL,
-		INDEX idx_analysis_id (analysis_id)
+		created_at TEXT NOT NULL
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_multi_machine_analysis_analysis_id ON multi_machine_analysis(analysis_id);
 
 	CREATE TABLE IF NOT EXISTS global_timeline (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -187,11 +206,12 @@ func (d *DB) createTables() error {
 		user TEXT,
 		message TEXT,
 		mitre_attack TEXT,
-		attack_chain_id TEXT,
-		INDEX idx_timestamp (timestamp),
-		INDEX idx_category (category),
-		INDEX idx_attack_chain (attack_chain_id)
+		attack_chain_id TEXT
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_global_timeline_timestamp ON global_timeline(timestamp);
+	CREATE INDEX IF NOT EXISTS idx_global_timeline_category ON global_timeline(category);
+	CREATE INDEX IF NOT EXISTS idx_global_timeline_attack_chain ON global_timeline(attack_chain_id);
 
 	CREATE TABLE IF NOT EXISTS sessions (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -200,9 +220,10 @@ func (d *DB) createTables() error {
 		end_time TEXT,
 		duration INTEGER,
 		events_count INTEGER DEFAULT 0,
-		alerts_count INTEGER DEFAULT 0,
-		INDEX idx_session_id (session_id)
+		alerts_count INTEGER DEFAULT 0
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON sessions(session_id);
 
 	CREATE TABLE IF NOT EXISTS evidence_chain (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -212,9 +233,10 @@ func (d *DB) createTables() error {
 		action TEXT,
 		input_hash TEXT,
 		output_hash TEXT,
-		previous_hash TEXT,
-		INDEX idx_evidence_id (evidence_id)
+		previous_hash TEXT
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_evidence_chain_evidence_id ON evidence_chain(evidence_id);
 
 	CREATE TABLE IF NOT EXISTS evidence_file (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -223,10 +245,11 @@ func (d *DB) createTables() error {
 		evidence_id TEXT,
 		collected_at TEXT NOT NULL,
 		collector TEXT,
-		FOREIGN KEY (evidence_id) REFERENCES evidence_chain(evidence_id),
-		INDEX idx_file_hash (file_hash),
-		INDEX idx_evidence_id (evidence_id)
+		FOREIGN KEY (evidence_id) REFERENCES evidence_chain(evidence_id)
 	);
+
+	CREATE INDEX IF NOT EXISTS idx_evidence_file_hash ON evidence_file(file_hash);
+	CREATE INDEX IF NOT EXISTS idx_evidence_file_evidence_id ON evidence_file(evidence_id);
 	`
 
 	statements := strings.Split(schema, ";")

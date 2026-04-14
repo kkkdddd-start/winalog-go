@@ -13,6 +13,8 @@ require (
 )
 
 require (
+	github.com/0xrawsec/golang-evtx v1.2.9 // indirect
+	github.com/0xrawsec/golang-utils v1.3.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect

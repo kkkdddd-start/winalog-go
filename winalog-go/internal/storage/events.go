@@ -23,7 +23,7 @@ func (r *EventRepo) Insert(event *types.Event) error {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := r.db.Exec(query,
-		event.Timestamp,
+		event.Timestamp.Format(time.RFC3339Nano),
 		event.EventID,
 		int(event.Level),
 		event.Source,
@@ -35,7 +35,7 @@ func (r *EventRepo) Insert(event *types.Event) error {
 		event.RawXML,
 		event.SessionID,
 		event.IPAddress,
-		event.ImportTime,
+		event.ImportTime.Format(time.RFC3339Nano),
 		event.ImportID,
 	)
 	return err
@@ -50,7 +50,14 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+
+	committed := false
+	defer func() {
+		if !committed {
+			tx.Rollback()
+		}
+		r.db.Unlock()
+	}()
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO events (timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id)
@@ -62,7 +69,7 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 
 	for _, event := range events {
 		_, err := stmt.Exec(
-			event.Timestamp,
+			event.Timestamp.Format(time.RFC3339Nano),
 			event.EventID,
 			int(event.Level),
 			event.Source,
@@ -74,7 +81,7 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 			event.RawXML,
 			event.SessionID,
 			event.IPAddress,
-			event.ImportTime,
+			event.ImportTime.Format(time.RFC3339Nano),
 			event.ImportID,
 		)
 		if err != nil {
@@ -82,7 +89,12 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 		}
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	committed = true
+	return nil
 }
 
 func (r *EventRepo) GetByID(id int64) (*types.Event, error) {
@@ -266,12 +278,13 @@ func (r *EventRepo) GetEventIDsByImportID(importID int64) ([]int64, error) {
 
 func scanEvent(row interface{ Scan(...interface{}) error }) (*types.Event, error) {
 	var e types.Event
+	var timestampStr, importTimeStr string
 	var user, userSID, rawXML, sessionID, ipAddress sql.NullString
 	var importID sql.NullInt64
 
 	err := row.Scan(
 		&e.ID,
-		&e.Timestamp,
+		&timestampStr,
 		&e.EventID,
 		&e.Level,
 		&e.Source,
@@ -283,11 +296,23 @@ func scanEvent(row interface{ Scan(...interface{}) error }) (*types.Event, error
 		&rawXML,
 		&sessionID,
 		&ipAddress,
-		&e.ImportTime,
+		&importTimeStr,
 		&importID,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if timestampStr != "" {
+		if t, err := time.Parse(time.RFC3339Nano, timestampStr); err == nil {
+			e.Timestamp = t
+		}
+	}
+
+	if importTimeStr != "" {
+		if t, err := time.Parse(time.RFC3339Nano, importTimeStr); err == nil {
+			e.ImportTime = t
+		}
 	}
 
 	if user.Valid {
@@ -314,12 +339,13 @@ func scanEvent(row interface{ Scan(...interface{}) error }) (*types.Event, error
 
 func scanEventFromRows(rows *sql.Rows) (*types.Event, error) {
 	var e types.Event
+	var timestampStr, importTimeStr string
 	var user, userSID, rawXML, sessionID, ipAddress sql.NullString
 	var importID sql.NullInt64
 
 	err := rows.Scan(
 		&e.ID,
-		&e.Timestamp,
+		&timestampStr,
 		&e.EventID,
 		&e.Level,
 		&e.Source,
@@ -331,11 +357,23 @@ func scanEventFromRows(rows *sql.Rows) (*types.Event, error) {
 		&rawXML,
 		&sessionID,
 		&ipAddress,
-		&e.ImportTime,
+		&importTimeStr,
 		&importID,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if timestampStr != "" {
+		if t, err := time.Parse(time.RFC3339Nano, timestampStr); err == nil {
+			e.Timestamp = t
+		}
+	}
+
+	if importTimeStr != "" {
+		if t, err := time.Parse(time.RFC3339Nano, importTimeStr); err == nil {
+			e.ImportTime = t
+		}
 	}
 
 	if user.Valid {

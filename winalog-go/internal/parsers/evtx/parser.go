@@ -1,28 +1,20 @@
 package evtx
 
 import (
-	"bufio"
-	"encoding/binary"
-	"encoding/xml"
+	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
+	evtxlib "github.com/0xrawsec/golang-evtx/evtx"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
-type EvtxParser struct {
-	useWevtutil bool
-}
+type EvtxParser struct{}
 
 func NewEvtxParser() *EvtxParser {
-	return &EvtxParser{
-		useWevtutil: false,
-	}
+	return &EvtxParser{}
 }
 
 func (p *EvtxParser) CanParse(path string) bool {
@@ -34,25 +26,13 @@ func (p *EvtxParser) GetType() string {
 	return "evtx"
 }
 
-type evtxHeader struct {
-	Magic       [8]byte
-	Version     uint64
-	StartChunks uint64
-	EndChunks   uint64
-	NextRecID   uint64
-	HeaderSize  uint64
-}
-
 func (p *EvtxParser) Parse(path string) <-chan *types.Event {
 	events := make(chan *types.Event, 1000)
 
 	go func() {
 		defer close(events)
 
-		evtxEvents, err := p.parseEvtxNative(path)
-		if err != nil {
-			evtxEvents, err = p.parseViaWevtutil(path)
-		}
+		evtxEvents, err := p.parseEvtxFile(path)
 		if err != nil {
 			return
 		}
@@ -66,177 +46,123 @@ func (p *EvtxParser) Parse(path string) <-chan *types.Event {
 }
 
 func (p *EvtxParser) ParseBatch(path string) ([]*types.Event, error) {
-	events, err := p.parseEvtxNative(path)
-	if err != nil {
-		events, err = p.parseViaWevtutil(path)
-	}
-	return events, err
+	return p.parseEvtxFile(path)
 }
 
-func (p *EvtxParser) parseEvtxNative(path string) ([]*types.Event, error) {
-	file, err := os.Open(path)
+func (p *EvtxParser) parseEvtxFile(path string) ([]*types.Event, error) {
+	evtxFile, err := evtxlib.Open(path)
 	if err != nil {
-		return nil, err
+		evtxFile, err = evtxlib.OpenDirty(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open EVTX file: %w", err)
+		}
 	}
-	defer file.Close()
-
-	header := &evtxHeader{}
-	if err := binary.Read(file, binary.LittleEndian, header); err != nil {
-		return nil, err
-	}
-
-	if string(header.Magic[:]) != "ElfFile\x00" {
-		return nil, fmt.Errorf("invalid EVTX magic number")
-	}
+	defer evtxFile.Close()
 
 	events := make([]*types.Event, 0)
-	scanner := bufio.NewScanner(file)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "<Event") {
-			event := p.parseEventXML(line)
-			if event != nil {
-				events = append(events, event)
-			}
+	for eventMap := range evtxFile.FastEvents() {
+		if eventMap == nil {
+			continue
+		}
+
+		event := p.convertMapToEvent(eventMap)
+		if event != nil {
+			events = append(events, event)
 		}
 	}
 
 	return events, nil
 }
 
-func (p *EvtxParser) parseEventXML(xmlData string) *types.Event {
-	var wrapper struct {
-		XMLName xml.Name `xml:"Event"`
-		System  struct {
-			XMLName     xml.Name `xml:"System"`
-			EventID     string   `xml:"EventID"`
-			Level       string   `xml:"Level"`
-			TimeCreated string   `xml:"TimeCreated"`
-			Source      string   `xml:"Provider"`
-			LogName     string   `xml:"Channel"`
-			Computer    string   `xml:"Computer"`
-			User        struct {
-				ID string `xml:"UserID"`
-			} `xml:"User"`
-		} `xml:"System"`
-		EventData struct {
-			XMLName xml.Name `xml:"EventData"`
-			Data    []struct {
-				Name  string `xml:"Name,attr"`
-				Value string `xml:",chardata"`
-			} `xml:"Data"`
-		} `xml:"EventData"`
-	}
-
-	if err := xml.Unmarshal([]byte(xmlData), &wrapper); err != nil {
+func (p *EvtxParser) convertMapToEvent(m *evtxlib.GoEvtxMap) *types.Event {
+	if m == nil {
 		return nil
 	}
 
 	event := &types.Event{
-		Source:   wrapper.System.Source,
-		LogName:  wrapper.System.LogName,
-		Computer: wrapper.System.Computer,
-		Message:  p.extractMessage(wrapper.EventData.Data),
+		Level:      types.EventLevelInfo,
+		ImportTime: time.Now(),
 	}
 
-	if event.Source == "" {
-		event.Source = "Unknown"
-	}
-	if event.LogName == "" {
-		event.LogName = filepath.Dir(wrapper.System.Source)
-	}
+	event.EventID = int32(m.EventID())
+	event.LogName = m.Channel()
 
-	if t, err := time.Parse("2006-01-02T15:04:05.000Z07:00", wrapper.System.TimeCreated); err == nil {
-		event.Timestamp = t
-	} else {
-		event.Timestamp = time.Now()
-	}
+	eventPath := evtxlib.Path("Event")
+	elem, err := m.Get(&eventPath)
+	if err == nil && elem != nil {
+		if eventMap, ok := (*elem).(evtxlib.GoEvtxMap); ok {
+			systemPath := evtxlib.Path("System")
+			if sysElem, err := eventMap.Get(&systemPath); err == nil && sysElem != nil {
+				if system, ok := (*sysElem).(evtxlib.GoEvtxMap); ok {
+					computerPath := evtxlib.Path("Computer")
+					event.Computer = system.GetStringStrict(&computerPath)
+					levelPath := evtxlib.Path("Level")
+					level := system.GetIntStrict(&levelPath)
+					if level > 0 && level <= 5 {
+						event.Level = types.EventLevel(level)
+					}
 
-	if eid, ok := parseUint32(wrapper.System.EventID); ok {
-		event.EventID = int32(eid)
-	}
+					timePath := evtxlib.Path("TimeCreated/SystemTime")
+					if timeElem, err := system.Get(&timePath); err == nil && timeElem != nil {
+						if ts, ok := (*timeElem).(string); ok {
+							if t, err := time.Parse("2006-01-02T15:04:05.9999999Z", ts); err == nil {
+								event.Timestamp = t
+							} else if t, err := time.Parse(time.RFC3339, ts); err == nil {
+								event.Timestamp = t
+							}
+						}
+					}
 
-	if level, ok := parseInt(wrapper.System.Level); ok {
-		event.Level = types.EventLevel(level)
-	}
+					providerPath := evtxlib.Path("Provider")
+					if provElem, err := system.Get(&providerPath); err == nil && provElem != nil {
+						if provider, ok := (*provElem).(evtxlib.GoEvtxMap); ok {
+							namePath := evtxlib.Path("Name")
+							event.Source = provider.GetStringStrict(&namePath)
+						}
+					}
+				}
+			}
 
-	if wrapper.System.User.ID != "" {
-		sid := wrapper.System.User.ID
-		event.UserSID = &sid
-	}
-
-	rawXML := xmlData
-	event.RawXML = &rawXML
-
-	event.ImportTime = time.Now()
-
-	return event
-}
-
-func (p *EvtxParser) parseViaWevtutil(path string) ([]*types.Event, error) {
-	cmd := exec.Command("wevtutil", "qe", path, "/rd:true", "/f:xml")
-
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("wevtutil failed: %w", err)
-	}
-
-	events := make([]*types.Event, 0)
-	scanner := bufio.NewScanner(strings.NewReader(string(output)))
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "<Event") || strings.Contains(line, "</Event>") {
-			event := p.parseEventXML(line)
-			if event != nil {
-				events = append(events, event)
+			edPath := evtxlib.Path("EventData")
+			if edElem, err := eventMap.Get(&edPath); err == nil && edElem != nil {
+				if ed, ok := (*edElem).(evtxlib.GoEvtxMap); ok {
+					event.Message = p.extractEventData(&ed)
+				}
 			}
 		}
 	}
 
-	return events, nil
+	if event.Timestamp.IsZero() {
+		event.Timestamp = time.Now()
+	}
+
+	if rawJSON, err := json.Marshal(m); err == nil {
+		rawStr := string(rawJSON)
+		event.RawXML = &rawStr
+	}
+
+	return event
 }
 
-func (p *EvtxParser) extractMessage(data []struct {
-	Name  string `xml:"Name,attr"`
-	Value string `xml:",chardata"`
-}) string {
-	var msg string
-	for _, d := range data {
-		if d.Name == "Message" || d.Name == "" {
-			msg += d.Value + " "
+func (p *EvtxParser) extractEventData(m *evtxlib.GoEvtxMap) string {
+	var parts []string
+	for k, v := range *m {
+		if v == nil {
+			continue
+		}
+		switch val := v.(type) {
+		case string:
+			if val != "" {
+				parts = append(parts, fmt.Sprintf("%s=%s", k, val))
+			}
+		case evtxlib.GoEvtxMap:
+			if val != nil {
+				parts = append(parts, p.extractEventData(&val))
+			}
+		default:
+			parts = append(parts, fmt.Sprintf("%s=%v", k, val))
 		}
 	}
-	return strings.TrimSpace(msg)
-}
-
-type EvtxRecord struct {
-	EventRecordID int64
-	TimeCreated   time.Time
-	EventID       int32
-	Level         int
-	Source        string
-	Computer      string
-	Channel       string
-	Message       string
-	XML           string
-	Data          map[string]string
-}
-
-func ParseRecordHeader(data []byte) (offset int64, err error) {
-	if len(data) < 24 {
-		return 0, fmt.Errorf("record too short")
-	}
-	return 0, nil
-}
-
-func parseUint32(s string) (uint32, bool) {
-	v, err := strconv.ParseUint(s, 10, 32)
-	return uint32(v), err == nil
-}
-
-func parseInt(s string) (int, bool) {
-	v, err := strconv.Atoi(s)
-	return v, err == nil
+	return strings.Join(parts, "; ")
 }

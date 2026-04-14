@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +52,23 @@ func (s *Server) setupHandlers() {
 
 func (s *Server) setupRoutes() {
 	SetupRoutes(s.engine, s.alertEng, s.importEng, s.liveEng)
+
+	staticDir := filepath.Join("internal", "gui", "dist")
+	staticFS := http.Dir(staticDir)
+
+	s.engine.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		if path == "/" {
+			path = "/index.html"
+		}
+		file, err := staticFS.Open(path)
+		if err != nil {
+			c.Data(404, "text/plain", []byte("Not found"))
+			return
+		}
+		file.Close()
+		http.ServeFile(c.Writer, c.Request, filepath.Join(staticDir, path))
+	})
 }
 
 func (s *Server) Start() error {

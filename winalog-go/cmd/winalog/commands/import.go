@@ -1,6 +1,14 @@
 package commands
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/kkkdddd-start/winalog-go/internal/engine"
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -41,6 +49,108 @@ func init() {
 }
 
 func runImport(cmd *cobra.Command, args []string) error {
-	// TODO: Implement import logic
+	cfg := getConfig()
+
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	eng := engine.NewEngine(db)
+
+	importCfg := engine.ImportConfig{
+		Workers:       importFlags.workers,
+		BatchSize:     importFlags.batchSize,
+		Incremental:   importFlags.incremental,
+		SkipPatterns:  parseSkipPatterns(importFlags.skipPatterns),
+		CalculateHash: true,
+	}
+	eng.SetImportConfig(importCfg)
+
+	paths := args
+	if len(paths) == 0 {
+		return fmt.Errorf("no files specified")
+	}
+
+	var allFiles []string
+	for _, path := range paths {
+		info, err := os.Stat(path)
+		if err != nil {
+			fmt.Printf("Warning: cannot access %s: %v\n", path, err)
+			continue
+		}
+		if info.IsDir() {
+			if err := collectFilesRecursive(path, &allFiles); err != nil {
+				fmt.Printf("Warning: error scanning directory %s: %v\n", path, err)
+			}
+		} else {
+			allFiles = append(allFiles, path)
+		}
+	}
+
+	if len(allFiles) == 0 {
+		return fmt.Errorf("no supported files found")
+	}
+
+	ctx := context.Background()
+	req := &engine.ImportRequest{
+		Paths: allFiles,
+	}
+
+	fmt.Printf("Importing %d file(s)...\n", len(allFiles))
+
+	result, err := eng.Import(ctx, req, func(progress *engine.ImportProgress) {
+		fmt.Printf("\r[%d/%d] %s: %d events",
+			progress.CurrentFile, progress.TotalFiles,
+			progress.CurrentFileName, progress.EventsImported)
+	})
+
+	if err != nil {
+		return fmt.Errorf("import failed: %w", err)
+	}
+
+	fmt.Printf("\n\nImport completed:\n")
+	fmt.Printf("  Files imported: %d\n", result.FilesImported)
+	fmt.Printf("  Files failed:   %d\n", result.FilesFailed)
+	fmt.Printf("  Total events:  %d\n", result.EventsImported)
+	fmt.Printf("  Duration:       %v\n", result.Duration)
+
+	if len(result.Errors) > 0 {
+		fmt.Printf("\nErrors:\n")
+		for _, e := range result.Errors {
+			fmt.Printf("  - %s: %s\n", e.FilePath, e.Error)
+		}
+	}
+
+	return nil
+}
+
+func parseSkipPatterns(s string) []string {
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ",")
+}
+
+func collectFilesRecursive(dir string, files *[]string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subDir := dir + string(os.PathSeparator) + entry.Name()
+			if err := collectFilesRecursive(subDir, files); err != nil {
+				continue
+			}
+		} else {
+			ext := strings.ToLower(filepath.Ext(entry.Name()))
+			if ext == ".evtx" || ext == ".etl" || ext == ".csv" || ext == ".log" || ext == ".txt" {
+				*files = append(*files, dir+string(os.PathSeparator)+entry.Name())
+			}
+		}
+	}
 	return nil
 }

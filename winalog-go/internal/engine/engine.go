@@ -71,6 +71,10 @@ func (e *Engine) registerParsers() {
 	e.parsers.Register(sysmon.NewSysmonParser())
 }
 
+func (e *Engine) SetImportConfig(cfg ImportConfig) {
+	e.importCfg = cfg
+}
+
 func (e *Engine) Import(ctx context.Context, req *ImportRequest, progressFn func(*ImportProgress)) (*ImportResult, error) {
 	result := &ImportResult{
 		StartTime: time.Now(),
