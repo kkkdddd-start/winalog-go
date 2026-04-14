@@ -15,51 +15,51 @@
 
 ### 1. 取证模块 (`internal/forensics/`)
 
-- [ ] 1.1 实现哈希计算 (`hash.go`)
+- [x] 1.1 实现哈希计算 (`hash.go`)
   - 实现 `HashResult` 结构
   - 实现 `CalculateFileHash` 计算 SHA256/MD5
   - 支持多哈希算法
   - 参考：`dev-pkg/FEATURES.md` 14.1 节
 
-- [ ] 1.2 实现数字签名验证 (`signature.go`)
+- [x] 1.2 实现数字签名验证 (`signature.go`)
   - 实现 `SignatureResult` 结构
   - 实现 `VerifySignature` Authenticode 验证
   - 验证 PE 文件签名状态
   - 参考：`dev-pkg/FEATURES.md` 14.2 节
 
-- [ ] 1.3 实现证据链 (`chain.go`)
+- [x] 1.3 实现证据链 (`chain.go`)
   - 实现 `EvidenceChain` 区块链式结构
   - 实现 `EvidenceManifest` 证据清单
   - 实现证据追溯
   - 参考：`dev-pkg/FEATURES.md` 14.3 节
 
-- [ ] 1.4 实现内存采集 (`memory.go`)
+- [x] 1.4 实现内存采集 (`memory.go`)
   - 实现进程内存转储接口
   - 实现内存采集功能
 
-- [ ] 1.5 实现时间戳服务 (`timestamp.go`)
+- [x] 1.5 实现时间戳服务 (`timestamp.go`)
   - 实现 RFC 3161 时间戳签名
   - 实现证据时间认证
 
 ### 2. 报告生成 (`internal/reports/`)
 
-- [ ] 2.1 实现报告生成器 (`generator.go`)
+- [x] 2.1 实现报告生成器 (`generator.go`)
   - 定义 `Generator` 结构
   - 实现 `ReportRequest` 请求结构
   - 实现 `Generate` 生成方法
   - 支持 HTML/JSON 格式
   - 参考：`dev-pkg/FEATURES.md` 10.1 节
 
-- [ ] 2.2 实现 HTML 报告 (`html.go`)
+- [x] 2.2 实现 HTML 报告 (`html.go`)
   - 实现 Bootstrap 响应式报告
   - 实现 Chart.js 可视化
   - 实现统计图表
 
-- [ ] 2.3 实现 JSON 报告 (`json.go`)
+- [x] 2.3 实现 JSON 报告 (`json.go`)
   - 实现结构化 JSON 报告
   - 实现所有字段导出
 
-- [ ] 2.4 实现安全统计 (`security_stats.go`)
+- [x] 2.4 实现安全统计 (`security_stats.go`)
   - 实现 `SecurityStats` 安全统计结构
   - 实现事件分布统计
   - 实现级别分布统计
@@ -95,7 +95,7 @@
 
 ### 4. 时间线 (`internal/timeline/`)
 
-- [ ] 4.1 实现时间线构建器 (`builder.go`)
+- [x] 4.1 实现时间线构建器 (`builder.go`)
   - 实现 `TimelineBuilder` 结构
   - 实现 `Build` 构建方法
   - 实现按时间排序
@@ -104,7 +104,7 @@
   - 实现攻击链关联
   - 参考：`dev-pkg/FEATURES.md` 12.1 节
 
-- [ ] 4.2 实现时间线可视化 (`visualizer.go`)
+- [x] 4.2 实现时间线可视化 (`visualizer.go`)
   - 实现 `TimelineVisualizer` 结构
   - 实现缩放控制
   - 实现平移和框选
