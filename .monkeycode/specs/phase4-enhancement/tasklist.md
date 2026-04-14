@@ -75,16 +75,16 @@
 
 ### 3. 导出器 (`internal/exporters/`)
 
-- [ ] 3.1 实现导出器接口 (`exporter.go`)
+- [x] 3.1 实现导出器接口 (`exporter.go`)
   - 定义 `Exporter` 接口
   - 定义导出选项
 
-- [ ] 3.2 实现 JSON 导出 (`json.go`)
+- [x] 3.2 实现 JSON 导出 (`json.go`)
   - 实现 `JsonExporter`
   - 支持 pretty print
   - 实现事件导出
 
-- [ ] 3.3 实现 CSV 导出 (`csv.go`)
+- [x] 3.3 实现 CSV 导出 (`csv.go`)
   - 实现 `CsvExporter`
   - 支持自定义分隔符
   - 实现表头和字段映射
@@ -114,7 +114,7 @@
 
 ### 5. 多机分析 (`internal/multi/`)
 
-- [ ] 5.1 实现多机分析器 (`analyzer.go`)
+- [x] 5.1 实现多机分析器 (`analyzer.go`)
   - 实现 `MultiMachineAnalyzer` 结构
   - 实现 `MachineContext` 机器上下文
   - 实现 `LateralMovement` 横向移动检测
@@ -124,7 +124,7 @@
 
 ### 6. 可观测性 (`internal/observability/`)
 
-- [ ] 6.1 实现 Metrics 收集器 (`metrics.go`)
+- [x] 6.1 实现 Metrics 收集器 (`metrics.go`)
   - 实现 `MetricsCollector` 结构
   - 实现 Prometheus Counter/Gauge/Histogram
   - 实现事件计数、导入耗时、告警触发统计
