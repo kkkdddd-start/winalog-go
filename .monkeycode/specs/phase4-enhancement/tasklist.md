@@ -89,7 +89,7 @@
   - 支持自定义分隔符
   - 实现表头和字段映射
 
-- [ ] 3.4 实现时间线导出 (`timeline.go`)
+- [x] 3.4 实现时间线导出 (`timeline.go`)
   - 实现 `TimelineExporter`
   - 支持时间线格式导出
 
@@ -131,56 +131,56 @@
   - 实现 `GET /metrics` 端点
   - 参考：`dev-pkg/FEATURES.md` 15.1 节
 
-- [ ] 6.2 实现日志配置 (`logging.go`)
+- [x] 6.2 实现日志配置 (`logging.go`)
   - 实现 `LoggerConfig` 配置结构
   - 实现日志级别/格式配置
-  - 实现 Zap + Lumberjack 集成
+  - 实现 Zap Logger 集成
   - 参考：`dev-pkg/FEATURES.md` 15.2 节
 
-- [ ] 6.3 实现系统监控 (`system.go`)
+- [x] 6.3 实现系统监控 (`system.go`)
   - 实现 CPU/内存/Goroutine 统计
   - 实现运行时监控
 
 ### 7. CLI 增强命令
 
-- [ ] 7.1 实现报告命令 (`report.go`)
+- [x] 7.1 实现报告命令 (`report.go`)
   - `report generate` 生成报告
   - 支持 HTML/JSON 格式
   - 支持综合报告
 
-- [ ] 7.2 实现导出命令 (`export.go`)
+- [x] 7.2 实现导出命令 (`export.go`)
   - `export json` JSON 导出
   - `export csv` CSV 导出
   - `export timeline` 时间线导出
 
-- [ ] 7.3 实现时间线命令 (`timeline.go`)
+- [x] 7.3 实现时间线命令 (`timeline.go`)
   - `timeline build` 构建全局时间线
   - `timeline query` 查询时间线
 
-- [ ] 7.4 实现多机命令 (`multi.go`)
+- [x] 7.4 实现多机命令 (`multi.go`)
   - `multi analyze` 跨机器关联分析
   - `multi lateral` 横向移动检测
 
-- [ ] 7.5 实现取证命令 (`forensics.go`)
+- [x] 7.5 实现取证命令 (`forensics.go`)
   - `forensics collect` 取证采集
   - `forensics hash` 文件哈希
   - `forensics verify` 签名验证
 
-- [ ] 7.6 实现实时监控命令 (`live.go`)
+- [x] 7.6 实现实时监控命令 (`live.go`)
   - `live collect` 启动实时监控
   - 显示事件流和状态
 
-- [ ] 7.7 实现可观测性命令 (`observability.go`)
+- [x] 7.7 实现可观测性命令 (`observability.go`)
   - `metrics` Prometheus 指标端点
 
-- [ ] 7.8 实现 SQL 查询命令 (`query.go`)
+- [x] 7.8 实现 SQL 查询命令 (`query.go`)
   - 直接 SQL 查询接口
 
 ### 8. pkg/mitre 公共包
 
-- [ ] 8.1 实现 MITRE ATT&CK 映射库 (`pkg/mitre/`)
-  - 实现 MITRE ATT&CK 技术定义
-  - 实现战术和技术映射
+- [x] 8.1 实现 MITRE ATT&CK 映射库 (`pkg/mitre/`)
+  - 实现 MITRE ATT&CK 技术定义 (80+ techniques)
+  - 实现战术和技术映射 (12 tactics)
   - 实现描述和建议
 
 ### 9. 检查点
