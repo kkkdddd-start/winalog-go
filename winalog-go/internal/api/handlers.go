@@ -1,15 +1,21 @@
 package api
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/engine"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type AlertHandler struct {
+	db *storage.DB
+}
+
+type ImportHandler struct {
 	db *storage.DB
 }
 
@@ -401,4 +407,61 @@ func parseTime(s string) (*time.Time, error) {
 
 func exportEventsToCSV(events []*types.Event) string {
 	return "id,timestamp,event_id,level,source,log_name,computer,user,message\n"
+}
+
+type ImportRequest struct {
+	Files []string `json:"files" binding:"required"`
+}
+
+func (h *ImportHandler) ImportLogs(c *gin.Context) {
+	var req ImportRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		return
+	}
+
+	if len(req.Files) == 0 {
+		c.JSON(400, ErrorResponse{Error: "no files provided", Code: ErrCodeInvalidRequest})
+		return
+	}
+
+	eng := engine.NewEngine(h.db)
+
+	importReq := &engine.ImportRequest{
+		Paths:     req.Files,
+		BatchSize: 1000,
+	}
+
+	ctx := c.Request.Context()
+	result, err := eng.Import(ctx, importReq, nil)
+	if err != nil {
+		c.JSON(500, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success":         result.TotalFiles > 0 && result.FilesFailed == 0,
+		"total_files":     result.TotalFiles,
+		"files_imported":  result.FilesImported,
+		"files_failed":    result.FilesFailed,
+		"events_imported": result.EventsImported,
+		"duration":        fmt.Sprintf("%v", result.Duration),
+		"errors":          result.Errors,
+	})
+}
+
+func (h *ImportHandler) GetImportStatus(c *gin.Context) {
+	filePath := c.Query("path")
+	if filePath == "" {
+		c.JSON(400, ErrorResponse{Error: "path parameter required", Code: ErrCodeInvalidRequest})
+		return
+	}
+
+	log, err := h.db.GetImportLog(filePath)
+	if err != nil {
+		c.JSON(404, ErrorResponse{Error: "import log not found"})
+		return
+	}
+
+	c.JSON(200, log)
 }

@@ -122,12 +122,12 @@
   - 实现错误处理中间件
   - 实现认证中间件 (可选)
 
-- [ ] 2.7 实现导入 Handler
+- [x] 2.7 实现导入 Handler
   - 实现 `importLogs` 导入接口
 
 ### 3. CLI UI 命令
 
-- [ ] 3.1 实现 TUI 启动命令 (`tui.go`)
+- [x] 3.1 实现 TUI 启动命令 (`tui.go`)
   - 启动 Bubble Tea TUI
 
 - [x] 3.2 实现 serve 启动命令 (`serve.go`)
@@ -136,17 +136,17 @@
 
 ### 4. Web UI (`internal/gui/`)
 
-- [ ] 4.1 初始化 React 项目
+- [x] 4.1 初始化 React 项目
   - 配置 `package.json`
   - 配置 Vite
   - 配置 TypeScript
 
-- [ ] 4.2 实现 Dashboard 页面
+- [x] 4.2 实现 Dashboard 页面
   - 统计图表 (Chart.js)
   - 告警概览
   - 路由：`/`
 
-- [ ] 4.3 实现 Events 页面
+- [x] 4.3 实现 Events 页面
   - 事件列表 (虚拟滚动 Table)
   - 筛选面板
   - 分页导航
@@ -157,7 +157,7 @@
   - XML 原始数据
   - 路由：`/events/:id`
 
-- [ ] 4.5 实现 Alerts 页面
+- [x] 4.5 实现 Alerts 页面
   - 告警列表
   - 告警管理
   - 路由：`/alerts`
@@ -167,7 +167,7 @@
   - 告警处置
   - 路由：`/alerts/:id`
 
-- [ ] 4.7 实现 Timeline 页面
+- [x] 4.7 实现 Timeline 页面
   - 攻击链可视化
   - 时间线组件
   - 路由：`/timeline`
@@ -198,7 +198,7 @@
   - Prometheus 指标
   - 路由：`/metrics`
 
-- [ ] 4.14 实现通用组件
+- [x] 4.14 实现通用组件
   - `Table` 虚拟滚动、分页
   - `Badge` 级别/状态标签
   - `Chart` Chart.js 图表
@@ -208,7 +208,7 @@
   - `DateRangePicker` 日期选择
   - `FilterPanel` 过滤器面板
 
-- [ ] 4.15 实现 API 调用封装 (`api/`)
+- [x] 4.15 实现 API 调用封装 (`api/`)
   - 封装所有 API 请求
   - 处理认证和错误
 

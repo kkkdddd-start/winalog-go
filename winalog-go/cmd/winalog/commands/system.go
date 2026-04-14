@@ -5,6 +5,7 @@ import (
 
 	"github.com/kkkdddd-start/winalog-go/internal/api"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -201,7 +202,8 @@ var tuiCmd = &cobra.Command{
 }
 
 func runTUI(cmd *cobra.Command, args []string) error {
-	return nil
+	cfg := getConfig()
+	return tui.StartTUI(cfg)
 }
 
 var serveCmd = &cobra.Command{

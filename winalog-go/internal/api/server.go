@@ -11,11 +11,12 @@ import (
 )
 
 type Server struct {
-	engine   *gin.Engine
-	db       *storage.DB
-	addr     string
-	alertEng *AlertHandler
-	liveEng  *LiveHandler
+	engine    *gin.Engine
+	db        *storage.DB
+	addr      string
+	alertEng  *AlertHandler
+	importEng *ImportHandler
+	liveEng   *LiveHandler
 }
 
 func NewServer(db *storage.DB, addr string) *Server {
@@ -42,11 +43,14 @@ func (s *Server) setupHandlers() {
 	s.alertEng = &AlertHandler{
 		db: s.db,
 	}
+	s.importEng = &ImportHandler{
+		db: s.db,
+	}
 	s.liveEng = &LiveHandler{}
 }
 
 func (s *Server) setupRoutes() {
-	SetupRoutes(s.engine, s.alertEng, s.liveEng)
+	SetupRoutes(s.engine, s.alertEng, s.importEng, s.liveEng)
 }
 
 func (s *Server) Start() error {

@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbletea"
@@ -291,12 +290,3 @@ func getLevelColor(level types.EventLevel) lipgloss.Color {
 var borderStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("240"))
-
-func main() {
-	cfg := config.DefaultConfig()
-
-	if err := StartTUI(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-}
