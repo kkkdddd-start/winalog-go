@@ -67,35 +67,35 @@
 
 ### 4. 解析器系统 (`internal/parsers/`)
 
-- [ ] 4.1 实现解析器接口 (`parser.go`)
+- [x] 4.1 实现解析器接口 (`parser.go`)
   - 定义 `Parser` 接口：`CanParse`, `Parse`, `ParseBatch`, `GetType`
   - 实现 `ParserRegistry` 注册表
   - 参考：`dev-pkg/FEATURES.md` 3.1 节
 
-- [ ] 4.2 实现 EVTX 解析器 (`evtx/`)
+- [x] 4.2 实现 EVTX 解析器 (`evtx/`)
   - 实现 `EvtxParser` 结构
   - 实现 `CanParse` 和 `Parse` 方法
   - 实现 XML 事件提取
   - 实现 wevtutil 备用解析
   - 参考：`dev-pkg/FEATURES.md` 3.2 节
 
-- [ ] 4.3 实现 ETL 解析器 (`etl/`)
+- [x] 4.3 实现 ETL 解析器 (`etl/`)
   - 实现 `EtlParser` 结构
   - 实现 ETW 跟踪文件解析
 
-- [ ] 4.4 实现 CSV/LOG 解析器 (`csv/`)
+- [x] 4.4 实现 CSV/LOG 解析器 (`csv/`)
   - 实现 `CsvParser` 结构
   - 支持自定义分隔符和表头
 
-- [ ] 4.5 实现 IIS 解析器 (`iis/`)
+- [x] 4.5 实现 IIS 解析器 (`iis/`)
   - 实现 `IISParser` 结构
   - 支持 W3C/NCSA 格式
 
-- [ ] 4.6 实现 Sysmon 解析器 (`sysmon/`)
+- [x] 4.6 实现 Sysmon 解析器 (`sysmon/`)
   - 实现 `SysmonParser` 结构
   - 支持事件 ID 1-22
 
-- [ ] 4.7 创建 pkg/evtx 独立库 (`pkg/evtx/`)
+- [x] 4.7 创建 pkg/evtx 独立库 (`pkg/evtx/`)
   - 实现 `Reader`, `Record`, `XML` 解析
   - 提供独立可复用的 EVTX 解析包
 
