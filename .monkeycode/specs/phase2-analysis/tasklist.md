@@ -147,18 +147,19 @@
 
 ### 5. CLI 告警和关联命令
 
-- [ ] 5.1 实现告警命令 (`alert.go`)
+- [x] 5.1 实现告警命令 (`alert.go`)
   - `alert list` 列出告警
   - `alert show` 显示详情
   - `alert resolve` 解决告警
   - `alert delete` 删除告警
   - `alert export` 导出告警
+  - `alert stats` 显示统计
 
-- [ ] 5.2 实现关联命令 (`correlate.go`)
+- [x] 5.2 实现关联命令 (`correlate.go`)
   - `correlate analyze` 执行关联分析
   - 返回攻击链结果
 
-- [ ] 5.3 实现分析命令 (`analyze.go`)
+- [x] 5.3 实现分析命令 (`analyze.go`)
   - `analyze brute-force` 暴力破解检测
   - `analyze login` 登录分析
   - `analyze kerberos` Kerberos 分析
