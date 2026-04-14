@@ -129,19 +129,19 @@
 
 ### 6. 核心引擎 (`internal/engine/`)
 
-- [ ] 6.1 实现分析引擎 (`engine.go`)
+- [x] 6.1 实现分析引擎 (`engine.go`)
   - 定义 `Engine` 结构，整合 parser、storage、alerts
   - 实现 `Import` 方法处理批量导入
   - 实现进度回调
   - 参考：`dev-pkg/FEATURES.md` 2.1 节
 
-- [ ] 6.2 实现事件管道 (`pipeline.go`)
+- [x] 6.2 实现事件管道 (`pipeline.go`)
   - 实现 Worker Pool 并行处理
   - 实现流式解析和批量插入
   - 支持 context 取消
   - 参考：`dev-pkg/design.md` 5.1 节
 
-- [ ] 6.3 实现导入器 (`importer.go`)
+- [x] 6.3 实现导入器 (`importer.go`)
   - 实现文件类型识别
   - 实现增量导入逻辑
 

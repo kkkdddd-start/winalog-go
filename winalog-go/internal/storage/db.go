@@ -308,3 +308,42 @@ func (d *DB) BeginTx() (*sql.Tx, func(), error) {
 	}
 	return tx, func() { tx.Rollback() }, nil
 }
+
+func (d *DB) GetLastImportTime(filePath string) *time.Time {
+	var importTime time.Time
+	err := d.QueryRow(`
+		SELECT import_time FROM import_log 
+		WHERE file_path = ? AND status = 'success'
+		ORDER BY import_time DESC LIMIT 1`,
+		filePath).Scan(&importTime)
+	if err != nil {
+		return nil
+	}
+	return &importTime
+}
+
+func (d *DB) GetImportLog(filePath string) (*ImportLogEntry, error) {
+	row := d.QueryRow(`
+		SELECT id, file_path, file_hash, events_count, import_time, import_duration, status, error_message
+		FROM import_log WHERE file_path = ? ORDER BY import_time DESC LIMIT 1`,
+		filePath)
+
+	var entry ImportLogEntry
+	err := row.Scan(&entry.ID, &entry.FilePath, &entry.FileHash, &entry.EventsCount,
+		&entry.ImportTime, &entry.ImportDuration, &entry.Status, &entry.ErrorMessage)
+	if err != nil {
+		return nil, err
+	}
+	return &entry, nil
+}
+
+type ImportLogEntry struct {
+	ID             int64
+	FilePath       string
+	FileHash       string
+	EventsCount    int
+	ImportTime     time.Time
+	ImportDuration int
+	Status         string
+	ErrorMessage   string
+}
