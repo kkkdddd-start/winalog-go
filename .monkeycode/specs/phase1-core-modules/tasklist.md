@@ -101,29 +101,29 @@
 
 ### 5. 存储系统 (`internal/storage/`)
 
-- [ ] 5.1 实现数据库封装 (`db.go`)
+- [x] 5.1 实现数据库封装 (`db.go`)
   - 使用 `modernc.org/sqlite` 驱动
   - 启用 WAL 模式
   - 实现连接池管理
   - 参考：`dev-pkg/design.md` 9.1 节
 
-- [ ] 5.2 实现 Schema 定义 (`schema.go`)
+- [x] 5.2 实现 Schema 定义 (`schema.go`)
   - 定义 9 张表：events, alerts, import_log, machine_context, multi_machine_analysis, global_timeline, sessions, evidence_chain, evidence_file
   - 实现表创建和迁移逻辑
   - 参考：`dev-pkg/FEATURES.md` 9.2 节
 
-- [ ] 5.3 实现 Repository 模式 (`repository.go`)
+- [x] 5.3 实现 Repository 模式 (`repository.go`)
   - 实现 `EventRepository` 接口
   - 实现 `AlertRepository` 接口
   - 实现 CRUD 操作
   - 参考：`dev-pkg/FEATURES.md` 9.3 节
 
-- [ ] 5.4 实现事件存储 (`events.go`)
+- [x] 5.4 实现事件存储 (`events.go`)
   - 实现事件批量插入
   - 实现事件去重
   - 实现增量导入支持
 
-- [ ] 5.5 实现告警存储 (`alerts.go`)
+- [x] 5.5 实现告警存储 (`alerts.go`)
   - 实现告警 CRUD
   - 实现告警统计查询
 
