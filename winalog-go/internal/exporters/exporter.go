@@ -22,6 +22,12 @@ func (f *ExporterFactory) Create(format string) Exporter {
 		return &ExcelExporter{}
 	case "json":
 		return &JsonExporter{prettyPrint: false}
+	case "timeline-csv":
+		return NewTimelineExporter()
+	case "timeline-json":
+		return NewTimelineJSONExporter()
+	case "timeline-html":
+		return NewTimelineHTMLExporter()
 	default:
 		return &JsonExporter{prettyPrint: false}
 	}
