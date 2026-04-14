@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type MetricsCollector struct {
 	mu sync.RWMutex
 
+	registry         *prometheus.Registry
 	eventsTotal      prometheus.Counter
 	eventsImported   prometheus.Counter
 	alertsTotal      prometheus.Counter
@@ -28,55 +28,72 @@ type MetricsCollector struct {
 func NewMetricsCollector() *MetricsCollector {
 	m := &MetricsCollector{
 		startTime: time.Now(),
+		registry:  prometheus.NewRegistry(),
 	}
 
-	m.eventsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	m.eventsTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "winalog_events_total",
 		Help: "Total number of events in database",
 	})
 
-	m.eventsImported = promauto.NewCounter(prometheus.CounterOpts{
+	m.eventsImported = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "winalog_events_imported_total",
 		Help: "Total number of events imported",
 	})
 
-	m.alertsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	m.alertsTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "winalog_alerts_total",
 		Help: "Total number of alerts generated",
 	})
 
-	m.alertsTriggered = promauto.NewCounter(prometheus.CounterOpts{
+	m.alertsTriggered = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "winalog_alerts_triggered_total",
 		Help: "Number of alert rule triggers",
 	})
 
-	m.importDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+	m.importDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "winalog_import_duration_seconds",
 		Help:    "Time spent importing files",
 		Buckets: prometheus.DefBuckets,
 	})
 
-	m.eventsPerSecond = promauto.NewGauge(prometheus.GaugeOpts{
+	m.eventsPerSecond = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "winalog_events_per_second",
 		Help: "Current event ingestion rate",
 	})
 
-	m.activeCollectors = promauto.NewGauge(prometheus.GaugeOpts{
+	m.activeCollectors = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "winalog_active_collectors",
 		Help: "Number of active event collectors",
 	})
 
-	m.rulesLoaded = promauto.NewGauge(prometheus.GaugeOpts{
+	m.rulesLoaded = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "winalog_rules_loaded",
 		Help: "Number of rules loaded",
 	})
 
-	m.rulesMatched = promauto.NewCounter(prometheus.CounterOpts{
+	m.rulesMatched = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "winalog_rules_matched_total",
 		Help: "Number of times rules matched events",
 	})
 
+	m.registry.MustRegister(
+		m.eventsTotal,
+		m.eventsImported,
+		m.alertsTotal,
+		m.alertsTriggered,
+		m.importDuration,
+		m.eventsPerSecond,
+		m.activeCollectors,
+		m.rulesLoaded,
+		m.rulesMatched,
+	)
+
 	return m
+}
+
+func (m *MetricsCollector) Registry() *prometheus.Registry {
+	return m.registry
 }
 
 func (m *MetricsCollector) RecordEvent() {

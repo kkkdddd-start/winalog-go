@@ -185,9 +185,18 @@
 
 ### 9. 检查点
 
-- [ ] 确保取证模块正确计算哈希和验证签名
-- [ ] 确保报告生成包含所有统计数据
-- [ ] 确保导出器正确导出各类格式
-- [ ] 确保时间线正确构建攻击链
-- [ ] 确保多机分析正确检测横向移动
-- [ ] 确保 Prometheus metrics 正常暴露
+- [x] 确保取证模块正确计算哈希和验证签名
+- [x] 确保报告生成包含所有统计数据
+- [x] 确保导出器正确导出各类格式
+- [x] 确保时间线正确构建攻击链
+- [x] 确保多机分析正确检测横向移动
+- [x] 确保 Prometheus metrics 正常暴露
+
+**验证结果 (2026-04-14):**
+- All 12 verification tests passed
+- Forensics: Hash calculation, Signature verification, Evidence chain
+- Reports: Generator, Security stats
+- Exporters: JSON, CSV, Timeline
+- Timeline: Builder with attack chain detection
+- Multi-machine: Analyzer with lateral movement detection
+- Prometheus metrics: Custom registry implementation
