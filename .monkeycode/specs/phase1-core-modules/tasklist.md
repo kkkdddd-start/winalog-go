@@ -55,12 +55,12 @@
 
 ### 3. 配置系统 (`internal/config/`)
 
-- [ ] 3.1 实现配置结构 (`config.go`)
+- [x] 3.1 实现配置结构 (`config.go`)
   - 定义 `Config` 主结构
   - 定义 `DatabaseConfig`, `ImportConfig`, `SearchConfig`, `AlertsConfig` 等子结构
   - 参考：`dev-pkg/ISSUES_FIX.md` 问题8
 
-- [ ] 3.2 实现配置加载器 (`loader.go`)
+- [x] 3.2 实现配置加载器 (`loader.go`)
   - 实现 YAML 配置文件解析
   - 实现环境变量覆盖
   - 实现默认值设置
