@@ -33,6 +33,13 @@ type LateralMovement struct {
 	Evidence      []*types.Event `json:"evidence"`
 }
 
+type UserLogin struct {
+	Machine string
+	User    string
+	Time    time.Time
+	Event   *types.Event
+}
+
 type CrossMachineResult struct {
 	Machine         *MachineContext    `json:"machine"`
 	LateralMovement []*LateralMovement `json:"lateral_movement"`
@@ -88,6 +95,9 @@ func (a *MultiMachineAnalyzer) Analyze() (*CrossMachineResult, error) {
 		Statistics:      &MachineStats{},
 	}
 
+	crossMachineMovements := a.detectCrossMachineLateralMovement()
+	result.LateralMovement = append(result.LateralMovement, crossMachineMovements...)
+
 	for _, machine := range a.machines {
 		if result.Machine == nil {
 			result.Machine = machine
@@ -103,6 +113,59 @@ func (a *MultiMachineAnalyzer) Analyze() (*CrossMachineResult, error) {
 	}
 
 	return result, nil
+}
+
+func (a *MultiMachineAnalyzer) detectCrossMachineLateralMovement() []*LateralMovement {
+	movements := make([]*LateralMovement, 0)
+
+	userLogins := make(map[string][]*UserLogin)
+	for _, machine := range a.machines {
+		for _, event := range machine.Events {
+			if event.EventID == 4624 {
+				user := extractUser(event)
+				if user != "Unknown" {
+					userLogins[user] = append(userLogins[user], &UserLogin{
+						Machine: machine.Name,
+						User:    user,
+						Time:    event.Timestamp,
+						Event:   event,
+					})
+				}
+			}
+		}
+	}
+
+	for user, logins := range userLogins {
+		if len(logins) < 2 {
+			continue
+		}
+
+		machineSet := make(map[string]bool)
+		for _, login := range logins {
+			machineSet[login.Machine] = true
+		}
+
+		if len(machineSet) >= 2 {
+			var events []*types.Event
+			var lastTime time.Time
+			for _, login := range logins {
+				events = append(events, login.Event)
+				if login.Time.After(lastTime) {
+					lastTime = login.Time
+				}
+			}
+			movements = append(movements, &LateralMovement{
+				SourceMachine: logins[0].Machine,
+				TargetMachine: logins[len(logins)-1].Machine,
+				User:          user,
+				Technique:     "T1021",
+				Time:          lastTime,
+				Evidence:      events,
+			})
+		}
+	}
+
+	return movements
 }
 
 func (a *MultiMachineAnalyzer) detectLateralMovement(machine *MachineContext) []*LateralMovement {

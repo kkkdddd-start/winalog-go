@@ -69,9 +69,11 @@
   - 实现 MITRE 分布统计
   - 参考：`dev-pkg/FEATURES.md` 10.2 节
 
-- [ ] 2.5 实现报告模板 (`template/`)
+- [x] 2.5 实现报告模板 (`template/`)
   - 创建 HTML 模板文件
   - 实现模板渲染
+  - 使用 embed.FS 打包模板
+  - 添加 template.FuncMap 支持
 
 ### 3. 导出器 (`internal/exporters/`)
 

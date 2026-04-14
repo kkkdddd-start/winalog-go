@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -162,16 +163,24 @@ func (c *MemoryCollector) collectModules(pid uint32) ([]MemoryModule, error) {
 	return []MemoryModule{}, nil
 }
 
+var (
+	ErrProcessMemoryNotImplemented = fmt.Errorf("process memory dump not implemented: requires windows API calls (OpenProcess, ReadProcessMemory)")
+	ErrSystemMemoryNotImplemented  = fmt.Errorf("system memory dump not implemented: requires windows API calls (NtQuerySystemInformation)")
+)
+
 func getProcessInfo(pid uint32) (struct{ Name string }, error) {
+	if runtime.GOOS != "windows" {
+		return struct{ Name string }{Name: fmt.Sprintf("Process_%d", pid)}, nil
+	}
 	return struct{ Name string }{Name: fmt.Sprintf("Process_%d", pid)}, nil
 }
 
 func readProcessMemory(pid uint32) ([]byte, error) {
-	return []byte(fmt.Sprintf("Memory dump for PID %d", pid)), nil
+	return nil, ErrProcessMemoryNotImplemented
 }
 
 func readSystemMemory() ([]byte, error) {
-	return []byte("System memory dump placeholder"), nil
+	return nil, ErrSystemMemoryNotImplemented
 }
 
 func calculateMemoryHash(data []byte) string {

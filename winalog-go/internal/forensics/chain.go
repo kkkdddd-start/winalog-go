@@ -1,6 +1,7 @@
 package forensics
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -100,7 +101,11 @@ func (m *EvidenceManifest) CalculateHash() string {
 }
 
 func generateID() string {
-	data := fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().Unix())
-	hash := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(hash[:])[:16]
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		timestamp := fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().Unix())
+		hash := sha256.Sum256([]byte(timestamp))
+		return hex.EncodeToString(hash[:])[:16]
+	}
+	return hex.EncodeToString(bytes)
 }

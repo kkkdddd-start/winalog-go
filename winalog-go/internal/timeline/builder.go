@@ -18,12 +18,12 @@ type TimelineBuilder struct {
 type TimelineFilter struct {
 	StartTime  time.Time
 	EndTime    time.Time
-	EventIDs   []int32
-	Levels     []types.EventLevel
-	LogNames   []string
-	Sources    []string
-	Computers  []string
-	Users      []string
+	EventIDs   map[int32]bool
+	Levels     map[types.EventLevel]bool
+	LogNames   map[string]bool
+	Sources    map[string]bool
+	Computers  map[string]bool
+	Users      map[string]bool
 	Keywords   string
 	MITREIDs   []string
 	IncludeRaw bool
@@ -159,53 +159,25 @@ func (b *TimelineBuilder) matchesFilter(event *types.Event) bool {
 	}
 
 	if len(b.filter.EventIDs) > 0 {
-		found := false
-		for _, id := range b.filter.EventIDs {
-			if event.EventID == id {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !b.filter.EventIDs[event.EventID] {
 			return false
 		}
 	}
 
 	if len(b.filter.Levels) > 0 {
-		found := false
-		for _, level := range b.filter.Levels {
-			if event.Level == level {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !b.filter.Levels[event.Level] {
 			return false
 		}
 	}
 
 	if len(b.filter.LogNames) > 0 {
-		found := false
-		for _, name := range b.filter.LogNames {
-			if event.LogName == name {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !b.filter.LogNames[event.LogName] {
 			return false
 		}
 	}
 
 	if len(b.filter.Computers) > 0 {
-		found := false
-		for _, computer := range b.filter.Computers {
-			if event.Computer == computer {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !b.filter.Computers[event.Computer] {
 			return false
 		}
 	}

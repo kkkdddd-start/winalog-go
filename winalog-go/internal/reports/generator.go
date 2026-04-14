@@ -2,6 +2,7 @@ package reports
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
@@ -29,6 +30,12 @@ type ReportFormat string
 const (
 	FormatHTML ReportFormat = "html"
 	FormatJSON ReportFormat = "json"
+)
+
+const (
+	maxIOCIPs       = 100
+	maxIOCUsers     = 100
+	maxIOCComputers = 50
 )
 
 type ReportRequest struct {
@@ -255,13 +262,9 @@ func (g *Generator) calculateTopEventIDs(events []*types.Event, limit int) []Eve
 		pairs = append(pairs, pair{eventID: id, count: count})
 	}
 
-	for i := 0; i < len(pairs)-1; i++ {
-		for j := i + 1; j < len(pairs); j++ {
-			if pairs[j].count > pairs[i].count {
-				pairs[i], pairs[j] = pairs[j], pairs[i]
-			}
-		}
-	}
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].count > pairs[j].count
+	})
 
 	var result []EventIDCount
 	for i := 0; i < limit && i < len(pairs); i++ {
@@ -327,17 +330,17 @@ func (g *Generator) extractIOCs(req *ReportRequest) (*IOCSummary, error) {
 	}
 
 	for ip := range ipSet {
-		if len(iocs.IPAddresses) < 100 {
+		if len(iocs.IPAddresses) < maxIOCIPs {
 			iocs.IPAddresses = append(iocs.IPAddresses, ip)
 		}
 	}
 	for user := range userSet {
-		if len(iocs.Users) < 100 {
+		if len(iocs.Users) < maxIOCUsers {
 			iocs.Users = append(iocs.Users, user)
 		}
 	}
 	for computer := range computerSet {
-		if len(iocs.Computers) < 50 {
+		if len(iocs.Computers) < maxIOCComputers {
 			iocs.Computers = append(iocs.Computers, computer)
 		}
 	}

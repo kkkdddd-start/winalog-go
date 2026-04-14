@@ -3,6 +3,7 @@ package forensics
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -16,10 +17,17 @@ type SignatureResult struct {
 	Description string     `json:"description,omitempty"`
 }
 
+var (
+	ErrPlatformNotSupported = fmt.Errorf("signature verification is only supported on Windows")
+	ErrPathIsDirectory      = fmt.Errorf("path is a directory")
+)
+
 func VerifySignature(path string) (*SignatureResult, error) {
-	result := &SignatureResult{
-		Status:      "None",
-		Description: "Signature verification not supported on this platform",
+	if runtime.GOOS != "windows" {
+		return &SignatureResult{
+			Status:      "Unsupported",
+			Description: ErrPlatformNotSupported.Error(),
+		}, nil
 	}
 
 	fileInfo, err := os.Stat(path)
@@ -28,12 +36,16 @@ func VerifySignature(path string) (*SignatureResult, error) {
 	}
 
 	if fileInfo.IsDir() {
-		result.Description = "Path is a directory"
-		return result, nil
+		return &SignatureResult{
+			Status:      "Invalid",
+			Description: ErrPathIsDirectory.Error(),
+		}, nil
 	}
 
-	result.Description = "Windows Authenticode verification requires Windows API"
-	return result, nil
+	return &SignatureResult{
+		Status:      "Unsupported",
+		Description: "Windows Authenticode verification requires Windows API calls (not yet implemented)",
+	}, nil
 }
 
 func IsSigned(path string) (bool, *SignatureResult, error) {
@@ -41,5 +53,5 @@ func IsSigned(path string) (bool, *SignatureResult, error) {
 	if err != nil {
 		return false, nil, err
 	}
-	return result.Status != "None", result, nil
+	return result.Status == "Valid", result, nil
 }
