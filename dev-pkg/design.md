@@ -1371,7 +1371,7 @@ func SetupRoutes(r *gin.Engine, eng *engine.Engine) {
     r.GET("/api/events", listEvents(eng))
     r.GET("/api/events/:id", getEvent(eng))
     r.POST("/api/events/search", searchEvents(eng))
-    r.GET("/api/events/export", exportEvents(eng))
+    r.POST("/api/events/export", exportEvents(eng))  // 支持过滤条件导出
     
     // 导入
     r.POST("/api/import", importLogs(eng))
@@ -1473,6 +1473,32 @@ type SearchResponse struct {
     SearchID   string               `json:"search_id,omitempty"`
 }
 
+// ExportRequest 导出请求
+type ExportRequest struct {
+    Format     string   `json:"format"`  // "json" | "csv" | "excel"
+    Filters    ExportFilters `json:"filters"`
+}
+
+type ExportFilters struct {
+    EventIDs    []int32   `json:"event_ids"`    // 事件ID列表
+    Levels      []int     `json:"levels"`       // 级别过滤
+    LogNames    []string  `json:"log_names"`    // 日志名称
+    Sources     []string  `json:"sources"`      // 来源
+    Computers   []string  `json:"computers"`    // 计算机名
+    Users       []string  `json:"users"`        // 用户
+    StartTime   string    `json:"start_time"`   // 开始时间 (RFC3339)
+    EndTime     string    `json:"end_time"`     // 结束时间 (RFC3339)
+    Keywords    string    `json:"keywords"`     // 关键字搜索
+    Limit       int       `json:"limit"`        // 导出上限 (默认10000)
+}
+
+// ExportResponse 导出响应
+type ExportResponse struct {
+    Success     bool     `json:"success"`
+    Total       int      `json:"total"`
+    DownloadURL string   `json:"download_url,omitempty"`  // 异步导出时返回下载URL
+}
+
 // EventWithHighlight 带高亮的事件
 type EventWithHighlight struct {
     *types.Event
@@ -1498,6 +1524,78 @@ type Span struct {
     Start int    `json:"start"`
     End   int    `json:"end"`
     Match string `json:"match"`
+}
+
+// ExportHandler 导出处理器
+type ExportHandler struct {
+    db *storage.DB
+}
+
+// ExportEvents 导出事件 (支持过滤条件)
+// POST /api/events/export
+// 支持格式: JSON, CSV, Excel
+// 过滤条件: 事件ID列表、级别、时间范围、计算机、用户等
+func (h *ExportHandler) ExportEvents(c *gin.Context) {
+    var req ExportRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(400, ErrorResponse{Error: err.Error()})
+        return
+    }
+
+    // 设置默认值
+    if req.Format == "" {
+        req.Format = "json"
+    }
+    if req.Filters.Limit <= 0 || req.Filters.Limit > 100000 {
+        req.Filters.Limit = 10000
+    }
+
+    // 构建过滤条件
+    filter := &storage.EventFilter{
+        Limit:     req.Filters.Limit,
+        EventIDs:  req.Filters.EventIDs,
+        Levels:    req.Filters.Levels,
+        LogNames:  req.Filters.LogNames,
+        Computers: req.Filters.Computers,
+    }
+
+    // 时间范围解析
+    if req.Filters.StartTime != "" {
+        if t, err := time.Parse(time.RFC3339, req.Filters.StartTime); err == nil {
+            filter.StartTime = &t
+        }
+    }
+    if req.Filters.EndTime != "" {
+        if t, err := time.Parse(time.RFC3339, req.Filters.EndTime); err == nil {
+            filter.EndTime = &t
+        }
+    }
+
+    // 查询事件
+    events, _, err := h.db.ListEvents(filter)
+    if err != nil {
+        c.JSON(500, ErrorResponse{Error: err.Error()})
+        return
+    }
+
+    // 根据格式导出
+    switch req.Format {
+    case "csv":
+        c.Header("Content-Type", "text/csv")
+        c.Header("Content-Disposition", "attachment; filename=events_export.csv")
+        exporter := exporters.NewCsvExporter()
+        exporter.Export(events, c.Writer)
+    case "excel", "xlsx":
+        c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        c.Header("Content-Disposition", "attachment; filename=events_export.xlsx")
+        exporter := exporters.NewExcelExporter()
+        exporter.Export(events, c.Writer)
+    default:
+        c.JSON(200, gin.H{
+            "events": events,
+            "total":  len(events),
+        })
+    }
 }
 
 // AlertHandler 告警处理器

@@ -1337,7 +1337,33 @@ type IOCSummary struct {
 
 ## 十一、导出器 (`internal/exporters/`)
 
-### 11.1 JSON 导出
+### 11.1 导出接口设计
+
+**功能需求**:
+```go
+type Exporter interface {
+    Export(events []*Event, writer io.Writer) error
+    ContentType() string
+    FileExtension() string
+}
+
+type ExporterFactory struct{}
+
+func (f *ExporterFactory) Create(format string) Exporter {
+    switch format {
+    case "csv":
+        return &CsvExporter{}
+    case "excel", "xlsx":
+        return &ExcelExporter{}
+    case "json":
+        return &JsonExporter{}
+    default:
+        return &JsonExporter{}
+    }
+}
+```
+
+### 11.2 JSON 导出
 
 **功能需求**:
 ```go
@@ -1354,7 +1380,7 @@ func (e *JsonExporter) Export(events []*Event, writer io.Writer) error {
 }
 ```
 
-### 11.2 CSV 导出
+### 11.3 CSV 导出
 
 **功能需求**:
 ```go
@@ -1366,19 +1392,25 @@ func (e *CsvExporter) Export(events []*Event, writer io.Writer) error {
     w := csv.NewWriter(writer)
     
     // 写入表头
-    headers := []string{"Timestamp", "EventID", "Level", "Source", "Computer", "User", "Message"}
+    headers := []string{"ID", "Timestamp", "EventID", "Level", "Source", "LogName", "Computer", "User", "UserSID", "Message", "SessionID", "IPAddress", "ImportTime"}
     w.Write(headers)
     
     // 写入数据
     for _, event := range events {
         row := []string{
+            fmt.Sprintf("%d", event.ID),
             event.Timestamp.Format(time.RFC3339),
             fmt.Sprintf("%d", event.EventID),
             event.Level.String(),
             event.Source,
+            event.LogName,
             event.Computer,
             nilToString(event.User),
+            nilToString(event.UserSID),
             event.Message,
+            nilToString(event.SessionID),
+            nilToString(event.IPAddress),
+            event.ImportTime.Format(time.RFC3339),
         }
         w.Write(row)
     }
@@ -1387,6 +1419,84 @@ func (e *CsvExporter) Export(events []*Event, writer io.Writer) error {
     return w.Error()
 }
 ```
+
+### 11.4 Excel 导出
+
+**功能需求**:
+```go
+type ExcelExporter struct{}
+
+func (e *ExcelExporter) Export(events []*Event, writer io.Writer) error {
+    f := excelize.NewFile()
+    defer f.Close()
+    
+    // 创建工作表
+    sheet := "Events"
+    index, _ := f.NewSheet(sheet)
+    f.SetActiveSheet(index)
+    
+    // 写入表头
+    headers := []string{"ID", "Timestamp", "EventID", "Level", "Source", "LogName", "Computer", "User", "Message"}
+    for i, h := range headers {
+        cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+        f.SetCellValue(sheet, cell, h)
+    }
+    
+    // 写入数据
+    for rowIdx, event := range events {
+        f.SetCellValue(sheet, fmt.Sprintf("A%d", rowIdx+2), event.ID)
+        f.SetCellValue(sheet, fmt.Sprintf("B%d", rowIdx+2), event.Timestamp.Format(time.RFC3339))
+        f.SetCellValue(sheet, fmt.Sprintf("C%d", rowIdx+2), event.EventID)
+        f.SetCellValue(sheet, fmt.Sprintf("D%d", rowIdx+2), event.Level.String())
+        f.SetCellValue(sheet, fmt.Sprintf("E%d", rowIdx+2), event.Source)
+        f.SetCellValue(sheet, fmt.Sprintf("F%d", rowIdx+2), event.LogName)
+        f.SetCellValue(sheet, fmt.Sprintf("G%d", rowIdx+2), event.Computer)
+        f.SetCellValue(sheet, fmt.Sprintf("H%d", rowIdx+2), nilToString(event.User))
+        f.SetCellValue(sheet, fmt.Sprintf("I%d", rowIdx+2), event.Message)
+    }
+    
+    return f.Write(writer)
+}
+```
+
+### 11.5 API 导出接口 (支持过滤)
+
+**接口设计**:
+```
+POST /api/events/export
+Content-Type: application/json
+
+{
+    "format": "csv" | "excel" | "json",
+    "filters": {
+        "event_ids": [4624, 4625],
+        "levels": [1, 2],
+        "log_names": ["Security"],
+        "computers": ["WORKSTATION1"],
+        "start_time": "2024-01-01T00:00:00Z",
+        "end_time": "2024-01-31T23:59:59Z",
+        "keywords": "登录失败",
+        "limit": 10000
+    }
+}
+```
+
+**响应**:
+- CSV/Excel: 直接返回文件流
+- JSON: 返回 JSON 数据
+
+**过滤条件**:
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| event_ids | []int32 | 事件ID列表 |
+| levels | []int | 事件级别 |
+| log_names | []string | 日志名称 |
+| computers | []string | 计算机名 |
+| users | []string | 用户名 |
+| start_time | string | 开始时间 (RFC3339) |
+| end_time | string | 结束时间 (RFC3339) |
+| keywords | string | 关键字搜索 |
+| limit | int | 导出上限 (默认10000) |
 
 ---
 
