@@ -26,31 +26,31 @@
 
 ### 2. 类型定义 (`internal/types/`)
 
-- [ ] 2.1 实现事件类型 (`event.go`)
+- [x] 2.1 实现事件类型 (`event.go`)
   - 定义 `Event`, `EventLevel` 常量
   - 实现 `ToMap()` 方法用于数据库存储
   - 参考：`dev-pkg/design.md` 4.2 节
 
-- [ ] 2.2 实现告警类型 (`alert.go`)
+- [x] 2.2 实现告警类型 (`alert.go`)
   - 定义 `Alert`, `AlertStats`, `AlertUpgradeRule`, `SuppressRule`
   - 定义 `Severity` 枚举和常量
   - 参考：`dev-pkg/design.md` 4.3 节
 
-- [ ] 2.3 实现规则类型 (`rule.go`)
+- [x] 2.3 实现规则类型 (`rule.go`)
   - 定义 `BaseRule`, `AlertRule`, `CorrelationRule`
   - 定义 `Filter`, `Condition`, `LogicalOp`
   - 参考：`dev-pkg/design.md` 4.1 节
 
-- [ ] 2.4 实现系统类型 (`system.go`)
+- [x] 2.4 实现系统类型 (`system.go`)
   - 定义 `SystemInfo`, `ProcessInfo`, `NetworkConnection` 等
   - 参考：`dev-pkg/FEATURES.md` 4.1 节
 
-- [ ] 2.5 实现错误类型 (`errors.go`)
+- [x] 2.5 实现错误类型 (`errors.go`)
   - 定义统一错误码常量
   - 实现错误类型层次结构
   - 参考：`dev-pkg/ISSUES_FIX.md` 问题7
 
-- [ ] 2.6 实现结果类型 (`result.go`)
+- [x] 2.6 实现结果类型 (`result.go`)
   - 定义 `ImportResult`, `SearchResult`, `CollectResult`
 
 ### 3. 配置系统 (`internal/config/`)
