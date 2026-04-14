@@ -10,6 +10,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type DB struct {
@@ -346,4 +348,130 @@ type ImportLogEntry struct {
 	ImportDuration int
 	Status         string
 	ErrorMessage   string
+}
+
+type EventFilter struct {
+	Limit     int
+	Offset    int
+	EventIDs  []int32
+	Levels    []int
+	LogNames  []string
+	Computers []string
+	StartTime *time.Time
+	EndTime   *time.Time
+}
+
+func (d *DB) ListEvents(filter *EventFilter) ([]*types.Event, int64, error) {
+	if filter == nil {
+		filter = &EventFilter{Limit: 100}
+	}
+
+	eventRepo := NewEventRepo(d)
+
+	req := &types.SearchRequest{
+		PageSize: filter.Limit,
+		Page:     1,
+	}
+
+	if filter.Offset > 0 {
+		req.Page = (filter.Offset / filter.Limit) + 1
+	}
+
+	return eventRepo.Search(req)
+}
+
+func (d *DB) ListEventsFiltered(filter *EventFilter) ([]*types.Event, error) {
+	if filter == nil {
+		filter = &EventFilter{Limit: 100}
+	}
+
+	query := "SELECT id, timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id FROM events"
+
+	var conditions []string
+	var args []interface{}
+
+	if len(filter.EventIDs) > 0 {
+		placeholders := make([]string, len(filter.EventIDs))
+		for i, id := range filter.EventIDs {
+			placeholders[i] = "?"
+			args = append(args, id)
+		}
+		conditions = append(conditions, fmt.Sprintf("event_id IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if len(filter.Levels) > 0 {
+		placeholders := make([]string, len(filter.Levels))
+		for i, l := range filter.Levels {
+			placeholders[i] = "?"
+			args = append(args, l)
+		}
+		conditions = append(conditions, fmt.Sprintf("level IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if len(filter.LogNames) > 0 {
+		placeholders := make([]string, len(filter.LogNames))
+		for i, name := range filter.LogNames {
+			placeholders[i] = "?"
+			args = append(args, name)
+		}
+		conditions = append(conditions, fmt.Sprintf("log_name IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if filter.StartTime != nil {
+		conditions = append(conditions, "timestamp >= ?")
+		args = append(args, filter.StartTime.Format(time.RFC3339))
+	}
+
+	if filter.EndTime != nil {
+		conditions = append(conditions, "timestamp <= ?")
+		args = append(args, filter.EndTime.Format(time.RFC3339))
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	query = fmt.Sprintf("%s %s ORDER BY timestamp DESC LIMIT ? OFFSET ?", query, whereClause)
+	args = append(args, filter.Limit, filter.Offset)
+
+	rows, err := d.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*types.Event
+	for rows.Next() {
+		event, err := scanEventFromRows(rows)
+		if err != nil {
+			continue
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (d *DB) GetEventByID(id int64) (*types.Event, error) {
+	eventRepo := NewEventRepo(d)
+	return eventRepo.GetByID(id)
+}
+
+func (d *DB) SearchEvents(keyword string, limit int) ([]*types.Event, int64, error) {
+	eventRepo := NewEventRepo(d)
+	req := &types.SearchRequest{
+		Keywords: keyword,
+		PageSize: limit,
+		Page:     1,
+	}
+	return eventRepo.Search(req)
+}
+
+func (d *DB) AlertRepo() *AlertRepo {
+	return NewAlertRepo(d)
+}
+
+func (d *DB) EventRepo() *EventRepo {
+	return NewEventRepo(d)
 }

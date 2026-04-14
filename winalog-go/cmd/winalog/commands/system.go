@@ -1,6 +1,10 @@
 package commands
 
 import (
+	"fmt"
+
+	"github.com/kkkdddd-start/winalog-go/internal/api"
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -218,7 +222,20 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
-	return nil
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	addr := fmt.Sprintf("%s:%d", serveFlags.host, serveFlags.port)
+	server := api.NewServer(db, addr)
+
+	fmt.Printf("Starting HTTP API server on %s\n", addr)
+	fmt.Printf("API documentation available at http://%s/api/health\n", addr)
+
+	return server.Start()
 }
 
 var forensicsCmd = &cobra.Command{

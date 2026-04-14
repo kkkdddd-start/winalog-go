@@ -15,75 +15,75 @@
 
 ### 1. TUI 界面 (`internal/tui/`)
 
-- [ ] 1.1 实现 TUI 主结构
+- [x] 1.1 实现 TUI 主结构
   - 创建 `model.go` 全局模型 (Elm 架构)
   - 配置 Bubble Tea 框架
 
-- [ ] 1.2 实现 Dashboard 视图
+- [x] 1.2 实现 Dashboard 视图
   - 显示统计概览
   - 显示告警摘要
   - 快捷键：`d`
 
-- [ ] 1.3 实现 Events 视图
+- [x] 1.3 实现 Events 视图
   - 显示事件列表
   - 实现分页和过滤
   - 快捷键：`e`
 
-- [ ] 1.4 实现 Event Detail 视图
+- [x] 1.4 实现 Event Detail 视图
   - 显示事件详情
   - 显示 XML 原始数据
   - 快捷键：`Enter`
 
-- [ ] 1.5 实现 Alerts 视图
+- [x] 1.5 实现 Alerts 视图
   - 显示告警列表
   - 实现告警处置
   - 快捷键：`a`
 
-- [ ] 1.6 实现 Alert Detail 视图
+- [x] 1.6 实现 Alert Detail 视图
   - 显示告警详情
   - 显示关联事件
   - 快捷键：`Enter`
 
-- [ ] 1.7 实现 Search 视图
+- [x] 1.7 实现 Search 视图
   - 实现搜索界面
   - 支持关键字、正则、时间范围
   - 快捷键：`/`
 
-- [ ] 1.8 实现 Timeline 视图
+- [x] 1.8 实现 Timeline 视图
   - 显示全局时间线
   - 显示攻击链
   - 快捷键：`t`
 
-- [ ] 1.9 实现 Collect 视图
+- [x] 1.9 实现 Collect 视图
   - 触发一键采集
   - 显示采集进度
   - 快捷键：`c`
 
-- [ ] 1.10 实现 Live Monitor 视图
+- [x] 1.10 实现 Live Monitor 视图
   - 实时监控事件流
   - 显示统计信息
   - 快捷键：`l`
 
-- [ ] 1.11 实现 Help 视图
+- [x] 1.11 实现 Help 视图
   - 显示帮助信息
   - 快捷键：`?`
 
-- [ ] 1.12 实现 Settings 视图
+- [x] 1.12 实现 Settings 视图
   - 配置管理
   - 快捷键：`,`
 
-- [ ] 1.13 实现键位映射和样式
+- [x] 1.13 实现键位映射和样式
   - 定义 `keyMap` 键位映射 (vi 风格)
   - 定义 `theme.go` 主题 (lipgloss)
 
 ### 2. HTTP API (`internal/api/`)
 
-- [ ] 2.1 实现 Gin 服务器 (`server.go`)
+- [x] 2.1 实现 Gin 服务器 (`server.go`)
   - 配置路由中间件
   - 配置 CORS
   - 配置日志
 
-- [ ] 2.2 实现 API 路由 (`routes.go`)
+- [x] 2.2 实现 API 路由 (`routes.go`)
   - `/api/events` 事件接口
   - `/api/alerts` 告警接口
   - `/api/correlate` 关联接口
@@ -93,7 +93,7 @@
   - `/api/health` 健康检查
   - 参考：`dev-pkg/design.md` 7.1 节
 
-- [ ] 2.3 实现事件 Handler (`handlers.go`)
+- [x] 2.3 实现事件 Handler (`handlers.go`)
   - 实现 `listEvents` 事件列表
   - 实现 `getEvent` 事件详情
   - 实现 `searchEvents` 搜索事件
@@ -102,7 +102,7 @@
   - 实现分页和排序
   - 参考：`dev-pkg/design.md` 7.2 节，`dev-pkg/ISSUES_FIX.md` 问题3
 
-- [ ] 2.4 实现告警 Handler (`handlers.go`)
+- [x] 2.4 实现告警 Handler (`handlers.go`)
   - 实现 `ListAlerts` 告警列表
   - 实现 `GetAlertStats` 告警统计
   - 实现 `GetAlertTrend` 告警趋势
@@ -111,13 +111,13 @@
   - 实现 `BatchAlertAction` 批量操作
   - 参考：`dev-pkg/design.md` 7.2 节
 
-- [ ] 2.5 实现实时监控 Handler (`handlers_live.go`)
+- [x] 2.5 实现实时监控 Handler (`handlers_live.go`)
   - 实现 `LiveEventMessage` 实时消息结构
   - 实现 SSE 事件流 (`StreamEventsSSE`)
   - 实现 `GetLiveStats` 实时统计
   - 参考：`dev-pkg/ISSUES_FIX.md` 问题4
 
-- [ ] 2.6 实现中间件 (`middleware.go`)
+- [x] 2.6 实现中间件 (`middleware.go`)
   - 实现请求日志中间件
   - 实现错误处理中间件
   - 实现认证中间件 (可选)
@@ -130,7 +130,7 @@
 - [ ] 3.1 实现 TUI 启动命令 (`tui.go`)
   - 启动 Bubble Tea TUI
 
-- [ ] 3.2 实现 serve 启动命令 (`serve.go`)
+- [x] 3.2 实现 serve 启动命令 (`serve.go`)
   - 启动 Gin HTTP API 服务器
   - 启动 React Web UI
 
