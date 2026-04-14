@@ -39,6 +39,7 @@
 | [alerts](./模块/alerts.md) | 告警引擎，去重/评估/统计 |
 | [correlation](./模块/correlation.md) | 关联分析引擎 |
 | [rules](./模块/rules.md) | 规则系统 (AlertRule/CorrelationRule) |
+| [persistence](./模块/persistence.md) | Windows 持久化检测 (T1546 系列) |
 | [analyzers](./模块/analyzers.md) | 专用分析器 (暴力破解/登录/Kerberos) |
 
 #### 数据采集

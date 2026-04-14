@@ -1,0 +1,1628 @@
+{
+  "collection_info": {
+    "collect_time": "2026-04-14T16:22:52.097767",
+    "hostname": "DESKTOP-5RIKSUG",
+    "os_version": "Windows-10-10.0.26200-SP0",
+    "collector_version": "1.0.0",
+    "is_admin": true
+  },
+  "statistics": {
+    "total_sources": 230,
+    "successful": 230,
+    "skipped": 0,
+    "failed": 0,
+    "total_size_bytes": 371412992
+  },
+  "log_sources": [
+    {
+      "name": "Camera_DeviceMFT",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Camera_DeviceMFT.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "HardwareEvents",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\HardwareEvents.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Intel-GFX-Info/Application",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Intel-GFX-Info%4Application.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Camera_FrameServer",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Camera_FrameServer.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Intel-GFX-Info/System",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Intel-GFX-Info%4System.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "IntelAudioServiceLog",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\IntelAudioServiceLog.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Key Management Service",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Key Management Service.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Internet Explorer",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Internet Explorer.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AAD/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AAD%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Microsoft-Client-Licensing-Platform/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Client-Licensing-Platform%4Admin.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MF_MediaFoundationDeviceProxy",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\MF_MediaFoundationDeviceProxy.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Application-Experience/Program-Compatibility-Troubleshooter",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Application-Experience%4Program-Compatibility-Troubleshooter.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppID/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppID%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Application-Experience/Program-Inventory",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Application-Experience%4Program-Inventory.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Application-Experience/Program-Compatibility-Assistant",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Application-Experience%4Program-Compatibility-Assistant.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Application-Experience/Steps-Recorder",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Application-Experience%4Steps-Recorder.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppLocker/EXE and DLL",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppLocker%4EXE and DLL.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Application-Experience/Program-Telemetry",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Application-Experience%4Program-Telemetry.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppLocker/MSI and Script",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppLocker%4MSI and Script.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppLocker/Packaged app-Deployment",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppLocker%4Packaged app-Deployment.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppLocker/Packaged app-Execution",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppLocker%4Packaged app-Execution.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppModel-Runtime/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppModel-Runtime%4Admin.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppXDeployment/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppXDeployment%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppReadiness/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppReadiness%4Operational.evtx",
+      "size_bytes": 3215360,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppXDeployment-Server/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppXDeployment-Server%4Operational.evtx",
+      "size_bytes": 1118208,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppReadiness/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppReadiness%4Admin.evtx",
+      "size_bytes": 5246976,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppXDeploymentServer/Restricted",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppXDeploymentServer%4Restricted.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Audio/CaptureMonitor",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Audio%4CaptureMonitor.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppxPackaging/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppxPackaging%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Audio/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Audio%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Audio/PlaybackManager",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Audio%4PlaybackManager.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-AppXDeploymentServer/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-AppXDeploymentServer%4Operational.evtx",
+      "size_bytes": 5246976,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Authentication User Interface/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Authentication User Interface%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-BackgroundTaskInfrastructure/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-BackgroundTaskInfrastructure%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-BitLocker/BitLocker Management",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-BitLocker%4BitLocker Management.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Biometrics/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Biometrics%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Application",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Application.evtx",
+      "size_bytes": 20975616,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-CertificateServicesClient-Lifecycle-System/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-CertificateServicesClient-Lifecycle-System%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-CertificateServicesClient-Lifecycle-User/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-CertificateServicesClient-Lifecycle-User%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Bits-Client/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Bits-Client%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-CloudFiles-Filter/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-CloudFiles-Filter%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-CloudRestoreLauncher/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-CloudRestoreLauncher%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-CloudStore/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-CloudStore%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-CloudStore/Initialization",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-CloudStore%4Initialization.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-CodeIntegrity/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-CodeIntegrity%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Containers-BindFlt/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Containers-BindFlt%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Crypto-DPAPI/BackUpKeySvc",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Crypto-DPAPI%4BackUpKeySvc.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Containers-Wcifs/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Containers-Wcifs%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Crypto-NCrypt/CertInUse",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Crypto-NCrypt%4CertInUse.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Crypto-DPAPI/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Crypto-DPAPI%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Crypto-NCrypt/KeyMgmt",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Crypto-NCrypt%4KeyMgmt.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-DeviceSetupManager/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-DeviceSetupManager%4Admin.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Crypto-NCrypt/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Crypto-NCrypt%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-DeviceSetupManager/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-DeviceSetupManager%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Dhcp-Client/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Dhcp-Client%4Admin.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Dhcpv6-Client/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Dhcpv6-Client%4Admin.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Diagnosis-DPS/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Diagnosis-DPS%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Diagnosis-PLA/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Diagnosis-PLA%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Diagnosis-PCW/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Diagnosis-PCW%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Diagnosis-Scripted/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Diagnosis-Scripted%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Diagnosis-Scheduled/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Diagnosis-Scheduled%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-DiskDiagnosticDataCollector/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-DiskDiagnosticDataCollector%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-DriverProxy/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-DriverProxy%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Diagnosis-Scripted/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Diagnosis-Scripted%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-EapHost/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-EapHost%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-EapMethods-RasChap/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-EapMethods-RasChap%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-EapMethods-RasTls/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-EapMethods-RasTls%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-EnhancedStorage-EhStorClass/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-EnhancedStorage-EhStorClass%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Fault-Tolerant-Heap/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Fault-Tolerant-Heap%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-FileHistory-Core/WHC",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-FileHistory-Core%4WHC.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-HotspotAuth/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-HotspotAuth%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-HelloForBusiness/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-HelloForBusiness%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Hyper-V-Hypervisor-Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Hyper-V-Hypervisor-Admin.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-IKE/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-IKE%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Hyper-V-Hypervisor-Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Hyper-V-Hypervisor-Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-ApphelpCache/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-ApphelpCache%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-CPU-Starvation/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-CPU-Starvation%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-Boot/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-Boot%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-GroupPolicy/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-GroupPolicy%4Operational.evtx",
+      "size_bytes": 4198400,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-Cache/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-Cache%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-Dump/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-Dump%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-IO/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-IO%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-LiveDump/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-LiveDump%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-EventTracing/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-EventTracing%4Admin.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-Power/Thermal-Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-Power%4Thermal-Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-PnP/Configuration",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-PnP%4Configuration.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-PnP/Driver Watchdog",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-PnP%4Driver Watchdog.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-PRM/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-PRM%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-StoreMgr/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-StoreMgr%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-WDI/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-WDI%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-PnP/Device Management",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-PnP%4Device Management.evtx",
+      "size_bytes": 3215360,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-WHEA/Errors",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-WHEA%4Errors.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-ShimEngine/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-ShimEngine%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Known Folders API Service",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Known Folders API Service.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-LanguagePackSetup/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-LanguagePackSetup%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-KernelStreaming/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-KernelStreaming%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-LocationServiceProvider/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-LocationServiceProvider%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-LiveId/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-LiveId%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-MF-FrameServer/Camera_DeviceMFT",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-MF-FrameServer%4Camera_DeviceMFT.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-MF-FrameServer/Camera_FrameServer",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-MF-FrameServer%4Camera_FrameServer.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-MPTF/MPTF-Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-MPTF%4MPTF-Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-MUI/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-MUI%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-MF-MediaFoundation/MF_DeviceProxy",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-MF-MediaFoundation%4MF_DeviceProxy.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-NcdAutoSetup/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-NcdAutoSetup%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-MUI/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-MUI%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Kernel-WHEA/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Kernel-WHEA%4Operational.evtx",
+      "size_bytes": 7409664,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-NCSI/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-NCSI%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-NetworkProfile/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-NetworkProfile%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-NlaSvc/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-NlaSvc%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Ntfs/WHC",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Ntfs%4WHC.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-PCI/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-PCI%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-PCRPF/PCRPF",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-PCRPF%4PCRPF.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Partition/Diagnostic",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Partition%4Diagnostic.evtx",
+      "size_bytes": 2166784,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-PowerShell/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-PowerShell%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-PrintService/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-PrintService%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Perflib/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Perflib%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Program-Compatibility-Assistant/CompatAfterUpgrade",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Program-Compatibility-Assistant%4CompatAfterUpgrade.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-PushNotification-Platform/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-PushNotification-Platform%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-PushNotification-Platform/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-PushNotification-Platform%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Rdp-Graphics-RdpAvenc/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Rdp-Graphics-RdpAvenc%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Rdp-Graphics-RdpAvenc/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Rdp-Graphics-RdpAvenc%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Rdp-Graphics-RdpLite/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Rdp-Graphics-RdpLite%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Rdp-Graphics-RdpLite/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Rdp-Graphics-RdpLite%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-ReadyBoost/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-ReadyBoost%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-ReFsDedupSvc/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-ReFsDedupSvc%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Regsvr32/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Regsvr32%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-RemoteAssistance/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-RemoteAssistance%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-RemoteAssistance/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-RemoteAssistance%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Resource-Exhaustion-Detector/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Resource-Exhaustion-Detector%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-PowerShell/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-PowerShell%4Operational.evtx",
+      "size_bytes": 15732736,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-RestartManager/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-RestartManager%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Resource-Exhaustion-Resolver/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Resource-Exhaustion-Resolver%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Privacy-Auditing/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Privacy-Auditing%4Operational.evtx",
+      "size_bytes": 16846848,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Security-Mitigations/UserMode",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Security-Mitigations%4UserMode.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Security-LessPrivilegedAppContainer/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Security-LessPrivilegedAppContainer%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Security-Mitigations/KernelMode",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Security-Mitigations%4KernelMode.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Shell-ConnectedAccountState/ActionCenter",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Shell-ConnectedAccountState%4ActionCenter.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Security-SPP-UX-Notifications/ActionCenter",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Security-SPP-UX-Notifications%4ActionCenter.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Shell-Core/ActionCenter",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Shell-Core%4ActionCenter.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Shell-Core/LogonTasksChannel",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Shell-Core%4LogonTasksChannel.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Shell-Core/AppDefaults",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Shell-Core%4AppDefaults.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-SmbClient/Audit",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-SmbClient%4Audit.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Shell-Core/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Shell-Core%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-ShellCommon-StartLayoutPopulation/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-ShellCommon-StartLayoutPopulation%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-SMBClient/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-SMBClient%4Operational.evtx",
+      "size_bytes": 1118208,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-SmbClient/Security",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-SmbClient%4Security.evtx",
+      "size_bytes": 1118208,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-SMBServer/Audit",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-SMBServer%4Audit.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-SMBServer/Connectivity",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-SMBServer%4Connectivity.evtx",
+      "size_bytes": 1118208,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-SMBServer/Security",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-SMBServer%4Security.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Ntfs/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Ntfs%4Operational.evtx",
+      "size_bytes": 33558528,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-SmbClient/Connectivity",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-SmbClient%4Connectivity.evtx",
+      "size_bytes": 8392704,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StateRepository/Restricted",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StateRepository%4Restricted.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Storage-Storport/Health",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Storage-Storport%4Health.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Storage-ClassPnP/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Storage-ClassPnP%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StateRepository/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StateRepository%4Operational.evtx",
+      "size_bytes": 5246976,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StorageManagement/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StorageManagement%4Operational.evtx",
+      "size_bytes": 2166784,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-SMBServer/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-SMBServer%4Operational.evtx",
+      "size_bytes": 8392704,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StorageSpaces-Api/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StorageSpaces-Api%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StorageSettings/Diagnostic",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StorageSettings%4Diagnostic.evtx",
+      "size_bytes": 1118208,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StorageSpaces-Driver/Diagnostic",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StorageSpaces-Driver%4Diagnostic.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StorageSpaces-ManagementAgent/WHC",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StorageSpaces-ManagementAgent%4WHC.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StorageVolume/Diagnostic",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StorageVolume%4Diagnostic.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StorageSpaces-Driver/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StorageSpaces-Driver%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-StorageVolume/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-StorageVolume%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Storsvc/Diagnostic",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Storsvc%4Diagnostic.evtx",
+      "size_bytes": 1118208,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-TerminalServices-LocalSessionManager/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-TerminalServices-LocalSessionManager%4Admin.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-TaskScheduler/Maintenance",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-TaskScheduler%4Maintenance.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-TerminalServices-LocalSessionManager/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-TerminalServices-LocalSessionManager%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-TerminalServices-RDPClient/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-TerminalServices-RDPClient%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-TerminalServices-RemoteConnectionManager/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-TerminalServices-RemoteConnectionManager%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Time-Service/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Time-Service%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-TWinUI/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-TWinUI%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-TZSync/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-TZSync%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-UAC/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-UAC%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Storage-Storport/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Storage-Storport%4Operational.evtx",
+      "size_bytes": 15798272,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-UAC-FileVirtualization/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-UAC-FileVirtualization%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-USB-UCMUCSICX/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-USB-UCMUCSICX%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-UniversalTelemetryClient/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-UniversalTelemetryClient%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-USBVideo/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-USBVideo%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-User Device Registration/Admin",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-User Device Registration%4Admin.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-User-Loader/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-User-Loader%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-UserPnp/ActionCenter",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-UserPnp%4ActionCenter.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-User Profile Service/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-User Profile Service%4Operational.evtx",
+      "size_bytes": 2166784,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-VDRVROOT/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-VDRVROOT%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-UserPnp/DeviceInstall",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-UserPnp%4DeviceInstall.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-VHDMP-Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-VHDMP-Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-UserSettingsBackup-Orchestrator/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-UserSettingsBackup-Orchestrator%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-VPN/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-VPN%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-VolumeSnapshot-Driver/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-VolumeSnapshot-Driver%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Wcmsvc/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Wcmsvc%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WER-Diag/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WER-Diag%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Store/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Store%4Operational.evtx",
+      "size_bytes": 20058112,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WFP/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WFP%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WER-PayloadHealth/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WER-PayloadHealth%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WebAuthN/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WebAuthN%4Operational.evtx",
+      "size_bytes": 2166784,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WerKernel/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WerKernel%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Win32k/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Win32k%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Windows Firewall With Advanced Security/ConnectionSecurity",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Windows Firewall With Advanced Security%4ConnectionSecurity.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Windows Defender/WHC",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Windows Defender%4WHC.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WindowsBackup/ActionCenter",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WindowsBackup%4ActionCenter.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Windows Firewall With Advanced Security/Firewall",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Windows Firewall With Advanced Security%4Firewall.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WindowsSystemAssessmentTool/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WindowsSystemAssessmentTool%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WindowsUpdateClient/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WindowsUpdateClient%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WinINet-Config/ProxyConfigChanged",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WinINet-Config%4ProxyConfigChanged.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Winlogon/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Winlogon%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Winsock-WS2HELP/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Winsock-WS2HELP%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WinRM/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WinRM%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WLAN-AutoConfig/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WLAN-AutoConfig%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Wired-AutoConfig/Diagnostic",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Wired-AutoConfig%4Diagnostic.evtx",
+      "size_bytes": 4096,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WorkFolders/WHC",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WorkFolders%4WHC.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WMI-Activity/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WMI-Activity%4Operational.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WPD-ClassInstaller/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WPD-ClassInstaller%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WLAN-AutoConfig/Diagnostic",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WLAN-AutoConfig%4Diagnostic.evtx",
+      "size_bytes": 1048576,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WPD-MTPClassDriver/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WPD-MTPClassDriver%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-WWAN-SVC-Events/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-WWAN-SVC-Events%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-ZTDNS/BlockedConnections",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-ZTDNS%4BlockedConnections.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-ZTDNS/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-ZTDNS%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Microsoft-WindowsPhone-Connectivity-WiFiConnSvc-Channel",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-WindowsPhone-Connectivity-WiFiConnSvc-Channel.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "OAlerts",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\OAlerts.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Parameters",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Parameters.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Plugin-Passkey-Providers/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Plugin-Passkey-Providers%4Operational.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "MSW-Windows Defender/Operational",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Microsoft-Windows-Windows Defender%4Operational.evtx",
+      "size_bytes": 12587008,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "OneApp_IGCC",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\OneApp_IGCC.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "State",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\State.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Synced-Passkey-Provider/Operatonal",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Synced-Passkey-Provider%4Operatonal.evtx",
+      "size_bytes": 69632,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Setup",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Setup.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "WINDOWS_KS_CHANNEL",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\WINDOWS_KS_CHANNEL.evtx",
+      "size_bytes": 1052672,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Windows PowerShell",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Windows PowerShell.evtx",
+      "size_bytes": 15732736,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "Security",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\Security.evtx",
+      "size_bytes": 20975616,
+      "status": "success",
+      "error": null
+    },
+    {
+      "name": "System",
+      "original_path": "C:\\Windows\\System32\\winevt\\Logs\\System.evtx",
+      "size_bytes": 20975616,
+      "status": "success",
+      "error": null
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { systemAPI } from '../api'
+// import { systemAPI } from '../api'
 
 interface SystemInfo {
   hostname: string

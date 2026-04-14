@@ -23,7 +23,7 @@ interface ListResponse {
 function Alerts() {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
+  const [page, _setPage] = useState(1)
   const [severityFilter, setSeverityFilter] = useState('')
 
   useEffect(() => {

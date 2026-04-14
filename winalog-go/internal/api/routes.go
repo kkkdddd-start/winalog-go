@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *ImportHandler, liveHandler *LiveHandler) {
+func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *ImportHandler, liveHandler *LiveHandler, timelineHandler *TimelineHandler) {
 	r.GET("/api/health", healthCheck)
 
 	api := r.Group("/api")
@@ -29,6 +29,12 @@ func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *Impor
 			alerts.POST("/:id/false-positive", alertHandler.MarkFalsePositive)
 			alerts.DELETE("/:id", alertHandler.DeleteAlert)
 			alerts.POST("/batch", alertHandler.BatchAlertAction)
+		}
+
+		timeline := api.Group("/timeline")
+		{
+			timeline.GET("", timelineHandler.GetTimeline)
+			timeline.DELETE("/alerts/:id", timelineHandler.DeleteAlert)
 		}
 
 		importGroup := api.Group("/import")

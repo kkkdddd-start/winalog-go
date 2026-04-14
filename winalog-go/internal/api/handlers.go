@@ -526,3 +526,140 @@ func (h *ImportHandler) GetImportStatus(c *gin.Context) {
 
 	c.JSON(200, log)
 }
+
+type TimelineHandler struct {
+	db *storage.DB
+}
+
+type TimelineEntry struct {
+	ID        int64     `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Type      string    `json:"type"` // "event" or "alert"
+	EventID   int32     `json:"event_id,omitempty"`
+	AlertID   int64     `json:"alert_id,omitempty"`
+	Level     string    `json:"level,omitempty"`
+	Source    string    `json:"source,omitempty"`
+	Message   string    `json:"message"`
+	Severity  string    `json:"severity,omitempty"`
+	RuleName  string    `json:"rule_name,omitempty"`
+	MITRE     []string  `json:"mitre_attack,omitempty"`
+}
+
+type TimelineResponse struct {
+	Entries    []*TimelineEntry `json:"entries"`
+	TotalCount int              `json:"total_count"`
+	EventCount int              `json:"event_count"`
+	AlertCount int              `json:"alert_count"`
+}
+
+func (h *TimelineHandler) GetTimeline(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "200")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit <= 0 || limit > 1000 {
+		limit = 200
+	}
+
+	startTime := c.Query("start_time")
+	endTime := c.Query("end_time")
+
+	var start, end *time.Time
+	if startTime != "" {
+		if t, err := time.Parse(time.RFC3339, startTime); err == nil {
+			start = &t
+		}
+	}
+	if endTime != "" {
+		if t, err := time.Parse(time.RFC3339, endTime); err == nil {
+			end = &t
+		}
+	}
+
+	entries := make([]*TimelineEntry, 0)
+
+	eventFilter := &storage.EventFilter{
+		Limit: limit,
+	}
+	if start != nil {
+		eventFilter.StartTime = start
+	}
+	if end != nil {
+		eventFilter.EndTime = end
+	}
+	events, _, _ := h.db.ListEvents(eventFilter)
+	for _, e := range events {
+		entries = append(entries, &TimelineEntry{
+			ID:        e.ID,
+			Timestamp: e.Timestamp,
+			Type:      "event",
+			EventID:   e.EventID,
+			Level:     e.Level.String(),
+			Source:    e.Source,
+			Message:   e.Message,
+		})
+	}
+
+	alertFilter := &storage.AlertFilter{
+		Limit: limit,
+	}
+	if start != nil {
+		alertFilter.StartTime = start
+	}
+	if end != nil {
+		alertFilter.EndTime = end
+	}
+	alerts, _ := h.db.AlertRepo().Query(alertFilter)
+	for _, a := range alerts {
+		entries = append(entries, &TimelineEntry{
+			ID:        a.ID,
+			Timestamp: a.FirstSeen,
+			Type:      "alert",
+			AlertID:   a.ID,
+			Severity:  string(a.Severity),
+			Message:   a.Message,
+			RuleName:  a.RuleName,
+			MITRE:     a.MITREAttack,
+		})
+	}
+
+	sortTimeline(entries)
+
+	eventCount := len(events)
+	alertCount := len(alerts)
+	totalCount := len(entries)
+	if totalCount > limit {
+		entries = entries[:limit]
+	}
+
+	c.JSON(200, TimelineResponse{
+		Entries:    entries,
+		TotalCount: totalCount,
+		EventCount: eventCount,
+		AlertCount: alertCount,
+	})
+}
+
+func (h *TimelineHandler) DeleteAlert(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: ErrCodeInvalidRequest})
+		return
+	}
+
+	if err := h.db.AlertRepo().Delete(id); err != nil {
+		c.JSON(500, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(200, SuccessResponse{Message: "Alert deleted"})
+}
+
+func sortTimeline(entries []*TimelineEntry) {
+	for i := 0; i < len(entries)-1; i++ {
+		for j := i + 1; j < len(entries); j++ {
+			if entries[j].Timestamp.Before(entries[i].Timestamp) {
+				entries[i], entries[j] = entries[j], entries[i]
+			}
+		}
+	}
+}

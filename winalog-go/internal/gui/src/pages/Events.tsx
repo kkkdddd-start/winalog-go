@@ -87,20 +87,20 @@ function Events() {
         <input
           type="text"
           placeholder="Search keywords..."
-          value={filters.keywords || ''}
-          onChange={e => setFilters({...filters, keywords: e.target.value})}
+          value={filters?.keywords || ''}
+          onChange={e => setFilters({...filters!, keywords: e.target.value})}
         />
         <input
           type="datetime-local"
           placeholder="Start time"
-          value={filters.start_time || ''}
-          onChange={e => setFilters({...filters, start_time: e.target.value})}
+          value={filters?.start_time || ''}
+          onChange={e => setFilters({...filters!, start_time: e.target.value})}
         />
         <input
           type="datetime-local"
           placeholder="End time"
-          value={filters.end_time || ''}
-          onChange={e => setFilters({...filters, end_time: e.target.value})}
+          value={filters?.end_time || ''}
+          onChange={e => setFilters({...filters!, end_time: e.target.value})}
         />
       </div>
 

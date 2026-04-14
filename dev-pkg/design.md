@@ -228,6 +228,17 @@ winalog-go/
 │   │       ├── explanations.go  # 规则解释和建议
 │   │       └── mitre.go         # MITRE ATT&CK 映射
 │   │
+│   ├── persistence/              # 持久化检测 (Phase 5)
+│   │   ├── types.go              # 核心类型定义
+│   │   ├── detector.go           # 检测引擎
+│   │   ├── registry.go            # Run Key/UserInit 检测
+│   │   ├── accessibility.go       # 辅助功能后门 (T1546.001)
+│   │   ├── com.go                 # COM 劫持检测 (T1546.015)
+│   │   ├── ifeo.go               # IFEO 检测 (T1546.012)
+│   │   ├── appinit.go            # AppInit_DLLs 检测 (T1546.010)
+│   │   ├── wmi.go                # WMI 持久化检测 (T1546.003)
+│   │   └── service.go             # Windows 服务检测 (T1543.003)
+│   │
 │   ├── analyzers/                # 专用分析器
 │   │   ├── analyzer.go          # 分析器接口
 │   │   ├── brute_force.go       # 暴力破解检测
@@ -1261,6 +1272,93 @@ func (e *Engine) findChains(rule *rules.CorrelationRule, timeWindow time.Duratio
     }
     
     return chains
+}
+```
+
+### 5.4 持久化检测模块
+
+```go
+// internal/persistence/types.go
+
+package persistence
+
+// Technique MITRE ATT&CK Technique ID
+type Technique string
+
+const (
+    TechniqueT1546001 Technique = "T1546.001"  // Accessibility Features
+    TechniqueT1546003 Technique = "T1546.003"  // WMI Event Subscription
+    TechniqueT1546010 Technique = "T1546.010"  // AppInit_DLLs
+    TechniqueT1546012 Technique = "T1546.012"  // IFEO
+    TechniqueT1546015 Technique = "T1546.015"  // COM Hijacking
+    TechniqueT1053    Technique = "T1053"      // Scheduled Task
+    TechniqueT1543003 Technique = "T1543.003"  // Windows Service
+)
+
+// Detection 持久化检测结果
+type Detection struct {
+    ID                string
+    Time              time.Time
+    Technique         Technique
+    Category          string  // Registry/ScheduledTask/Service/WMI/COM
+    Severity          Severity // critical/high/medium/low/info
+    Title             string
+    Description       string
+    Evidence          Evidence
+    MITRERef          []string
+    RecommendedAction string
+    FalsePositiveRisk string
+}
+
+// Evidence 证据信息
+type Evidence struct {
+    Type     EvidenceType // registry/file/wmi/service/task/com
+    Path     string
+    Key      string
+    Value    string
+    Expected string
+}
+```
+
+**检测器接口**:
+
+```go
+// Detector 持久化检测器接口
+type Detector interface {
+    Name() string
+    Detect(ctx context.Context) ([]*Detection, error)
+    RequiresAdmin() bool
+    GetTechnique() Technique
+}
+```
+
+**内置检测器**:
+
+| 检测器 | 文件 | 描述 |
+|--------|------|------|
+| RunKeyDetector | registry.go | 检测 Run/RunOnce 键 |
+| UserInitDetector | registry.go | 检测 Winlogon UserInit |
+| StartupFolderDetector | registry.go | 检测启动文件夹 |
+| AccessibilityDetector | accessibility.go | 检测辅助功能后门 (T1546.001) |
+| COMHijackDetector | com.go | 检测 COM 对象劫持 (T1546.015) |
+| IFEODetector | ifeo.go | 检测 IFEO 劫持 (T1546.012) |
+| AppInitDetector | appinit.go | 检测 AppInit_DLLs (T1546.010) |
+| WMIPersistenceDetector | wmi.go | 检测 WMI 持久化订阅 (T1546.003) |
+| ServicePersistenceDetector | service.go | 检测 Windows 服务持久化 (T1543.003) |
+
+**使用示例**:
+
+```go
+// 创建检测引擎
+engine := persistence.NewDetectionEngine()
+engine.Register(persistence.NewRunKeyDetector())
+engine.Register(persistence.NewAccessibilityDetector())
+
+// 执行检测
+result := engine.Detect(context.Background())
+
+for _, det := range result.Detections {
+    fmt.Printf("[%s] %s: %s\n", det.Severity, det.Technique, det.Title)
 }
 ```
 

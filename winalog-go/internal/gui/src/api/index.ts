@@ -77,6 +77,38 @@ export const systemAPI = {
     api.get('/health'),
 }
 
+export interface TimelineEntry {
+  id: number
+  timestamp: string
+  type: 'event' | 'alert'
+  event_id?: number
+  alert_id?: number
+  level?: string
+  source?: string
+  message: string
+  severity?: string
+  rule_name?: string
+  mitre_attack?: string[]
+}
+
+export interface TimelineResponse {
+  entries: TimelineEntry[]
+  total_count: number
+  event_count: number
+  alert_count: number
+}
+
+export const timelineAPI = {
+  get: (limit = 200, startTime?: string, endTime?: string) => {
+    let url = `/timeline?limit=${limit}`
+    if (startTime) url += `&start_time=${startTime}`
+    if (endTime) url += `&end_time=${endTime}`
+    return api.get(url)
+  },
+  deleteAlert: (id: number) =>
+    api.delete(`/timeline/alerts/${id}`),
+}
+
 export interface SearchParams {
   keywords?: string
   regex?: boolean

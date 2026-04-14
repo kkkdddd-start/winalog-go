@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { alertsAPI, eventsAPI } from '../api'
+import { alertsAPI } from '../api'
 
 interface AlertStats {
   total: number

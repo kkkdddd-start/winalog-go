@@ -12,12 +12,14 @@ import (
 )
 
 type Server struct {
-	engine    *gin.Engine
-	db        *storage.DB
-	addr      string
-	alertEng  *AlertHandler
-	importEng *ImportHandler
-	liveEng   *LiveHandler
+	engine         *gin.Engine
+	db             *storage.DB
+	addr           string
+	alertEng       *AlertHandler
+	importEng      *ImportHandler
+	liveEng        *LiveHandler
+	persistenceEng *PersistenceHandler
+	timelineEng    *TimelineHandler
 }
 
 func NewServer(db *storage.DB, addr string) *Server {
@@ -48,10 +50,15 @@ func (s *Server) setupHandlers() {
 		db: s.db,
 	}
 	s.liveEng = &LiveHandler{}
+	s.persistenceEng = NewPersistenceHandler()
+	s.timelineEng = &TimelineHandler{
+		db: s.db,
+	}
 }
 
 func (s *Server) setupRoutes() {
-	SetupRoutes(s.engine, s.alertEng, s.importEng, s.liveEng)
+	SetupRoutes(s.engine, s.alertEng, s.importEng, s.liveEng, s.timelineEng)
+	SetupPersistenceRoutes(s.engine, s.persistenceEng)
 
 	staticDir := filepath.Join("internal", "gui", "dist")
 	staticFS := http.Dir(staticDir)

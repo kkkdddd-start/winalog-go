@@ -1,0 +1,200 @@
+{
+  "count": 20,
+  "items": [
+    {
+      "type": "local_user",
+      "name": "Administrator",
+      "full_name": "",
+      "sid": "S-1-5-21-849657947-3583614015-1989336548-500",
+      "domain": "DESKTOP-5RIKSUG",
+      "enabled": false,
+      "lockout": false,
+      "password_changeable": true,
+      "password_expires": false,
+      "password_required": true,
+      "description": "管理计算机(域)的内置帐户",
+      "account_type": "User",
+      "last_logon": null
+    },
+    {
+      "type": "local_user",
+      "name": "DefaultAccount",
+      "full_name": "",
+      "sid": "S-1-5-21-849657947-3583614015-1989336548-503",
+      "domain": "DESKTOP-5RIKSUG",
+      "enabled": false,
+      "lockout": false,
+      "password_changeable": true,
+      "password_expires": false,
+      "password_required": false,
+      "description": "系统管理的用户帐户。",
+      "account_type": "User",
+      "last_logon": null
+    },
+    {
+      "type": "local_user",
+      "name": "Guest",
+      "full_name": "",
+      "sid": "S-1-5-21-849657947-3583614015-1989336548-501",
+      "domain": "DESKTOP-5RIKSUG",
+      "enabled": false,
+      "lockout": false,
+      "password_changeable": false,
+      "password_expires": false,
+      "password_required": false,
+      "description": "供来宾访问计算机或访问域的内置帐户",
+      "account_type": "User",
+      "last_logon": null
+    },
+    {
+      "type": "local_user",
+      "name": "Lion",
+      "full_name": "",
+      "sid": "S-1-5-21-849657947-3583614015-1989336548-1001",
+      "domain": "DESKTOP-5RIKSUG",
+      "enabled": true,
+      "lockout": false,
+      "password_changeable": true,
+      "password_expires": false,
+      "password_required": false,
+      "description": "",
+      "account_type": "User",
+      "last_logon": null
+    },
+    {
+      "type": "local_user",
+      "name": "WDAGUtilityAccount",
+      "full_name": "",
+      "sid": "S-1-5-21-849657947-3583614015-1989336548-504",
+      "domain": "DESKTOP-5RIKSUG",
+      "enabled": false,
+      "lockout": false,
+      "password_changeable": true,
+      "password_expires": true,
+      "password_required": true,
+      "description": "系统为 Windows Defender 应用程序防护方案管理和使用的用户帐户。",
+      "account_type": "User",
+      "last_logon": null
+    },
+    {
+      "type": "local_group",
+      "name": "Administrators",
+      "sid": "S-1-5-32-544",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "管理员对计算机/域有不受限制的完全访问权",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Device Owners",
+      "sid": "S-1-5-32-583",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "此组的成员可以更改系统范围内的设置。",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Distributed COM Users",
+      "sid": "S-1-5-32-562",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "成员允许启动、激活和使用此计算机上的分布式 COM 对象。",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Event Log Readers",
+      "sid": "S-1-5-32-573",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "此组的成员可以从本地计算机中读取事件日志",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Guests",
+      "sid": "S-1-5-32-546",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "按默认值，来宾跟用户组的成员有同等访问权，但来宾帐户的限制更多",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Hyper-V Administrators",
+      "sid": "S-1-5-32-578",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "此组的成员拥有对 Hyper-V 所有功能的完全且不受限制的访问权限。",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "IIS_IUSRS",
+      "sid": "S-1-5-32-568",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "Internet 信息服务使用的内置组。",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "OpenSSH 用户",
+      "sid": "S-1-5-32-585",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "此组的成员可以使用 SSH.\r\n 连接到此计",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Performance Log Users",
+      "sid": "S-1-5-32-559",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "该组中的成员可以计划进行性能计数器日志记录、启用跟踪记录提供程序，以及在本地或通过远程访问此计算机来收集事件跟踪记录",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Performance Monitor Users",
+      "sid": "S-1-5-32-558",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "此组的成员可以从本地和远程访问性能计数器数据",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Remote Management Users",
+      "sid": "S-1-5-32-580",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "此组的成员可以通过管理协议(例如，通过 Windows 远程管理服务实现的 WS-Management)访问 WMI 资源。这仅适用于授予用户访问权限的 WMI 命名空间。",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "System Managed Accounts Group",
+      "sid": "S-1-5-32-581",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "此组的成员由系统管理。",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "Users",
+      "sid": "S-1-5-32-545",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "防止用户进行有意或无意的系统范围的更改，但是可以运行大部分应用程序",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "用户模式硬件运营商",
+      "sid": "S-1-5-32-584",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "此组的成员可以从用户模式操作硬件。",
+      "account_type": "Group"
+    },
+    {
+      "type": "local_group",
+      "name": "__vmware__",
+      "sid": "S-1-5-21-849657947-3583614015-1989336548-1002",
+      "domain": "DESKTOP-5RIKSUG",
+      "description": "VMware User Group",
+      "account_type": "Group"
+    }
+  ]
+}

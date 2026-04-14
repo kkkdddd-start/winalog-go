@@ -1,0 +1,245 @@
+WinLogAnalyzer Collection Report
+==================================================
+
+Collection Time: 2026-04-14 16:22:52
+Hostname: DESKTOP-5RIKSUG
+OS: Windows-10-10.0.26200-SP0
+
+[Summary]
+  Total Sources: 230
+  Success: 230
+  Skipped: 0
+  Failed: 0
+  Total Size: 354.21 MB
+
+[Success] (230 items)
+  [OK] Camera_DeviceMFT: C:\Windows\System32\winevt\Logs\Camera_DeviceMFT.evtx
+  [OK] HardwareEvents: C:\Windows\System32\winevt\Logs\HardwareEvents.evtx
+  [OK] Intel-GFX-Info/Application: C:\Windows\System32\winevt\Logs\Intel-GFX-Info%4Application.evtx
+  [OK] Camera_FrameServer: C:\Windows\System32\winevt\Logs\Camera_FrameServer.evtx
+  [OK] Intel-GFX-Info/System: C:\Windows\System32\winevt\Logs\Intel-GFX-Info%4System.evtx
+  [OK] IntelAudioServiceLog: C:\Windows\System32\winevt\Logs\IntelAudioServiceLog.evtx
+  [OK] Key Management Service: C:\Windows\System32\winevt\Logs\Key Management Service.evtx
+  [OK] Internet Explorer: C:\Windows\System32\winevt\Logs\Internet Explorer.evtx
+  [OK] MSW-AAD/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AAD%4Operational.evtx
+  [OK] Microsoft-Client-Licensing-Platform/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Client-Licensing-Platform%4Admin.evtx
+  [OK] MF_MediaFoundationDeviceProxy: C:\Windows\System32\winevt\Logs\MF_MediaFoundationDeviceProxy.evtx
+  [OK] MSW-Application-Experience/Program-Compatibility-Troubleshooter: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Application-Experience%4Program-Compatibility-Troubleshooter.evtx
+  [OK] MSW-AppID/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppID%4Operational.evtx
+  [OK] MSW-Application-Experience/Program-Inventory: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Application-Experience%4Program-Inventory.evtx
+  [OK] MSW-Application-Experience/Program-Compatibility-Assistant: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Application-Experience%4Program-Compatibility-Assistant.evtx
+  [OK] MSW-Application-Experience/Steps-Recorder: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Application-Experience%4Steps-Recorder.evtx
+  [OK] MSW-AppLocker/EXE and DLL: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppLocker%4EXE and DLL.evtx
+  [OK] MSW-Application-Experience/Program-Telemetry: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Application-Experience%4Program-Telemetry.evtx
+  [OK] MSW-AppLocker/MSI and Script: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppLocker%4MSI and Script.evtx
+  [OK] MSW-AppLocker/Packaged app-Deployment: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppLocker%4Packaged app-Deployment.evtx
+  [OK] MSW-AppLocker/Packaged app-Execution: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppLocker%4Packaged app-Execution.evtx
+  [OK] MSW-AppModel-Runtime/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppModel-Runtime%4Admin.evtx
+  [OK] MSW-AppXDeployment/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppXDeployment%4Operational.evtx
+  [OK] MSW-AppReadiness/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppReadiness%4Operational.evtx
+  [OK] MSW-AppXDeployment-Server/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppXDeployment-Server%4Operational.evtx
+  [OK] MSW-AppReadiness/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppReadiness%4Admin.evtx
+  [OK] MSW-AppXDeploymentServer/Restricted: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppXDeploymentServer%4Restricted.evtx
+  [OK] MSW-Audio/CaptureMonitor: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Audio%4CaptureMonitor.evtx
+  [OK] MSW-AppxPackaging/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppxPackaging%4Operational.evtx
+  [OK] MSW-Audio/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Audio%4Operational.evtx
+  [OK] MSW-Audio/PlaybackManager: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Audio%4PlaybackManager.evtx
+  [OK] MSW-AppXDeploymentServer/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-AppXDeploymentServer%4Operational.evtx
+  [OK] MSW-Authentication User Interface/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Authentication User Interface%4Operational.evtx
+  [OK] MSW-BackgroundTaskInfrastructure/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-BackgroundTaskInfrastructure%4Operational.evtx
+  [OK] MSW-BitLocker/BitLocker Management: C:\Windows\System32\winevt\Logs\Microsoft-Windows-BitLocker%4BitLocker Management.evtx
+  [OK] MSW-Biometrics/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Biometrics%4Operational.evtx
+  [OK] Application: C:\Windows\System32\winevt\Logs\Application.evtx
+  [OK] MSW-CertificateServicesClient-Lifecycle-System/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-CertificateServicesClient-Lifecycle-System%4Operational.evtx
+  [OK] MSW-CertificateServicesClient-Lifecycle-User/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-CertificateServicesClient-Lifecycle-User%4Operational.evtx
+  [OK] MSW-Bits-Client/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Bits-Client%4Operational.evtx
+  [OK] MSW-CloudFiles-Filter/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-CloudFiles-Filter%4Operational.evtx
+  [OK] MSW-CloudRestoreLauncher/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-CloudRestoreLauncher%4Operational.evtx
+  [OK] MSW-CloudStore/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-CloudStore%4Operational.evtx
+  [OK] MSW-CloudStore/Initialization: C:\Windows\System32\winevt\Logs\Microsoft-Windows-CloudStore%4Initialization.evtx
+  [OK] MSW-CodeIntegrity/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-CodeIntegrity%4Operational.evtx
+  [OK] MSW-Containers-BindFlt/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Containers-BindFlt%4Operational.evtx
+  [OK] MSW-Crypto-DPAPI/BackUpKeySvc: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Crypto-DPAPI%4BackUpKeySvc.evtx
+  [OK] MSW-Containers-Wcifs/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Containers-Wcifs%4Operational.evtx
+  [OK] MSW-Crypto-NCrypt/CertInUse: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Crypto-NCrypt%4CertInUse.evtx
+  [OK] MSW-Crypto-DPAPI/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Crypto-DPAPI%4Operational.evtx
+  [OK] MSW-Crypto-NCrypt/KeyMgmt: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Crypto-NCrypt%4KeyMgmt.evtx
+  [OK] MSW-DeviceSetupManager/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-DeviceSetupManager%4Admin.evtx
+  [OK] MSW-Crypto-NCrypt/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Crypto-NCrypt%4Operational.evtx
+  [OK] MSW-DeviceSetupManager/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-DeviceSetupManager%4Operational.evtx
+  [OK] MSW-Dhcp-Client/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Dhcp-Client%4Admin.evtx
+  [OK] MSW-Dhcpv6-Client/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Dhcpv6-Client%4Admin.evtx
+  [OK] MSW-Diagnosis-DPS/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Diagnosis-DPS%4Operational.evtx
+  [OK] MSW-Diagnosis-PLA/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Diagnosis-PLA%4Operational.evtx
+  [OK] MSW-Diagnosis-PCW/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Diagnosis-PCW%4Operational.evtx
+  [OK] MSW-Diagnosis-Scripted/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Diagnosis-Scripted%4Admin.evtx
+  [OK] MSW-Diagnosis-Scheduled/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Diagnosis-Scheduled%4Operational.evtx
+  [OK] MSW-DiskDiagnosticDataCollector/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-DiskDiagnosticDataCollector%4Operational.evtx
+  [OK] MSW-DriverProxy/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-DriverProxy%4Operational.evtx
+  [OK] MSW-Diagnosis-Scripted/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Diagnosis-Scripted%4Operational.evtx
+  [OK] MSW-EapHost/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-EapHost%4Operational.evtx
+  [OK] MSW-EapMethods-RasChap/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-EapMethods-RasChap%4Operational.evtx
+  [OK] MSW-EapMethods-RasTls/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-EapMethods-RasTls%4Operational.evtx
+  [OK] MSW-EnhancedStorage-EhStorClass/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-EnhancedStorage-EhStorClass%4Operational.evtx
+  [OK] MSW-Fault-Tolerant-Heap/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Fault-Tolerant-Heap%4Operational.evtx
+  [OK] MSW-FileHistory-Core/WHC: C:\Windows\System32\winevt\Logs\Microsoft-Windows-FileHistory-Core%4WHC.evtx
+  [OK] MSW-HotspotAuth/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-HotspotAuth%4Operational.evtx
+  [OK] MSW-HelloForBusiness/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-HelloForBusiness%4Operational.evtx
+  [OK] MSW-Hyper-V-Hypervisor-Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Hyper-V-Hypervisor-Admin.evtx
+  [OK] MSW-IKE/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-IKE%4Operational.evtx
+  [OK] MSW-Hyper-V-Hypervisor-Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Hyper-V-Hypervisor-Operational.evtx
+  [OK] MSW-Kernel-ApphelpCache/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-ApphelpCache%4Operational.evtx
+  [OK] MSW-Kernel-CPU-Starvation/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-CPU-Starvation%4Operational.evtx
+  [OK] MSW-Kernel-Boot/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-Boot%4Operational.evtx
+  [OK] MSW-GroupPolicy/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-GroupPolicy%4Operational.evtx
+  [OK] MSW-Kernel-Cache/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-Cache%4Operational.evtx
+  [OK] MSW-Kernel-Dump/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-Dump%4Operational.evtx
+  [OK] MSW-Kernel-IO/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-IO%4Operational.evtx
+  [OK] MSW-Kernel-LiveDump/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-LiveDump%4Operational.evtx
+  [OK] MSW-Kernel-EventTracing/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-EventTracing%4Admin.evtx
+  [OK] MSW-Kernel-Power/Thermal-Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-Power%4Thermal-Operational.evtx
+  [OK] MSW-Kernel-PnP/Configuration: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-PnP%4Configuration.evtx
+  [OK] MSW-Kernel-PnP/Driver Watchdog: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-PnP%4Driver Watchdog.evtx
+  [OK] MSW-Kernel-PRM/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-PRM%4Operational.evtx
+  [OK] MSW-Kernel-StoreMgr/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-StoreMgr%4Operational.evtx
+  [OK] MSW-Kernel-WDI/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-WDI%4Operational.evtx
+  [OK] MSW-Kernel-PnP/Device Management: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-PnP%4Device Management.evtx
+  [OK] MSW-Kernel-WHEA/Errors: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-WHEA%4Errors.evtx
+  [OK] MSW-Kernel-ShimEngine/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-ShimEngine%4Operational.evtx
+  [OK] MSW-Known Folders API Service: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Known Folders API Service.evtx
+  [OK] MSW-LanguagePackSetup/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-LanguagePackSetup%4Operational.evtx
+  [OK] MSW-KernelStreaming/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-KernelStreaming%4Operational.evtx
+  [OK] MSW-LocationServiceProvider/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-LocationServiceProvider%4Operational.evtx
+  [OK] MSW-LiveId/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-LiveId%4Operational.evtx
+  [OK] MSW-MF-FrameServer/Camera_DeviceMFT: C:\Windows\System32\winevt\Logs\Microsoft-Windows-MF-FrameServer%4Camera_DeviceMFT.evtx
+  [OK] MSW-MF-FrameServer/Camera_FrameServer: C:\Windows\System32\winevt\Logs\Microsoft-Windows-MF-FrameServer%4Camera_FrameServer.evtx
+  [OK] MSW-MPTF/MPTF-Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-MPTF%4MPTF-Operational.evtx
+  [OK] MSW-MUI/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-MUI%4Admin.evtx
+  [OK] MSW-MF-MediaFoundation/MF_DeviceProxy: C:\Windows\System32\winevt\Logs\Microsoft-Windows-MF-MediaFoundation%4MF_DeviceProxy.evtx
+  [OK] MSW-NcdAutoSetup/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-NcdAutoSetup%4Operational.evtx
+  [OK] MSW-MUI/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-MUI%4Operational.evtx
+  [OK] MSW-Kernel-WHEA/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Kernel-WHEA%4Operational.evtx
+  [OK] MSW-NCSI/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-NCSI%4Operational.evtx
+  [OK] MSW-NetworkProfile/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-NetworkProfile%4Operational.evtx
+  [OK] MSW-NlaSvc/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-NlaSvc%4Operational.evtx
+  [OK] MSW-Ntfs/WHC: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Ntfs%4WHC.evtx
+  [OK] MSW-PCI/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-PCI%4Operational.evtx
+  [OK] MSW-PCRPF/PCRPF: C:\Windows\System32\winevt\Logs\Microsoft-Windows-PCRPF%4PCRPF.evtx
+  [OK] MSW-Partition/Diagnostic: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Partition%4Diagnostic.evtx
+  [OK] MSW-PowerShell/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-PowerShell%4Admin.evtx
+  [OK] MSW-PrintService/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-PrintService%4Admin.evtx
+  [OK] MSW-Perflib/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Perflib%4Operational.evtx
+  [OK] MSW-Program-Compatibility-Assistant/CompatAfterUpgrade: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Program-Compatibility-Assistant%4CompatAfterUpgrade.evtx
+  [OK] MSW-PushNotification-Platform/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-PushNotification-Platform%4Admin.evtx
+  [OK] MSW-PushNotification-Platform/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-PushNotification-Platform%4Operational.evtx
+  [OK] MSW-Rdp-Graphics-RdpAvenc/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Rdp-Graphics-RdpAvenc%4Admin.evtx
+  [OK] MSW-Rdp-Graphics-RdpAvenc/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Rdp-Graphics-RdpAvenc%4Operational.evtx
+  [OK] MSW-Rdp-Graphics-RdpLite/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Rdp-Graphics-RdpLite%4Admin.evtx
+  [OK] MSW-Rdp-Graphics-RdpLite/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Rdp-Graphics-RdpLite%4Operational.evtx
+  [OK] MSW-ReadyBoost/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-ReadyBoost%4Operational.evtx
+  [OK] MSW-ReFsDedupSvc/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-ReFsDedupSvc%4Operational.evtx
+  [OK] MSW-Regsvr32/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Regsvr32%4Operational.evtx
+  [OK] MSW-RemoteAssistance/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-RemoteAssistance%4Admin.evtx
+  [OK] MSW-RemoteAssistance/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-RemoteAssistance%4Operational.evtx
+  [OK] MSW-Resource-Exhaustion-Detector/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Resource-Exhaustion-Detector%4Operational.evtx
+  [OK] MSW-PowerShell/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-PowerShell%4Operational.evtx
+  [OK] MSW-RestartManager/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-RestartManager%4Operational.evtx
+  [OK] MSW-Resource-Exhaustion-Resolver/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Resource-Exhaustion-Resolver%4Operational.evtx
+  [OK] MSW-Privacy-Auditing/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Privacy-Auditing%4Operational.evtx
+  [OK] MSW-Security-Mitigations/UserMode: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Security-Mitigations%4UserMode.evtx
+  [OK] MSW-Security-LessPrivilegedAppContainer/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Security-LessPrivilegedAppContainer%4Operational.evtx
+  [OK] MSW-Security-Mitigations/KernelMode: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Security-Mitigations%4KernelMode.evtx
+  [OK] MSW-Shell-ConnectedAccountState/ActionCenter: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Shell-ConnectedAccountState%4ActionCenter.evtx
+  [OK] MSW-Security-SPP-UX-Notifications/ActionCenter: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Security-SPP-UX-Notifications%4ActionCenter.evtx
+  [OK] MSW-Shell-Core/ActionCenter: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Shell-Core%4ActionCenter.evtx
+  [OK] MSW-Shell-Core/LogonTasksChannel: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Shell-Core%4LogonTasksChannel.evtx
+  [OK] MSW-Shell-Core/AppDefaults: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Shell-Core%4AppDefaults.evtx
+  [OK] MSW-SmbClient/Audit: C:\Windows\System32\winevt\Logs\Microsoft-Windows-SmbClient%4Audit.evtx
+  [OK] MSW-Shell-Core/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Shell-Core%4Operational.evtx
+  [OK] MSW-ShellCommon-StartLayoutPopulation/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-ShellCommon-StartLayoutPopulation%4Operational.evtx
+  [OK] MSW-SMBClient/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-SMBClient%4Operational.evtx
+  [OK] MSW-SmbClient/Security: C:\Windows\System32\winevt\Logs\Microsoft-Windows-SmbClient%4Security.evtx
+  [OK] MSW-SMBServer/Audit: C:\Windows\System32\winevt\Logs\Microsoft-Windows-SMBServer%4Audit.evtx
+  [OK] MSW-SMBServer/Connectivity: C:\Windows\System32\winevt\Logs\Microsoft-Windows-SMBServer%4Connectivity.evtx
+  [OK] MSW-SMBServer/Security: C:\Windows\System32\winevt\Logs\Microsoft-Windows-SMBServer%4Security.evtx
+  [OK] MSW-Ntfs/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Ntfs%4Operational.evtx
+  [OK] MSW-SmbClient/Connectivity: C:\Windows\System32\winevt\Logs\Microsoft-Windows-SmbClient%4Connectivity.evtx
+  [OK] MSW-StateRepository/Restricted: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StateRepository%4Restricted.evtx
+  [OK] MSW-Storage-Storport/Health: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Storage-Storport%4Health.evtx
+  [OK] MSW-Storage-ClassPnP/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Storage-ClassPnP%4Operational.evtx
+  [OK] MSW-StateRepository/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StateRepository%4Operational.evtx
+  [OK] MSW-StorageManagement/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StorageManagement%4Operational.evtx
+  [OK] MSW-SMBServer/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-SMBServer%4Operational.evtx
+  [OK] MSW-StorageSpaces-Api/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StorageSpaces-Api%4Operational.evtx
+  [OK] MSW-StorageSettings/Diagnostic: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StorageSettings%4Diagnostic.evtx
+  [OK] MSW-StorageSpaces-Driver/Diagnostic: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StorageSpaces-Driver%4Diagnostic.evtx
+  [OK] MSW-StorageSpaces-ManagementAgent/WHC: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StorageSpaces-ManagementAgent%4WHC.evtx
+  [OK] MSW-StorageVolume/Diagnostic: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StorageVolume%4Diagnostic.evtx
+  [OK] MSW-StorageSpaces-Driver/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StorageSpaces-Driver%4Operational.evtx
+  [OK] MSW-StorageVolume/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-StorageVolume%4Operational.evtx
+  [OK] MSW-Storsvc/Diagnostic: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Storsvc%4Diagnostic.evtx
+  [OK] MSW-TerminalServices-LocalSessionManager/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-TerminalServices-LocalSessionManager%4Admin.evtx
+  [OK] MSW-TaskScheduler/Maintenance: C:\Windows\System32\winevt\Logs\Microsoft-Windows-TaskScheduler%4Maintenance.evtx
+  [OK] MSW-TerminalServices-LocalSessionManager/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-TerminalServices-LocalSessionManager%4Operational.evtx
+  [OK] MSW-TerminalServices-RDPClient/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-TerminalServices-RDPClient%4Operational.evtx
+  [OK] MSW-TerminalServices-RemoteConnectionManager/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-TerminalServices-RemoteConnectionManager%4Operational.evtx
+  [OK] MSW-Time-Service/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Time-Service%4Operational.evtx
+  [OK] MSW-TWinUI/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-TWinUI%4Operational.evtx
+  [OK] MSW-TZSync/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-TZSync%4Operational.evtx
+  [OK] MSW-UAC/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-UAC%4Operational.evtx
+  [OK] MSW-Storage-Storport/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Storage-Storport%4Operational.evtx
+  [OK] MSW-UAC-FileVirtualization/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-UAC-FileVirtualization%4Operational.evtx
+  [OK] MSW-USB-UCMUCSICX/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-USB-UCMUCSICX%4Operational.evtx
+  [OK] MSW-UniversalTelemetryClient/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-UniversalTelemetryClient%4Operational.evtx
+  [OK] MSW-USBVideo/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-USBVideo%4Operational.evtx
+  [OK] MSW-User Device Registration/Admin: C:\Windows\System32\winevt\Logs\Microsoft-Windows-User Device Registration%4Admin.evtx
+  [OK] MSW-User-Loader/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-User-Loader%4Operational.evtx
+  [OK] MSW-UserPnp/ActionCenter: C:\Windows\System32\winevt\Logs\Microsoft-Windows-UserPnp%4ActionCenter.evtx
+  [OK] MSW-User Profile Service/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-User Profile Service%4Operational.evtx
+  [OK] MSW-VDRVROOT/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-VDRVROOT%4Operational.evtx
+  [OK] MSW-UserPnp/DeviceInstall: C:\Windows\System32\winevt\Logs\Microsoft-Windows-UserPnp%4DeviceInstall.evtx
+  [OK] MSW-VHDMP-Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-VHDMP-Operational.evtx
+  [OK] MSW-UserSettingsBackup-Orchestrator/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-UserSettingsBackup-Orchestrator%4Operational.evtx
+  [OK] MSW-VPN/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-VPN%4Operational.evtx
+  [OK] MSW-VolumeSnapshot-Driver/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-VolumeSnapshot-Driver%4Operational.evtx
+  [OK] MSW-Wcmsvc/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Wcmsvc%4Operational.evtx
+  [OK] MSW-WER-Diag/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WER-Diag%4Operational.evtx
+  [OK] MSW-Store/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Store%4Operational.evtx
+  [OK] MSW-WFP/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WFP%4Operational.evtx
+  [OK] MSW-WER-PayloadHealth/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WER-PayloadHealth%4Operational.evtx
+  [OK] MSW-WebAuthN/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WebAuthN%4Operational.evtx
+  [OK] MSW-WerKernel/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WerKernel%4Operational.evtx
+  [OK] MSW-Win32k/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Win32k%4Operational.evtx
+  [OK] MSW-Windows Firewall With Advanced Security/ConnectionSecurity: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Windows Firewall With Advanced Security%4ConnectionSecurity.evtx
+  [OK] MSW-Windows Defender/WHC: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Windows Defender%4WHC.evtx
+  [OK] MSW-WindowsBackup/ActionCenter: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WindowsBackup%4ActionCenter.evtx
+  [OK] MSW-Windows Firewall With Advanced Security/Firewall: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Windows Firewall With Advanced Security%4Firewall.evtx
+  [OK] MSW-WindowsSystemAssessmentTool/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WindowsSystemAssessmentTool%4Operational.evtx
+  [OK] MSW-WindowsUpdateClient/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WindowsUpdateClient%4Operational.evtx
+  [OK] MSW-WinINet-Config/ProxyConfigChanged: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WinINet-Config%4ProxyConfigChanged.evtx
+  [OK] MSW-Winlogon/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Winlogon%4Operational.evtx
+  [OK] MSW-Winsock-WS2HELP/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Winsock-WS2HELP%4Operational.evtx
+  [OK] MSW-WinRM/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WinRM%4Operational.evtx
+  [OK] MSW-WLAN-AutoConfig/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WLAN-AutoConfig%4Operational.evtx
+  [OK] MSW-Wired-AutoConfig/Diagnostic: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Wired-AutoConfig%4Diagnostic.evtx
+  [OK] MSW-WorkFolders/WHC: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WorkFolders%4WHC.evtx
+  [OK] MSW-WMI-Activity/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WMI-Activity%4Operational.evtx
+  [OK] MSW-WPD-ClassInstaller/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WPD-ClassInstaller%4Operational.evtx
+  [OK] MSW-WLAN-AutoConfig/Diagnostic: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WLAN-AutoConfig%4Diagnostic.evtx
+  [OK] MSW-WPD-MTPClassDriver/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WPD-MTPClassDriver%4Operational.evtx
+  [OK] MSW-WWAN-SVC-Events/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-WWAN-SVC-Events%4Operational.evtx
+  [OK] MSW-ZTDNS/BlockedConnections: C:\Windows\System32\winevt\Logs\Microsoft-Windows-ZTDNS%4BlockedConnections.evtx
+  [OK] MSW-ZTDNS/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-ZTDNS%4Operational.evtx
+  [OK] Microsoft-WindowsPhone-Connectivity-WiFiConnSvc-Channel: C:\Windows\System32\winevt\Logs\Microsoft-WindowsPhone-Connectivity-WiFiConnSvc-Channel.evtx
+  [OK] OAlerts: C:\Windows\System32\winevt\Logs\OAlerts.evtx
+  [OK] Parameters: C:\Windows\System32\winevt\Logs\Parameters.evtx
+  [OK] Plugin-Passkey-Providers/Operational: C:\Windows\System32\winevt\Logs\Plugin-Passkey-Providers%4Operational.evtx
+  [OK] MSW-Windows Defender/Operational: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Windows Defender%4Operational.evtx
+  [OK] OneApp_IGCC: C:\Windows\System32\winevt\Logs\OneApp_IGCC.evtx
+  [OK] State: C:\Windows\System32\winevt\Logs\State.evtx
+  [OK] Synced-Passkey-Provider/Operatonal: C:\Windows\System32\winevt\Logs\Synced-Passkey-Provider%4Operatonal.evtx
+  [OK] Setup: C:\Windows\System32\winevt\Logs\Setup.evtx
+  [OK] WINDOWS_KS_CHANNEL: C:\Windows\System32\winevt\Logs\WINDOWS_KS_CHANNEL.evtx
+  [OK] Windows PowerShell: C:\Windows\System32\winevt\Logs\Windows PowerShell.evtx
+  [OK] Security: C:\Windows\System32\winevt\Logs\Security.evtx
+  [OK] System: C:\Windows\System32\winevt\Logs\System.evtx

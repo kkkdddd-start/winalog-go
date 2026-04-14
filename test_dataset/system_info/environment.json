@@ -1,0 +1,27 @@
+{
+  "environment_vars": {
+    "count": 19,
+    "items": {
+      "PATH": "C:\\Users\\Lion\\Downloads\\WinLogAnalyzer-v1.6.9\\dist\\winalog-cli\\_internal\\PyQt6\\Qt6\\bin;C:\\Users\\Lion\\Downloads\\WinLogAnalyzer-v1.6.9\\dist\\winalog-cli\\_internal;C:\\Users\\Lion\\Downloads\\WinLogAnalyzer-v1.6.9\\dist\\winalog-cli\\_internal\\pywin32_system32;C:\\ProgramData\\Oracle\\Java\\javapath;C:\\Program Files (x86)\\VMware\\VMware Workstation\\bin\\;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\Windows\\System32\\OpenSSH\\;D:\\Program Files\\nodejs\\;C:\\Program Files\\dotnet\\;C:\\Program Files\\Git\\cmd;C:\\Program Files\\Go\\bin;D:\\Programs\\Python\\Python311\\Scripts\\;D:\\Programs\\Python\\Python311;C:\\Users\\Lion\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\Lion\\AppData\\Roaming\\npm;D:\\Program Files\\JetBrains\\GoLand 2021.3.4\\bin;;D:\\Program Files\\JetBrains\\IntelliJ IDEA 2021.3.3\\bin;;D:\\Program Files\\JetBrains\\PhpStorm 2021.3.3\\bin;;D:\\Program Files\\JetBrains\\PyCharm 2021.3.3\\bin;;C:\\Users\\Lion\\.dotnet\\tools;C:\\Program Files\\mitmproxy\\bin;D:\\Program Files\\Microsoft VS Code\\bin;C:\\Users\\Lion\\go\\bin;",
+      "TEMP": "C:\\Users\\Lion\\AppData\\Local\\Temp",
+      "TMP": "C:\\Users\\Lion\\AppData\\Local\\Temp",
+      "windir": "C:\\Windows",
+      "SystemRoot": "C:\\Windows",
+      "ProgramFiles": "C:\\Program Files",
+      "ProgramFiles(x86)": "C:\\Program Files (x86)",
+      "APPDATA": "C:\\Users\\Lion\\AppData\\Roaming",
+      "LOCALAPPDATA": "C:\\Users\\Lion\\AppData\\Local",
+      "USERPROFILE": "C:\\Users\\Lion",
+      "USERNAME": "Lion",
+      "USERDOMAIN": "DESKTOP-5RIKSUG",
+      "LOGONSERVER": "\\\\DESKTOP-5RIKSUG",
+      "COMPUTERNAME": "DESKTOP-5RIKSUG",
+      "PROCESSOR_ARCHITECTURE": "AMD64",
+      "NUMBER_OF_PROCESSORS": "20",
+      "OS": "Windows_NT",
+      "COMSPEC": "C:\\Windows\\system32\\cmd.exe",
+      "PATHEXT": ".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC"
+    }
+  },
+  "proxy_config": {}
+}

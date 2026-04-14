@@ -11,6 +11,7 @@ import SystemInfo from './pages/SystemInfo'
 import Rules from './pages/Rules'
 import Settings from './pages/Settings'
 import Metrics from './pages/Metrics'
+import Persistence from './pages/Persistence'
 import './App.css'
 
 function App() {
@@ -19,16 +20,17 @@ function App() {
       <nav className="sidebar">
         <h1>WinLogAnalyzer</h1>
         <ul>
-          <li><Link to="/">Dashboard</Link></li>
-          <li><Link to="/events">Events</Link></li>
-          <li><Link to="/alerts">Alerts</Link></li>
-          <li><Link to="/timeline">Timeline</Link></li>
-          <li><Link to="/reports">Reports</Link></li>
-          <li><Link to="/forensics">Forensics</Link></li>
-          <li><Link to="/system-info">System Info</Link></li>
-          <li><Link to="/rules">Rules</Link></li>
-          <li><Link to="/settings">Settings</Link></li>
-          <li><Link to="/metrics">Metrics</Link></li>
+          <li><Link to="/">仪表盘</Link></li>
+          <li><Link to="/events">事件</Link></li>
+          <li><Link to="/alerts">告警</Link></li>
+          <li><Link to="/timeline">时间线</Link></li>
+          <li><Link to="/persistence">持久化检测</Link></li>
+          <li><Link to="/reports">报告</Link></li>
+          <li><Link to="/forensics">取证</Link></li>
+          <li><Link to="/system-info">系统信息</Link></li>
+          <li><Link to="/rules">规则</Link></li>
+          <li><Link to="/settings">设置</Link></li>
+          <li><Link to="/metrics">指标</Link></li>
         </ul>
       </nav>
       <main className="content">
@@ -39,6 +41,7 @@ function App() {
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/alerts/:id" element={<AlertDetail />} />
           <Route path="/timeline" element={<Timeline />} />
+          <Route path="/persistence" element={<Persistence />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/forensics" element={<Forensics />} />
           <Route path="/system-info" element={<SystemInfo />} />

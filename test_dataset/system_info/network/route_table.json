@@ -1,0 +1,161 @@
+{
+  "count": 26,
+  "items": [
+    {
+      "destination": "0.0.0.0",
+      "netmask": "0.0.0.0",
+      "gateway": "10.102.14.1",
+      "interface": "10.102.14.19"
+    },
+    {
+      "destination": "10.102.14.0",
+      "netmask": "255.255.255.0",
+      "gateway": "在链路上",
+      "interface": "10.102.14.19"
+    },
+    {
+      "destination": "10.102.14.19",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "10.102.14.19"
+    },
+    {
+      "destination": "10.102.14.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "10.102.14.19"
+    },
+    {
+      "destination": "127.0.0.0",
+      "netmask": "255.0.0.0",
+      "gateway": "在链路上",
+      "interface": "127.0.0.1"
+    },
+    {
+      "destination": "127.0.0.1",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "127.0.0.1"
+    },
+    {
+      "destination": "127.255.255.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "127.0.0.1"
+    },
+    {
+      "destination": "192.168.12.0",
+      "netmask": "255.255.255.0",
+      "gateway": "在链路上",
+      "interface": "192.168.12.1"
+    },
+    {
+      "destination": "192.168.12.1",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.12.1"
+    },
+    {
+      "destination": "192.168.12.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.12.1"
+    },
+    {
+      "destination": "192.168.79.0",
+      "netmask": "255.255.255.0",
+      "gateway": "在链路上",
+      "interface": "192.168.79.1"
+    },
+    {
+      "destination": "192.168.79.1",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.79.1"
+    },
+    {
+      "destination": "192.168.79.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.79.1"
+    },
+    {
+      "destination": "192.168.137.0",
+      "netmask": "255.255.255.0",
+      "gateway": "在链路上",
+      "interface": "192.168.137.1"
+    },
+    {
+      "destination": "192.168.137.1",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.137.1"
+    },
+    {
+      "destination": "192.168.137.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.137.1"
+    },
+    {
+      "destination": "224.0.0.0",
+      "netmask": "240.0.0.0",
+      "gateway": "在链路上",
+      "interface": "127.0.0.1"
+    },
+    {
+      "destination": "224.0.0.0",
+      "netmask": "240.0.0.0",
+      "gateway": "在链路上",
+      "interface": "192.168.12.1"
+    },
+    {
+      "destination": "224.0.0.0",
+      "netmask": "240.0.0.0",
+      "gateway": "在链路上",
+      "interface": "192.168.79.1"
+    },
+    {
+      "destination": "224.0.0.0",
+      "netmask": "240.0.0.0",
+      "gateway": "在链路上",
+      "interface": "10.102.14.19"
+    },
+    {
+      "destination": "224.0.0.0",
+      "netmask": "240.0.0.0",
+      "gateway": "在链路上",
+      "interface": "192.168.137.1"
+    },
+    {
+      "destination": "255.255.255.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "127.0.0.1"
+    },
+    {
+      "destination": "255.255.255.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.12.1"
+    },
+    {
+      "destination": "255.255.255.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.79.1"
+    },
+    {
+      "destination": "255.255.255.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "10.102.14.19"
+    },
+    {
+      "destination": "255.255.255.255",
+      "netmask": "255.255.255.255",
+      "gateway": "在链路上",
+      "interface": "192.168.137.1"
+    }
+  ]
+}

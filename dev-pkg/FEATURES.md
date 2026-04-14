@@ -481,7 +481,98 @@ type USNEntry struct {
 
 ---
 
-### 4.3 一键采集 (`one_click.go`)
+### 4.3 持久化技术检测 (`internal/persistence/`)
+
+Phase 5 新增模块，检测 Windows 持久化技术，覆盖 MITRE ATT&CK T1546 系列。
+
+#### 4.3.1 检测引擎 (`detector.go`)
+
+```go
+type DetectionEngine struct {
+    detectors     map[string]Detector
+    result        *DetectionResult
+}
+
+func RunAllDetectors(ctx context.Context) *DetectionResult
+func DetectByCategory(ctx context.Context, category string) *DetectionResult
+func DetectByTechnique(ctx context.Context, technique Technique) *DetectionResult
+```
+
+#### 4.3.2 注册表持久化检测 (`registry.go`)
+
+| 检测器 | 描述 | Technique |
+|--------|------|-----------|
+| RunKeyDetector | Run/RunOnce 键 | T1546.001 |
+| UserInitDetector | Winlogon UserInit | T1546.001 |
+| StartupFolderDetector | 启动文件夹 | T1546.016 |
+
+**检测内容**:
+- HKLM/HKCU 下的 Run/RunOnce 键
+- Winlogon Userinit 值修改
+- All Users/Current User 启动文件夹
+
+**可疑指标**:
+- 路径包含 `%TEMP%`, `%APPDATA%`, 网络路径
+- Base64 编码的值
+- 未知程序路径
+
+#### 4.3.3 辅助功能后门检测 (`accessibility.go`)
+
+| 程序 | 激活方式 | Technique |
+|------|----------|-----------|
+| sethc.exe | 按 5 次 Shift | T1546.001 |
+| utilman.exe | Windows + U | T1546.001 |
+| osk.exe | Windows + O | T1546.001 |
+| magnify.exe | Windows + = | T1546.001 |
+| narrator.exe | Windows + Enter | T1546.001 |
+
+#### 4.3.4 COM 劫持检测 (`com.go`)
+
+**目标注册表**:
+```
+HKCR\CLSID\{...}\InprocServer32
+```
+
+**检测项**:
+- 路径不在 System32/SysWOW64
+- 路径包含 TEMP 或网络路径
+- Empty CLSID
+- ADO Stream Object
+
+#### 4.3.5 IFEO 检测 (`ifeo.go`)
+
+**目标注册表**:
+```
+HKLM\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\
+```
+
+**检测项**:
+- Debugger 值被修改
+- GlobalFlag 异常
+- ShutdownFlags 异常
+
+#### 4.3.6 AppInit_DLLs 检测 (`appinit.go`)
+
+**目标注册表**:
+```
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows\AppInit_DLLs
+```
+
+#### 4.3.7 WMI 持久化检测 (`wmi.go`)
+
+**订阅类型**:
+- CommandLineEventConsumer - 执行命令
+- ActiveScriptEventConsumer - 执行脚本
+- NTEventLogEventConsumer - 写入事件日志
+
+#### 4.3.8 服务持久化检测 (`service.go`)
+
+**基于事件**:
+- Event ID 4697: A service was installed
+
+---
+
+### 4.4 一键采集 (`one_click.go`)
 
 **功能需求**:
 ```go
@@ -531,9 +622,9 @@ type CollectResult struct {
 
 ---
 
-### 4.4 实时采集 (`internal/collectors/live/`)
+### 4.5 实时采集 (`internal/collectors/live/`)
 
-#### 4.4.1 基础采集器 (`collector.go`)
+#### 4.5.1 基础采集器 (`collector.go`)
 
 **功能需求**:
 ```go
