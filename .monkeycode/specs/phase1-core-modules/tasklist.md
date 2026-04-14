@@ -210,57 +210,57 @@
 
 ### 8. CLI 命令 (`cmd/winalog/commands/`)
 
-- [ ] 8.1 实现导入命令 (`import.go`)
+- [x] 8.1 实现导入命令 (`import.go`)
   - 支持并行 workers、批量插入
   - 支持增量导入和进度回调
 
-- [ ] 8.2 实现搜索命令 (`search.go`)
+- [x] 8.2 实现搜索命令 (`search.go`)
   - 支持关键字/正则/事件ID过滤
   - 支持时间范围和级别过滤
 
-- [ ] 8.3 实现采集命令 (`collect.go`)
+- [x] 8.3 实现采集命令 (`collect.go`)
   - 触发一键采集
   - 支持选项配置
 
-- [ ] 8.4 实现数据库管理命令 (`db.go`)
+- [x] 8.4 实现数据库管理命令 (`db.go`)
   - `db status` 查看状态
   - `db vacuum` 清理数据库
 
-- [ ] 8.5 实现规则管理命令 (`rules_cmd.go`)
+- [x] 8.5 实现规则管理命令 (`rules_cmd.go`)
   - `rules list` 列出规则
   - `rules validate` 验证规则
 
-- [ ] 8.6 实现状态命令 (`status.go`)
+- [x] 8.6 实现状态命令 (`status.go`)
   - 显示统计信息
 
-- [ ] 8.7 实现系统信息命令 (`info.go`)
+- [x] 8.7 实现系统信息命令 (`info.go`)
   - 显示系统信息
 
-- [ ] 8.8 实现完整性验证命令 (`verify.go`)
+- [x] 8.8 实现完整性验证命令 (`verify.go`)
   - 文件哈希校验
 
-- [ ] 8.9 实现配置管理命令 (`config.go`)
+- [x] 8.9 实现配置管理命令 (`config.go`)
   - `config get`/`set` 配置
 
 ### 9. 工具函数 (`internal/utils/`)
 
-- [ ] 9.1 实现 Windows API 封装 (`windows.go`)
+- [x] 9.1 实现 Windows API 封装 (`windows.go`)
   - 实现 `GetComputerName`, `IsAdmin` 等
 
-- [ ] 9.2 实现 PowerShell 封装 (`powershell.go`)
+- [x] 9.2 实现 PowerShell 封装 (`powershell.go`)
   - 实现命令执行、Base64 解码
 
-- [ ] 9.3 实现 GeoIP 封装 (`geoip.go`)
+- [x] 9.3 实现 GeoIP 封装 (`geoip.go`)
   - 实现 IP 地理位置查询
 
-- [ ] 9.4 实现日志封装 (`logger.go`)
+- [x] 9.4 实现日志封装 (`logger.go`)
   - 配置 Zap + Lumberjack
 
 ### 10. 检查点
 
-- [ ] 确保所有核心模块编译通过
-- [ ] 确保 `go mod tidy` 无错误
-- [ ] 确保代码符合 Go 编码规范
+- [x] 确保所有核心模块编译通过
+- [x] 确保 `go mod tidy` 无错误
+- [x] 确保代码符合 Go 编码规范
 
 ---
 

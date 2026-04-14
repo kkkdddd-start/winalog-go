@@ -255,3 +255,7 @@ func (e *Engine) Search(req *types.SearchRequest) (*types.SearchResponse, error)
 func (e *Engine) GetStats() (*storage.DBStats, error) {
 	return e.db.GetStats()
 }
+
+func (e *Engine) GetParserRegistry() *parsers.ParserRegistry {
+	return e.parsers
+}
