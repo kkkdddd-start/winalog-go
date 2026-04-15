@@ -47,6 +47,24 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.SetView(ViewDashboard)
 	case "d":
 		m.SetView(ViewDashboard)
+	case "e":
+		m.SetView(ViewEvents)
+	case "a":
+		m.SetView(ViewAlerts)
+	case "t":
+		m.SetView(ViewTimeline)
+	case "r":
+		m.SetView(ViewReports)
+	case "n":
+		m.SetView(ViewAnalyze)
+	case "s":
+		m.SetView(ViewSystemInfo)
+	case "p":
+		m.SetView(ViewPersistence)
+	case "f":
+		m.SetView(ViewForensics)
+	case "m":
+		m.SetView(ViewMetrics)
 	case ",":
 		m.SetView(ViewSettings)
 
@@ -61,12 +79,32 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "enter":
 		return m.handleEnter()
-	case "r":
+	case "l":
+		m.SetView(ViewCollect)
+	case "R":
 		switch m.currentView {
 		case ViewEvents:
 			if err := m.RefreshEvents(); err != nil {
 				m.err = err
 			}
+		case ViewAlerts:
+			if err := m.RefreshAlerts(); err != nil {
+				m.err = err
+			}
+		case ViewDashboard:
+			if err := m.RefreshStats(); err != nil {
+				m.err = err
+			}
+		case ViewSearch:
+			m.SetView(ViewDashboard)
+		}
+	case "0":
+		if m.currentView == ViewSearch {
+			m.selectedIdx = 0
+		}
+	}
+	return m, nil
+}
 		case ViewAlerts:
 			if err := m.RefreshAlerts(); err != nil {
 				m.err = err

@@ -12,6 +12,8 @@ import Rules from './pages/Rules'
 import Settings from './pages/Settings'
 import Metrics from './pages/Metrics'
 import Persistence from './pages/Persistence'
+import Analyze from './pages/Analyze'
+import Collect from './pages/Collect'
 import './App.css'
 
 function App() {
@@ -24,13 +26,15 @@ function App() {
           <li><Link to="/events">事件</Link></li>
           <li><Link to="/alerts">告警</Link></li>
           <li><Link to="/timeline">时间线</Link></li>
+          <li><Link to="/collect">采集</Link></li>
+          <li><Link to="/analyze">分析</Link></li>
           <li><Link to="/persistence">持久化检测</Link></li>
           <li><Link to="/reports">报告</Link></li>
           <li><Link to="/forensics">取证</Link></li>
           <li><Link to="/system-info">系统信息</Link></li>
           <li><Link to="/rules">规则</Link></li>
-          <li><Link to="/settings">设置</Link></li>
           <li><Link to="/metrics">指标</Link></li>
+          <li><Link to="/settings">设置</Link></li>
         </ul>
       </nav>
       <main className="content">
@@ -41,6 +45,8 @@ function App() {
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/alerts/:id" element={<AlertDetail />} />
           <Route path="/timeline" element={<Timeline />} />
+          <Route path="/collect" element={<Collect />} />
+          <Route path="/analyze" element={<Analyze />} />
           <Route path="/persistence" element={<Persistence />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/forensics" element={<Forensics />} />

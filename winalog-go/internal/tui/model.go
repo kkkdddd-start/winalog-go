@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/engine"
+	"github.com/kkkdddd-start/winalog-go/internal/persistence"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
@@ -22,9 +23,15 @@ const (
 	ViewAlertDetail
 	ViewSearch
 	ViewTimeline
+	ViewReports
+	ViewAnalyze
+	ViewSystemInfo
+	ViewPersistence
+	ViewForensics
 	ViewCollect
 	ViewHelp
 	ViewSettings
+	ViewMetrics
 )
 
 type FilterOptions struct {
@@ -58,8 +65,12 @@ type Model struct {
 	loading    bool
 	loadingMsg string
 
-	searchResults  []*types.Event
-	timelineEvents []*types.Event
+	searchResults      []*types.Event
+	timelineEvents     []*types.Event
+	reportContent      string
+	analyzeResult      *types.AnalyzeResult
+	systemInfo         map[string]string
+	persistenceResults []*types.Detection
 
 	stats *types.AlertStats
 	trend *types.AlertTrend

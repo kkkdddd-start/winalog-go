@@ -31,12 +31,24 @@ func (m Model) View() string {
 		view = m.renderSearch()
 	case ViewTimeline:
 		view = m.renderTimeline()
+	case ViewReports:
+		view = m.renderReports()
+	case ViewAnalyze:
+		view = m.renderAnalyze()
+	case ViewSystemInfo:
+		view = m.renderSystemInfo()
+	case ViewPersistence:
+		view = m.renderPersistence()
+	case ViewForensics:
+		view = m.renderForensics()
 	case ViewCollect:
 		view = m.renderCollect()
 	case ViewHelp:
 		view = m.renderHelp()
 	case ViewSettings:
 		view = m.renderSettings()
+	case ViewMetrics:
+		view = m.renderMetrics()
 	default:
 		view = m.renderDashboard()
 	}
@@ -82,7 +94,7 @@ func (m Model) renderDashboard() string {
 		sb.WriteString("\n")
 	}
 
-	sb.WriteString(styles.HelpStyle.Render(" [d] Dashboard [e] Events [a] Alerts [/] Search [?] Help [q] Quit "))
+	sb.WriteString(styles.HelpStyle.Render(" [d] Dashboard [e] Events [a] Alerts [t] Timeline [/] Search [?] Help [q] Quit "))
 
 	return sb.String()
 }
@@ -332,18 +344,24 @@ func (m Model) renderHelp() string {
 		{"a", "Alerts"},
 		{"t", "Timeline"},
 		{"/", "Search"},
-		{"c", "Collect"},
-		{"?", "Help"},
+		{"r", "Reports"},
+		{"n", "Analyze"},
+		{"s", "System Info"},
+		{"p", "Persistence"},
+		{"f", "Forensics"},
+		{"m", "Metrics"},
+		{"l", "Collect/Live"},
+		{"?, F1", "Help"},
 		{",", "Settings"},
 		{"j/k", "Navigate Up/Down"},
 		{"g/G", "Go Top/Bottom"},
 		{"Enter", "Select/Open"},
-		{"r", "Refresh"},
-		{"q", "Back/Quit"},
+		{"R", "Refresh"},
+		{"q, Esc", "Back/Quit"},
 	}
 
 	for _, item := range helpItems {
-		sb.WriteString(fmt.Sprintf("  %-8s %s\n", styles.KeyStyle.Render(item.key), item.desc))
+		sb.WriteString(fmt.Sprintf("  %-10s %s\n", styles.KeyStyle.Render(item.key), item.desc))
 	}
 
 	sb.WriteString("\n" + styles.HelpStyle.Render(" Press [q] to go back "))
@@ -358,6 +376,166 @@ func (m Model) renderSettings() string {
 	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
 	sb.WriteString(fmt.Sprintf("  Database: %s\n", m.cfg.Database.Path))
 	sb.WriteString(fmt.Sprintf("  API Port: %d\n", m.cfg.API.Port))
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	return sb.String()
+}
+
+func (m Model) renderTimeline() string {
+	var sb strings.Builder
+
+	sb.WriteString(styles.HeaderStyle.Render(" Timeline ") + "\n")
+	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
+
+	if len(m.timelineEvents) == 0 {
+		sb.WriteString(styles.EmptyStyle.Render("  No timeline events. Import logs first. ") + "\n")
+	} else {
+		for i, event := range m.timelineEvents {
+			if i >= 30 {
+				sb.WriteString(fmt.Sprintf("\n  ... and %d more events", len(m.timelineEvents)-30))
+				break
+			}
+			ts := event.Timestamp.Format("2006-01-02 15:04:05")
+			levelColor := getLevelColor(event.Level)
+			sb.WriteString(fmt.Sprintf("  %s %s %s\n", levelColor, ts, truncate(event.Message, 50)))
+		}
+	}
+
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	return sb.String()
+}
+
+func (m Model) renderReports() string {
+	var sb strings.Builder
+
+	sb.WriteString(styles.HeaderStyle.Render(" Reports ") + "\n")
+	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
+	sb.WriteString("  Available reports:\n")
+	sb.WriteString("    - Security Summary\n")
+	sb.WriteString("    - Alert Analysis\n")
+	sb.WriteString("    - Timeline Export\n")
+	sb.WriteString("    - IOC Export\n")
+	sb.WriteString("\n  Use 'winalog report generate' CLI command to generate reports.\n")
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	return sb.String()
+}
+
+func (m Model) renderAnalyze() string {
+	var sb strings.Builder
+
+	sb.WriteString(styles.HeaderStyle.Render(" Analyze ") + "\n")
+	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
+
+	if m.analyzeResult != nil {
+		sb.WriteString(fmt.Sprintf("  Type: %s\n", m.analyzeResult.Type))
+		sb.WriteString(fmt.Sprintf("  Severity: %s\n", m.analyzeResult.Severity))
+		sb.WriteString(fmt.Sprintf("  Score: %.2f\n", m.analyzeResult.Score))
+		sb.WriteString(fmt.Sprintf("  Summary: %s\n", m.analyzeResult.Summary))
+		if len(m.analyzeResult.Findings) > 0 {
+			sb.WriteString("\n  Findings:\n")
+			for i, f := range m.analyzeResult.Findings {
+				if i >= 10 {
+					break
+				}
+				sb.WriteString(fmt.Sprintf("    [%d] %s (Severity: %s)\n", i+1, f.Description, f.Severity))
+			}
+		}
+	} else {
+		sb.WriteString("  Available analyzers:\n")
+		sb.WriteString("    - brute-force: Detect brute force attacks\n")
+		sb.WriteString("    - login: Analyze login activity\n")
+		sb.WriteString("    - kerberos: Analyze Kerberos activity\n")
+		sb.WriteString("    - powershell: Analyze PowerShell activity\n")
+		sb.WriteString("\n  Use 'winalog analyze <subcommand>' CLI command.\n")
+	}
+
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	return sb.String()
+}
+
+func (m Model) renderSystemInfo() string {
+	var sb strings.Builder
+
+	sb.WriteString(styles.HeaderStyle.Render(" System Info ") + "\n")
+	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
+
+	if len(m.systemInfo) > 0 {
+		for k, v := range m.systemInfo {
+			sb.WriteString(fmt.Sprintf("  %-20s %s\n", k+":", v))
+		}
+	} else {
+		sb.WriteString("  Use 'winalog system info' CLI command to collect system info.\n")
+	}
+
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	return sb.String()
+}
+
+func (m Model) renderPersistence() string {
+	var sb strings.Builder
+
+	sb.WriteString(styles.HeaderStyle.Render(" Persistence Detection ") + "\n")
+	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
+
+	if len(m.persistenceResults) > 0 {
+		for i, det := range m.persistenceResults {
+			if i >= 20 {
+				sb.WriteString(fmt.Sprintf("\n  ... and %d more detections", len(m.persistenceResults)-20))
+				break
+			}
+			severityBadge := styles.SeverityBadge(string(det.Severity))
+			sb.WriteString(fmt.Sprintf("  %s %s\n", severityBadge, det.Title))
+			sb.WriteString(fmt.Sprintf("     %s\n", truncate(det.Description, 60)))
+		}
+	} else {
+		sb.WriteString("  Use 'winalog persistence detect' CLI command to detect persistence.\n")
+	}
+
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	return sb.String()
+}
+
+func (m Model) renderForensics() string {
+	var sb strings.Builder
+
+	sb.WriteString(styles.HeaderStyle.Render(" Forensics ") + "\n")
+	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
+	sb.WriteString("  Available forensics tools:\n")
+	sb.WriteString("    - File hash calculation (MD5, SHA1, SHA256)\n")
+	sb.WriteString("    - Digital signature verification\n")
+	sb.WriteString("    - Timestamp analysis\n")
+	sb.WriteString("    - Evidence chain tracking\n")
+	sb.WriteString("    - Memory forensics (Windows only)\n")
+	sb.WriteString("\n  Use 'winalog forensics' CLI command for forensics operations.\n")
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	return sb.String()
+}
+
+func (m Model) renderMetrics() string {
+	var sb strings.Builder
+
+	sb.WriteString(styles.HeaderStyle.Render(" Metrics ") + "\n")
+	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
+
+	if m.stats != nil {
+		sb.WriteString(fmt.Sprintf("  Total Alerts: %d\n", m.stats.Total))
+		sb.WriteString(fmt.Sprintf("  Avg Per Day: %.1f\n", m.stats.AvgPerDay))
+		if len(m.stats.BySeverity) > 0 {
+			sb.WriteString("\n  By Severity:\n")
+			for sev, count := range m.stats.BySeverity {
+				sb.WriteString(fmt.Sprintf("    %-10s %d\n", sev+":", count))
+			}
+		}
+	} else {
+		sb.WriteString("  No metrics available.\n")
+	}
+
 	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
 
 	return sb.String()
