@@ -54,7 +54,7 @@ func (s *Server) setupHandlers() {
 	s.importEng = &ImportHandler{
 		db: s.db,
 	}
-	s.liveEng = &LiveHandler{}
+	s.liveEng = NewLiveHandler(s.db)
 	s.persistenceEng = NewPersistenceHandler()
 	s.timelineEng = &TimelineHandler{
 		db: s.db,

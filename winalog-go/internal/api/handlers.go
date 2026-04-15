@@ -330,13 +330,14 @@ func (h *AlertHandler) GetAlertStats(c *gin.Context) {
 
 func (h *AlertHandler) GetAlertTrend(c *gin.Context) {
 	days, _ := strconv.Atoi(c.DefaultQuery("days", "7"))
-	_ = days
+	if days <= 0 || days > 90 {
+		days = 7
+	}
 
-	trend := &types.AlertTrend{
-		Daily:       make([]*types.TrendPoint, 0),
-		Weekly:      make([]*types.TrendPoint, 0),
-		ByHour:      make([]*types.TrendPoint, 0),
-		ByDayOfWeek: make([]*types.TrendPoint, 0),
+	trend, err := h.db.AlertRepo().GetTrend(days)
+	if err != nil {
+		c.JSON(500, ErrorResponse{Error: err.Error()})
+		return
 	}
 
 	c.JSON(200, trend)

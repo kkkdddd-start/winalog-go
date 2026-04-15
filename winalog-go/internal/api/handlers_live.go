@@ -1,12 +1,20 @@
 package api
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
 
-type LiveHandler struct{}
+type LiveHandler struct {
+	db         *storage.DB
+	startTime  time.Time
+	eventCount int64
+	lastCount  int64
+	mu         sync.RWMutex
+}
 
 type LiveEventMessage struct {
 	Type string      `json:"type"`
@@ -24,6 +32,13 @@ type duration time.Duration
 
 func (d duration) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + time.Duration(d).String() + `"`), nil
+}
+
+func NewLiveHandler(db *storage.DB) *LiveHandler {
+	return &LiveHandler{
+		db:        db,
+		startTime: time.Now(),
+	}
 }
 
 func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
@@ -49,10 +64,30 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 }
 
 func (h *LiveHandler) GetLiveStats(c *gin.Context) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	var totalEvents int64
+	if h.db != nil {
+		stats, err := h.db.GetStats()
+		if err == nil {
+			totalEvents = stats.EventCount
+		}
+	}
+
+	uptime := time.Since(h.startTime)
+	eventsPerSec := 0.0
+	if uptime.Seconds() > 0 {
+		eventsPerSec = float64(totalEvents-h.lastCount) / uptime.Seconds()
+		if eventsPerSec < 0 {
+			eventsPerSec = 0
+		}
+	}
+
 	stats := &LiveStats{
-		TotalEvents:  0,
-		EventsPerSec: 0,
-		Uptime:       duration(0),
+		TotalEvents:  totalEvents,
+		EventsPerSec: eventsPerSec,
+		Uptime:       duration(uptime),
 		Timestamp:    time.Now(),
 	}
 

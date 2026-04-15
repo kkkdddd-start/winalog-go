@@ -366,6 +366,106 @@ func (r *AlertRepo) GetStats() (*types.AlertStatsData, error) {
 	return stats, nil
 }
 
+func (r *AlertRepo) GetTrend(days int) (*types.AlertTrend, error) {
+	trend := &types.AlertTrend{
+		Daily:       make([]*types.TrendPoint, 0),
+		Weekly:      make([]*types.TrendPoint, 0),
+		ByHour:      make([]*types.TrendPoint, 0),
+		ByDayOfWeek: make([]*types.TrendPoint, 0),
+	}
+
+	now := time.Now()
+	startDate := now.AddDate(0, 0, -days)
+
+	rows, err := r.db.Query(`
+		SELECT DATE(first_seen) as date, COUNT(*) as count 
+		FROM alerts 
+		WHERE first_seen >= ?
+		GROUP BY DATE(first_seen)
+		ORDER BY date`, startDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	dailyMap := make(map[string]int64)
+	for rows.Next() {
+		var date string
+		var count int64
+		if err := rows.Scan(&date, &count); err != nil {
+			continue
+		}
+		dailyMap[date] = count
+	}
+
+	for i := days - 1; i >= 0; i-- {
+		date := now.AddDate(0, 0, -i)
+		dateStr := date.Format("2006-01-02")
+		count := dailyMap[dateStr]
+		trend.Daily = append(trend.Daily, &types.TrendPoint{
+			Date:  dateStr,
+			Count: count,
+		})
+	}
+
+	hourRows, err := r.db.Query(`
+		SELECT strftime('%H', first_seen) as hour, COUNT(*) as count 
+		FROM alerts 
+		WHERE first_seen >= ?
+		GROUP BY strftime('%H', first_seen)
+		ORDER BY hour`, startDate)
+	if err == nil {
+		defer hourRows.Close()
+		hourMap := make(map[int]int64)
+		for hourRows.Next() {
+			var hourStr string
+			var count int64
+			if err := hourRows.Scan(&hourStr, &count); err != nil {
+				continue
+			}
+			var hour int
+			fmt.Sscanf(hourStr, "%d", &hour)
+			hourMap[hour] = count
+		}
+		for h := 0; h < 24; h++ {
+			trend.ByHour = append(trend.ByHour, &types.TrendPoint{
+				Date:  fmt.Sprintf("%02d:00", h),
+				Count: hourMap[h],
+			})
+		}
+	}
+
+	dayRows, err := r.db.Query(`
+		SELECT strftime('%w', first_seen) as dow, COUNT(*) as count 
+		FROM alerts 
+		WHERE first_seen >= ?
+		GROUP BY strftime('%w', first_seen)
+		ORDER BY dow`, startDate)
+	if err == nil {
+		defer dayRows.Close()
+		dayNames := []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
+		dowMap := make(map[int]int64)
+		for dayRows.Next() {
+			var dowStr string
+			var count int64
+			if err := dayRows.Scan(&dowStr, &count); err != nil {
+				continue
+			}
+			var dow int
+			fmt.Sscanf(dowStr, "%d", &dow)
+			dowMap[dow] = count
+		}
+		for d := 0; d < 7; d++ {
+			trend.ByDayOfWeek = append(trend.ByDayOfWeek, &types.TrendPoint{
+				Date:  dayNames[d],
+				Count: dowMap[d],
+			})
+		}
+	}
+
+	return trend, nil
+}
+
 func (r *AlertRepo) Resolve(id int64, notes string) error {
 	query := "UPDATE alerts SET resolved = 1, resolved_time = ?, notes = ? WHERE id = ?"
 	_, err := r.db.Exec(query, time.Now(), notes, id)

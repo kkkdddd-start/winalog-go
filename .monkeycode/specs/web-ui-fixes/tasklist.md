@@ -17,8 +17,8 @@
 
 - [x] **2.1** Dashboard - collectionStats 全是 "N/A" 硬编码
 - [x] **2.2** Forensics 页面 - `handleVerify` 失败时用 Math.random()
-- [ ] **2.3** 后端 AlertHandler.GetAlertTrend - 返回空数据
-- [ ] **2.4** 后端 LiveHandler.GetLiveStats - 返回全 0 假数据
+- [x] **2.3** 后端 AlertHandler.GetAlertTrend - 返回空数据
+- [x] **2.4** 后端 LiveHandler.GetLiveStats - 返回全 0 假数据
 
 ### P2 - 次要功能（可以修复）
 
@@ -96,3 +96,5 @@ const handleSave = () => {
 | 260415 | Forensics 页面 Math.random() 修复 | ✅ 完成 |
 | 260415 | CLI runCollect 实现 | ✅ 完成 |
 | 260415 | Dashboard collectionStats API | ✅ 完成 |
+| 260415 | AlertHandler.GetAlertTrend 真实数据 | ✅ 完成 |
+| 260415 | LiveHandler.GetLiveStats 真实数据 | ✅ 完成 |
