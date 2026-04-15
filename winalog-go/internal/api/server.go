@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/analyzers"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
@@ -29,6 +30,8 @@ type Server struct {
 	forensicsEng   *ForensicsHandler
 	dashboardEng   *DashboardHandler
 	settingsEng    *SettingsHandler
+	analyzeEng     *AnalyzeHandler
+	collectEng     *CollectHandler
 }
 
 func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Server {
@@ -71,45 +74,8 @@ func (s *Server) setupHandlers() {
 	s.forensicsEng = NewForensicsHandler(s.db)
 	s.dashboardEng = NewDashboardHandler(s.db)
 	s.settingsEng = NewSettingsHandler(s.cfg, s.configPath)
-}
-
-func NewServer(db *storage.DB, addr string) *Server {
-	gin.SetMode(gin.ReleaseMode)
-	engine := gin.New()
-
-	engine.Use(gin.Recovery())
-	engine.Use(requestLogger())
-	engine.Use(corsMiddleware())
-
-	server := &Server{
-		engine: engine,
-		db:     db,
-		addr:   addr,
-	}
-
-	server.setupHandlers()
-	server.setupRoutes()
-
-	return server
-}
-
-func (s *Server) setupHandlers() {
-	s.alertEng = &AlertHandler{
-		db: s.db,
-	}
-	s.importEng = &ImportHandler{
-		db: s.db,
-	}
-	s.liveEng = NewLiveHandler(s.db)
-	s.persistenceEng = NewPersistenceHandler()
-	s.timelineEng = &TimelineHandler{
-		db: s.db,
-	}
-	s.systemEng = NewSystemHandler(s.db)
-	s.rulesEng = NewRulesHandler()
-	s.reportsEng = NewReportsHandler(s.db)
-	s.forensicsEng = NewForensicsHandler(s.db)
-	s.dashboardEng = NewDashboardHandler(s.db)
+	s.analyzeEng = NewAnalyzeHandler(s.db, nil)
+	s.collectEng = NewCollectHandler(s.db)
 }
 
 func (s *Server) setupRoutes() {
@@ -120,6 +86,8 @@ func (s *Server) setupRoutes() {
 	SetupReportsRoutes(s.engine, s.reportsEng)
 	SetupForensicsRoutes(s.engine, s.forensicsEng)
 	SetupSettingsRoutes(s.engine, s.settingsEng)
+	SetupAnalyzeRoutes(s.engine, s.analyzeEng)
+	SetupCollectRoutes(s.engine, s.collectEng)
 
 	staticDir := filepath.Join("internal", "gui", "dist")
 	staticFs := http.Dir(staticDir)

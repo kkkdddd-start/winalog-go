@@ -33,6 +33,7 @@ const (
 	ErrCodeAlertAlreadyResolved ErrorCode = "ALERT_ALREADY_RESOLVED"
 	ErrCodeEventNotFound        ErrorCode = "EVENT_NOT_FOUND"
 	ErrCodeInvalidRequest       ErrorCode = "INVALID_REQUEST"
+	ErrCodeInternal             ErrorCode = "INTERNAL_ERROR"
 )
 
 type SuccessResponse struct {

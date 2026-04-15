@@ -56,6 +56,48 @@ function Reports() {
     }
   }
 
+  const handleView = async (report: Report) => {
+    try {
+      const res = await reportsAPI.get(report.id)
+      if (res.data.content) {
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          if (report.format === 'html') {
+            newWindow.document.write(res.data.content)
+            newWindow.document.close()
+          } else {
+            newWindow.document.write(`<pre>${JSON.stringify(res.data, null, 2)}</pre>`)
+            newWindow.document.close()
+          }
+        }
+      } else {
+        alert('Report content not available')
+      }
+    } catch (error) {
+      console.error('Failed to view report:', error)
+      alert('Failed to view report')
+    }
+  }
+
+  const handleDownload = async (report: Report) => {
+    try {
+      const format = report.format || 'json'
+      const res = await reportsAPI.export(format as 'json' | 'csv' | 'excel')
+      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${report.name}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to download report:', error)
+      alert('Failed to download report')
+    }
+  }
+
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -232,8 +274,8 @@ function Reports() {
                     <td>{new Date(report.generated_at).toLocaleString()}</td>
                     <td>{formatSize(report.size)}</td>
                     <td>
-                      <button className="btn-small">View</button>
-                      <button className="btn-small">Download</button>
+                      <button className="btn-small" onClick={() => handleView(report)}>View</button>
+                      <button className="btn-small" onClick={() => handleDownload(report)}>Download</button>
                     </td>
                   </tr>
                 ))}

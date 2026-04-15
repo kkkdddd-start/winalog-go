@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '../locales/I18n'
 import { Line } from 'react-chartjs-2'
+import { persistenceAPI } from '../api'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -77,11 +78,8 @@ function Persistence() {
   const fetchDetections = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/persistence/detect')
-      if (!response.ok) {
-        throw new Error('Failed to fetch detections')
-      }
-      const data = await response.json()
+      const response = await persistenceAPI.detect()
+      const data = response.data
       setDetections(data.detections || [])
       setStats(calculateStats(data.detections || []))
       setError(null)

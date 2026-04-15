@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { settingsAPI } from '../api'
 
 function Settings() {
   const [activeTab, setActiveTab] = useState('general')
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   const [settings, setSettings] = useState({
     databasePath: './winalog.db',
@@ -19,9 +22,63 @@ function Settings() {
     exportDirectory: './exports',
   })
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+  useEffect(() => {
+    settingsAPI.get().then(res => {
+      const data = res.data
+      setSettings({
+        databasePath: data.database_path || './winalog.db',
+        logLevel: data.log_level || 'info',
+        maxEvents: data.max_events || 1000000,
+        retentionDays: data.retention_days || 90,
+        enableAlerting: data.enable_alerting ?? true,
+        enableLiveCollection: data.enable_live_collection ?? false,
+        enableAutoUpdate: data.enable_auto_update ?? false,
+        apiPort: data.api_port || 8080,
+        apiHost: data.api_host || '0.0.0.0',
+        corsEnabled: data.cors_enabled ?? true,
+        maxImportFileSize: data.max_import_file_size || 1024,
+        exportDirectory: data.export_directory || './exports',
+      })
+    }).catch(console.error)
+  }, [])
+
+  const handleSave = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      await settingsAPI.save({
+        database_path: settings.databasePath,
+        log_level: settings.logLevel,
+        max_events: settings.maxEvents,
+        retention_days: settings.retentionDays,
+        enable_alerting: settings.enableAlerting,
+        enable_live_collection: settings.enableLiveCollection,
+        enable_auto_update: settings.enableAutoUpdate,
+        api_port: settings.apiPort,
+        api_host: settings.apiHost,
+        cors_enabled: settings.corsEnabled,
+        max_import_file_size: settings.maxImportFileSize,
+        export_directory: settings.exportDirectory,
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to save settings')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReset = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      await settingsAPI.reset()
+      window.location.reload()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to reset settings')
+      setLoading(false)
+    }
   }
 
   const handleChange = (key: string, value: any) => {
@@ -329,10 +386,11 @@ function Settings() {
           )}
 
           <div className="settings-actions">
-            <button onClick={handleSave} className="btn-primary">
-              Save Changes
+            {error && <span className="error-text">{error}</span>}
+            <button onClick={handleSave} className="btn-primary" disabled={loading}>
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
-            <button onClick={() => window.location.reload()} className="btn-secondary">
+            <button onClick={handleReset} className="btn-secondary" disabled={loading}>
               Reset to Defaults
             </button>
           </div>
@@ -583,6 +641,13 @@ function Settings() {
           padding: 16px 0;
           margin-top: auto;
           border-top: 1px solid #333;
+          align-items: center;
+        }
+        
+        .error-text {
+          color: #ef4444;
+          font-size: 13px;
+          margin-right: auto;
         }
         
         .btn-primary {

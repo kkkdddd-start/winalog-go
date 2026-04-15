@@ -251,6 +251,15 @@ export const settingsAPI = {
     api.post('/settings/reset'),
 }
 
+export const persistenceAPI = {
+  detect: () =>
+    api.get('/persistence/detect'),
+  listCategories: () =>
+    api.get('/persistence/categories'),
+  listTechniques: () =>
+    api.get('/persistence/techniques'),
+}
+
 export interface SearchParams {
   keywords?: string
   regex?: boolean

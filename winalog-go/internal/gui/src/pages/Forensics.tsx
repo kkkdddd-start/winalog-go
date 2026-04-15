@@ -92,6 +92,42 @@ function Forensics() {
     )
   }
 
+  const handleViewEvidence = async (item: EvidenceItem) => {
+    try {
+      const res = await forensicsAPI.getEvidence(item.id)
+      if (res.data.content) {
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          newWindow.document.write(`<pre>${JSON.stringify(res.data, null, 2)}</pre>`)
+          newWindow.document.close()
+        }
+      } else {
+        alert('Evidence content not available')
+      }
+    } catch (error) {
+      console.error('Failed to view evidence:', error)
+      alert('Failed to view evidence')
+    }
+  }
+
+  const handleExportEvidence = async (item: EvidenceItem) => {
+    try {
+      const res = await forensicsAPI.exportEvidence(item.id, 'json')
+      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `evidence_${item.type}_${item.id}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to export evidence:', error)
+      alert('Failed to export evidence')
+    }
+  }
+
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -256,8 +292,8 @@ function Forensics() {
                     <td>{formatSize(item.size)}</td>
                     <td><code className="evidence-hash">{item.hash.substring(0, 16)}...</code></td>
                     <td>
-                      <button className="btn-small">View</button>
-                      <button className="btn-small">Export</button>
+                      <button className="btn-small" onClick={() => handleViewEvidence(item)}>View</button>
+                      <button className="btn-small" onClick={() => handleExportEvidence(item)}>Export</button>
                     </td>
                   </tr>
                 ))}

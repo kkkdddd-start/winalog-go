@@ -52,6 +52,14 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 		analyzerType = c.DefaultQuery("type", "brute-force")
 	}
 
+	if h.manager == nil {
+		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
+			Error: "analyzer manager not initialized",
+			Code:  ErrCodeInternal,
+		})
+		return
+	}
+
 	analyzer, ok := h.manager.Get(analyzerType)
 	if !ok {
 		c.JSON(http.StatusNotFound, ErrorResponse{
@@ -126,6 +134,12 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 }
 
 func (h *AnalyzeHandler) ListAnalyzers(c *gin.Context) {
+	if h.manager == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"analyzers": []string{},
+		})
+		return
+	}
 	analyzerList := h.manager.List()
 	c.JSON(http.StatusOK, gin.H{
 		"analyzers": analyzerList,
@@ -134,6 +148,14 @@ func (h *AnalyzeHandler) ListAnalyzers(c *gin.Context) {
 
 func (h *AnalyzeHandler) GetAnalyzerInfo(c *gin.Context) {
 	analyzerType := c.Param("type")
+
+	if h.manager == nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{
+			Error: "analyzer not found: " + analyzerType,
+			Code:  ErrCodeInvalidRequest,
+		})
+		return
+	}
 
 	analyzer, ok := h.manager.Get(analyzerType)
 	if !ok {
@@ -148,4 +170,17 @@ func (h *AnalyzeHandler) GetAnalyzerInfo(c *gin.Context) {
 		"type":      analyzer.Name(),
 		"available": true,
 	})
+}
+
+func SetupAnalyzeRoutes(r *gin.Engine, analyzeHandler *AnalyzeHandler) {
+	analyze := r.Group("/api/analyze")
+	{
+		analyze.POST("/:type", analyzeHandler.RunAnalysis)
+	}
+
+	analyzers := r.Group("/api/analyzers")
+	{
+		analyzers.GET("", analyzeHandler.ListAnalyzers)
+		analyzers.GET("/:type", analyzeHandler.GetAnalyzerInfo)
+	}
 }
