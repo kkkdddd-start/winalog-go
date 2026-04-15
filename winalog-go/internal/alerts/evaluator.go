@@ -116,6 +116,40 @@ func (e *Evaluator) matchFilter(filter *rules.Filter, event *types.Event) bool {
 		}
 	}
 
+	if len(filter.IpAddress) > 0 {
+		if event.IPAddress == nil {
+			return false
+		}
+		found := false
+		for _, ip := range filter.IpAddress {
+			if *event.IPAddress == ip {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	if len(filter.ExcludeComputers) > 0 {
+		for _, computer := range filter.ExcludeComputers {
+			if event.Computer == computer {
+				return false
+			}
+		}
+	}
+
+	if len(filter.ExcludeUsers) > 0 {
+		if event.User != nil {
+			for _, user := range filter.ExcludeUsers {
+				if *event.User == user {
+					return false
+				}
+			}
+		}
+	}
+
 	return true
 }
 

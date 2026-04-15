@@ -50,9 +50,6 @@ func (t *AlertTrend) Record(alert *types.Alert) {
 	if t.weekly[dayIndex] == nil {
 		t.weekly[dayIndex] = make(map[int]int64)
 	}
-	if t.weekly[dayIndex][hour] == 0 {
-		t.weekly[dayIndex] = make(map[int]int64)
-	}
 	t.weekly[dayIndex][hour]++
 
 	severityKey := string(alert.Severity)

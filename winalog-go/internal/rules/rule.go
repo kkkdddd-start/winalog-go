@@ -77,14 +77,21 @@ type Pattern struct {
 }
 
 type Filter struct {
-	EventIDs    []int32          `yaml:"event_ids,omitempty"`
-	Levels      []int            `yaml:"levels,omitempty"`
-	LogNames    []string         `yaml:"log_names,omitempty"`
-	Sources     []string         `yaml:"sources,omitempty"`
-	Computers   []string         `yaml:"computers,omitempty"`
-	Keywords    string           `yaml:"keywords,omitempty"`
-	KeywordMode LogicalOp        `yaml:"keyword_mode,omitempty"`
-	TimeRange   *types.TimeRange `yaml:"time_range,omitempty"`
+	EventIDs         []int32          `yaml:"event_ids,omitempty"`
+	Levels           []int            `yaml:"levels,omitempty"`
+	LogNames         []string         `yaml:"log_names,omitempty"`
+	Sources          []string         `yaml:"sources,omitempty"`
+	Computers        []string         `yaml:"computers,omitempty"`
+	Keywords         string           `yaml:"keywords,omitempty"`
+	KeywordMode      LogicalOp        `yaml:"keyword_mode,omitempty"`
+	TimeRange        *types.TimeRange `yaml:"time_range,omitempty"`
+	LogonTypes       []int            `yaml:"logon_types,omitempty"`
+	ExcludeUsers     []string         `yaml:"exclude_users,omitempty"`
+	ExcludeComputers []string         `yaml:"exclude_computers,omitempty"`
+	ExcludeDomains   []string         `yaml:"exclude_domains,omitempty"`
+	MinFailureCount  int              `yaml:"min_failure_count,omitempty"`
+	IpAddress        []string         `yaml:"ip_address,omitempty"`
+	ProcessNames     []string         `yaml:"process_names,omitempty"`
 }
 
 type Conditions struct {
