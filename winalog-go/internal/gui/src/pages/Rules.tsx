@@ -1,26 +1,64 @@
-import { useState } from 'react'
-
-interface Rule {
-  id: string
-  name: string
-  enabled: boolean
-  severity: string
-  description: string
-}
+import { useEffect, useState } from 'react'
+import { rulesAPI, RuleInfo } from '../api'
 
 function Rules() {
-  const [rules] = useState<Rule[]>([
-    { id: '1', name: 'Brute Force Detection', enabled: true, severity: 'high', description: 'Detect brute force login attempts' },
-    { id: '2', name: 'Suspicious PowerShell', enabled: true, severity: 'medium', description: 'Detect suspicious PowerShell execution' },
-    { id: '3', name: 'Privilege Escalation', enabled: true, severity: 'critical', description: 'Detect privilege escalation attempts' },
-  ])
+  const [rules, setRules] = useState<RuleInfo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [totalCount, setTotalCount] = useState(0)
+  const [enabledCount, setEnabledCount] = useState(0)
+
+  const fetchRules = () => {
+    rulesAPI.list()
+      .then(res => {
+        setRules(res.data.rules || [])
+        setTotalCount(res.data.total_count || 0)
+        setEnabledCount(res.data.enabled_count || 0)
+        setLoading(false)
+      })
+      .catch(err => {
+        setError(err.message || 'Failed to load rules')
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => {
+    fetchRules()
+  }, [])
+
+  const handleToggle = (name: string, enabled: boolean) => {
+    rulesAPI.toggle(name, enabled)
+      .then(() => {
+        setRules(rules.map(r => 
+          r.name === name ? { ...r, enabled: !enabled } : r
+        ))
+        setEnabledCount(prev => enabled ? prev - 1 : prev + 1)
+      })
+      .catch(err => {
+        console.error('Failed to toggle rule:', err)
+      })
+  }
+
+  const getSeverityClass = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+      case 'critical': return 'severity-critical'
+      case 'high': return 'severity-high'
+      case 'medium': return 'severity-medium'
+      case 'low': return 'severity-low'
+      default: return ''
+    }
+  }
+
+  if (loading) return <div className="rules-page"><div className="loading">Loading...</div></div>
+
+  if (error) return <div className="rules-page"><div className="error">Error: {error}</div></div>
 
   return (
     <div className="rules-page">
       <h2>Rule Management</h2>
       
       <div className="detail-panel">
-        <h3>Alert Rules</h3>
+        <h3>Alert Rules ({enabledCount}/{totalCount} enabled)</h3>
         <p>Configure and manage alert rules for security event detection.</p>
         
         <table className="rules-table">
@@ -28,7 +66,9 @@ function Rules() {
             <tr>
               <th>Name</th>
               <th>Severity</th>
+              <th>Score</th>
               <th>Description</th>
+              <th>MITRE</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -38,14 +78,24 @@ function Rules() {
               <tr key={rule.id}>
                 <td>{rule.name}</td>
                 <td>
-                  <span className={`badge severity-${rule.severity}`}>
+                  <span className={`badge ${getSeverityClass(rule.severity)}`}>
                     {rule.severity}
                   </span>
                 </td>
-                <td>{rule.description}</td>
+                <td>{rule.score}</td>
+                <td>{rule.description?.substring(0, 50)}...</td>
+                <td>
+                  {rule.mitre_attack?.map(m => (
+                    <code key={m} style={{marginRight: '4px'}}>{m}</code>
+                  ))}
+                </td>
                 <td>
                   <label className="switch">
-                    <input type="checkbox" defaultChecked={rule.enabled} />
+                    <input 
+                      type="checkbox" 
+                      checked={rule.enabled}
+                      onChange={() => handleToggle(rule.name, rule.enabled)}
+                    />
                     <span className="slider"></span>
                   </label>
                 </td>
@@ -74,6 +124,11 @@ function Rules() {
           border: 1px solid #333;
           padding: 10px;
           text-align: left;
+          font-size: 0.9em;
+        }
+        .rules-table th {
+          background: #1a1a2e;
+          font-weight: bold;
         }
         .switch {
           position: relative;

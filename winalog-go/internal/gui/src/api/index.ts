@@ -75,6 +75,58 @@ export const liveAPI = {
 export const systemAPI = {
   health: () =>
     api.get('/health'),
+  getInfo: () =>
+    api.get('/system/info'),
+  getMetrics: () =>
+    api.get('/system/metrics'),
+}
+
+export const rulesAPI = {
+  list: () =>
+    api.get('/rules'),
+  get: (name: string) =>
+    api.get(`/rules/${name}`),
+  toggle: (name: string, enabled: boolean) =>
+    api.post(`/rules/${name}/toggle?enabled=${enabled}`),
+}
+
+export const reportsAPI = {
+  list: () =>
+    api.get('/reports'),
+  generate: (params: ReportParams) =>
+    api.post('/reports', params),
+  get: (id: string) =>
+    api.get(`/reports/${id}`),
+  export: (format: 'json' | 'csv' | 'excel') =>
+    api.get(`/reports/export?format=${format}`),
+}
+
+export interface ReportParams {
+  type: string
+  format: string
+  start_time?: string
+  end_time?: string
+}
+
+export const forensicsAPI = {
+  calculateHash: (path: string) =>
+    api.post('/forensics/hash', { path }),
+  verifyHash: (path: string, expected: string) =>
+    api.get(`/forensics/verify-hash?path=${path}&expected=${expected}`),
+  verifySignature: (path: string) =>
+    api.get(`/forensics/signature?path=${path}`),
+  isSigned: (path: string) =>
+    api.get(`/forensics/is-signed?path=${path}`),
+  collect: (type: string, outputPath?: string) =>
+    api.post('/forensics/collect', { type, output_path: outputPath }),
+  listEvidence: () =>
+    api.get('/forensics/evidence'),
+  getEvidence: (id: string) =>
+    api.get(`/forensics/evidence/${id}`),
+  chainOfCustody: () =>
+    api.get('/forensics/chain-of-custody'),
+  memoryDump: (pid?: number) =>
+    api.get(`/forensics/memory-dump${pid ? `?pid=${pid}` : ''}`),
 }
 
 export interface TimelineEntry {
@@ -124,6 +176,17 @@ export interface SearchParams {
   page_size?: number
   sort_by?: string
   sort_order?: string
+}
+
+export interface RuleInfo {
+  id: string
+  name: string
+  description: string
+  enabled: boolean
+  severity: string
+  score: number
+  mitre_attack?: string[]
+  tags?: string[]
 }
 
 export default api

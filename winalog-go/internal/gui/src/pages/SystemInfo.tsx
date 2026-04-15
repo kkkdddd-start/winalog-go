@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-// import { systemAPI } from '../api'
+import { systemAPI } from '../api'
 
 interface SystemInfo {
   hostname: string
@@ -10,27 +10,40 @@ interface SystemInfo {
   is_admin: boolean
   timezone: string
   local_time: string
+  uptime_seconds: number
+  go_version: string
+  cpu_count: number
 }
 
 function SystemInfo() {
   const [info, setInfo] = useState<SystemInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(false)
-    setInfo({
-      hostname: 'WORKSTATION',
-      domain: 'WORKGROUP',
-      os_name: 'Windows 11 Pro',
-      os_version: '22H2',
-      architecture: 'x64',
-      is_admin: true,
-      timezone: 'UTC+8',
-      local_time: new Date().toISOString(),
-    })
+    systemAPI.getInfo()
+      .then(res => {
+        setInfo(res.data)
+        setLoading(false)
+      })
+      .catch(err => {
+        setError(err.message || 'Failed to load system info')
+        setLoading(false)
+      })
   }, [])
 
-  if (loading) return <div>Loading...</div>
+  const formatUptime = (seconds: number) => {
+    const days = Math.floor(seconds / 86400)
+    const hours = Math.floor((seconds % 86400) / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    if (days > 0) return `${days}d ${hours}h ${mins}m`
+    if (hours > 0) return `${hours}h ${mins}m`
+    return `${mins}m`
+  }
+
+  if (loading) return <div className="systeminfo-page"><div className="loading">Loading...</div></div>
+
+  if (error) return <div className="systeminfo-page"><div className="error">Error: {error}</div></div>
 
   return (
     <div className="systeminfo-page">
@@ -41,27 +54,27 @@ function SystemInfo() {
         <div className="info-grid">
           <div className="info-item">
             <label>Hostname:</label>
-            <span>{info?.hostname}</span>
+            <span>{info?.hostname || 'N/A'}</span>
           </div>
           <div className="info-item">
             <label>Domain:</label>
-            <span>{info?.domain}</span>
+            <span>{info?.domain || 'N/A'}</span>
           </div>
           <div className="info-item">
             <label>OS Name:</label>
-            <span>{info?.os_name}</span>
+            <span>{info?.os_name || 'N/A'}</span>
           </div>
           <div className="info-item">
             <label>OS Version:</label>
-            <span>{info?.os_version}</span>
+            <span>{info?.os_version || 'N/A'}</span>
           </div>
           <div className="info-item">
             <label>Architecture:</label>
-            <span>{info?.architecture}</span>
+            <span>{info?.architecture || 'N/A'}</span>
           </div>
           <div className="info-item">
             <label>Timezone:</label>
-            <span>{info?.timezone}</span>
+            <span>{info?.timezone || 'N/A'}</span>
           </div>
           <div className="info-item">
             <label>Admin:</label>
@@ -75,9 +88,26 @@ function SystemInfo() {
       </div>
 
       <div className="detail-panel">
+        <h3>Runtime Information</h3>
+        <div className="info-grid">
+          <div className="info-item">
+            <label>Go Version:</label>
+            <span>{info?.go_version || 'N/A'}</span>
+          </div>
+          <div className="info-item">
+            <label>CPU Count:</label>
+            <span>{info?.cpu_count || 'N/A'}</span>
+          </div>
+          <div className="info-item">
+            <label>Uptime:</label>
+            <span>{info?.uptime_seconds ? formatUptime(info.uptime_seconds) : 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="detail-panel">
         <h3>Collection Status</h3>
-        <p>Last system information collection: Never</p>
-        <button>Collect Now</button>
+        <p>Last system information collection: {info?.local_time ? new Date(info.local_time).toLocaleString() : 'Never'}</p>
       </div>
 
       <style>{`

@@ -20,6 +20,10 @@ type Server struct {
 	liveEng        *LiveHandler
 	persistenceEng *PersistenceHandler
 	timelineEng    *TimelineHandler
+	systemEng      *SystemHandler
+	rulesEng       *RulesHandler
+	reportsEng     *ReportsHandler
+	forensicsEng   *ForensicsHandler
 }
 
 func NewServer(db *storage.DB, addr string) *Server {
@@ -54,21 +58,29 @@ func (s *Server) setupHandlers() {
 	s.timelineEng = &TimelineHandler{
 		db: s.db,
 	}
+	s.systemEng = NewSystemHandler(s.db)
+	s.rulesEng = NewRulesHandler()
+	s.reportsEng = NewReportsHandler(s.db)
+	s.forensicsEng = NewForensicsHandler(s.db)
 }
 
 func (s *Server) setupRoutes() {
 	SetupRoutes(s.engine, s.alertEng, s.importEng, s.liveEng, s.timelineEng)
 	SetupPersistenceRoutes(s.engine, s.persistenceEng)
+	SetupSystemRoutes(s.engine, s.systemEng)
+	SetupRulesRoutes(s.engine, s.rulesEng)
+	SetupReportsRoutes(s.engine, s.reportsEng)
+	SetupForensicsRoutes(s.engine, s.forensicsEng)
 
 	staticDir := filepath.Join("internal", "gui", "dist")
-	staticFS := http.Dir(staticDir)
+	staticFs := http.Dir(staticDir)
 
 	s.engine.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 		if path == "/" {
 			path = "/index.html"
 		}
-		file, err := staticFS.Open(path)
+		file, err := staticFs.Open(path)
 		if err != nil {
 			c.Data(404, "text/plain", []byte("Not found"))
 			return
