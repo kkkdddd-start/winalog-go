@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -30,15 +31,19 @@ type CollectRequest struct {
 }
 
 type HashResponse struct {
-	FilePath string `json:"file_path"`
-	SHA256   string `json:"sha256"`
+	Status   string `json:"status,omitempty"`
+	Error    string `json:"error,omitempty"`
+	FilePath string `json:"file_path,omitempty"`
+	SHA256   string `json:"sha256,omitempty"`
 	MD5      string `json:"md5,omitempty"`
 	SHA1     string `json:"sha1,omitempty"`
-	Size     int64  `json:"size"`
+	Size     int64  `json:"size,omitempty"`
 }
 
 type SignatureResponse struct {
-	Status     string     `json:"status"`
+	Status     string     `json:"status,omitempty"`
+	Error      string     `json:"error,omitempty"`
+	Signed     bool       `json:"signed"`
 	Signer     string     `json:"signer,omitempty"`
 	Issuer     string     `json:"issuer,omitempty"`
 	Thumbprint string     `json:"thumbprint,omitempty"`
@@ -60,6 +65,14 @@ func NewForensicsHandler(db *storage.DB) *ForensicsHandler {
 }
 
 func (h *ForensicsHandler) CalculateHash(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, HashResponse{
+			Status: "unavailable",
+			Error:  "forensics is only supported on Windows",
+		})
+		return
+	}
+
 	var req HashRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
@@ -118,6 +131,14 @@ func (h *ForensicsHandler) VerifyHash(c *gin.Context) {
 }
 
 func (h *ForensicsHandler) VerifySignature(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, SignatureResponse{
+			Status: "unavailable",
+			Error:  "signature verification is only supported on Windows",
+		})
+		return
+	}
+
 	path := c.Query("path")
 
 	if path == "" {

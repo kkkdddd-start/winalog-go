@@ -216,9 +216,9 @@ func saveSystemSnapshot(ctx context.Context) error {
 			ProcessName: c.ProcessName,
 			Protocol:    c.Protocol,
 			LocalAddr:   c.LocalAddr,
-			LocalPort:   c.LocalPort,
+			LocalPort:   int(c.LocalPort),
 			RemoteAddr:  c.RemoteAddr,
-			RemotePort:  c.RemotePort,
+			RemotePort:  int(c.RemotePort),
 			State:       c.State,
 			CollectedAt: time.Now(),
 		})

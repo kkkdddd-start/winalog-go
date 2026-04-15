@@ -87,13 +87,24 @@ func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
+	isAdmin := false
+	domain := ""
+	osVersion := ""
+	if runtime.GOOS == "windows" {
+		domain = utils.GetDomain()
+		isAdmin = utils.IsAdmin()
+		osVersion = getWindowsVersionString()
+	} else {
+		osVersion = "Linux Server Mode"
+	}
+
 	info := SystemInfo{
 		Hostname:      hostname,
-		Domain:        utils.GetDomain(),
-		OSName:        "Windows",
-		OSVersion:     getWindowsVersionString(),
+		Domain:        domain,
+		OSName:        runtime.GOOS,
+		OSVersion:     osVersion,
 		Architecture:  runtime.GOARCH,
-		IsAdmin:       utils.IsAdmin(),
+		IsAdmin:       isAdmin,
 		Timezone:      getTimezone(),
 		LocalTime:     time.Now(),
 		UptimeSeconds: int64(time.Since(startTime).Seconds()),
@@ -131,6 +142,14 @@ func (h *SystemHandler) GetMetrics(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetProcesses(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, ProcessResponse{
+			Processes: []*ProcessInfo{},
+			Total:     0,
+		})
+		return
+	}
+
 	limitStr := c.DefaultQuery("limit", "100")
 	limit, _ := strconv.Atoi(limitStr)
 	if limit <= 0 || limit > 500 {
@@ -161,6 +180,14 @@ func (h *SystemHandler) GetProcesses(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, NetworkConnectionResponse{
+			Connections: []*NetworkConnInfo{},
+			Total:       0,
+		})
+		return
+	}
+
 	limitStr := c.DefaultQuery("limit", "100")
 	limit, _ := strconv.Atoi(limitStr)
 	if limit <= 0 || limit > 500 {
@@ -184,9 +211,9 @@ func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
 			PID:         conn.PID,
 			Protocol:    conn.Protocol,
 			LocalAddr:   conn.LocalAddr,
-			LocalPort:   conn.LocalPort,
+			LocalPort:   int(conn.LocalPort),
 			RemoteAddr:  conn.RemoteAddr,
-			RemotePort:  conn.RemotePort,
+			RemotePort:  int(conn.RemotePort),
 			State:       conn.State,
 			ProcessName: conn.ProcessName,
 		})
@@ -257,6 +284,9 @@ func SetupSystemRoutes(r *gin.Engine, systemHandler *SystemHandler) {
 }
 
 func getWindowsVersionString() string {
+	if runtime.GOOS != "windows" {
+		return "N/A"
+	}
 	if winVersion, err := utils.GetWindowsVersion(); err == nil {
 		return fmt.Sprintf("Windows %d.%d (Build %d)", winVersion.Major, winVersion.Minor, winVersion.Build)
 	}

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"runtime"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
@@ -27,6 +28,16 @@ type DetectResponse struct {
 }
 
 func (h *PersistenceHandler) Detect(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, DetectResponse{
+			Detections: []*persistence.Detection{},
+			Summary:    map[string]interface{}{},
+			Duration:   "0s",
+			TotalCount: 0,
+		})
+		return
+	}
+
 	var req DetectRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

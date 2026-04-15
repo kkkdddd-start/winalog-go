@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"runtime"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
@@ -59,6 +61,14 @@ func NewCollectHandler(db *storage.DB) *CollectHandler {
 }
 
 func (h *CollectHandler) StartCollect(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, LogCollectResponse{
+			Status:  "error",
+			Message: "collection is only supported on Windows. This server is running in Linux server mode.",
+		})
+		return
+	}
+
 	ctx := context.Background()
 	result, err := collectors.RunOneClickCollection(ctx, nil)
 
@@ -83,7 +93,7 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 		Status:     "completed",
 		Message:    "Collection completed successfully",
 		OutputPath: oneClickResult.OutputPath,
-		Duration:   oneClickResult.Duration.String(),
+		Duration:   fmt.Sprintf("%v", oneClickResult.Duration),
 	})
 }
 
