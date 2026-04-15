@@ -1,3 +1,5 @@
+//go:build windows
+
 package utils
 
 import (
@@ -11,7 +13,6 @@ var registryHiveMap = map[string]registry.Key{
 	"HKCU": registry.CURRENT_USER,
 	"HKCR": registry.CLASSES_ROOT,
 	"HKU":  registry.USERS,
-	"HKDD": registry.DYN_DATA,
 }
 
 func ListRegistrySubkeys(path string) ([]string, error) {
@@ -31,7 +32,7 @@ func ListRegistrySubkeys(path string) ([]string, error) {
 	}
 	defer regKey.Close()
 
-	subkeys, err := regKey.ReadSubkeyNames()
+	subkeys, err := regKey.ReadSubKeyNames(100)
 	if err != nil {
 		return []string{}, err
 	}

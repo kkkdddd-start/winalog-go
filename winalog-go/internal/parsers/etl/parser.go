@@ -2,7 +2,7 @@ package etl
 
 import (
 	"encoding/binary"
-	"encoding/xml"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"

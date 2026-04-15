@@ -1,9 +1,49 @@
+//go:build windows
+
 package collectors
 
 import (
+	"context"
+
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
+
+type RegistryInfoCollector struct {
+	BaseCollector
+}
+
+type RegistryKey struct {
+	Path  string
+	Name  string
+	Type  string
+	Value string
+}
+
+func NewRegistryInfoCollector() *RegistryInfoCollector {
+	return &RegistryInfoCollector{
+		BaseCollector: BaseCollector{
+			info: CollectorInfo{
+				Name:          "registry_info",
+				Description:   "Collect registry persistence information",
+				RequiresAdmin: true,
+				Version:       "1.0.0",
+			},
+		},
+	}
+}
+
+func (c *RegistryInfoCollector) Collect(ctx context.Context) ([]interface{}, error) {
+	entries, err := c.collectRegistryInfo()
+	if err != nil {
+		return nil, err
+	}
+	interfaces := make([]interface{}, len(entries))
+	for i, e := range entries {
+		interfaces[i] = e
+	}
+	return interfaces, nil
+}
 
 func (c *RegistryInfoCollector) collectRegistryInfo() ([]*types.RegistryPersistence, error) {
 	entries := make([]*types.RegistryPersistence, 0)

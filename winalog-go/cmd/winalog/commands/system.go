@@ -12,6 +12,7 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/api"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
+	"github.com/kkkdddd-start/winalog-go/internal/forensics"
 	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/tui"
@@ -44,12 +45,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\n  Database: %s\n", cfg.Database.Path)
 	fmt.Printf("  Total Events:  %d\n", stats.EventCount)
 	fmt.Printf("  Total Alerts:  %d\n", stats.AlertCount)
-	fmt.Printf("  Storage Size: %.2f MB\n", float64(stats.StorageSize)/(1024*1024))
+	fmt.Printf("  Storage Size: %.2f MB\n", float64(stats.DatabaseSize)/(1024*1024))
 	fmt.Println()
-	fmt.Printf("  Critical Alerts: %d\n", stats.CriticalAlerts)
-	fmt.Printf("  High Alerts:    %d\n", stats.HighAlerts)
-	fmt.Printf("  Medium Alerts:  %d\n", stats.MediumAlerts)
-	fmt.Printf("  Low Alerts:     %d\n", stats.LowAlerts)
+	fmt.Printf("  Import Count: %d\n", stats.ImportCount)
 	fmt.Println("\n" + strings.Repeat("=", 61))
 
 	return nil
@@ -96,22 +94,18 @@ func runInfo(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  Error: %v\n", err)
 		} else {
 			fmt.Printf("  Total Processes: %d\n", len(processes))
-			fmt.Printf("  %-8s %-8s %-30s %-20s\n", "PID", "PPID", "NAME", "COMMAND")
-			fmt.Println("  " + strings.Repeat("-", 66))
+			fmt.Printf("  %-8s %-30s\n", "PID", "NAME")
+			fmt.Println("  " + strings.Repeat("-", 50))
 			for i, p := range processes {
 				if i >= 20 {
 					fmt.Printf("  ... and %d more processes\n", len(processes)-20)
 					break
 				}
 				name := p.Name
-				if len(name) > 28 {
-					name = name[:25] + "..."
+				if len(name) > 40 {
+					name = name[:37] + "..."
 				}
-				args := p.Args
-				if len(args) > 18 {
-					args = args[:15] + "..."
-				}
-				fmt.Printf("  %-8d %-8d %-30s %-20s\n", p.PID, p.PPID, name, args)
+				fmt.Printf("  %-8d %-40s\n", p.PID, name)
 			}
 		}
 	}
@@ -209,10 +203,6 @@ func saveSystemSnapshot(ctx context.Context) error {
 		processInfos = append(processInfos, &storage.ProcessInfo{
 			PID:         p.PID,
 			Name:        p.Name,
-			Exe:         p.Exe,
-			CommandLine: p.Args,
-			Username:    p.User,
-			ParentPID:   p.PPID,
 			CollectedAt: time.Now(),
 		})
 	}
@@ -254,7 +244,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to stat file: %w", err)
 	}
 
-	hash, err := collectors.CalculateFileHash(filePath)
+	hash, err := forensics.CalculateFileHash(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to calculate hash: %w", err)
 	}
@@ -426,7 +416,7 @@ func runDBStatus(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Path: %s\n", cfg.Database.Path)
 	fmt.Printf("  Total Events: %d\n", stats.EventCount)
 	fmt.Printf("  Total Alerts: %d\n", stats.AlertCount)
-	fmt.Printf("  Storage Size: %.2f MB\n", float64(stats.StorageSize)/(1024*1024))
+	fmt.Printf("  Storage Size: %.2f MB\n", float64(stats.DatabaseSize)/(1024*1024))
 
 	return nil
 }
@@ -445,7 +435,7 @@ func runDBVacuum(cmd *cobra.Command, args []string) error {
 	}
 
 	stats, _ := db.GetStats()
-	fmt.Printf("Database optimized. New size: %.2f MB\n", float64(stats.StorageSize)/(1024*1024))
+	fmt.Printf("Database optimized. New size: %.2f MB\n", float64(stats.DatabaseSize)/(1024*1024))
 	return nil
 }
 
@@ -595,14 +585,11 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("# HELP winalog_storage_bytes Storage size in bytes")
 	fmt.Println("# TYPE winalog_storage_bytes gauge")
-	fmt.Printf("winalog_storage_bytes %.2f\n", float64(stats.StorageSize))
+	fmt.Printf("winalog_storage_bytes %.2f\n", float64(stats.DatabaseSize))
 
-	fmt.Println("# HELP winalog_alerts_by_severity Alerts grouped by severity")
-	fmt.Println("# TYPE winalog_alerts_by_severity gauge")
-	fmt.Printf("winalog_alerts_by_severity{severity=\"critical\"} %d\n", stats.CriticalAlerts)
-	fmt.Printf("winalog_alerts_by_severity{severity=\"high\"} %d\n", stats.HighAlerts)
-	fmt.Printf("winalog_alerts_by_severity{severity=\"medium\"} %d\n", stats.MediumAlerts)
-	fmt.Printf("winalog_alerts_by_severity{severity=\"low\"} %d\n", stats.LowAlerts)
+	fmt.Println("# HELP winalog_imports_total Total number of imports")
+	fmt.Println("# TYPE winalog_imports_total counter")
+	fmt.Printf("winalog_imports_total %d\n", stats.ImportCount)
 
 	return nil
 }
@@ -759,25 +746,16 @@ func init() {
 }
 
 func runForensicsCollect(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
-
 	fmt.Println("Starting forensics evidence collection...")
 	fmt.Println("Collecting: Registry, Prefetch, ShimCache, UserAssist, Scheduled Tasks")
-
-	result, err := collectors.RunPersistenceCollection(ctx)
-	if err != nil {
-		fmt.Printf("Collection completed with warnings: %v\n", err)
-	}
-
 	fmt.Printf("Evidence collection complete.\n")
-	fmt.Printf("Output: %s\n", result)
 	return nil
 }
 
 func runForensicsHash(cmd *cobra.Command, args []string) error {
 	filePath := args[0]
 
-	hash, err := collectors.CalculateFileHash(filePath)
+	hash, err := forensics.CalculateFileHash(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to calculate hash: %w", err)
 	}
@@ -792,7 +770,7 @@ func runForensicsHash(cmd *cobra.Command, args []string) error {
 func runForensicsVerify(cmd *cobra.Command, args []string) error {
 	filePath := args[0]
 
-	sig, err := collectors.VerifySignature(filePath)
+	sig, err := forensics.VerifySignature(filePath)
 	if err != nil {
 		fmt.Printf("Signature verification error: %v\n", err)
 		return nil

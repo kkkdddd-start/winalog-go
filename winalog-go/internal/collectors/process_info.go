@@ -1,17 +1,52 @@
+//go:build windows
+
 package collectors
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 	"unsafe"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"golang.org/x/sys/windows"
 )
+
+type ProcessInfoCollector struct {
+	BaseCollector
+}
+
+type Process struct {
+	PID     int
+	Name    string
+	Path    string
+	Command string
+	User    string
+}
+
+func NewProcessInfoCollector() *ProcessInfoCollector {
+	return &ProcessInfoCollector{
+		BaseCollector: BaseCollector{
+			info: CollectorInfo{
+				Name:          "process_info",
+				Description:   "Collect process information",
+				RequiresAdmin: true,
+				Version:       "1.0.0",
+			},
+		},
+	}
+}
+
+func (c *ProcessInfoCollector) Collect(ctx context.Context) ([]interface{}, error) {
+	processes, err := c.collectProcessInfo()
+	if err != nil {
+		return nil, err
+	}
+	interfaces := make([]interface{}, len(processes))
+	for i, p := range processes {
+		interfaces[i] = p
+	}
+	return interfaces, nil
+}
 
 func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error) {
 	processes := make([]*types.ProcessInfo, 0)
@@ -60,29 +95,8 @@ func getCommandLine(pid uint32) string {
 	}
 	defer windows.CloseHandle(hProcess)
 
-	var peb windows.PEB
-	var bytesRead uintptr
-	err = windows.ReadProcessMemory(hProcess, unsafe.Pointer(peb.ProcessParameters), unsafe.Pointer(&peb), unsafe.Sizeof(peb), &bytesRead)
-	if err != nil {
-		return ""
-	}
-
-	var params windows.RtlUserProcessParameters
-	err = windows.ReadProcessMemory(hProcess, unsafe.Pointer(peb.ProcessParameters), unsafe.Pointer(&params), unsafe.Sizeof(params), &bytesRead)
-	if err != nil {
-		return ""
-	}
-
-	if params.CommandLine.Length == 0 {
-		return ""
-	}
-
-	cmdLine, err := windows.GetCommandLine()
-	if err != nil {
-		return ""
-	}
-
-	return cmdLine
+	cmdLine := windows.GetCommandLine()
+	return windows.UTF16PtrToString(cmdLine)
 }
 
 func getProcessUser(pid uint32) string {
@@ -148,10 +162,8 @@ func ListProcesses() ([]Process, error) {
 
 	for {
 		processes = append(processes, Process{
-			PID:    int(entry.ProcessID),
-			PPID:   int(entry.ParentProcessID),
-			Name:   windows.UTF16ToString(entry.ExeFile[:]),
-			Status: "Running",
+			PID:  int(entry.ProcessID),
+			Name: windows.UTF16ToString(entry.ExeFile[:]),
 		})
 
 		err = windows.Process32Next(snapshot, &entry)

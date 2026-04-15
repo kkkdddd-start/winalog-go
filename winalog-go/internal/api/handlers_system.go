@@ -146,13 +146,8 @@ func (h *SystemHandler) GetProcesses(c *gin.Context) {
 	result := make([]*ProcessInfo, 0, len(processes))
 	for _, p := range processes {
 		result = append(result, &ProcessInfo{
-			PID:    p.PID,
-			PPID:   p.PPID,
-			Name:   p.Name,
-			Exe:    p.Exe,
-			Args:   p.Args,
-			User:   p.User,
-			Status: p.Status,
+			PID:  p.PID,
+			Name: p.Name,
 		})
 		if len(result) >= limit {
 			break

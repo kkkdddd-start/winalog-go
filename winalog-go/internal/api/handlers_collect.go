@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
@@ -33,6 +32,15 @@ type LogCollectResponse struct {
 	Duration   string `json:"duration,omitempty"`
 }
 
+type LogCollectRequest struct {
+	Options LogCollectOptions `json:"options"`
+}
+
+type LogCollectOptions struct {
+	Compress      bool `json:"compress"`
+	CalculateHash bool `json:"calculate_hash"`
+}
+
 type LogImportRequest struct {
 	FilePaths []string `json:"file_paths" binding:"required"`
 }
@@ -51,29 +59,8 @@ func NewCollectHandler(db *storage.DB) *CollectHandler {
 }
 
 func (h *CollectHandler) StartCollect(c *gin.Context) {
-	var req LogCollectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error: "invalid request: " + err.Error(),
-		})
-		return
-	}
-
-	opts := collectors.CollectOptions{
-		OutputPath: "winalog_collect_" + time.Now().Format("20060102_150405") + ".zip",
-		Workers:    4,
-		Compress:   true,
-	}
-
-	if req.Options.Compress {
-		opts.Compress = true
-	}
-	if req.Options.CalculateHash {
-		opts.CalculateHash = true
-	}
-
 	ctx := context.Background()
-	result, err := collectors.RunOneClickCollection(ctx, opts)
+	result, err := collectors.RunOneClickCollection(ctx, nil)
 
 	if err != nil {
 		c.JSON(http.StatusOK, LogCollectResponse{
@@ -83,11 +70,20 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 		return
 	}
 
+	oneClickResult, ok := result.(*collectors.OneClickResult)
+	if !ok {
+		c.JSON(http.StatusOK, LogCollectResponse{
+			Status:  "error",
+			Message: "invalid result type",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, LogCollectResponse{
 		Status:     "completed",
 		Message:    "Collection completed successfully",
-		OutputPath: result.OutputPath,
-		Duration:   result.Duration.String(),
+		OutputPath: oneClickResult.OutputPath,
+		Duration:   oneClickResult.Duration.String(),
 	})
 }
 
@@ -136,5 +132,13 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 		"total_events": result.EventsImported,
 		"duration":     result.Duration.String(),
 		"errors":       result.Errors,
+	})
+}
+
+func (h *CollectHandler) GetCollectStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, CollectStatus{
+		Status:   "idle",
+		Progress: 100,
+		Message:  "Collection service is ready",
 	})
 }

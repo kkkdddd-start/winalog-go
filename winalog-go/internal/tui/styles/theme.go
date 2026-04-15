@@ -64,6 +64,10 @@ var (
 
 	ResolvedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("75"))
+
+	WarningStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("214")).
+			Bold(true)
 )
 
 func SeverityBadge(severity string) lipgloss.Style {

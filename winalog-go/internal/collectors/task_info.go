@@ -10,6 +10,43 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
+type TaskInfoCollector struct {
+	BaseCollector
+}
+
+type ScheduledTaskInfo struct {
+	TaskName    string
+	TaskPath    string
+	State       string
+	Description string
+	Author      string
+}
+
+func NewTaskInfoCollector() *TaskInfoCollector {
+	return &TaskInfoCollector{
+		BaseCollector: BaseCollector{
+			info: CollectorInfo{
+				Name:          "task_info",
+				Description:   "Collect scheduled task information",
+				RequiresAdmin: true,
+				Version:       "1.0.0",
+			},
+		},
+	}
+}
+
+func (c *TaskInfoCollector) Collect(ctx context.Context) ([]interface{}, error) {
+	tasks, err := c.collectTaskInfo()
+	if err != nil {
+		return nil, err
+	}
+	interfaces := make([]interface{}, len(tasks))
+	for i, t := range tasks {
+		interfaces[i] = t
+	}
+	return interfaces, nil
+}
+
 func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 	tasks := make([]*types.ScheduledTask, 0)
 
@@ -50,9 +87,8 @@ func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 			State:       taskRaw.State,
 			Description: taskRaw.Description,
 			Author:      taskRaw.Author,
-			Actions:     c.getTaskActions(taskRaw.TaskName, taskRaw.TaskPath),
-			LastRunTime: c.getTaskLastRunTime(taskRaw.TaskName, taskRaw.TaskPath),
-			NextRunTime: c.getTaskNextRunTime(taskRaw.TaskName, taskRaw.TaskPath),
+			LastRun:     c.getTaskLastRunTime(taskRaw.TaskName, taskRaw.TaskPath),
+			NextRun:     c.getTaskNextRunTime(taskRaw.TaskName, taskRaw.TaskPath),
 		}
 
 		tasks = append(tasks, task)
@@ -146,9 +182,9 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 		}
 
 		tasks = append(tasks, ScheduledTaskInfo{
-			Name:  taskRaw.TaskName,
-			Path:  taskRaw.TaskPath,
-			State: taskRaw.State,
+			TaskName: taskRaw.TaskName,
+			TaskPath: taskRaw.TaskPath,
+			State:    taskRaw.State,
 		})
 	}
 
@@ -176,8 +212,8 @@ func GetTaskInfo(taskName string) (*ScheduledTaskInfo, error) {
 	}
 
 	return &ScheduledTaskInfo{
-		Name:        taskRaw.TaskName,
-		Path:        taskRaw.TaskPath,
+		TaskName:    taskRaw.TaskName,
+		TaskPath:    taskRaw.TaskPath,
 		State:       taskRaw.State,
 		Description: taskRaw.Description,
 	}, nil

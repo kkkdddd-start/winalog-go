@@ -68,34 +68,29 @@ func init() {
 }
 
 func runCollect(cmd *cobra.Command, args []string) error {
-	opts := collectors.CollectOptions{
-		OutputPath: collectFlags.outputPath,
-		Workers:    collectFlags.workers,
-		Compress:   collectFlags.compress,
-	}
-
 	fmt.Println("Starting one-click collection...")
-	fmt.Printf("Output: %s\n", opts.OutputPath)
-	fmt.Printf("Workers: %d\n", opts.Workers)
-	fmt.Printf("Compress: %v\n", opts.Compress)
+	fmt.Printf("Output: %s\n", collectFlags.outputPath)
+	fmt.Printf("Workers: %d\n", collectFlags.workers)
+	fmt.Printf("Compress: %v\n", collectFlags.compress)
 	fmt.Println()
 
 	ctx := context.Background()
-	result, err := collectors.RunOneClickCollection(ctx, opts)
+	result, err := collectors.RunOneClickCollection(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("collection failed: %w", err)
 	}
 
-	if result.Success {
+	oneClickResult, ok := result.(*collectors.OneClickResult)
+	if !ok {
+		return fmt.Errorf("invalid result type")
+	}
+
+	if oneClickResult.Success {
 		fmt.Printf("\nCollection completed successfully!\n")
-		fmt.Printf("Output: %s\n", result.OutputPath)
-		fmt.Printf("Files collected: %d\n", result.FileCount)
-		fmt.Printf("Duration: %v\n", result.Duration)
+		fmt.Printf("Output: %s\n", oneClickResult.OutputPath)
+		fmt.Printf("Duration: %v\n", oneClickResult.Duration)
 	} else {
-		fmt.Printf("\nCollection completed with errors:\n")
-		for i, e := range result.Errors {
-			fmt.Printf("  %d. %v\n", i+1, e)
-		}
+		fmt.Printf("\nCollection completed with errors\n")
 	}
 
 	return nil

@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/exporters"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type ReportsHandler struct {
@@ -48,7 +49,7 @@ type ReportContent struct {
 	Alerts    []*ReportAlert    `json:"alerts,omitempty"`
 	Events    []*ReportEvent    `json:"events,omitempty"`
 	Timeline  []*ReportTimeline `json:"timeline,omitempty"`
-	RawEvents []*storage.Event  `json:"raw_events,omitempty"`
+	RawEvents []*types.Event    `json:"raw_events,omitempty"`
 }
 
 type ReportSummary struct {

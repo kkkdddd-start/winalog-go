@@ -1,6 +1,9 @@
+//go:build windows
+
 package collectors
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -8,6 +11,43 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
+
+type DriverInfoCollector struct {
+	BaseCollector
+}
+
+type Driver struct {
+	Name        string
+	DisplayName string
+	Description string
+	Path        string
+	Status      string
+}
+
+func NewDriverInfoCollector() *DriverInfoCollector {
+	return &DriverInfoCollector{
+		BaseCollector: BaseCollector{
+			info: CollectorInfo{
+				Name:          "driver_info",
+				Description:   "Collect driver information",
+				RequiresAdmin: true,
+				Version:       "1.0.0",
+			},
+		},
+	}
+}
+
+func (c *DriverInfoCollector) Collect(ctx context.Context) ([]interface{}, error) {
+	drivers, err := c.collectDriverInfo()
+	if err != nil {
+		return nil, err
+	}
+	interfaces := make([]interface{}, len(drivers))
+	for i, d := range drivers {
+		interfaces[i] = d
+	}
+	return interfaces, nil
+}
 
 func (c *DriverInfoCollector) collectDriverInfo() ([]*types.DriverInfo, error) {
 	drivers := make([]*types.DriverInfo, 0)
@@ -20,7 +60,6 @@ func (c *DriverInfoCollector) collectDriverInfo() ([]*types.DriverInfo, error) {
 	for _, driver := range driverList {
 		drivers = append(drivers, &types.DriverInfo{
 			Name:        driver.Name,
-			DisplayName: driver.DisplayName,
 			Description: driver.Description,
 			Type:        "Kernel",
 			Status:      driver.Status,
@@ -73,7 +112,6 @@ func ListDrivers() ([]Driver, error) {
 			Description: driverRaw.Description,
 			Path:        driverRaw.PathName,
 			Status:      driverRaw.State,
-			StartMode:   driverRaw.StartMode,
 		})
 	}
 
@@ -107,7 +145,6 @@ func GetDriverInfo(driverName string) (*Driver, error) {
 		Description: driverRaw.Description,
 		Path:        driverRaw.PathName,
 		Status:      driverRaw.State,
-		StartMode:   driverRaw.StartMode,
 	}, nil
 }
 

@@ -129,7 +129,7 @@ func (m *Model) SetView(view ViewType) {
 
 	if view == ViewPersistence {
 		ctx := context.Background()
-		result := persistence.RunAllDetectors(ctx)
+		result := runPersistenceDetectors(ctx)
 		if result != nil {
 			m.persistenceResults = result.Detections
 		}
@@ -220,7 +220,7 @@ func (m *Model) LoadPersistence() error {
 	defer m.SetLoading(false, "")
 
 	ctx := context.Background()
-	result := persistence.RunAllDetectors(ctx)
+	result := runPersistenceDetectors(ctx)
 	if result != nil {
 		m.persistenceResults = result.Detections
 	}

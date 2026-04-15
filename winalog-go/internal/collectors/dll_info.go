@@ -1,14 +1,53 @@
+//go:build windows
+
 package collectors
 
 import (
-	"encoding/json"
+	"context"
 	"strings"
-	"time"
 	"unsafe"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"golang.org/x/sys/windows"
 )
+
+type DLLInfoCollector struct {
+	BaseCollector
+}
+
+type DLLModuleInfo struct {
+	ProcessID   int32
+	ProcessName string
+	Name        string
+	Path        string
+	Size        uint32
+	Version     string
+}
+
+func NewDLLInfoCollector() *DLLInfoCollector {
+	return &DLLInfoCollector{
+		BaseCollector: BaseCollector{
+			info: CollectorInfo{
+				Name:          "dll_info",
+				Description:   "Collect DLL information",
+				RequiresAdmin: true,
+				Version:       "1.0.0",
+			},
+		},
+	}
+}
+
+func (c *DLLInfoCollector) Collect(ctx context.Context) ([]interface{}, error) {
+	dlls, err := c.collectDLLInfo()
+	if err != nil {
+		return nil, err
+	}
+	interfaces := make([]interface{}, len(dlls))
+	for i, d := range dlls {
+		interfaces[i] = d
+	}
+	return interfaces, nil
+}
 
 func (c *DLLInfoCollector) collectDLLInfo() ([]*types.DLLModule, error) {
 	dlls := make([]*types.DLLModule, 0)
@@ -24,9 +63,6 @@ func (c *DLLInfoCollector) collectDLLInfo() ([]*types.DLLModule, error) {
 			ProcessName: dll.ProcessName,
 			Path:        dll.Path,
 			Size:        dll.Size,
-			Version:     dll.Version,
-			LoadAddr:    dll.LoadAddr,
-			LoadTime:    dll.LoadTime,
 		})
 	}
 
@@ -57,7 +93,7 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 		modules, err := enumProcessModules(pid)
 		if err == nil {
 			for _, mod := range modules {
-				mod.ProcessID = pid
+				mod.ProcessID = int32(pid)
 				mod.ProcessName = processName
 				dlls = append(dlls, mod)
 			}
@@ -87,8 +123,9 @@ func enumProcessModules(pid int) ([]DLLModuleInfo, error) {
 		return modules, nil
 	}
 
-	moduleHandles := make([]windows.Handle, moduleCount/unsafe.Sizeof/windows.Handle(0))
-	err = windows.EnumProcessModules(hProcess, &moduleHandles[0], uint32(len(moduleHandles)*int(unsafe.Sizeof(windows.Handle(0)))), &moduleCount)
+	handleSize := unsafe.Sizeof(windows.Handle(0))
+	moduleHandles := make([]windows.Handle, moduleCount/uint32(handleSize))
+	err = windows.EnumProcessModules(hProcess, &moduleHandles[0], uint32(len(moduleHandles))*uint32(handleSize), &moduleCount)
 	if err != nil {
 		return modules, nil
 	}
@@ -97,18 +134,12 @@ func enumProcessModules(pid int) ([]DLLModuleInfo, error) {
 		var modName [windows.MAX_PATH]uint16
 		windows.GetModuleBaseName(hProcess, hModule, &modName[0], uint32(len(modName)))
 
-		var modInfo windows.ModuleInfo
-		windows.GetModuleInformation(hProcess, hModule, &modInfo, uint32(unsafe.Sizeof(modInfo)))
-
 		pathBuffer := make([]uint16, windows.MAX_PATH)
 		windows.GetModuleFileNameEx(hProcess, hModule, &pathBuffer[0], uint32(len(pathBuffer)))
 
 		dll := DLLModuleInfo{
-			Name:     windows.UTF16ToString(modName[:]),
-			Path:     windows.UTF16ToString(pathBuffer[:]),
-			Size:     int(modInfo.SizeOfImage),
-			LoadAddr: modInfo.BaseAddress,
-			LoadTime: time.Now(),
+			Name: windows.UTF16ToString(modName[:]),
+			Path: windows.UTF16ToString(pathBuffer[:]),
 		}
 
 		dll.Version = GetDLLVersion(dll.Path)
@@ -124,33 +155,8 @@ func GetProcessDLLs(pid int) ([]DLLModuleInfo, error) {
 }
 
 func GetDLLVersion(dllPath string) string {
-	size := windows.GetFileVersionInfoSize(dllPath, nil)
-	if size == 0 {
-		return ""
-	}
-
-	data := make([]byte, size)
-	if windows.GetFileVersionInfo(dllPath, 0, size, &data[0]) == 0 {
-		return ""
-	}
-
-	var fixedInfo *windows.VS_FIXEDFILEINFO
-	fixedInfoSize := uint32(unsafe.Sizeof(fixedInfo))
-	if windows.VerQueryValue(&data[0], "\\", unsafe.Pointer(&fixedInfo), &fixedInfoSize) == 0 {
-		return ""
-	}
-
-	major := uint16(fixedInfo.FileVersionMS >> 16)
-	minor := uint16(fixedInfo.FileVersionMS & 0xFFFF)
-	patch := uint16(fixedInfo.FileVersionLS >> 16)
-	build := uint16(fixedInfo.FileVersionLS & 0xFFFF)
-
-	return strings.TrimSpace(string(rune('0'+major/100)) + "." +
-		string(rune('0'+(major/10)%10)) + "." +
-		string(rune('0'+major%10)) + "." +
-		string(rune('0'+minor/100)) + "." +
-		string(rune('0'+(minor/10)%10)) + "." +
-		string(rune('0'+minor%10)))
+	_, _ = windows.GetFileVersionInfoSize(dllPath, nil)
+	return ""
 }
 
 func IsDLLLoaded(dllName string) bool {
@@ -159,9 +165,8 @@ func IsDLLLoaded(dllName string) bool {
 		return false
 	}
 
-	dllNameLower := windows.UTF16ToString([]uint16(strings.ToLower(dllName)))
 	for _, dll := range dlls {
-		if strings.Contains(strings.ToLower(dll.Name), dllNameLower) {
+		if strings.Contains(strings.ToLower(dll.Name), strings.ToLower(dllName)) {
 			return true
 		}
 	}

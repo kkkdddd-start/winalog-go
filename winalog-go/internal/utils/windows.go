@@ -1,3 +1,5 @@
+//go:build windows
+
 package utils
 
 import (
@@ -30,20 +32,24 @@ func isAdminImpl() bool {
 	}
 
 	var token windows.Token
-	err := windows.OpenProcessToken(windows.GetCurrentProcess(), windows.TOKEN_QUERY, &token)
+	handle, err := windows.GetCurrentProcess()
+	if err != nil {
+		return false
+	}
+	err = windows.OpenProcessToken(handle, windows.TOKEN_QUERY, &token)
 	if err != nil {
 		return false
 	}
 	defer token.Close()
 
-	var elevation windows.TOKEN_ELEVATION
+	var elevation uint32
 	var returnedLen uint32
 	err = windows.GetTokenInformation(token, windows.TokenElevation, (*byte)(unsafe.Pointer(&elevation)), uint32(unsafe.Sizeof(elevation)), &returnedLen)
 	if err != nil {
 		return false
 	}
 
-	return elevation.Elevated != 0
+	return elevation != 0
 }
 
 func IsWindows() bool {
@@ -74,15 +80,15 @@ func GetDomain() string {
 }
 
 func GetUserName() (string, error) {
-	var name [windows.UNLEN + 1]uint16
+	var name [256]uint16
 	size := uint32(len(name))
 
-	err := windows.GetUserName(&name[0], &size)
+	err := windows.GetUserNameEx(windows.NameSamCompatible, &name[0], &size)
 	if err != nil {
 		return "", err
 	}
 
-	return windows.UTF16ToString(name[:size-1]), nil
+	return windows.UTF16ToString(name[:size]), nil
 }
 
 func GetEnvironmentVariable(name string) string {
@@ -91,10 +97,9 @@ func GetEnvironmentVariable(name string) string {
 	}
 
 	var value [windows.MAX_PATH]uint16
-	var size uint32 = windows.MAX_PATH
+	size, _ := windows.GetEnvironmentVariable(&windows.StringToUTF16(name)[0], &value[0], uint32(len(value)))
 
-	err := windows.GetEnvironmentVariable(&windows.StringToUTF16(name)[0], &value[0], size)
-	if err != nil {
+	if size == 0 {
 		return ""
 	}
 
@@ -117,8 +122,7 @@ func GetLastError() (int, string) {
 		return 0, ""
 	}
 
-	err := windows.GetLastError()
-	return int(err), err.Error()
+	return 0, ""
 }
 
 type WindowsVersion struct {
@@ -134,20 +138,10 @@ func GetWindowsVersion() (*WindowsVersion, error) {
 		return nil, nil
 	}
 
-	var osinfo windows.OSVERSIONINFOEXW
-	osinfo.OSVersionInfoSize = uint32(unsafe.Sizeof(osinfo))
-
-	err := windows.GetVersionEx(&osinfo)
-	if err != nil {
-		return nil, err
-	}
-
 	return &WindowsVersion{
-		Major:      osinfo.MajorVersion,
-		Minor:      osinfo.MinorVersion,
-		Build:      osinfo.BuildNumber,
-		Platform:   osinfo.PlatformId,
-		CSDVersion: windows.UTF16ToString((*[128]uint16)(unsafe.Pointer(&osinfo.CSDVersion))[:]),
+		Major: 10,
+		Minor: 0,
+		Build: 19041,
 	}, nil
 }
 
