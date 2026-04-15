@@ -1,4 +1,23 @@
+//go:build windows
+
 package collectors
+
+type ShimCacheCollector struct {
+	BaseCollector
+}
+
+type ShimCacheEntry struct {
+	Path          string
+	LastModified  string
+	LastUpdateTime string
+	ExecutionTime  string
+	Size          uint32
+	Flag          uint32
+}
+
+func NewShimCacheCollector() *ShimCacheCollector {
+	return &ShimCacheCollector{}
+}
 
 import (
 	"context"

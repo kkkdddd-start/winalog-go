@@ -1,4 +1,22 @@
+//go:build windows
+
 package collectors
+
+type PrefetchCollector struct {
+	BaseCollector
+}
+
+type PrefetchInfo struct {
+	Name             string
+	Path             string
+	LastRunTime      string
+	RunCount         int
+	LastModifiedTime string
+}
+
+func NewPrefetchCollector() *PrefetchCollector {
+	return &PrefetchCollector{}
+}
 
 import (
 	"context"
