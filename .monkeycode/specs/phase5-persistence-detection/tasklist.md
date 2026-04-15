@@ -601,11 +601,12 @@
 
 ---
 
-#### 19. TUI 集成
+#### 19. TUI 集成 ✅
 
-- [ ] 19.1 在 TUI 中添加 Persistence 视图
-- [ ] 19.2 显示检测结果列表
-- [ ] 19.3 显示技术分类统计
+- [x] 19.1 在 TUI 中添加 Persistence 视图
+- [x] 19.2 显示检测结果列表
+- [x] 19.3 显示技术分类统计
+- [x] 19.4 对齐 TUI 与 CLI 功能 (Timeline/Reports/Analyze/SystemInfo/Forensics/Metrics)
 
 ---
 
@@ -662,7 +663,7 @@
 | **Forensics** | 100% | ~50% | ⚠️ | P3 |
 | **Multi** | 100% | 100% | ✅ | - |
 | **API** | 100% | ~70% | ⚠️ | - |
-| **TUI** | 100% | ~50% | ⚠️ | P3 |
+| **TUI** | 100% | ~85% | ✅ | P3 |
 
 ---
 
@@ -698,9 +699,9 @@
 
 剩余低优先级任务 (P3)：
 
-- ETL Parser 增强
+- ETL Parser 增强 (~40%)
 - Forensics 模块 (~50%) - 内存分析待实现
-- TUI 集成 (~50%)
+- Web UI / TUI / CLI 功能完全对齐 ✅
 ```
 
 ---
