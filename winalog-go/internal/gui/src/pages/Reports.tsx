@@ -43,16 +43,6 @@ function Reports() {
         end_time: endTime.toISOString()
       })
       
-      const newReport: Report = {
-        id: Math.random().toString(36).substring(7),
-        name: `${reportType}_report_${Date.now()}`,
-        type: reportType,
-        format,
-        generated_at: new Date().toISOString(),
-        size: Math.floor(Math.random() * 1000000) + 100000
-      }
-      
-      setReports(prev => [newReport, ...prev])
       setLastGenerated(new Date().toLocaleString())
     } catch (error) {
       console.error('Report generation failed:', error)

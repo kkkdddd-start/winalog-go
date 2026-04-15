@@ -67,6 +67,24 @@ export const importAPI = {
     api.get(`/import/status?path=${path}`),
 }
 
+export interface CollectParams {
+  sources?: string[]
+  excludes?: string[]
+  options?: {
+    compress?: boolean
+    calculate_hash?: boolean
+  }
+}
+
+export const collectAPI = {
+  collect: (params: CollectParams) =>
+    api.post('/collect', params),
+  import: (filePaths: string[]) =>
+    api.post('/collect/import', { file_paths: filePaths }),
+  getStatus: () =>
+    api.get('/collect/status'),
+}
+
 export const liveAPI = {
   getStats: () =>
     api.get('/live/stats'),
@@ -163,6 +181,74 @@ export const timelineAPI = {
   },
   deleteAlert: (id: number) =>
     api.delete(`/timeline/alerts/${id}`),
+}
+
+export interface CollectionStats {
+  total_events: number
+  total_size: string
+  sources: Record<string, number>
+  last_import: string
+}
+
+export const dashboardAPI = {
+  getCollectionStats: () =>
+    api.get('/dashboard/collection-stats'),
+}
+
+export interface AnalyzeParams {
+  type: string
+  hours?: number
+  start_time?: string
+  end_time?: string
+}
+
+export interface AnalyzeResult {
+  type: string
+  severity: string
+  score: number
+  summary: string
+  findings: Array<{
+    description: string
+    severity: string
+    score: number
+    rule_name?: string
+    mitre_attack?: string[]
+    metadata?: Record<string, any>
+  }>
+  timestamp: number
+}
+
+export const analyzeAPI = {
+  run: (analyzerType: string, params?: { hours?: number }) =>
+    api.post(`/analyze/${analyzerType}`, params || {}),
+  list: () =>
+    api.get('/analyzers'),
+  info: (analyzerType: string) =>
+    api.get(`/analyzers/${analyzerType}`),
+}
+
+export interface Settings {
+  database_path: string
+  log_level: string
+  max_events: number
+  retention_days: number
+  enable_alerting: boolean
+  enable_live_collection: boolean
+  enable_auto_update: boolean
+  api_port: number
+  api_host: string
+  cors_enabled: boolean
+  max_import_file_size: number
+  export_directory: string
+}
+
+export const settingsAPI = {
+  get: () =>
+    api.get('/settings'),
+  save: (settings: Partial<Settings>) =>
+    api.post('/settings', settings),
+  reset: () =>
+    api.post('/settings/reset'),
 }
 
 export interface SearchParams {

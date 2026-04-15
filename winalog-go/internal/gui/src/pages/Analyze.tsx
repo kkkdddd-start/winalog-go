@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../locales/I18n'
+import { analyzeAPI } from '../api'
 
 interface Finding {
   description: string
@@ -72,20 +73,10 @@ function Analyze() {
     setLoading(true)
     setError('')
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      const mockResult: AnalyzeResult = {
-        type: selectedAnalyzer,
-        severity: 'low',
-        score: 15.5,
-        summary: t('analyze.resultsSummary') + ` (${hours}h)`,
-        findings: [
-          { description: 'Failed login attempt detected', severity: 'medium', score: 5.2, rule_name: 'RULE-001' },
-          { description: 'Unusual PowerShell activity', severity: 'low', score: 3.1, rule_name: 'RULE-002' },
-        ],
-      }
-      setResult(mockResult)
-    } catch (err) {
-      setError('Failed to run analyzer')
+      const res = await analyzeAPI.run(selectedAnalyzer, { hours })
+      setResult(res.data)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to run analyzer')
     } finally {
       setLoading(false)
     }

@@ -38,17 +38,7 @@ func NewReportsHandler(db *storage.DB) *ReportsHandler {
 }
 
 func (h *ReportsHandler) ListReports(c *gin.Context) {
-	reports := []ReportInfo{
-		{
-			ID:          "1",
-			Type:        "security_summary",
-			Format:      "json",
-			GeneratedAt: time.Now().Add(-24 * time.Hour),
-			Size:        1024,
-			Path:        "",
-		},
-	}
-	c.JSON(http.StatusOK, gin.H{"reports": reports, "total": len(reports)})
+	c.JSON(http.StatusOK, gin.H{"reports": []ReportInfo{}, "total": 0})
 }
 
 func (h *ReportsHandler) GenerateReport(c *gin.Context) {

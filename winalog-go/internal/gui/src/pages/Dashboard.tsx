@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../locales/I18n'
-import { alertsAPI, eventsAPI, timelineAPI } from '../api'
+import { alertsAPI, eventsAPI, timelineAPI, dashboardAPI } from '../api'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -62,9 +62,9 @@ function Dashboard() {
     Promise.all([
       alertsAPI.stats(),
       timelineAPI.get(24),
-      eventsAPI.list(1, 1),
+      dashboardAPI.getCollectionStats(),
     ])
-      .then(([statsRes, timelineRes]) => {
+      .then(([statsRes, timelineRes, collectionRes]) => {
         setStats(statsRes.data)
 
         const hours = 24
@@ -97,12 +97,7 @@ function Dashboard() {
         }
 
         setTrendData({ labels, events, alerts })
-        setCollectionStats({
-          total_events: timelineRes.data.event_count || 0,
-          total_size: 'N/A',
-          sources: { 'Security': 0, 'System': 0, 'Application': 0 },
-          last_import: 'N/A',
-        })
+        setCollectionStats(collectionRes.data)
         setLoading(false)
       })
       .catch(() => {

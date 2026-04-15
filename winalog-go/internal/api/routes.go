@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *ImportHandler, liveHandler *LiveHandler, timelineHandler *TimelineHandler) {
+func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *ImportHandler, liveHandler *LiveHandler, timelineHandler *TimelineHandler, dashboardHandler *DashboardHandler) {
 	r.GET("/api/health", healthCheck)
 
 	api := r.Group("/api")
@@ -47,6 +47,11 @@ func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *Impor
 		{
 			live.GET("/events", liveHandler.StreamEventsSSE)
 			live.GET("/stats", liveHandler.GetLiveStats)
+		}
+
+		dashboard := api.Group("/dashboard")
+		{
+			dashboard.GET("/collection-stats", dashboardHandler.GetCollectionStats)
 		}
 	}
 }

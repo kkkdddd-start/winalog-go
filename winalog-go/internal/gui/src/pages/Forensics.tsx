@@ -56,6 +56,7 @@ function Forensics() {
     if (!hashInput.trim() || !filePath.trim()) return
     
     setVerifying(true)
+    setHashResult(null)
     try {
       const res = await forensicsAPI.verifyHash(filePath, hashInput)
       setHashResult({
@@ -64,11 +65,11 @@ function Forensics() {
         actual: res.data.actual || hashInput,
         path: filePath
       })
-    } catch (error) {
+    } catch (error: any) {
       setHashResult({
-        verified: Math.random() > 0.5,
+        verified: false,
         expected: hashInput,
-        actual: 'demo_hash_' + Math.random().toString(36).substring(7),
+        actual: error.response?.data?.error || 'Hash verification failed',
         path: filePath
       })
     } finally {

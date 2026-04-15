@@ -1,6 +1,11 @@
 package commands
 
 import (
+	"context"
+	"fmt"
+	"runtime"
+
+	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/spf13/cobra"
 )
 
@@ -64,6 +69,52 @@ func init() {
 }
 
 func runCollect(cmd *cobra.Command, args []string) error {
-	// TODO: Implement collect logic
+	if runtime.GOOS != "windows" {
+		fmt.Println("Warning: Collection is optimized for Windows environment.")
+		fmt.Println("Some features may not work on non-Windows systems.")
+		fmt.Println()
+	}
+
+	opts := collectors.CollectOptions{
+		OutputPath: collectFlags.outputPath,
+		Workers:    collectFlags.workers,
+		Compress:   collectFlags.compress,
+	}
+
+	if runtime.GOOS == "windows" {
+		fmt.Println("Starting one-click collection...")
+		fmt.Printf("Output: %s\n", opts.OutputPath)
+		fmt.Printf("Workers: %d\n", opts.Workers)
+		fmt.Printf("Compress: %v\n", opts.Compress)
+		fmt.Println()
+
+		ctx := context.Background()
+		result, err := collectors.RunOneClickCollection(ctx, opts)
+		if err != nil {
+			return fmt.Errorf("collection failed: %w", err)
+		}
+
+		if result.Success {
+			fmt.Printf("\nCollection completed successfully!\n")
+			fmt.Printf("Output: %s\n", result.OutputPath)
+			fmt.Printf("Files collected: %d\n", result.FileCount)
+			fmt.Printf("Duration: %v\n", result.Duration)
+		} else {
+			fmt.Printf("\nCollection completed with errors:\n")
+			for i, e := range result.Errors {
+				fmt.Printf("  %d. %v\n", i+1, e)
+			}
+		}
+	} else {
+		fmt.Println("Non-Windows environment detected.")
+		fmt.Println("One-click collection is only available on Windows.")
+		fmt.Println()
+		fmt.Println("Available collectors:")
+		collector := collectors.NewOneClickCollector(opts)
+		for _, name := range collector.ListCollectors() {
+			fmt.Printf("  - %s\n", name)
+		}
+	}
+
 	return nil
 }

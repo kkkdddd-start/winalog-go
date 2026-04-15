@@ -24,6 +24,7 @@ type Server struct {
 	rulesEng       *RulesHandler
 	reportsEng     *ReportsHandler
 	forensicsEng   *ForensicsHandler
+	dashboardEng   *DashboardHandler
 }
 
 func NewServer(db *storage.DB, addr string) *Server {
@@ -62,10 +63,11 @@ func (s *Server) setupHandlers() {
 	s.rulesEng = NewRulesHandler()
 	s.reportsEng = NewReportsHandler(s.db)
 	s.forensicsEng = NewForensicsHandler(s.db)
+	s.dashboardEng = NewDashboardHandler(s.db)
 }
 
 func (s *Server) setupRoutes() {
-	SetupRoutes(s.engine, s.alertEng, s.importEng, s.liveEng, s.timelineEng)
+	SetupRoutes(s.engine, s.alertEng, s.importEng, s.liveEng, s.timelineEng, s.dashboardEng)
 	SetupPersistenceRoutes(s.engine, s.persistenceEng)
 	SetupSystemRoutes(s.engine, s.systemEng)
 	SetupRulesRoutes(s.engine, s.rulesEng)
