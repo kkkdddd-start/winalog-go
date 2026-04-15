@@ -406,7 +406,7 @@ func (m Model) renderSettings() string {
 	return sb.String()
 }
 
-func (m Model) renderTimeline() string {
+func (m Model) renderTimelineEvents() string {
 	var sb strings.Builder
 
 	sb.WriteString(styles.HeaderStyle.Render(" Timeline ") + "\n")
@@ -455,18 +455,7 @@ func (m Model) renderAnalyze() string {
 
 	if m.analyzeResult != nil {
 		sb.WriteString(fmt.Sprintf("  Type: %s\n", m.analyzeResult.Type))
-		sb.WriteString(fmt.Sprintf("  Severity: %s\n", m.analyzeResult.Severity))
-		sb.WriteString(fmt.Sprintf("  Score: %.2f\n", m.analyzeResult.Score))
 		sb.WriteString(fmt.Sprintf("  Summary: %s\n", m.analyzeResult.Summary))
-		if len(m.analyzeResult.Findings) > 0 {
-			sb.WriteString("\n  Findings:\n")
-			for i, f := range m.analyzeResult.Findings {
-				if i >= 10 {
-					break
-				}
-				sb.WriteString(fmt.Sprintf("    [%d] %s (Severity: %s)\n", i+1, f.Description, f.Severity))
-			}
-		}
 	} else {
 		sb.WriteString("  Available analyzers:\n")
 		sb.WriteString("    - brute-force: Detect brute force attacks\n")

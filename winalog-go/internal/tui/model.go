@@ -70,7 +70,7 @@ type Model struct {
 	reportContent      string
 	analyzeResult      *types.AnalyzeResult
 	systemInfo         map[string]string
-	persistenceResults []*types.Detection
+	persistenceResults []*persistence.Detection
 
 	stats *types.AlertStats
 	trend *types.AlertTrend
@@ -196,7 +196,7 @@ func (m *Model) Search(query string) error {
 	defer m.SetLoading(false, "")
 
 	m.searchQuery = query
-	events, _, err := m.db.SearchEvents(query, 100)
+	events, _, err := m.db.SearchEvents(&storage.EventFilter{Keywords: query, Limit: 100})
 	if err != nil {
 		return err
 	}

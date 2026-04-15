@@ -149,7 +149,7 @@ func (p *IISParser) parseLogLine(line string, columns []string) *types.Event {
 		ImportTime: time.Now(),
 	}
 
-	var dateStr, timeStr, clientIP, method, uriStem, uriQuery, serverIP, userName, userAgent, referer, cookie, host string
+	var dateStr, timeStr, clientIP, method, uriStem, uriQuery, userName, userAgent, host string
 	var status, port int
 	var bytesSent int64
 
@@ -166,7 +166,6 @@ func (p *IISParser) parseLogLine(line string, columns []string) *types.Event {
 		case "time":
 			timeStr = value
 		case "s-ip":
-			serverIP = value
 			event.Computer = value
 		case "cs-method":
 			method = value
@@ -185,7 +184,7 @@ func (p *IISParser) parseLogLine(line string, columns []string) *types.Event {
 		case "cs(User-Agent)":
 			userAgent = strings.Trim(value, `"`)
 		case "cs(Referer)":
-			referer = value
+			_ = value
 		case "sc-status":
 			status, _ = strconv.Atoi(value)
 		case "sc-bytes":
@@ -197,7 +196,7 @@ func (p *IISParser) parseLogLine(line string, columns []string) *types.Event {
 		case "cs-host":
 			host = value
 		case "cs(Cookie)":
-			cookie = value
+			_ = value
 		case "cs(Content-Type)":
 			_ = value
 		}
@@ -229,8 +228,8 @@ func (p *IISParser) parseLogLine(line string, columns []string) *types.Event {
 		event.Timestamp = time.Now()
 	}
 
-	if event.UserName == "" && userName != "" && userName != "-" {
-		event.UserName = userName
+	if event.User == nil && userName != "" && userName != "-" {
+		event.User = &userName
 	}
 
 	return event
