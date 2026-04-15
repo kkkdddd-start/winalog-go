@@ -31,6 +31,7 @@ const (
 	TechniqueT1546012 Technique = "T1546.012"
 	TechniqueT1546015 Technique = "T1546.015"
 	TechniqueT1546016 Technique = "T1546.016"
+	TechniqueT1546006 Technique = "T1546.006"
 	TechniqueT1053    Technique = "T1053"
 	TechniqueT1053020 Technique = "T1053.020"
 	TechniqueT1543003 Technique = "T1543.003"
@@ -47,6 +48,7 @@ const (
 	EvidenceTypeService  EvidenceType = "service"
 	EvidenceTypeTask     EvidenceType = "task"
 	EvidenceTypeCOM      EvidenceType = "com"
+	EvidenceTypeETW      EvidenceType = "etw"
 )
 
 type Detection struct {
@@ -172,6 +174,11 @@ var PersistenceCategories = []PersistenceCategory{
 		Description: "BITS persistence",
 		Techniques:  []Technique{TechniqueT1197},
 	},
+	{
+		Name:        "ETW",
+		Description: "ETW (Event Tracing for Windows) manipulation",
+		Techniques:  []Technique{TechniqueT1546006},
+	},
 }
 
 func GetTechniqueInfo(t Technique) (name, description string) {
@@ -204,6 +211,8 @@ func GetTechniqueInfo(t Technique) (name, description string) {
 		return "BITS Jobs", "Use BITS jobs for persistence or download"
 	case TechniqueT1098:
 		return "Account Manipulation", "Modify account settings or SID history"
+	case TechniqueT1546006:
+		return "ETW Hook", "Modify Event Tracing for Windows to hide malicious behavior"
 	default:
 		return "Unknown", "Unknown technique"
 	}
