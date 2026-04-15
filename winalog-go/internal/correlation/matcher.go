@@ -137,7 +137,38 @@ func (m *Matcher) FilterByPattern(events []*types.Event, pattern *rules.Pattern)
 		}
 	}
 
+	if pattern.MinCount > 0 && len(filtered) < pattern.MinCount {
+		return []*types.Event{}
+	}
+
+	if pattern.MaxCount > 0 && len(filtered) > pattern.MaxCount {
+		return filtered[:pattern.MaxCount]
+	}
+
 	return filtered
+}
+
+func (m *Matcher) CountMatches(events []*types.Event, pattern *rules.Pattern) int {
+	count := 0
+	for _, event := range events {
+		if m.matchPattern(pattern, event) {
+			count++
+		}
+	}
+	return count
+}
+
+func (m *Matcher) CheckOrderedSequence(events []*types.Event, pattern *rules.Pattern) bool {
+	if !pattern.Ordered || len(events) < 2 {
+		return true
+	}
+
+	for i := 0; i < len(events)-1; i++ {
+		if events[i].Timestamp.After(events[i+1].Timestamp) {
+			return false
+		}
+	}
+	return true
 }
 
 func contains(s, substr string) bool {

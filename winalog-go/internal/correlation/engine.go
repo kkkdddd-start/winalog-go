@@ -132,24 +132,59 @@ func (e *Engine) analyzeRule(rule *rules.CorrelationRule) *types.CorrelationResu
 			continue
 		}
 
+		if pattern.TimeWindow > 0 {
+			events = e.filterByTimeWindow(events, pattern.TimeWindow)
+		}
+
+		if pattern.MinCount > 0 && len(events) < pattern.MinCount {
+			continue
+		}
+
+		if pattern.MaxCount > 0 && len(events) > pattern.MaxCount {
+			events = events[:pattern.MaxCount]
+		}
+
 		baseEvent := events[0]
 		if baseEvent == nil {
 			continue
 		}
 
 		if i == len(patterns)-1 {
-			continue
+			if pattern.Negate {
+				continue
+			}
+			return e.chain.Build(baseEvent, events[1:], rule)
 		}
 
 		nextPattern := patterns[i+1]
 		nextEvents := e.findRelatedEvents(baseEvent, nextPattern)
 
 		if len(nextEvents) > 0 {
+			if !e.matcher.CheckOrderedSequence([]*types.Event{baseEvent, nextEvents[0]}, nextPattern) {
+				continue
+			}
 			return e.chain.Build(baseEvent, nextEvents, rule)
 		}
 	}
 
 	return nil
+}
+
+func (e *Engine) filterByTimeWindow(events []*types.Event, window time.Duration) []*types.Event {
+	if len(events) == 0 || window <= 0 {
+		return events
+	}
+
+	cutoff := time.Now().Add(-window)
+	filtered := make([]*types.Event, 0)
+
+	for _, event := range events {
+		if event.Timestamp.After(cutoff) {
+			filtered = append(filtered, event)
+		}
+	}
+
+	return filtered
 }
 
 func (e *Engine) findRelatedEvents(base *types.Event, pattern *rules.Pattern) []*types.Event {

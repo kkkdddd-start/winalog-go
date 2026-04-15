@@ -74,6 +74,10 @@ type Pattern struct {
 	Conditions []*Condition  `yaml:"conditions,omitempty"`
 	Join       string        `yaml:"join,omitempty"`
 	TimeWindow time.Duration `yaml:"time_window,omitempty"`
+	MinCount   int           `yaml:"min_count,omitempty"`
+	MaxCount   int           `yaml:"max_count,omitempty"`
+	Ordered    bool          `yaml:"ordered,omitempty"`
+	Negate     bool          `yaml:"negate,omitempty"`
 }
 
 type Filter struct {
