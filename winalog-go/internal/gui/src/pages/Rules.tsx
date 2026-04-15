@@ -45,8 +45,28 @@ function Rules() {
   const handleEditRule = (rule: RuleInfo) => {
     const newDescription = prompt('Edit rule description:', rule.description)
     if (newDescription !== null && newDescription !== rule.description) {
-      console.log('Rule update would go here:', rule.name, newDescription)
+      rulesAPI.save({ ...rule, description: newDescription })
+        .then(() => {
+          setRules(rules.map(r => r.name === rule.name ? { ...r, description: newDescription } : r))
+        })
+        .catch(err => {
+          console.error('Failed to update rule:', err)
+        })
     }
+  }
+
+  const handleAddRule = () => {
+    const name = prompt('Enter rule name:')
+    if (!name) return
+    const description = prompt('Enter rule description:') || ''
+    const severity = prompt('Enter severity (critical/high/medium/low):', 'medium') || 'medium'
+    rulesAPI.save({ name, description, severity, enabled: true, score: 50 })
+      .then(() => {
+        fetchRules()
+      })
+      .catch(err => {
+        console.error('Failed to add rule:', err)
+      })
   }
 
   const getSeverityClass = (severity: string) => {
@@ -97,7 +117,7 @@ function Rules() {
       <div className="page-header">
         <h2>Detection Rules</h2>
         <div className="header-actions">
-          <button className="btn-secondary">Add Rule</button>
+          <button className="btn-secondary" onClick={handleAddRule}>Add Rule</button>
         </div>
       </div>
 

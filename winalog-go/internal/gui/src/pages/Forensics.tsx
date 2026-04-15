@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useI18n } from '../locales/I18n'
 import { forensicsAPI } from '../api'
 
@@ -18,6 +18,14 @@ interface EvidenceItem {
   size: number
 }
 
+interface ChainOfCustodyEntry {
+  id: string
+  action: string
+  timestamp: string
+  user: string
+  details: string
+}
+
 function Forensics() {
   const { t } = useI18n()
   const [collecting, setCollecting] = useState(false)
@@ -25,31 +33,64 @@ function Forensics() {
   const [filePath, setFilePath] = useState('')
   const [hashResult, setHashResult] = useState<HashResult | null>(null)
   const [verifying, setVerifying] = useState(false)
+  const [calculatingHash, setCalculatingHash] = useState(false)
   const [evidence, setEvidence] = useState<EvidenceItem[]>([])
   const [collectStatus, setCollectStatus] = useState('')
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['eventlogs', 'registry', 'prefetch'])
+  const [chainOfCustody, setChainOfCustody] = useState<ChainOfCustodyEntry[]>([])
+  const [showChainModal, setShowChainModal] = useState(false)
+
+  useEffect(() => {
+    fetchEvidence()
+    fetchChainOfCustody()
+  }, [])
+
+  const fetchEvidence = () => {
+    forensicsAPI.listEvidence()
+      .then(res => {
+        if (res.data && Array.isArray(res.data)) {
+          setEvidence(res.data)
+        }
+      })
+      .catch(err => console.error('Failed to load evidence:', err))
+  }
+
+  const fetchChainOfCustody = () => {
+    forensicsAPI.chainOfCustody()
+      .then(res => {
+        if (res.data && Array.isArray(res.data)) {
+          setChainOfCustody(res.data)
+        }
+      })
+      .catch(err => console.error('Failed to load chain of custody:', err))
+  }
+
+  const handleCalculateHash = async () => {
+    if (!filePath.trim()) return
+    
+    setCalculatingHash(true)
+    try {
+      const res = await forensicsAPI.calculateHash(filePath)
+      setHashInput(res.data.hash || '')
+    } catch (error: any) {
+      console.error('Failed to calculate hash:', error)
+      alert('Failed to calculate hash: ' + (error.response?.data?.error || error.message))
+    } finally {
+      setCalculatingHash(false)
+    }
+  }
 
   const handleCollect = async () => {
     setCollecting(true)
     setCollectStatus('starting')
-    const collectedEvidence: EvidenceItem[] = []
     
     try {
       for (const type of selectedTypes) {
         setCollectStatus(`collecting:${type}`)
-        const res = await forensicsAPI.collect(type, `/tmp/forensics_${type}`)
-        if (res.data.status === 'completed') {
-          collectedEvidence.push({
-            id: res.data.id || `${type}_${Date.now()}`,
-            type: res.data.type || type,
-            collected_at: res.data.collected_at || new Date().toISOString(),
-            hash: `sha256:${res.data.id || 'pending'}`,
-            path: res.data.output_path || `/tmp/forensics_${type}`,
-            size: 0
-          })
-        }
+        await forensicsAPI.collect(type, `/tmp/forensics_${type}`)
       }
-      setEvidence(collectedEvidence)
+      fetchEvidence()
+      fetchChainOfCustody()
       setCollectStatus('completed')
     } catch (error) {
       console.error('Collection failed:', error)
@@ -241,6 +282,13 @@ function Forensics() {
             
             <button 
               className="btn-secondary" 
+              onClick={handleCalculateHash}
+              disabled={calculatingHash || !filePath.trim()}
+            >
+              {calculatingHash ? 'Calculating...' : 'Calculate Hash'}
+            </button>
+            <button 
+              className="btn-secondary" 
               onClick={handleVerify}
               disabled={verifying || !hashInput.trim() || !filePath.trim()}
             >
@@ -267,8 +315,15 @@ function Forensics() {
       </div>
 
       <div className="forensics-card full-width">
-        <h3>{t('forensics.chainOfCustody')}</h3>
-        <p className="card-desc">{t('forensics.chainOfCustodyDesc')}</p>
+        <div className="section-header">
+          <div>
+            <h3>{t('forensics.chainOfCustody')}</h3>
+            <p className="card-desc">{t('forensics.chainOfCustodyDesc')}</p>
+          </div>
+          <button className="btn-secondary" onClick={() => setShowChainModal(true)}>
+            View Full Chain
+          </button>
+        </div>
         
         {evidence.length > 0 ? (
           <div className="evidence-table">
@@ -308,6 +363,41 @@ function Forensics() {
           </div>
         )}
       </div>
+
+      {showChainModal && (
+        <div className="modal-overlay" onClick={() => setShowChainModal(false)}>
+          <div className="modal-content chain-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{t('forensics.chainOfCustody')}</h3>
+              <button className="close-btn" onClick={() => setShowChainModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              {chainOfCustody.length > 0 ? (
+                <div className="chain-timeline">
+                  {chainOfCustody.map((entry, index) => (
+                    <div key={entry.id} className="chain-entry">
+                      <div className="chain-dot">{index + 1}</div>
+                      <div className="chain-content">
+                        <div className="chain-action">{entry.action}</div>
+                        <div className="chain-details">{entry.details}</div>
+                        <div className="chain-meta">
+                          <span className="chain-time">{new Date(entry.timestamp).toLocaleString()}</span>
+                          {entry.user && <span className="chain-user">by {entry.user}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-icon">📋</div>
+                  <div className="empty-text">No chain of custody records</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .forensics-page h2 {
@@ -595,6 +685,93 @@ function Forensics() {
         .empty-hint {
           color: #555;
           font-size: 0.85rem;
+        }
+
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 16px;
+        }
+
+        .section-header h3 {
+          margin-bottom: 4px;
+        }
+
+        .section-header .btn-secondary {
+          padding: 8px 16px;
+        }
+
+        .chain-modal {
+          max-width: 700px;
+          max-height: 80vh;
+          overflow-y: auto;
+        }
+
+        .chain-timeline {
+          position: relative;
+          padding-left: 30px;
+        }
+
+        .chain-timeline::before {
+          content: '';
+          position: absolute;
+          left: 10px;
+          top: 0;
+          bottom: 0;
+          width: 2px;
+          background: #333;
+        }
+
+        .chain-entry {
+          position: relative;
+          margin-bottom: 24px;
+        }
+
+        .chain-dot {
+          position: absolute;
+          left: -34px;
+          top: 0;
+          width: 24px;
+          height: 24px;
+          background: #00d9ff;
+          color: #1a1a2e;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 0.8rem;
+        }
+
+        .chain-content {
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 8px;
+          padding: 12px 16px;
+          border: 1px solid #333;
+        }
+
+        .chain-action {
+          color: #fff;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+
+        .chain-details {
+          color: #888;
+          font-size: 0.9rem;
+          margin-bottom: 8px;
+        }
+
+        .chain-meta {
+          display: flex;
+          gap: 16px;
+          font-size: 0.8rem;
+          color: #666;
+        }
+
+        .chain-user {
+          color: #00d9ff;
         }
       `}</style>
     </div>

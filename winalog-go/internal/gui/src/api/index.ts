@@ -108,6 +108,8 @@ export const rulesAPI = {
     api.get(`/rules/${name}`),
   toggle: (name: string, enabled: boolean) =>
     api.post(`/rules/${name}/toggle?enabled=${enabled}`),
+  save: (rule: Partial<RuleInfo> & { name: string }) =>
+    api.post('/rules/save', rule),
 }
 
 export const reportsAPI = {

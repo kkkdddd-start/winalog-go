@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../locales/I18n'
-import { alertsAPI } from '../api'
+import { alertsAPI, analyzeAPI } from '../api'
 
 interface Alert {
   id: number
@@ -54,6 +54,49 @@ function Alerts() {
       })
   }
 
+  const handleMarkFalsePositive = (id: number) => {
+    const reason = prompt('Enter reason for marking as false positive:')
+    if (!reason) return
+    alertsAPI.markFalsePositive(id, reason)
+      .then(() => {
+        setAlerts(alerts.filter(a => a.id !== id))
+        setSelectedAlerts(prev => prev.filter(i => i !== id))
+      })
+      .catch(err => {
+        console.error('Failed to mark as false positive:', err)
+      })
+  }
+
+  const handleDelete = (id: number) => {
+    if (!confirm('Are you sure you want to delete this alert?')) return
+    alertsAPI.delete(id)
+      .then(() => {
+        setAlerts(alerts.filter(a => a.id !== id))
+        setSelectedAlerts(prev => prev.filter(i => i !== id))
+      })
+      .catch(err => {
+        console.error('Failed to delete alert:', err)
+      })
+  }
+
+  const handleBatchAction = (action: string) => {
+    if (selectedAlerts.length === 0) return
+    alertsAPI.batchAction(selectedAlerts, action)
+      .then(() => {
+        if (action === 'resolve') {
+          setAlerts(alerts.map(a => 
+            selectedAlerts.includes(a.id) ? { ...a, resolved: true } : a
+          ))
+        } else if (action === 'delete') {
+          setAlerts(alerts.filter(a => !selectedAlerts.includes(a.id)))
+        }
+        setSelectedAlerts([])
+      })
+      .catch(err => {
+        console.error('Batch action failed:', err)
+      })
+  }
+
   const handleSelectAlert = (id: number) => {
     setSelectedAlerts(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -80,11 +123,18 @@ function Alerts() {
 
   const handleRunAnalysis = () => {
     setAnalyzing(true)
-    setTimeout(() => {
-      setAnalyzing(false)
-      setShowAnalyzeModal(false)
-      navigate('/analyze')
-    }, 1500)
+    analyzeAPI.run(selectedAnalyzer, { hours: 24 })
+      .then(() => {
+        setAnalyzing(false)
+        setShowAnalyzeModal(false)
+        navigate('/analyze')
+      })
+      .catch(err => {
+        console.error('Analysis failed:', err)
+        setAnalyzing(false)
+        setShowAnalyzeModal(false)
+        navigate('/analyze')
+      })
   }
 
   const getSeverityClass = (severity: string) => {
@@ -186,6 +236,12 @@ function Alerts() {
               <button className="btn-batch-resolve" onClick={handleBatchResolve}>
                 {t('alerts.resolveSelected')}
               </button>
+              <button className="btn-batch-falsepositive" onClick={() => handleBatchAction('false-positive')}>
+                Mark False Positive
+              </button>
+              <button className="btn-batch-delete" onClick={() => handleBatchAction('delete')}>
+                Delete
+              </button>
             </div>
           )}
         </div>
@@ -250,6 +306,18 @@ function Alerts() {
                         {t('alerts.resolve')}
                       </button>
                     )}
+                    <button 
+                      className="btn-falsepositive"
+                      onClick={() => handleMarkFalsePositive(alert.id)}
+                    >
+                      False Positive
+                    </button>
+                    <button 
+                      className="btn-delete"
+                      onClick={() => handleDelete(alert.id)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
