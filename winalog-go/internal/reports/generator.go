@@ -198,9 +198,8 @@ func (g *Generator) calculateSummary(req *ReportRequest) (ReportSummary, error) 
 }
 
 func (g *Generator) calculateSecurityStats(req *ReportRequest) (*SecurityStats, error) {
-	stats := &SecurityStats{
-		GeneratedAt: time.Now(),
-	}
+	stats := NewSecurityStats()
+	stats.GeneratedAt = time.Now()
 
 	eventFilter := &storage.EventFilter{
 		StartTime: &req.StartTime,
