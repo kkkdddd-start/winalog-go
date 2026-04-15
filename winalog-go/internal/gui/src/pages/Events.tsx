@@ -40,6 +40,14 @@ function Events() {
   const [queryTime, setQueryTime] = useState(0)
   const [showFilters, setShowFilters] = useState(false)
   const [selectedLevels, setSelectedLevels] = useState<string[]>([])
+  const [useRegex, setUseRegex] = useState(false)
+  const [sortBy, setSortBy] = useState('timestamp')
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [sources, setSources] = useState('')
+  const [users, setUsers] = useState('')
+  const [computers, setComputers] = useState('')
+  const [eventIdsInput, setEventIdsInput] = useState('')
+  const [logNamesInput, setLogNamesInput] = useState('')
 
   const [filters, setFilters] = useState<ExportParams['filters']>({
     event_ids: [],
@@ -60,15 +68,47 @@ function Events() {
       'Info': 4,
       'Debug': 5,
     }
+
+    const eventIds = eventIdsInput
+      .split(',')
+      .map(s => parseInt(s.trim(), 10))
+      .filter(n => !isNaN(n))
+
+    const logNames = logNamesInput
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+
+    const sourcesList = sources
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+
+    const usersList = users
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+
+    const computersList = computers
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+
     const searchParams: SearchParams = {
       keywords: filters?.keywords || '',
+      regex: useRegex,
       page: pageNum,
       page_size: 50,
-      sort_by: 'timestamp',
-      sort_order: 'desc',
+      sort_by: sortBy,
+      sort_order: sortOrder,
       start_time: filters?.start_time || undefined,
       end_time: filters?.end_time || undefined,
       levels: selectedLevels.map(l => levelMap[l]).filter(l => l),
+      event_ids: eventIds.length > 0 ? eventIds : undefined,
+      log_names: logNames.length > 0 ? logNames : undefined,
+      sources: sourcesList.length > 0 ? sourcesList : undefined,
+      users: usersList.length > 0 ? usersList : undefined,
+      computers: computersList.length > 0 ? computersList : undefined,
     }
     
     eventsAPI.search(searchParams)
@@ -112,6 +152,14 @@ function Events() {
       limit: 10000,
     })
     setSelectedLevels([])
+    setUseRegex(false)
+    setSortBy('timestamp')
+    setSortOrder('desc')
+    setSources('')
+    setUsers('')
+    setComputers('')
+    setEventIdsInput('')
+    setLogNamesInput('')
     setSearchMode(false)
     setPage(1)
   }
@@ -237,6 +285,60 @@ function Events() {
               />
             </div>
             <div className="filter-group">
+              <label>Event IDs</label>
+              <input
+                type="text"
+                placeholder="4624,4625,4672"
+                value={eventIdsInput}
+                onChange={e => setEventIdsInput(e.target.value)}
+                className="text-input"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Log Names</label>
+              <input
+                type="text"
+                placeholder="Security,System,Application"
+                value={logNamesInput}
+                onChange={e => setLogNamesInput(e.target.value)}
+                className="text-input"
+              />
+            </div>
+          </div>
+          <div className="filter-row">
+            <div className="filter-group">
+              <label>Sources</label>
+              <input
+                type="text"
+                placeholder="Microsoft-Windows-Security-Auditing"
+                value={sources}
+                onChange={e => setSources(e.target.value)}
+                className="text-input"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Users</label>
+              <input
+                type="text"
+                placeholder="DOMAIN\User1,DOMAIN\Admin"
+                value={users}
+                onChange={e => setUsers(e.target.value)}
+                className="text-input"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Computers</label>
+              <input
+                type="text"
+                placeholder="WORKSTATION1,SRV01"
+                value={computers}
+                onChange={e => setComputers(e.target.value)}
+                className="text-input"
+              />
+            </div>
+          </div>
+          <div className="filter-row">
+            <div className="filter-group">
               <label>Level</label>
               <div className="level-checkboxes">
                 {['Critical', 'Error', 'Warning', 'Info', 'Debug'].map(level => (
@@ -256,6 +358,33 @@ function Events() {
                   </label>
                 ))}
               </div>
+            </div>
+            <div className="filter-group">
+              <label>Sort By</label>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="select-input">
+                <option value="timestamp">Timestamp</option>
+                <option value="event_id">Event ID</option>
+                <option value="level">Level</option>
+                <option value="source">Source</option>
+                <option value="log_name">Log Name</option>
+              </select>
+            </div>
+            <div className="filter-group">
+              <label>Sort Order</label>
+              <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="select-input">
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+              </select>
+            </div>
+            <div className="filter-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={useRegex}
+                  onChange={e => setUseRegex(e.target.checked)}
+                />
+                Use Regex
+              </label>
             </div>
           </div>
           <div className="filter-actions">
@@ -511,6 +640,36 @@ function Events() {
           border: 1px solid #333;
           border-radius: 6px;
           color: #fff;
+        }
+        
+        .filter-group .text-input {
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid #333;
+          border-radius: 6px;
+          color: #fff;
+          font-size: 13px;
+          min-width: 150px;
+        }
+        
+        .filter-group .text-input:focus {
+          outline: none;
+          border-color: #00d9ff;
+        }
+        
+        .filter-group .select-input {
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid #333;
+          border-radius: 6px;
+          color: #fff;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        
+        .filter-group .select-input:focus {
+          outline: none;
+          border-color: #00d9ff;
         }
         
         .level-checkboxes {
