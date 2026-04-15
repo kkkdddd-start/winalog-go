@@ -60,21 +60,22 @@ func (l *EventLevel) UnmarshalJSON(data []byte) error {
 }
 
 type Event struct {
-	ID         int64      `json:"id" db:"id"`
-	Timestamp  time.Time  `json:"timestamp" db:"timestamp"`
-	EventID    int32      `json:"event_id" db:"event_id"`
-	Level      EventLevel `json:"level" db:"level"`
-	Source     string     `json:"source" db:"source"`
-	LogName    string     `json:"log_name" db:"log_name"`
-	Computer   string     `json:"computer" db:"computer"`
-	User       *string    `json:"user,omitempty" db:"user"`
-	UserSID    *string    `json:"user_sid,omitempty" db:"user_sid"`
-	Message    string     `json:"message" db:"message"`
-	RawXML     *string    `json:"raw_xml,omitempty" db:"raw_xml"`
-	SessionID  *string    `json:"session_id,omitempty" db:"session_id"`
-	IPAddress  *string    `json:"ip_address,omitempty" db:"ip_address"`
-	ImportTime time.Time  `json:"import_time" db:"import_time"`
-	ImportID   int64      `json:"import_id,omitempty" db:"import_id"`
+	ID              int64                  `json:"id" db:"id"`
+	Timestamp       time.Time              `json:"timestamp" db:"timestamp"`
+	EventID         int32                  `json:"event_id" db:"event_id"`
+	Level           EventLevel             `json:"level" db:"level"`
+	Source          string                 `json:"source" db:"source"`
+	LogName         string                 `json:"log_name" db:"log_name"`
+	Computer        string                 `json:"computer" db:"computer"`
+	User            *string                `json:"user,omitempty" db:"user"`
+	UserSID         *string                `json:"user_sid,omitempty" db:"user_sid"`
+	Message         string                 `json:"message" db:"message"`
+	RawXML          *string                `json:"raw_xml,omitempty" db:"raw_xml"`
+	SessionID       *string                `json:"session_id,omitempty" db:"session_id"`
+	IPAddress       *string                `json:"ip_address,omitempty" db:"ip_address"`
+	ImportTime      time.Time              `json:"import_time" db:"import_time"`
+	ImportID        int64                  `json:"import_id,omitempty" db:"import_id"`
+	ExtractedFields map[string]interface{} `json:"extracted_fields,omitempty" db:"-"`
 }
 
 func (e *Event) ToMap() map[string]interface{} {
@@ -105,6 +106,11 @@ func (e *Event) ToMap() map[string]interface{} {
 	}
 	if e.ImportID > 0 {
 		m["import_id"] = e.ImportID
+	}
+	if e.ExtractedFields != nil {
+		for k, v := range e.ExtractedFields {
+			m[k] = v
+		}
 	}
 	return m
 }
@@ -208,4 +214,99 @@ type LevelDistribution struct {
 type LogNameDistribution struct {
 	LogName string `json:"log_name" db:"log_name"`
 	Count   int64  `json:"count" db:"count"`
+}
+
+func (e *Event) SetExtractedField(key string, value interface{}) {
+	if e.ExtractedFields == nil {
+		e.ExtractedFields = make(map[string]interface{})
+	}
+	e.ExtractedFields[key] = value
+}
+
+func (e *Event) GetExtractedField(key string) interface{} {
+	if e.ExtractedFields == nil {
+		return nil
+	}
+	return e.ExtractedFields[key]
+}
+
+func (e *Event) GetLogonType() int {
+	if v := e.GetExtractedField("LogonType"); v != nil {
+		if f, ok := v.(float64); ok {
+			return int(f)
+		}
+		if i, ok := v.(int); ok {
+			return i
+		}
+	}
+	return 0
+}
+
+func (e *Event) GetTargetUserName() string {
+	if v := e.GetExtractedField("TargetUserName"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	if e.User != nil {
+		return *e.User
+	}
+	return ""
+}
+
+func (e *Event) GetSubjectUserName() string {
+	if v := e.GetExtractedField("SubjectUserName"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func (e *Event) GetProcessId() string {
+	if v := e.GetExtractedField("ProcessId"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func (e *Event) GetProcessName() string {
+	if v := e.GetExtractedField("ProcessName"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func (e *Event) GetCommandLine() string {
+	if v := e.GetExtractedField("CommandLine"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func (e *Event) GetServiceName() string {
+	if v := e.GetExtractedField("ServiceName"); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func (e *Event) GetDestPort() int {
+	if v := e.GetExtractedField("DestPort"); v != nil {
+		if f, ok := v.(float64); ok {
+			return int(f)
+		}
+		if i, ok := v.(int); ok {
+			return i
+		}
+	}
+	return 0
 }
