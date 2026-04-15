@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jung-kurt/gofpdf"
 	"github.com/kkkdddd-start/winalog-go/internal/exporters"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -203,14 +204,23 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 	}
 
 	reportDir := filepath.Join(os.TempDir(), "winalog_reports")
+	os.MkdirAll(reportDir, 0755)
 	fileName := fmt.Sprintf("%s.%s", reportID, req.Format)
 	filePath := filepath.Join(reportDir, fileName)
 
-	data, _ := json.MarshalIndent(content, "", "  ")
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
-			err.Error(), time.Now(), reportID)
-		return
+	if req.Format == "pdf" {
+		if err := h.generatePDF(content, filePath, req); err != nil {
+			h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+				err.Error(), time.Now(), reportID)
+			return
+		}
+	} else {
+		data, _ := json.MarshalIndent(content, "", "  ")
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
+			h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+				err.Error(), time.Now(), reportID)
+			return
+		}
 	}
 
 	fi, _ := os.Stat(filePath)
@@ -221,6 +231,198 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 
 	h.db.Exec(`UPDATE reports SET status = 'completed', completed_at = ?, file_path = ?, file_size = ? WHERE id = ?`,
 		time.Now(), filePath, fileSize, reportID)
+}
+
+func (h *ReportsHandler) generatePDF(content *ReportContent, filePath string, req ReportRequest) error {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(15, 15, 15)
+	pdf.AddPage()
+
+	pdf.SetFillColor(22, 33, 62)
+	pdf.Rect(0, 0, 210, 40, "F")
+	pdf.SetTextColor(0, 217, 255)
+	pdf.SetFont("Arial", "B", 20)
+	pdf.SetXY(15, 12)
+	title := req.Title
+	if title == "" {
+		title = fmt.Sprintf("%s Report", req.Type)
+	}
+	pdf.Cell(180, 10, title)
+
+	pdf.SetTextColor(136, 136, 136)
+	pdf.SetFont("Arial", "", 10)
+	pdf.SetXY(15, 28)
+	pdf.Cell(180, 6, fmt.Sprintf("Generated: %s", time.Now().Format("2006-01-02 15:04:05")))
+
+	pdf.SetTextColor(51, 51, 51)
+	pdf.SetY(50)
+
+	if content.Summary != nil {
+		h.addSummaryToPDF(pdf, content.Summary)
+	}
+
+	if content.Alerts != nil && len(content.Alerts) > 0 {
+		h.addAlertsToPDF(pdf, content.Alerts)
+	}
+
+	if content.Events != nil && len(content.Events) > 0 {
+		h.addEventsToPDF(pdf, content.Events)
+	}
+
+	if content.Timeline != nil && len(content.Timeline) > 0 {
+		h.addTimelineToPDF(pdf, content.Timeline)
+	}
+
+	return pdf.OutputFileAndClose(filePath)
+}
+
+func (h *ReportsHandler) addSummaryToPDF(pdf *gofpdf.Fpdf, summary *ReportSummary) {
+	pdf.SetFont("Arial", "B", 14)
+	pdf.SetTextColor(0, 217, 255)
+	pdf.Cell(0, 10, "Security Summary")
+	pdf.Ln(12)
+
+	pdf.SetFont("Arial", "", 10)
+	pdf.SetTextColor(51, 51, 51)
+
+	metrics := []struct {
+		label string
+		value int64
+	}{
+		{"Total Events", summary.TotalEvents},
+		{"Total Alerts", summary.TotalAlerts},
+		{"Critical Alerts", summary.CriticalAlerts},
+		{"High Alerts", summary.HighAlerts},
+		{"Medium Alerts", summary.MediumAlerts},
+		{"Low Alerts", summary.LowAlerts},
+	}
+
+	for _, m := range metrics {
+		pdf.SetFont("Arial", "B", 10)
+		pdf.Cell(60, 7, m.label+":")
+		pdf.SetFont("Arial", "", 10)
+		pdf.Cell(0, 7, fmt.Sprintf("%d", m.value))
+		pdf.Ln(7)
+	}
+
+	pdf.Ln(5)
+}
+
+func (h *ReportsHandler) addAlertsToPDF(pdf *gofpdf.Fpdf, alerts []*ReportAlert) {
+	pdf.SetFont("Arial", "B", 14)
+	pdf.SetTextColor(0, 217, 255)
+	pdf.Cell(0, 10, "Alert Details")
+	pdf.Ln(12)
+
+	tableWidth := []float64{25, 40, 25, 70}
+	headers := []string{"Severity", "Rule Name", "Count", "Message"}
+
+	pdf.SetFont("Arial", "B", 9)
+	pdf.SetFillColor(0, 217, 255)
+	pdf.SetTextColor(255, 255, 255)
+	for i, h := range headers {
+		pdf.Cell(tableWidth[i], 8, h)
+	}
+	pdf.Ln(8)
+
+	pdf.SetFont("Arial", "", 8)
+	pdf.SetTextColor(51, 51, 51)
+	fill := false
+	for i, alert := range alerts {
+		if i >= 20 {
+			pdf.Cell(0, 7, "... and more alerts")
+			break
+		}
+		if fill {
+			pdf.SetFillColor(245, 245, 245)
+		} else {
+			pdf.SetFillColor(255, 255, 255)
+		}
+		pdf.Cell(tableWidth[0], 6, alert.Severity)
+		pdf.Cell(tableWidth[1], 6, h.truncateString(alert.RuleName, 25))
+		pdf.Cell(tableWidth[2], 6, fmt.Sprintf("%d", alert.Count))
+		pdf.Cell(tableWidth[3], 6, h.truncateString(alert.Message, 45))
+		pdf.Ln(6)
+		fill = !fill
+	}
+
+	pdf.Ln(5)
+}
+
+func (h *ReportsHandler) addEventsToPDF(pdf *gofpdf.Fpdf, events []*ReportEvent) {
+	pdf.SetFont("Arial", "B", 14)
+	pdf.SetTextColor(0, 217, 255)
+	pdf.Cell(0, 10, "Event Details")
+	pdf.Ln(12)
+
+	tableWidth := []float64{35, 20, 30, 60}
+	headers := []string{"Timestamp", "Event ID", "Source", "Message"}
+
+	pdf.SetFont("Arial", "B", 9)
+	pdf.SetFillColor(0, 217, 255)
+	pdf.SetTextColor(255, 255, 255)
+	for i, h := range headers {
+		pdf.Cell(tableWidth[i], 8, h)
+	}
+	pdf.Ln(8)
+
+	pdf.SetFont("Arial", "", 8)
+	pdf.SetTextColor(51, 51, 51)
+	fill := false
+	for i, event := range events {
+		if i >= 20 {
+			pdf.Cell(0, 7, "... and more events")
+			break
+		}
+		if fill {
+			pdf.SetFillColor(245, 245, 245)
+		} else {
+			pdf.SetFillColor(255, 255, 255)
+		}
+		pdf.Cell(tableWidth[0], 6, event.Timestamp.Format("2006-01-02 15:04"))
+		pdf.Cell(tableWidth[1], 6, fmt.Sprintf("%d", event.EventID))
+		pdf.Cell(tableWidth[2], 6, h.truncateString(event.Source, 20))
+		pdf.Cell(tableWidth[3], 6, h.truncateString(event.Message, 40))
+		pdf.Ln(6)
+		fill = !fill
+	}
+
+	pdf.Ln(5)
+}
+
+func (h *ReportsHandler) addTimelineToPDF(pdf *gofpdf.Fpdf, timeline []*ReportTimeline) {
+	pdf.SetFont("Arial", "B", 14)
+	pdf.SetTextColor(0, 217, 255)
+	pdf.Cell(0, 10, "Event Timeline")
+	pdf.Ln(12)
+
+	pdf.SetFont("Arial", "", 8)
+	pdf.SetTextColor(51, 51, 51)
+	for i, entry := range timeline {
+		if i >= 30 {
+			pdf.Cell(0, 6, "... and more timeline entries")
+			break
+		}
+		pdf.SetFont("Arial", "B", 8)
+		pdf.Cell(0, 5, fmt.Sprintf("[%s] %s", entry.Timestamp.Format("2006-01-02 15:04"), entry.Type))
+		pdf.Ln(5)
+		pdf.SetFont("Arial", "", 8)
+		if entry.Severity != "" {
+			pdf.Cell(0, 5, fmt.Sprintf("  Severity: %s | Source: %s", entry.Severity, entry.Source))
+		} else {
+			pdf.Cell(0, 5, fmt.Sprintf("  Source: %s", entry.Source))
+		}
+		pdf.Ln(5)
+		pdf.Cell(0, 5, h.truncateString(entry.Message, 100))
+		pdf.Ln(8)
+	}
+}
+
+func (h *ReportsHandler) truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
 }
 
 func (h *ReportsHandler) buildReportContent(req ReportRequest) (*ReportContent, error) {

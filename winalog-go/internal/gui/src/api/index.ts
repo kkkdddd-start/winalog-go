@@ -139,6 +139,12 @@ export const rulesAPI = {
     api.post(`/rules/${name}/toggle?enabled=${enabled}`),
   save: (rule: Partial<RuleInfo> & { name: string }) =>
     api.post('/rules/save', rule),
+  validate: (rule: Partial<RuleInfo> & { name: string }, content?: string) =>
+    api.post('/rules/validate', { rule, content }),
+  import: (rules: RuleInfo[]) =>
+    api.post('/rules/import', { rules }),
+  export: (format: 'json' | 'yaml' = 'json') =>
+    api.get(`/rules/export?format=${format}`, { responseType: 'blob' }),
 }
 
 export const reportsAPI = {
@@ -148,8 +154,8 @@ export const reportsAPI = {
     api.post('/reports', params),
   get: (id: string) =>
     api.get(`/reports/${id}`),
-  export: (format: 'json' | 'csv' | 'excel') =>
-    api.get(`/reports/export?format=${format}`),
+  export: (format: 'json' | 'csv' | 'excel' | 'pdf') =>
+    api.get(`/reports/export?format=${format}`, { responseType: 'blob' }),
 }
 
 export interface ReportParams {

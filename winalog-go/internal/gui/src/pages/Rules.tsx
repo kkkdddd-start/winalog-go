@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { rulesAPI, RuleInfo } from '../api'
 
 function Rules() {
@@ -10,6 +10,14 @@ function Rules() {
   const [filterSeverity, setFilterSeverity] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedRule, setSelectedRule] = useState<RuleInfo | null>(null)
+  const [showValidateModal, setShowValidateModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [validateResult, setValidateResult] = useState<{valid: boolean, errors: string[], warnings: string[]} | null>(null)
+  const [validating, setValidating] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{imported: number, failed: number, errors: string[]} | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchRules = () => {
     rulesAPI.list()
@@ -69,6 +77,131 @@ function Rules() {
       })
   }
 
+  const handleValidate = () => {
+    setShowValidateModal(true)
+    setValidateResult(null)
+  }
+
+  const handleValidateRule = (rule: Partial<RuleInfo> & { name: string }) => {
+    setValidating(true)
+    rulesAPI.validate(rule)
+      .then(res => {
+        setValidateResult(res.data)
+      })
+      .catch(err => {
+        setValidateResult({
+          valid: false,
+          errors: [err.message || 'Validation failed'],
+          warnings: []
+        })
+      })
+      .finally(() => {
+        setValidating(false)
+      })
+  }
+
+  const handleExport = (format: 'json' | 'yaml') => {
+    rulesAPI.export(format)
+      .then(res => {
+        const blob = new Blob([res.data], { type: format === 'yaml' ? 'text/yaml' : 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `rules_export.${format}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      })
+      .catch(err => {
+        console.error('Failed to export rules:', err)
+        alert('Failed to export rules')
+      })
+  }
+
+  const handleImportClick = () => {
+    setShowImportModal(true)
+    setImportResult(null)
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string
+        let parsedRules: RuleInfo[] = []
+
+        if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+          const lines = content.split('\n')
+          let currentRule: Partial<RuleInfo> = {}
+          for (const line of lines) {
+            if (line.startsWith('- name:')) {
+              if (currentRule.name) {
+                parsedRules.push(currentRule as RuleInfo)
+              }
+              currentRule = { name: line.replace('- name:', '').trim(), mitre_attack: [] }
+            } else if (line.startsWith('  description:')) {
+              currentRule.description = line.replace('  description:', '').trim()
+            } else if (line.startsWith('  severity:')) {
+              currentRule.severity = line.replace('  severity:', '').trim()
+            } else if (line.startsWith('  enabled:')) {
+              currentRule.enabled = line.replace('  enabled:', '').trim() === 'true'
+            } else if (line.startsWith('  score:')) {
+              currentRule.score = parseFloat(line.replace('  score:', '').trim()) || 50
+            } else if (line.startsWith('    - ')) {
+              if (!currentRule.mitre_attack) currentRule.mitre_attack = []
+              currentRule.mitre_attack.push(line.replace('    - ', '').trim())
+            }
+          }
+          if (currentRule.name) {
+            parsedRules.push(currentRule as RuleInfo)
+          }
+        } else {
+          const data = JSON.parse(content)
+          parsedRules = Array.isArray(data) ? data : data.rules || []
+        }
+
+        if (parsedRules.length === 0) {
+          setImportResult({ imported: 0, failed: 0, errors: ['No valid rules found in file'] })
+          return
+        }
+
+        setImporting(true)
+        rulesAPI.import(parsedRules)
+          .then(res => {
+            setImportResult(res.data)
+            if (res.data.imported > 0) {
+              fetchRules()
+            }
+          })
+          .catch(err => {
+            setImportResult({
+              imported: 0,
+              failed: parsedRules.length,
+              errors: [err.message || 'Import failed']
+            })
+          })
+          .finally(() => {
+            setImporting(false)
+          })
+      } catch (err: any) {
+        setImportResult({
+          imported: 0,
+          failed: 0,
+          errors: ['Failed to parse file: ' + (err.message || 'Invalid format')]
+        })
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleViewDetails = (rule: RuleInfo) => {
+    setSelectedRule(rule)
+  }
+
   const getSeverityClass = (severity: string) => {
     switch (severity?.toLowerCase()) {
       case 'critical': return 'severity-critical'
@@ -117,7 +250,16 @@ function Rules() {
       <div className="page-header">
         <h2>Detection Rules</h2>
         <div className="header-actions">
-          <button className="btn-secondary" onClick={handleAddRule}>Add Rule</button>
+          <button className="btn-secondary" onClick={handleValidate}>Validate</button>
+          <button className="btn-secondary" onClick={handleImportClick}>Import</button>
+          <div className="export-dropdown">
+            <button className="btn-secondary">Export</button>
+            <div className="export-menu">
+              <button onClick={() => handleExport('json')}>JSON</button>
+              <button onClick={() => handleExport('yaml')}>YAML</button>
+            </div>
+          </div>
+          <button className="btn-primary" onClick={handleAddRule}>Add Rule</button>
         </div>
       </div>
 
@@ -204,11 +346,17 @@ function Rules() {
             
             <div className="rule-footer">
               <div className="mitre-tags">
-                {rule.mitre_attack?.map(m => (
+                {rule.mitre_attack?.slice(0, 3).map(m => (
                   <span key={m} className="mitre-tag">{m}</span>
                 ))}
+                {rule.mitre_attack && rule.mitre_attack.length > 3 && (
+                  <span className="mitre-tag">+{rule.mitre_attack.length - 3}</span>
+                )}
               </div>
-              <button className="rule-action" onClick={() => handleEditRule(rule)}>Edit</button>
+              <div className="rule-actions">
+                <button className="rule-action" onClick={() => handleViewDetails(rule)}>Details</button>
+                <button className="rule-action" onClick={() => handleEditRule(rule)}>Edit</button>
+              </div>
             </div>
           </div>
         ))}
@@ -218,6 +366,191 @@ function Rules() {
         <div className="empty-state">
           <div className="empty-icon">🛡️</div>
           <div>No rules match your filters</div>
+        </div>
+      )}
+
+      {selectedRule && (
+        <div className="modal-overlay" onClick={() => setSelectedRule(null)}>
+          <div className="modal-content rule-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Rule Details</h3>
+              <button className="close-btn" onClick={() => setSelectedRule(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="detail-section">
+                <div className="detail-row">
+                  <span className="detail-label">Name:</span>
+                  <span className="detail-value">{selectedRule.name}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">ID:</span>
+                  <span className="detail-value mono">{selectedRule.id}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Severity:</span>
+                  <span className={`severity-badge ${getSeverityClass(selectedRule.severity)}`}>
+                    {getSeverityIcon(selectedRule.severity)} {selectedRule.severity}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Score:</span>
+                  <span className="detail-value">{selectedRule.score}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Status:</span>
+                  <span className={`status-badge ${selectedRule.enabled ? 'enabled' : 'disabled'}`}>
+                    {selectedRule.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="detail-section">
+                <h4>Description</h4>
+                <p className="detail-description">{selectedRule.description}</p>
+              </div>
+
+              {selectedRule.mitre_attack && selectedRule.mitre_attack.length > 0 && (
+                <div className="detail-section">
+                  <h4>MITRE ATT&CK</h4>
+                  <div className="mitre-tags">
+                    {selectedRule.mitre_attack.map(m => (
+                      <span key={m} className="mitre-tag">{m}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedRule.tags && selectedRule.tags.length > 0 && (
+                <div className="detail-section">
+                  <h4>Tags</h4>
+                  <div className="tags-list">
+                    {selectedRule.tags.map(tag => (
+                      <span key={tag} className="tag-item">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showValidateModal && (
+        <div className="modal-overlay" onClick={() => setShowValidateModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Validate Rule</h3>
+              <button className="close-btn" onClick={() => setShowValidateModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-desc">Enter rule YAML or JSON content to validate:</p>
+              <textarea
+                className="validate-input"
+                placeholder={`- name: Example Rule
+  description: This is an example rule
+  severity: high
+  enabled: true
+  score: 80`}
+                rows={10}
+              />
+              <div className="modal-actions">
+                <button className="btn-secondary" onClick={() => setShowValidateModal(false)}>
+                  Cancel
+                </button>
+                <button 
+                  className="btn-primary" 
+                  onClick={() => {
+                    const textarea = document.querySelector('.validate-input') as HTMLTextAreaElement
+                    if (textarea?.value) {
+                      try {
+                        const content = textarea.value
+                        if (content.trim().startsWith('-')) {
+                          handleValidateRule({ name: 'temp', description: content, severity: 'medium', enabled: true, score: 50 })
+                        } else {
+                          const parsed = JSON.parse(content)
+                          handleValidateRule(parsed)
+                        }
+                      } catch {
+                        handleValidateRule({ name: 'temp', description: content, severity: 'medium', enabled: true, score: 50 })
+                      }
+                    }
+                  }}
+                  disabled={validating}
+                >
+                  {validating ? 'Validating...' : 'Validate'}
+                </button>
+              </div>
+              {validateResult && (
+                <div className={`validation-result ${validateResult.valid ? 'valid' : 'invalid'}`}>
+                  <div className="result-header">
+                    {validateResult.valid ? '✓ Valid Rule' : '✗ Invalid Rule'}
+                  </div>
+                  {validateResult.errors.length > 0 && (
+                    <div className="result-errors">
+                      <strong>Errors:</strong>
+                      <ul>{validateResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                    </div>
+                  )}
+                  {validateResult.warnings.length > 0 && (
+                    <div className="result-warnings">
+                      <strong>Warnings:</strong>
+                      <ul>{validateResult.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Import Rules</h3>
+              <button className="close-btn" onClick={() => setShowImportModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-desc">Select a YAML or JSON file containing rules:</p>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".yaml,.yml,.json"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+              <button 
+                className="btn-primary btn-upload"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+              >
+                {importing ? 'Importing...' : 'Choose File'}
+              </button>
+              {importResult && (
+                <div className={`import-result ${importResult.imported > 0 ? 'success' : 'error'}`}>
+                  <div className="result-header">
+                    {importResult.imported > 0 
+                      ? `✓ Imported ${importResult.imported} rules` 
+                      : '✗ Import failed'}
+                  </div>
+                  {importResult.failed > 0 && (
+                    <div className="result-info">Failed: {importResult.failed}</div>
+                  )}
+                  {importResult.errors.length > 0 && (
+                    <div className="result-errors">
+                      <ul>{importResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="modal-actions">
+                <button className="btn-secondary" onClick={() => setShowImportModal(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -242,6 +575,26 @@ function Rules() {
           margin: 0;
         }
         
+        .header-actions {
+          display: flex;
+          gap: 12px;
+        }
+        
+        .btn-primary {
+          padding: 10px 20px;
+          background: #00d9ff;
+          border: none;
+          border-radius: 6px;
+          color: #000;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+          background: #00c4e6;
+        }
+        
         .btn-secondary {
           padding: 10px 20px;
           background: rgba(0, 217, 255, 0.1);
@@ -254,6 +607,41 @@ function Rules() {
         
         .btn-secondary:hover {
           background: rgba(0, 217, 255, 0.2);
+        }
+        
+        .export-dropdown {
+          position: relative;
+        }
+        
+        .export-menu {
+          display: none;
+          position: absolute;
+          top: 100%;
+          right: 0;
+          background: #1a1a2e;
+          border: 1px solid #333;
+          border-radius: 6px;
+          overflow: hidden;
+          z-index: 100;
+        }
+        
+        .export-dropdown:hover .export-menu {
+          display: block;
+        }
+        
+        .export-menu button {
+          display: block;
+          width: 100%;
+          padding: 10px 20px;
+          background: none;
+          border: none;
+          color: #fff;
+          text-align: left;
+          cursor: pointer;
+        }
+        
+        .export-menu button:hover {
+          background: rgba(0, 217, 255, 0.1);
         }
         
         .stats-cards {
@@ -482,6 +870,11 @@ function Rules() {
           border-top: 1px solid #333;
         }
         
+        .rule-actions {
+          display: flex;
+          gap: 8px;
+        }
+        
         .mitre-tags {
           display: flex;
           gap: 6px;
@@ -544,6 +937,192 @@ function Rules() {
         
         .empty-icon {
           font-size: 48px;
+        }
+        
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+        
+        .modal-content {
+          background: #1a1a2e;
+          border-radius: 12px;
+          padding: 24px;
+          max-width: 600px;
+          width: 90%;
+          max-height: 80vh;
+          overflow-y: auto;
+          border: 1px solid #333;
+        }
+        
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+          color: #00d9ff;
+          margin: 0;
+        }
+        
+        .close-btn {
+          background: none;
+          border: none;
+          color: #888;
+          font-size: 24px;
+          cursor: pointer;
+        }
+        
+        .close-btn:hover {
+          color: #fff;
+        }
+        
+        .modal-desc {
+          color: #888;
+          margin-bottom: 16px;
+        }
+        
+        .modal-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 16px;
+        }
+        
+        .validate-input {
+          width: 100%;
+          padding: 12px;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid #333;
+          border-radius: 6px;
+          color: #eee;
+          font-family: monospace;
+          font-size: 13px;
+          resize: vertical;
+        }
+        
+        .validate-input:focus {
+          outline: none;
+          border-color: #00d9ff;
+        }
+        
+        .validation-result, .import-result {
+          margin-top: 16px;
+          padding: 12px;
+          border-radius: 8px;
+        }
+        
+        .validation-result.valid, .import-result.success {
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .validation-result.invalid, .import-result.error {
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .result-header {
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+        
+        .validation-result.valid .result-header { color: #22c55e; }
+        .validation-result.invalid .result-header { color: #ef4444; }
+        .import-result.success .result-header { color: #22c55e; }
+        .import-result.error .result-header { color: #ef4444; }
+        
+        .result-errors, .result-warnings {
+          font-size: 13px;
+          color: #888;
+        }
+        
+        .result-errors ul, .result-warnings ul {
+          margin: 8px 0 0 0;
+          padding-left: 20px;
+        }
+        
+        .result-errors { color: #ef4444; }
+        .result-warnings { color: #f59e0b; }
+        
+        .btn-upload {
+          width: 100%;
+        }
+        
+        .rule-modal .detail-section {
+          margin-bottom: 20px;
+        }
+        
+        .rule-modal .detail-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .detail-label {
+          color: #888;
+          font-size: 14px;
+        }
+        
+        .detail-value {
+          color: #fff;
+          font-weight: 500;
+        }
+        
+        .detail-value.mono {
+          font-family: monospace;
+          font-size: 13px;
+        }
+        
+        .status-badge {
+          padding: 4px 10px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        
+        .status-badge.enabled {
+          background: rgba(34, 197, 94, 0.2);
+          color: #22c55e;
+        }
+        
+        .status-badge.disabled {
+          background: rgba(239, 68, 68, 0.2);
+          color: #ef4444;
+        }
+        
+        .rule-modal h4 {
+          color: #00d9ff;
+          margin: 0 0 12px 0;
+          font-size: 14px;
+        }
+        
+        .detail-description {
+          color: #ccc;
+          line-height: 1.6;
+          margin: 0;
+        }
+        
+        .tags-list {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        
+        .tag-item {
+          padding: 4px 10px;
+          background: rgba(168, 85, 247, 0.1);
+          color: #a855f7;
+          border-radius: 4px;
+          font-size: 12px;
         }
       `}</style>
     </div>

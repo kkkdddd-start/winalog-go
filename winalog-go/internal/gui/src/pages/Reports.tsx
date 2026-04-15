@@ -82,12 +82,12 @@ function Reports() {
   const handleDownload = async (report: Report) => {
     try {
       const format = report.format || 'json'
-      const res = await reportsAPI.export(format as 'json' | 'csv' | 'excel')
+      const res = await reportsAPI.export(format as 'json' | 'csv' | 'excel' | 'pdf')
       const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${report.name}.${format}`
+      a.download = `${report.name || report.id}.${format}`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
