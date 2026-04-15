@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
 
 type Server struct {
 	engine         *gin.Engine
 	db             *storage.DB
+	cfg            *config.Config
+	configPath     string
 	addr           string
 	alertEng       *AlertHandler
 	importEng      *ImportHandler
@@ -25,6 +28,49 @@ type Server struct {
 	reportsEng     *ReportsHandler
 	forensicsEng   *ForensicsHandler
 	dashboardEng   *DashboardHandler
+	settingsEng    *SettingsHandler
+}
+
+func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Server {
+	gin.SetMode(gin.ReleaseMode)
+	engine := gin.New()
+
+	engine.Use(gin.Recovery())
+	engine.Use(requestLogger())
+	engine.Use(corsMiddleware())
+
+	server := &Server{
+		engine:     engine,
+		db:         db,
+		cfg:        cfg,
+		configPath: configPath,
+		addr:       addr,
+	}
+
+	server.setupHandlers()
+	server.setupRoutes()
+
+	return server
+}
+
+func (s *Server) setupHandlers() {
+	s.alertEng = &AlertHandler{
+		db: s.db,
+	}
+	s.importEng = &ImportHandler{
+		db: s.db,
+	}
+	s.liveEng = NewLiveHandler(s.db)
+	s.persistenceEng = NewPersistenceHandler()
+	s.timelineEng = &TimelineHandler{
+		db: s.db,
+	}
+	s.systemEng = NewSystemHandler(s.db)
+	s.rulesEng = NewRulesHandler()
+	s.reportsEng = NewReportsHandler(s.db)
+	s.forensicsEng = NewForensicsHandler(s.db)
+	s.dashboardEng = NewDashboardHandler(s.db)
+	s.settingsEng = NewSettingsHandler(s.cfg, s.configPath)
 }
 
 func NewServer(db *storage.DB, addr string) *Server {
@@ -73,6 +119,7 @@ func (s *Server) setupRoutes() {
 	SetupRulesRoutes(s.engine, s.rulesEng)
 	SetupReportsRoutes(s.engine, s.reportsEng)
 	SetupForensicsRoutes(s.engine, s.forensicsEng)
+	SetupSettingsRoutes(s.engine, s.settingsEng)
 
 	staticDir := filepath.Join("internal", "gui", "dist")
 	staticFs := http.Dir(staticDir)

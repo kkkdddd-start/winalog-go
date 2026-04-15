@@ -2,11 +2,13 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
+	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
 type SystemInfoCollector struct {
@@ -59,6 +61,15 @@ func (c *SystemInfoCollector) collectSystemInfo() *types.SystemInfo {
 
 	info.Hostname, _ = os.Hostname()
 	info.LocalTime = time.Now()
+
+	if runtime.GOOS == "windows" {
+		if winVersion, err := utils.GetWindowsVersion(); err == nil {
+			info.OSVersion = fmt.Sprintf("Windows %d.%d (Build %d)", winVersion.Major, winVersion.Minor, winVersion.Build)
+			if winVersion.CSDVersion != "" {
+				info.OSVersion += " " + winVersion.CSDVersion
+			}
+		}
+	}
 
 	return info
 }

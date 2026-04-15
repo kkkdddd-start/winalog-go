@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"runtime"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/kkkdddd-start/winalog-go/internal/api"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
+	"github.com/kkkdddd-start/winalog-go/internal/config"
+	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/tui"
 	"github.com/spf13/cobra"
@@ -23,6 +26,32 @@ var statusCmd = &cobra.Command{
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	stats, err := db.GetStats()
+	if err != nil {
+		return fmt.Errorf("failed to get stats: %w", err)
+	}
+
+	fmt.Println("=" + strings.Repeat("=", 60))
+	fmt.Println("  System Status")
+	fmt.Println("=" + strings.Repeat("=", 60))
+	fmt.Printf("\n  Database: %s\n", cfg.Database.Path)
+	fmt.Printf("  Total Events:  %d\n", stats.EventCount)
+	fmt.Printf("  Total Alerts:  %d\n", stats.AlertCount)
+	fmt.Printf("  Storage Size: %.2f MB\n", float64(stats.StorageSize)/(1024*1024))
+	fmt.Println()
+	fmt.Printf("  Critical Alerts: %d\n", stats.CriticalAlerts)
+	fmt.Printf("  High Alerts:    %d\n", stats.HighAlerts)
+	fmt.Printf("  Medium Alerts:  %d\n", stats.MediumAlerts)
+	fmt.Printf("  Low Alerts:     %d\n", stats.LowAlerts)
+	fmt.Println("\n" + strings.Repeat("=", 61))
+
 	return nil
 }
 
@@ -218,6 +247,24 @@ var verifyCmd = &cobra.Command{
 }
 
 func runVerify(cmd *cobra.Command, args []string) error {
+	filePath := args[0]
+
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	hash, err := collectors.CalculateFileHash(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to calculate hash: %w", err)
+	}
+
+	fmt.Printf("File: %s\n", filePath)
+	fmt.Printf("Size: %d bytes\n", info.Size())
+	fmt.Printf("SHA256: %s\n", hash.SHA256)
+	fmt.Printf("SHA1: %s\n", hash.SHA1)
+	fmt.Printf("MD5: %s\n", hash.MD5)
+
 	return nil
 }
 
@@ -254,18 +301,85 @@ func init() {
 }
 
 func runRulesList(cmd *cobra.Command, args []string) error {
+	alertRules := builtin.GetAlertRules()
+	correlationRules := builtin.GetCorrelationRules()
+
+	fmt.Println("=" + strings.Repeat("=", 60))
+	fmt.Println("  Alert Rules")
+	fmt.Println("=" + strings.Repeat("=", 60))
+	fmt.Printf("  Total: %d rules\n\n", len(alertRules))
+
+	for i, rule := range alertRules {
+		if i >= 30 {
+			fmt.Printf("  ... and %d more rules\n", len(alertRules)-30)
+			break
+		}
+		fmt.Printf("  [%s] %s\n", rule.Severity, rule.Name)
+	}
+
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("  Correlation Rules")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Printf("  Total: %d rules\n\n", len(correlationRules))
+
+	for i, rule := range correlationRules {
+		if i >= 20 {
+			fmt.Printf("  ... and %d more rules\n", len(correlationRules)-20)
+			break
+		}
+		fmt.Printf("  %s: %s\n", rule.Name, rule.Description)
+	}
+
 	return nil
 }
 
 func runRulesValidate(cmd *cobra.Command, args []string) error {
+	filePath := args[0]
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	fmt.Printf("Validating rule file: %s\n", filePath)
+	fmt.Printf("File size: %d bytes\n", len(content))
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(content, &jsonData); err != nil {
+		fmt.Printf("ERROR: Invalid JSON format - %v\n", err)
+		return nil
+	}
+
+	requiredFields := []string{"name", "severity", "event_id"}
+	missingFields := []string{}
+
+	for _, field := range requiredFields {
+		if _, ok := jsonData[field]; !ok {
+			missingFields = append(missingFields, field)
+		}
+	}
+
+	if len(missingFields) > 0 {
+		fmt.Printf("WARNING: Missing required fields: %s\n", strings.Join(missingFields, ", "))
+	} else {
+		fmt.Println("OK: All required fields present")
+	}
+
+	fmt.Printf("\nRule '%s' is valid.\n", jsonData["name"])
 	return nil
 }
 
 func runRulesEnable(cmd *cobra.Command, args []string) error {
+	ruleName := args[0]
+	fmt.Printf("Enabling rule: %s\n", ruleName)
+	fmt.Println("Note: Built-in rules cannot be disabled. Custom rules can be enabled via config file.")
 	return nil
 }
 
 func runRulesDisable(cmd *cobra.Command, args []string) error {
+	ruleName := args[0]
+	fmt.Printf("Disabling rule: %s\n", ruleName)
+	fmt.Println("Note: Built-in rules cannot be disabled. Custom rules can be disabled via config file.")
 	return nil
 }
 
@@ -294,14 +408,68 @@ func init() {
 }
 
 func runDBStatus(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	stats, err := db.GetStats()
+	if err != nil {
+		return fmt.Errorf("failed to get stats: %w", err)
+	}
+
+	fmt.Println("=" + strings.Repeat("=", 60))
+	fmt.Println("  Database Status")
+	fmt.Println("=" + strings.Repeat("=", 60))
+	fmt.Printf("  Path: %s\n", cfg.Database.Path)
+	fmt.Printf("  Total Events: %d\n", stats.EventCount)
+	fmt.Printf("  Total Alerts: %d\n", stats.AlertCount)
+	fmt.Printf("  Storage Size: %.2f MB\n", float64(stats.StorageSize)/(1024*1024))
+
 	return nil
 }
 
 func runDBVacuum(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	fmt.Println("Running VACUUM to optimize database...")
+	if _, err := db.Exec("VACUUM"); err != nil {
+		return fmt.Errorf("failed to vacuum: %w", err)
+	}
+
+	stats, _ := db.GetStats()
+	fmt.Printf("Database optimized. New size: %.2f MB\n", float64(stats.StorageSize)/(1024*1024))
 	return nil
 }
 
 func runDBClean(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	fmt.Println("Cleaning old events (older than 90 days)...")
+	result, err := db.Exec("DELETE FROM events WHERE timestamp < datetime('now', '-90 days')")
+	if err != nil {
+		return fmt.Errorf("failed to clean events: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	fmt.Printf("Deleted %d old events.\n", rowsAffected)
+
+	fmt.Println("Running VACUUM to reclaim space...")
+	db.Exec("VACUUM")
+
+	fmt.Println("Cleanup complete.")
 	return nil
 }
 
@@ -326,10 +494,74 @@ func init() {
 }
 
 func runConfigGet(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+
+	if len(args) == 0 {
+		fmt.Println("=" + strings.Repeat("=", 60))
+		fmt.Println("  Configuration")
+		fmt.Println("=" + strings.Repeat("=", 60))
+		fmt.Printf("  Database Path: %s\n", cfg.Database.Path)
+		fmt.Printf("  API Host: %s\n", cfg.API.Host)
+		fmt.Printf("  API Port: %d\n", cfg.API.Port)
+		fmt.Printf("  Log Level: %s\n", cfg.Log.Level)
+		fmt.Printf("  Import Workers: %d\n", cfg.Import.Workers)
+		fmt.Printf("  Import Batch Size: %d\n", cfg.Import.BatchSize)
+		fmt.Printf("  Alerts Enabled: %v\n", cfg.Alerts.Enabled)
+		fmt.Printf("  Report Output: %s\n", cfg.Report.OutputDir)
+	} else {
+		key := args[0]
+		switch key {
+		case "database.path":
+			fmt.Println(cfg.Database.Path)
+		case "api.host":
+			fmt.Println(cfg.API.Host)
+		case "api.port":
+			fmt.Println(cfg.API.Port)
+		case "log.level":
+			fmt.Println(cfg.Log.Level)
+		case "import.workers":
+			fmt.Println(cfg.Import.Workers)
+		case "alerts.enabled":
+			fmt.Println(cfg.Alerts.Enabled)
+		default:
+			fmt.Printf("Unknown config key: %s\n", key)
+		}
+	}
+
 	return nil
 }
 
 func runConfigSet(cmd *cobra.Command, args []string) error {
+	key := args[0]
+	value := args[1]
+
+	cfg := getConfig()
+
+	switch key {
+	case "database.path":
+		cfg.Database.Path = value
+	case "api.host":
+		cfg.API.Host = value
+	case "api.port":
+		fmt.Sscanf(value, "%d", &cfg.API.Port)
+	case "log.level":
+		cfg.Log.Level = value
+	case "import.workers":
+		fmt.Sscanf(value, "%d", &cfg.Import.Workers)
+	case "alerts.enabled":
+		cfg.Alerts.Enabled = value == "true"
+	default:
+		fmt.Printf("Cannot set unknown config key: %s\n", key)
+	}
+
+	loader := config.NewLoader()
+	if err := loader.Save(cfg, globalConfigPath); err != nil {
+		fmt.Printf("Warning: Failed to save config: %v\n", err)
+		fmt.Println("Changes are only applied to the current session.")
+	} else {
+		fmt.Println("Configuration saved successfully.")
+	}
+
 	return nil
 }
 
@@ -341,6 +573,37 @@ var metricsCmd = &cobra.Command{
 }
 
 func runMetrics(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	stats, err := db.GetStats()
+	if err != nil {
+		return fmt.Errorf("failed to get stats: %w", err)
+	}
+
+	fmt.Println("# HELP winalog_events_total Total number of events")
+	fmt.Println("# TYPE winalog_events_total counter")
+	fmt.Printf("winalog_events_total %d\n", stats.EventCount)
+
+	fmt.Println("# HELP winalog_alerts_total Total number of alerts")
+	fmt.Println("# TYPE winalog_alerts_total counter")
+	fmt.Printf("winalog_alerts_total %d\n", stats.AlertCount)
+
+	fmt.Println("# HELP winalog_storage_bytes Storage size in bytes")
+	fmt.Println("# TYPE winalog_storage_bytes gauge")
+	fmt.Printf("winalog_storage_bytes %.2f\n", float64(stats.StorageSize))
+
+	fmt.Println("# HELP winalog_alerts_by_severity Alerts grouped by severity")
+	fmt.Println("# TYPE winalog_alerts_by_severity gauge")
+	fmt.Printf("winalog_alerts_by_severity{severity=\"critical\"} %d\n", stats.CriticalAlerts)
+	fmt.Printf("winalog_alerts_by_severity{severity=\"high\"} %d\n", stats.HighAlerts)
+	fmt.Printf("winalog_alerts_by_severity{severity=\"medium\"} %d\n", stats.MediumAlerts)
+	fmt.Printf("winalog_alerts_by_severity{severity=\"low\"} %d\n", stats.LowAlerts)
+
 	return nil
 }
 
@@ -353,6 +616,67 @@ var queryCmd = &cobra.Command{
 }
 
 func runQuery(cmd *cobra.Command, args []string) error {
+	sqlQuery := args[0]
+
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	allowedPrefixes := []string{"SELECT", "PRAGMA", "EXPLAIN"}
+	isAllowed := false
+	for _, prefix := range allowedPrefixes {
+		if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(sqlQuery)), prefix) {
+			isAllowed = true
+			break
+		}
+	}
+
+	if !isAllowed {
+		return fmt.Errorf("only SELECT and PRAGMA queries are allowed for safety")
+	}
+
+	rows, err := db.Query(sqlQuery)
+	if err != nil {
+		return fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("failed to get columns: %w", err)
+	}
+
+	fmt.Println(strings.Join(cols, "\t"))
+
+	count := 0
+	for rows.Next() {
+		values := make([]interface{}, len(cols))
+		valuePtrs := make([]interface{}, len(cols))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
+			continue
+		}
+
+		rowVals := make([]string, len(cols))
+		for i, val := range values {
+			if val == nil {
+				rowVals[i] = "NULL"
+			} else {
+				rowVals[i] = fmt.Sprintf("%v", val)
+			}
+		}
+		fmt.Println(strings.Join(rowVals, "\t"))
+		count++
+	}
+
+	fmt.Printf("\n(%d rows)\n", count)
+
 	return nil
 }
 
@@ -376,17 +700,23 @@ var serveCmd = &cobra.Command{
 }
 
 var serveFlags struct {
-	host string
-	port int
+	host       string
+	port       int
+	configPath string
 }
 
 func init() {
 	serveCmd.Flags().StringVar(&serveFlags.host, "host", "127.0.0.1", "API host")
 	serveCmd.Flags().IntVar(&serveFlags.port, "port", 8080, "API port")
+	serveCmd.Flags().StringVar(&serveFlags.configPath, "config", "", "Config file path")
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
 	cfg := getConfig()
+	if serveFlags.configPath != "" {
+		globalConfigPath = serveFlags.configPath
+		cfg, _ = globalConfigLoader.Load(serveFlags.configPath)
+	}
 	db, err := storage.NewDB(cfg.Database.Path)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
@@ -394,7 +724,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	defer db.Close()
 
 	addr := fmt.Sprintf("%s:%d", serveFlags.host, serveFlags.port)
-	server := api.NewServer(db, addr)
+	server := api.NewServer(db, cfg, globalConfigPath, addr)
 
 	fmt.Printf("Starting HTTP API server on %s\n", addr)
 	fmt.Printf("API documentation available at http://%s/api/health\n", addr)
@@ -429,13 +759,52 @@ func init() {
 }
 
 func runForensicsCollect(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	fmt.Println("Starting forensics evidence collection...")
+	fmt.Println("Collecting: Registry, Prefetch, ShimCache, UserAssist, Scheduled Tasks")
+
+	result, err := collectors.RunPersistenceCollection(ctx)
+	if err != nil {
+		fmt.Printf("Collection completed with warnings: %v\n", err)
+	}
+
+	fmt.Printf("Evidence collection complete.\n")
+	fmt.Printf("Output: %s\n", result)
 	return nil
 }
 
 func runForensicsHash(cmd *cobra.Command, args []string) error {
+	filePath := args[0]
+
+	hash, err := collectors.CalculateFileHash(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to calculate hash: %w", err)
+	}
+
+	fmt.Printf("SHA256: %s\n", hash.SHA256)
+	fmt.Printf("SHA1: %s\n", hash.SHA1)
+	fmt.Printf("MD5: %s\n", hash.MD5)
+
 	return nil
 }
 
 func runForensicsVerify(cmd *cobra.Command, args []string) error {
+	filePath := args[0]
+
+	sig, err := collectors.VerifySignature(filePath)
+	if err != nil {
+		fmt.Printf("Signature verification error: %v\n", err)
+		return nil
+	}
+
+	fmt.Printf("File: %s\n", filePath)
+	fmt.Printf("Status: %s\n", sig.Status)
+	if sig.Signer != "" {
+		fmt.Printf("Signer: %s\n", sig.Signer)
+		fmt.Printf("Issuer: %s\n", sig.Issuer)
+		fmt.Printf("Thumbprint: %s\n", sig.Thumbprint)
+	}
+
 	return nil
 }

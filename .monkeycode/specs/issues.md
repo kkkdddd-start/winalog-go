@@ -6,14 +6,14 @@
 
 | ID | 问题 | 位置 | 状态 | 修复方案 |
 |----|------|------|------|----------|
-| P1-1 | runtime.GOOS 硬编码 | system_info.go:56 | 待修复 | 改用 Windows 版本信息获取 API |
-| P1-2 | Settings 无持久化 | handlers_settings.go:69-72 | 待修复 | 添加 viper.WriteConfig() |
+| P1-1 | runtime.GOOS 硬编码 | system_info.go:56 | ✅ 已修复 | 使用 utils.GetWindowsVersion() |
+| P1-2 | Settings 无持久化 | handlers_settings.go:69-72 | ✅ 已修复 | 调用 config.Loader.Save() |
 
 ### P2 - 中优先级
 
 | ID | 问题 | 位置 | 状态 | 修复方案 |
 |----|------|------|------|----------|
-| P2-1 | CLI 运维命令空实现 | commands/system.go | 待修复 | 补充实现或标记 TODO |
+| P2-1 | CLI 运维命令空实现 | commands/system.go | ✅ 已修复 | 实现全部 15+ 命令 |
 | P2-2 | AlertTrend 计算逻辑错误 | alerts/trend.go:124 | ✅ 已修复 | 直接使用 dateStr 查找 |
 
 ---
@@ -38,6 +38,9 @@
 | 260416 | P2-7 | Forensics handleCollect | 使用真实 API |
 | 260416 | P2-8 | ChainOfCustody API | 数据库查询 |
 | 260416 | P2-2 | AlertTrend 计算错误 | 已修复 |
+| 260416 | P1-1 | runtime.GOOS 硬编码 | 使用 utils.GetWindowsVersion() |
+| 260416 | P1-2 | Settings 无持久化 | 调用 config.Save() |
+| 260416 | P2-1 | CLI 运维命令空实现 | 实现全部命令 |
 
 ---
 

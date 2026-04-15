@@ -8,7 +8,8 @@ import (
 )
 
 type SettingsHandler struct {
-	cfg *config.Config
+	cfg        *config.Config
+	configPath string
 }
 
 type Settings struct {
@@ -26,8 +27,11 @@ type Settings struct {
 	ExportDirectory      string `json:"export_directory"`
 }
 
-func NewSettingsHandler(cfg *config.Config) *SettingsHandler {
-	return &SettingsHandler{cfg: cfg}
+func NewSettingsHandler(cfg *config.Config, configPath string) *SettingsHandler {
+	return &SettingsHandler{
+		cfg:        cfg,
+		configPath: configPath,
+	}
 }
 
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
@@ -66,9 +70,20 @@ func (h *SettingsHandler) SaveSettings(c *gin.Context) {
 	h.cfg.Import.BatchSize = settings.MaxImportFileSize
 	h.cfg.Report.OutputDir = settings.ExportDirectory
 
+	if h.configPath != "" {
+		loader := config.NewLoader()
+		if err := loader.Save(h.cfg, h.configPath); err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"status":  "partial",
+				"message": "Settings updated in memory, but failed to persist: " + err.Error(),
+			})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "saved",
-		"message": "Settings updated in memory. Restart required for full effect.",
+		"message": "Settings saved successfully.",
 	})
 }
 
@@ -83,8 +98,22 @@ func (h *SettingsHandler) ResetSettings(c *gin.Context) {
 	h.cfg.Report = defaultCfg.Report
 	h.cfg.Log = defaultCfg.Log
 
+	if h.configPath != "" {
+		loader := config.NewLoader()
+		loader.Save(h.cfg, h.configPath)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "reset",
-		"message": "Settings reset to defaults. Restart required.",
+		"message": "Settings reset to defaults.",
 	})
+}
+
+func SetupSettingsRoutes(r *gin.Engine, settingsHandler *SettingsHandler) {
+	settings := r.Group("/api/settings")
+	{
+		settings.GET("", settingsHandler.GetSettings)
+		settings.POST("", settingsHandler.SaveSettings)
+		settings.POST("/reset", settingsHandler.ResetSettings)
+	}
 }
