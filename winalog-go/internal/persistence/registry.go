@@ -474,5 +474,11 @@ func isKnownSuspiciousStartup(fileName string) bool {
 }
 
 func parseShortcut(filePath string) string {
+	cmd := fmt.Sprintf(`(New-Object -ComObject WScript.Shell).CreateShortcut('%s').TargetPath`, filePath)
+
+	result := utils.RunPowerShell(cmd)
+	if result.Success() {
+		return strings.TrimSpace(result.Output)
+	}
 	return ""
 }

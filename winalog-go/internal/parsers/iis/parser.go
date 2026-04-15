@@ -72,7 +72,31 @@ type IISLog struct {
 var (
 	iisW3CHeaderRegex = regexp.MustCompile(`^#Fields:\s+(.+)$`)
 	iisDateRegex      = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}`)
+	iisQuotedField    = regexp.MustCompile(`"([^"]*)"`)
+	iisDateTimeRegex  = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})`)
 )
+
+var KnownAttackPatterns = map[string]string{
+	"/wp-login.php":  "WordPress Login Scan",
+	"/admin":         "Admin Path Access",
+	"/phpmyadmin":    "PHPMyAdmin Access",
+	"/xmlrpc.php":    "XML-RPC Attack",
+	"/.env":          "Environment File Access",
+	"/config.php":    "Config File Access",
+	"/web.config":    "Web Config Access",
+	"/aspnet_client": "ASP.NET Client Access",
+	"/cgi-bin":       "CGI Bin Access",
+	"/console":       "Management Console Access",
+	"/api/jsonws":    "JSON Web Service",
+	"/muieblack":     "PHPMyAdmin Scanner",
+	"union select":   "SQL Injection Attempt",
+	"union+select":   "SQL Injection Attempt",
+	"exec(":          "Command Injection Attempt",
+	"eval(":          "Code Injection Attempt",
+	"<script>":       "XSS Attempt",
+	"../":            "Path Traversal Attempt",
+	"..\\":           "Path Traversal Attempt",
+}
 
 func (p *IISParser) parseIIS(path string) ([]*types.Event, error) {
 	file, err := os.Open(path)
@@ -113,7 +137,7 @@ func parseIISColumns(header string) []string {
 }
 
 func (p *IISParser) parseLogLine(line string, columns []string) *types.Event {
-	fields := strings.Fields(line)
+	fields := parseIISFields(line)
 	if len(fields) < 5 {
 		return nil
 	}
@@ -125,68 +149,144 @@ func (p *IISParser) parseLogLine(line string, columns []string) *types.Event {
 		ImportTime: time.Now(),
 	}
 
+	var dateStr, timeStr, clientIP, method, uriStem, uriQuery, serverIP, userName, userAgent, referer, cookie, host string
+	var status, port int
+	var bytesSent int64
+
 	for i, col := range columns {
 		if i >= len(fields) {
 			break
 		}
 		value := fields[i]
+		colLower := strings.ToLower(col)
 
-		switch strings.ToLower(col) {
+		switch colLower {
 		case "date":
-			if t, err := time.Parse("2006-01-02", value); err == nil {
-				event.Timestamp = t
-			}
+			dateStr = value
 		case "time":
-			if len(fields) > i+1 {
-				timeStr := value + " " + fields[i+1]
-				if t, err := time.Parse("2006-01-02 15:04:05", timeStr); err == nil {
-					event.Timestamp = t
-					i++
-				}
-			}
+			timeStr = value
 		case "s-ip":
+			serverIP = value
 			event.Computer = value
 		case "cs-method":
-			event.Message = value
+			method = value
 		case "cs-uri-stem":
-			if event.Message != "" {
-				event.Message += " " + value
-			} else {
-				event.Message = value
-			}
+			uriStem = value
 		case "cs-uri-query":
-			if value != "-" && event.Message != "" {
-				event.Message += "?" + value
-			}
+			uriQuery = value
 		case "s-port":
-			if port, err := strconv.Atoi(value); err == nil {
-				event.Message += fmt.Sprintf(" (Port: %d)", port)
-			}
+			port, _ = strconv.Atoi(value)
 		case "c-ip":
+			clientIP = value
 			ip := value
 			event.IPAddress = &ip
+		case "cs-username":
+			userName = value
 		case "cs(User-Agent)":
-			ua := value
-			event.Message += " " + ua
+			userAgent = strings.Trim(value, `"`)
+		case "cs(Referer)":
+			referer = value
 		case "sc-status":
-			if status, err := strconv.Atoi(value); err == nil {
-				if status >= 400 {
-					event.Level = types.EventLevelWarning
-				}
-				if status >= 500 {
-					event.Level = types.EventLevelError
-				}
-			}
+			status, _ = strconv.Atoi(value)
 		case "sc-bytes":
-			if b, err := strconv.ParseInt(value, 10, 64); err == nil {
-				event.Message += fmt.Sprintf(" [Bytes: %d]", b)
-			}
+			bytesSent, _ = strconv.ParseInt(value, 10, 64)
+		case "cs-bytes":
+			_ = value
+		case "time-taken":
+			_ = value
+		case "cs-host":
+			host = value
+		case "cs(Cookie)":
+			cookie = value
+		case "cs(Content-Type)":
+			_ = value
 		}
+	}
+
+	if dateStr != "" && timeStr != "" {
+		dt, err := time.Parse("2006-01-02 15:04:05", dateStr+" "+timeStr)
+		if err == nil {
+			event.Timestamp = dt
+		}
+	}
+
+	event.Message = buildIISMessage(method, uriStem, uriQuery, port, status, clientIP, userAgent, bytesSent, host)
+
+	if status >= 400 {
+		if status >= 500 {
+			event.Level = types.EventLevelError
+		} else {
+			event.Level = types.EventLevelWarning
+		}
+	}
+
+	if attackDesc := detectIISAttack(uriStem, uriQuery, userAgent); attackDesc != "" {
+		event.Level = types.EventLevelWarning
+		event.Message += " [POTENTIAL ATTACK: " + attackDesc + "]"
 	}
 
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
 	}
 
+	if event.UserName == "" && userName != "" && userName != "-" {
+		event.UserName = userName
+	}
+
 	return event
+}
+
+func parseIISFields(line string) []string {
+	fields := make([]string, 0)
+	var inQuote bool
+	var current strings.Builder
+
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+		if c == '"' {
+			inQuote = !inQuote
+			continue
+		}
+		if c == ' ' && !inQuote {
+			fields = append(fields, current.String())
+			current.Reset()
+			continue
+		}
+		current.WriteByte(c)
+	}
+	if current.Len() > 0 {
+		fields = append(fields, current.String())
+	}
+	return fields
+}
+
+func buildIISMessage(method, uriStem, uriQuery string, port, status int, clientIP, userAgent string, bytesSent int64, host string) string {
+	msg := method + " " + uriStem
+	if uriQuery != "-" && uriQuery != "" {
+		msg += "?" + uriQuery
+	}
+	if host != "" {
+		msg = host + msg
+	}
+	msg += fmt.Sprintf(" (Port: %d) - Status: %d", port, status)
+	if clientIP != "" && clientIP != "-" {
+		msg += " - Client: " + clientIP
+	}
+	if userAgent != "" && userAgent != "-" {
+		msg += " - UA: " + userAgent
+	}
+	if bytesSent > 0 {
+		msg += fmt.Sprintf(" [Bytes: %d]", bytesSent)
+	}
+	return msg
+}
+
+func detectIISAttack(uriStem, uriQuery, userAgent string) string {
+	combined := strings.ToLower(uriStem + " " + uriQuery + " " + userAgent)
+	for pattern, desc := range KnownAttackPatterns {
+		if strings.Contains(combined, strings.ToLower(pattern)) {
+			return desc
+		}
+	}
+	return ""
 }

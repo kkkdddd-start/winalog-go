@@ -2,9 +2,13 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
+	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
 type ServicePersistenceDetector struct{}
@@ -58,7 +62,90 @@ var KnownBenignServices = map[string]bool{
 func (d *ServicePersistenceDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	detections := make([]*Detection, 0)
 
+	services, err := d.enumerateServices()
+	if err != nil {
+		return detections, err
+	}
+
+	for _, svc := range services {
+		if d.isSuspiciousService(svc.Name, svc.Path) {
+			det := &Detection{
+				Technique:   TechniqueT1543003,
+				Category:    "Service",
+				Severity:    d.calculateServiceSeverity(svc.Name, svc.Path),
+				Time:        time.Now(),
+				Title:       "Suspicious Service Detected",
+				Description: fmt.Sprintf("Service '%s' has suspicious characteristics", svc.Name),
+				Evidence: Evidence{
+					Type:     EvidenceTypeService,
+					Key:      svc.Name,
+					FilePath: svc.Path,
+					Process:  svc.Name,
+				},
+				MITRERef:          []string{"T1543.003"},
+				RecommendedAction: "Investigate the service and verify if it is legitimate",
+				FalsePositiveRisk: d.calculateServiceFPRisk(svc.Name, svc.Path),
+			}
+			detections = append(detections, det)
+		}
+	}
+
 	return detections, nil
+}
+
+func (d *ServicePersistenceDetector) enumerateServices() ([]ServiceInfo, error) {
+	services := make([]ServiceInfo, 0)
+
+	cmd := `Get-Service | Select-Object Name,DisplayName,Status,StartType | ForEach-Object { $_ | ConvertTo-Json -Compress }`
+
+	result := utils.RunPowerShell(cmd)
+	if !result.Success() {
+		return services, result.Error
+	}
+
+	output := strings.TrimSpace(result.Output)
+	if output == "" {
+		return services, nil
+	}
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || line == "null" {
+			continue
+		}
+
+		var svc struct {
+			Name        string `json:"Name"`
+			DisplayName string `json:"DisplayName"`
+			Status      string `json:"Status"`
+			StartType   string `json:"StartType"`
+		}
+
+		if err := json.Unmarshal([]byte(line), &svc); err != nil {
+			continue
+		}
+
+		services = append(services, ServiceInfo{
+			Name:        svc.Name,
+			DisplayName: svc.DisplayName,
+			State:       string(svc.Status),
+			StartType:   string(svc.StartType),
+			Path:        d.getServicePath(svc.Name),
+		})
+	}
+
+	return services, nil
+}
+
+func (d *ServicePersistenceDetector) getServicePath(serviceName string) string {
+	cmd := fmt.Sprintf(`(Get-WmiObject -Class Win32_Service -Filter "Name='%s'" -ErrorAction SilentlyContinue).PathName`, serviceName)
+
+	result := utils.RunPowerShell(cmd)
+	if result.Success() {
+		return strings.TrimSpace(result.Output)
+	}
+	return ""
 }
 
 func (d *ServicePersistenceDetector) AnalyzeServiceCreation(event *types.Event) *Detection {

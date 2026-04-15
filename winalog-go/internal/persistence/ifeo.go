@@ -54,6 +54,33 @@ var SuspiciousIFEODebuggers = []string{
 	"mshta.exe", "wsreset.exe",
 	"\\\\UNC\\", "\\\\127\\",
 	"%TEMP%", "%APPDATA%",
+	"certutil.exe", "bitsadmin.exe",
+	"cmstp.exe", "msiexec.exe",
+	"reg.exe", "schtasks.exe",
+	"at.exe", "sc.exe",
+	"wmic.exe", "winrm.exe",
+	"psExec.exe", "psexec.exe",
+	"hamachi.exe", "teamviewer.exe",
+	"anydesk.exe", "chrome-remote-desktop.exe",
+	"vnc.exe", "tightvnc.exe",
+	"realvnc.exe", "ultravnc.exe",
+	"ammyy.exe", "screenconnect.exe",
+}
+
+var RemoteAccessTools = map[string]string{
+	"teamviewer.exe":            "TeamViewer",
+	"anydesk.exe":               "AnyDesk",
+	"ammyy.exe":                 "Ammy Admin",
+	"chrome-remote-desktop.exe": "Chrome Remote Desktop",
+	"vnc.exe":                   "VNC",
+	"tightvnc.exe":              "TightVNC",
+	"realvnc.exe":               "RealVNC",
+	"ultravnc.exe":              "UltraVNC",
+	"screenconnect.exe":         "ScreenConnect",
+	"logmein.exe":               "LogMeIn",
+	"bomgar.exe":                "Bomgar",
+	"centosast.exe":             "CentraStage",
+	"psp.exe":                   "pStrm",
 }
 
 func (d *IFEODetector) Detect(ctx context.Context) ([]*Detection, error) {
@@ -118,6 +145,24 @@ func (d *IFEODetector) analyzeIFEOTarget(target IFEOTarget) *Detection {
 
 	for _, suspicious := range SuspiciousIFEODebuggers {
 		if strings.Contains(debuggerLower, strings.ToLower(suspicious)) {
+			if toolName, isRemoteAccess := RemoteAccessTools[strings.ToLower(target.Debugger)]; isRemoteAccess {
+				return &Detection{
+					Technique:   TechniqueT1546012,
+					Category:    "IFEO",
+					Severity:    SeverityCritical,
+					Time:        time.Now(),
+					Title:       "IFEO Remote Access Tool Detected",
+					Description: "A remote access tool (" + toolName + ") has been configured as IFEO debugger for: " + target.ProcessName + ". This is a common technique used by attackers for persistence and remote control.",
+					Evidence: Evidence{
+						Type:  EvidenceTypeRegistry,
+						Key:   IFEOPath + `\` + target.ProcessName,
+						Value: "Debugger = " + target.Debugger,
+					},
+					MITRERef:          []string{"T1546.012", "T1219"},
+					RecommendedAction: "Immediately investigate this system for remote access. Consider isolating from network.",
+					FalsePositiveRisk: "Low",
+				}
+			}
 			return &Detection{
 				Technique:   TechniqueT1546012,
 				Category:    "IFEO",
@@ -134,6 +179,25 @@ func (d *IFEODetector) analyzeIFEOTarget(target IFEOTarget) *Detection {
 				RecommendedAction: "Investigate the debugger and verify if this modification is authorized. Debugger hijacking is commonly used by malware and attacker tools.",
 				FalsePositiveRisk: "Medium",
 			}
+		}
+	}
+
+	if target.GlobalFlag != "" {
+		return &Detection{
+			Technique:   TechniqueT1546012,
+			Category:    "IFEO",
+			Severity:    SeverityMedium,
+			Time:        time.Now(),
+			Title:       "IFEO GlobalFlag Set",
+			Description: "A GlobalFlag has been configured for: " + target.ProcessName + ". This can be used to enable debugging flags.",
+			Evidence: Evidence{
+				Type:  EvidenceTypeRegistry,
+				Key:   IFEOPath + `\` + target.ProcessName,
+				Value: "GlobalFlag = " + target.GlobalFlag,
+			},
+			MITRERef:          []string{"T1546.012"},
+			RecommendedAction: "Verify if this GlobalFlag is authorized",
+			FalsePositiveRisk: "Medium",
 		}
 	}
 
