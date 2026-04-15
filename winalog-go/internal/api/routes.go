@@ -35,6 +35,9 @@ func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *Impor
 		timeline := api.Group("/timeline")
 		{
 			timeline.GET("", timelineHandler.GetTimeline)
+			timeline.GET("/stats", timelineHandler.GetTimelineStats)
+			timeline.GET("/chains", timelineHandler.GetAttackChains)
+			timeline.GET("/export", timelineHandler.ExportTimeline)
 			timeline.DELETE("/alerts/:id", timelineHandler.DeleteAlert)
 		}
 

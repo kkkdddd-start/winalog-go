@@ -192,6 +192,18 @@ CREATE TABLE IF NOT EXISTS reports (
 	error_message TEXT,
 	query_params TEXT
 );
+
+-- Suppress rules table (whitelist)
+CREATE TABLE IF NOT EXISTS suppress_rules (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL,
+	conditions TEXT,
+	duration INTEGER DEFAULT 0,
+	scope TEXT DEFAULT 'global',
+	enabled INTEGER DEFAULT 1,
+	expires_at TEXT,
+	created_at TEXT NOT NULL
+);
 `
 
 var TableDefinitions = map[string]TableDefinition{
@@ -347,6 +359,23 @@ var TableDefinitions = map[string]TableDefinition{
 		Indexes: []IndexDefinition{
 			{Name: "idx_generated_at", Columns: []string{"generated_at"}},
 			{Name: "idx_status", Columns: []string{"status"}},
+		},
+	},
+	"suppress_rules": {
+		Name: "suppress_rules",
+		Columns: []ColumnDefinition{
+			{Name: "id", Type: "INTEGER", PrimaryKey: true, AutoIncrement: true},
+			{Name: "name", Type: "TEXT", NotNull: true},
+			{Name: "conditions", Type: "TEXT"},
+			{Name: "duration", Type: "INTEGER", Default: "0"},
+			{Name: "scope", Type: "TEXT", Default: "'global'"},
+			{Name: "enabled", Type: "INTEGER", Default: "1"},
+			{Name: "expires_at", Type: "TEXT"},
+			{Name: "created_at", Type: "TEXT", NotNull: true},
+		},
+		Indexes: []IndexDefinition{
+			{Name: "idx_name", Columns: []string{"name"}},
+			{Name: "idx_enabled", Columns: []string{"enabled"}},
 		},
 	},
 }

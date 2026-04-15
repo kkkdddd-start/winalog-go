@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"runtime"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
@@ -44,6 +46,8 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 		return
 	}
 
+	format := c.DefaultQuery("format", "json")
+
 	ctx := context.Background()
 	var result *persistence.DetectionResult
 
@@ -61,6 +65,13 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 		}
 	}
 
+	if format == "csv" {
+		c.Header("Content-Type", "text/csv")
+		c.Header("Content-Disposition", "attachment; filename=persistence_detections.csv")
+		c.String(http.StatusOK, exportDetectionsToCSV(result.Detections))
+		return
+	}
+
 	response := DetectResponse{
 		Detections: result.Detections,
 		Summary:    result.Summary(),
@@ -69,6 +80,37 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func exportDetectionsToCSV(detections []*persistence.Detection) string {
+	var sb strings.Builder
+
+	sb.WriteString("ID,Time,Technique,Category,Severity,Title,Description,Key,Value,FilePath,RecommendedAction\n")
+
+	for _, det := range detections {
+		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+			det.ID,
+			det.Time.Format("2006-01-02 15:04:05"),
+			det.Technique,
+			det.Category,
+			det.Severity,
+			escapeCSV(det.Title),
+			escapeCSV(det.Description),
+			escapeCSV(det.Evidence.Key),
+			escapeCSV(det.Evidence.Value),
+			escapeCSV(det.Evidence.FilePath),
+			escapeCSV(det.RecommendedAction),
+		))
+	}
+
+	return sb.String()
+}
+
+func escapeCSV(s string) string {
+	s = strings.ReplaceAll(s, "\"", "\"\"")
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", "")
+	return s
 }
 
 func (h *PersistenceHandler) ListCategories(c *gin.Context) {

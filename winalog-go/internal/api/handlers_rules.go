@@ -3,24 +3,46 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/rules"
 	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
-type RulesHandler struct{}
+type RulesHandler struct {
+	customManager *rules.CustomRuleManager
+}
 
 type RuleInfo struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Enabled     bool     `json:"enabled"`
-	Severity    string   `json:"severity"`
-	Score       float64  `json:"score"`
-	MitreAttack []string `json:"mitre_attack"`
-	Tags        []string `json:"tags"`
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Enabled     bool        `json:"enabled"`
+	Severity    string      `json:"severity"`
+	Score       float64     `json:"score"`
+	MitreAttack []string    `json:"mitre_attack"`
+	Tags        []string    `json:"tags"`
+	IsCustom    bool        `json:"is_custom"`
+	EventIDs    []int32     `json:"event_ids,omitempty"`
+	Levels      []int       `json:"levels,omitempty"`
+	Filter      *FilterInfo `json:"filter,omitempty"`
+	Message     string      `json:"message,omitempty"`
+}
+
+type FilterInfo struct {
+	EventIDs         []int32  `json:"event_ids,omitempty"`
+	Levels           []int    `json:"levels,omitempty"`
+	LogNames         []string `json:"log_names,omitempty"`
+	Sources          []string `json:"sources,omitempty"`
+	Computers        []string `json:"computers,omitempty"`
+	Users            []string `json:"users,omitempty"`
+	Keywords         []string `json:"keywords,omitempty"`
+	ExcludeUsers     []string `json:"exclude_users,omitempty"`
+	ExcludeComputers []string `json:"exclude_computers,omitempty"`
+	IpAddress        string   `json:"ip_address,omitempty"`
 }
 
 type RulesListResponse struct {
@@ -30,13 +52,16 @@ type RulesListResponse struct {
 }
 
 func NewRulesHandler() *RulesHandler {
-	return &RulesHandler{}
+	return &RulesHandler{
+		customManager: rules.NewCustomRuleManager(""),
+	}
 }
 
 func (h *RulesHandler) ListRules(c *gin.Context) {
 	alertRules := builtin.GetAlertRules()
+	customRules := h.customManager.List()
 
-	rulesList := make([]RuleInfo, 0, len(alertRules))
+	rulesList := make([]RuleInfo, 0, len(alertRules)+len(customRules))
 	enabledCount := 0
 
 	for _, rule := range alertRules {
@@ -49,9 +74,74 @@ func (h *RulesHandler) ListRules(c *gin.Context) {
 			Score:       rule.Score,
 			MitreAttack: []string{},
 			Tags:        rule.Tags,
+			IsCustom:    false,
+		}
+		if rule.Filter != nil {
+			ruleInfo.EventIDs = rule.Filter.EventIDs
+			ruleInfo.Levels = rule.Filter.Levels
+		}
+		ruleInfo.Message = rule.Message
+		if rule.MitreAttack != "" {
+			ruleInfo.MitreAttack = []string{rule.MitreAttack}
+		}
+		if rule.Filter != nil {
+			keywords := []string{}
+			if rule.Filter.Keywords != "" {
+				keywords = strings.Fields(rule.Filter.Keywords)
+			}
+			ipAddr := ""
+			if len(rule.Filter.IpAddress) > 0 {
+				ipAddr = rule.Filter.IpAddress[0]
+			}
+			ruleInfo.Filter = &FilterInfo{
+				EventIDs:         rule.Filter.EventIDs,
+				Levels:           rule.Filter.Levels,
+				LogNames:         rule.Filter.LogNames,
+				Sources:          rule.Filter.Sources,
+				Computers:        rule.Filter.Computers,
+				Keywords:         keywords,
+				ExcludeUsers:     rule.Filter.ExcludeUsers,
+				ExcludeComputers: rule.Filter.ExcludeComputers,
+				IpAddress:        ipAddr,
+			}
+		}
+		rulesList = append(rulesList, ruleInfo)
+		if rule.Enabled {
+			enabledCount++
+		}
+	}
+
+	for _, rule := range customRules {
+		ruleInfo := RuleInfo{
+			ID:          rule.Name,
+			Name:        rule.Name,
+			Description: rule.Description,
+			Enabled:     rule.Enabled,
+			Severity:    rule.Severity,
+			Score:       rule.Score,
+			MitreAttack: []string{},
+			Tags:        rule.Tags,
+			IsCustom:    true,
+			EventIDs:    rule.EventIDs,
+			Levels:      rule.Levels,
+			Message:     rule.Message,
 		}
 		if rule.MitreAttack != "" {
 			ruleInfo.MitreAttack = []string{rule.MitreAttack}
+		}
+		if rule.Filter != nil {
+			ruleInfo.Filter = &FilterInfo{
+				EventIDs:         rule.Filter.EventIDs,
+				Levels:           rule.Filter.Levels,
+				LogNames:         rule.Filter.LogNames,
+				Sources:          rule.Filter.Sources,
+				Computers:        rule.Filter.Computers,
+				Users:            rule.Filter.Users,
+				Keywords:         rule.Filter.Keywords,
+				ExcludeUsers:     rule.Filter.ExcludeUsers,
+				ExcludeComputers: rule.Filter.ExcludeComputers,
+				IpAddress:        rule.Filter.IpAddress,
+			}
 		}
 		rulesList = append(rulesList, ruleInfo)
 		if rule.Enabled {
@@ -81,13 +171,71 @@ func (h *RulesHandler) GetRule(c *gin.Context) {
 				Score:       rule.Score,
 				MitreAttack: []string{},
 				Tags:        rule.Tags,
+				IsCustom:    false,
 			}
 			if rule.MitreAttack != "" {
 				ruleInfo.MitreAttack = []string{rule.MitreAttack}
 			}
+			if rule.Filter != nil {
+				keywords := []string{}
+				if rule.Filter.Keywords != "" {
+					keywords = strings.Fields(rule.Filter.Keywords)
+				}
+				ipAddr := ""
+				if len(rule.Filter.IpAddress) > 0 {
+					ipAddr = rule.Filter.IpAddress[0]
+				}
+				ruleInfo.Filter = &FilterInfo{
+					EventIDs:         rule.Filter.EventIDs,
+					Levels:           rule.Filter.Levels,
+					LogNames:         rule.Filter.LogNames,
+					Sources:          rule.Filter.Sources,
+					Computers:        rule.Filter.Computers,
+					Keywords:         keywords,
+					ExcludeUsers:     rule.Filter.ExcludeUsers,
+					ExcludeComputers: rule.Filter.ExcludeComputers,
+					IpAddress:        ipAddr,
+				}
+			}
 			c.JSON(http.StatusOK, ruleInfo)
 			return
 		}
+	}
+
+	if rule, ok := h.customManager.Get(name); ok {
+		ruleInfo := RuleInfo{
+			ID:          rule.Name,
+			Name:        rule.Name,
+			Description: rule.Description,
+			Enabled:     rule.Enabled,
+			Severity:    rule.Severity,
+			Score:       rule.Score,
+			MitreAttack: []string{},
+			Tags:        rule.Tags,
+			IsCustom:    true,
+			EventIDs:    rule.EventIDs,
+			Levels:      rule.Levels,
+			Message:     rule.Message,
+		}
+		if rule.MitreAttack != "" {
+			ruleInfo.MitreAttack = []string{rule.MitreAttack}
+		}
+		if rule.Filter != nil {
+			ruleInfo.Filter = &FilterInfo{
+				EventIDs:         rule.Filter.EventIDs,
+				Levels:           rule.Filter.Levels,
+				LogNames:         rule.Filter.LogNames,
+				Sources:          rule.Filter.Sources,
+				Computers:        rule.Filter.Computers,
+				Users:            rule.Filter.Users,
+				Keywords:         rule.Filter.Keywords,
+				ExcludeUsers:     rule.Filter.ExcludeUsers,
+				ExcludeComputers: rule.Filter.ExcludeComputers,
+				IpAddress:        rule.Filter.IpAddress,
+			}
+		}
+		c.JSON(http.StatusOK, ruleInfo)
+		return
 	}
 
 	c.JSON(http.StatusNotFound, ErrorResponse{
@@ -101,16 +249,198 @@ func (h *RulesHandler) ToggleRule(c *gin.Context) {
 	enabled := c.Query("enabled") == "true"
 
 	alertRules := builtin.GetAlertRules()
-	found := false
 	for _, rule := range alertRules {
 		if rule.Name == name {
 			rule.Enabled = enabled
-			found = true
-			break
+			c.JSON(http.StatusOK, SuccessResponse{
+				Message: "Rule " + name + " " + map[bool]string{true: "enabled", false: "disabled"}[enabled],
+			})
+			return
 		}
 	}
 
-	if !found {
+	if rule, ok := h.customManager.Get(name); ok {
+		rule.Enabled = enabled
+		h.customManager.Update(rule)
+		c.JSON(http.StatusOK, SuccessResponse{
+			Message: "Rule " + name + " " + map[bool]string{true: "enabled", false: "disabled"}[enabled],
+		})
+		return
+	}
+
+	c.JSON(http.StatusNotFound, ErrorResponse{
+		Error: "Rule not found",
+		Code:  "RULE_NOT_FOUND",
+	})
+}
+
+type CreateRuleRequest struct {
+	Name        string      `json:"name" binding:"required"`
+	Description string      `json:"description"`
+	Enabled     bool        `json:"enabled"`
+	Severity    string      `json:"severity" binding:"required"`
+	Score       float64     `json:"score"`
+	MitreAttack []string    `json:"mitre_attack"`
+	Tags        []string    `json:"tags"`
+	EventIDs    []int32     `json:"event_ids"`
+	Levels      []int       `json:"levels"`
+	Filter      *FilterInfo `json:"filter"`
+	Message     string      `json:"message"`
+}
+
+type UpdateRuleRequest struct {
+	Description string      `json:"description"`
+	Enabled     *bool       `json:"enabled"`
+	Severity    string      `json:"severity"`
+	Score       *float64    `json:"score"`
+	MitreAttack []string    `json:"mitre_attack"`
+	Tags        []string    `json:"tags"`
+	EventIDs    []int32     `json:"event_ids"`
+	Levels      []int       `json:"levels"`
+	Filter      *FilterInfo `json:"filter"`
+	Message     string      `json:"message"`
+}
+
+func (h *RulesHandler) CreateRule(c *gin.Context) {
+	var req CreateRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: err.Error(),
+			Code:  ErrCodeInvalidRequest,
+		})
+		return
+	}
+
+	if _, ok := h.customManager.Get(req.Name); ok {
+		c.JSON(http.StatusConflict, ErrorResponse{
+			Error: "Rule with this name already exists",
+			Code:  "RULE_EXISTS",
+		})
+		return
+	}
+
+	alertRules := builtin.GetAlertRules()
+	for _, rule := range alertRules {
+		if rule.Name == req.Name {
+			c.JSON(http.StatusConflict, ErrorResponse{
+				Error: "A built-in rule with this name already exists",
+				Code:  "RULE_EXISTS",
+			})
+			return
+		}
+	}
+
+	severity := req.Severity
+	if severity == "" {
+		severity = "medium"
+	}
+
+	score := req.Score
+	if score == 0 {
+		score = 50.0
+	}
+
+	mitreAttack := ""
+	if len(req.MitreAttack) > 0 {
+		mitreAttack = req.MitreAttack[0]
+	}
+
+	filter := &rules.CustomRuleFilter{}
+	if req.Filter != nil {
+		filter = &rules.CustomRuleFilter{
+			EventIDs:         req.Filter.EventIDs,
+			Levels:           req.Filter.Levels,
+			LogNames:         req.Filter.LogNames,
+			Sources:          req.Filter.Sources,
+			Computers:        req.Filter.Computers,
+			Users:            req.Filter.Users,
+			Keywords:         req.Filter.Keywords,
+			ExcludeUsers:     req.Filter.ExcludeUsers,
+			ExcludeComputers: req.Filter.ExcludeComputers,
+			IpAddress:        req.Filter.IpAddress,
+		}
+	}
+
+	customRule := &rules.CustomRule{
+		Name:        req.Name,
+		Description: req.Description,
+		Enabled:     req.Enabled,
+		Severity:    severity,
+		Score:       score,
+		MitreAttack: mitreAttack,
+		EventIDs:    req.EventIDs,
+		Levels:      req.Levels,
+		Filter:      filter,
+		Message:     req.Message,
+		Tags:        req.Tags,
+		CreatedAt:   time.Now().Format(time.RFC3339),
+		UpdatedAt:   time.Now().Format(time.RFC3339),
+	}
+
+	if err := h.customManager.Add(customRule); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "Failed to save rule: " + err.Error(),
+			Code:  "INTERNAL_ERROR",
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, SuccessResponse{
+		Message: "Rule created successfully",
+	})
+}
+
+func (h *RulesHandler) UpdateRule(c *gin.Context) {
+	name := c.Param("name")
+
+	var req UpdateRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: err.Error(),
+			Code:  ErrCodeInvalidRequest,
+		})
+		return
+	}
+
+	alertRules := builtin.GetAlertRules()
+	for _, rule := range alertRules {
+		if rule.Name == name {
+			if req.Description != "" {
+				rule.Description = req.Description
+			}
+			if req.Enabled != nil {
+				rule.Enabled = *req.Enabled
+			}
+			if req.Severity != "" {
+				rule.Severity = types.Severity(req.Severity)
+			}
+			if req.Score != nil {
+				rule.Score = *req.Score
+			}
+			if len(req.MitreAttack) > 0 {
+				rule.MitreAttack = req.MitreAttack[0]
+			}
+			if req.Filter != nil {
+				rule.Filter = &rules.Filter{
+					EventIDs:         req.Filter.EventIDs,
+					Levels:           req.Filter.Levels,
+					LogNames:         req.Filter.LogNames,
+					Sources:          req.Filter.Sources,
+					Computers:        req.Filter.Computers,
+					Keywords:         strings.Join(req.Filter.Keywords, " "),
+					ExcludeUsers:     req.Filter.ExcludeUsers,
+					ExcludeComputers: req.Filter.ExcludeComputers,
+				}
+			}
+			c.JSON(http.StatusOK, SuccessResponse{
+				Message: "Rule updated successfully",
+			})
+			return
+		}
+	}
+
+	rule, ok := h.customManager.Get(name)
+	if !ok {
 		c.JSON(http.StatusNotFound, ErrorResponse{
 			Error: "Rule not found",
 			Code:  "RULE_NOT_FOUND",
@@ -118,8 +448,93 @@ func (h *RulesHandler) ToggleRule(c *gin.Context) {
 		return
 	}
 
+	if req.Description != "" {
+		rule.Description = req.Description
+	}
+	if req.Enabled != nil {
+		rule.Enabled = *req.Enabled
+	}
+	if req.Severity != "" {
+		rule.Severity = req.Severity
+	}
+	if req.Score != nil {
+		rule.Score = *req.Score
+	}
+	if len(req.MitreAttack) > 0 {
+		rule.MitreAttack = req.MitreAttack[0]
+	}
+	if req.EventIDs != nil {
+		rule.EventIDs = req.EventIDs
+	}
+	if req.Levels != nil {
+		rule.Levels = req.Levels
+	}
+	if req.Filter != nil {
+		rule.Filter = &rules.CustomRuleFilter{
+			EventIDs:         req.Filter.EventIDs,
+			Levels:           req.Filter.Levels,
+			LogNames:         req.Filter.LogNames,
+			Sources:          req.Filter.Sources,
+			Computers:        req.Filter.Computers,
+			Users:            req.Filter.Users,
+			Keywords:         req.Filter.Keywords,
+			ExcludeUsers:     req.Filter.ExcludeUsers,
+			ExcludeComputers: req.Filter.ExcludeComputers,
+			IpAddress:        req.Filter.IpAddress,
+		}
+	}
+	if req.Message != "" {
+		rule.Message = req.Message
+	}
+	if req.Tags != nil {
+		rule.Tags = req.Tags
+	}
+
+	if err := h.customManager.Update(rule); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "Failed to update rule: " + err.Error(),
+			Code:  "INTERNAL_ERROR",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, SuccessResponse{
-		Message: "Rule " + name + " " + map[bool]string{true: "enabled", false: "disabled"}[enabled],
+		Message: "Rule updated successfully",
+	})
+}
+
+func (h *RulesHandler) DeleteRule(c *gin.Context) {
+	name := c.Param("name")
+
+	alertRules := builtin.GetAlertRules()
+	for _, rule := range alertRules {
+		if rule.Name == name {
+			c.JSON(http.StatusForbidden, ErrorResponse{
+				Error: "Cannot delete built-in rules",
+				Code:  "RULE_BUILTIN",
+			})
+			return
+		}
+	}
+
+	if _, ok := h.customManager.Get(name); !ok {
+		c.JSON(http.StatusNotFound, ErrorResponse{
+			Error: "Rule not found",
+			Code:  "RULE_NOT_FOUND",
+		})
+		return
+	}
+
+	if err := h.customManager.Delete(name); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "Failed to delete rule: " + err.Error(),
+			Code:  "INTERNAL_ERROR",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, SuccessResponse{
+		Message: "Rule deleted successfully",
 	})
 }
 
@@ -314,6 +729,9 @@ func SetupRulesRoutes(r *gin.Engine, rulesHandler *RulesHandler) {
 	{
 		rulesGroup.GET("", rulesHandler.ListRules)
 		rulesGroup.GET("/:name", rulesHandler.GetRule)
+		rulesGroup.POST("", rulesHandler.CreateRule)
+		rulesGroup.PUT("/:name", rulesHandler.UpdateRule)
+		rulesGroup.DELETE("/:name", rulesHandler.DeleteRule)
 		rulesGroup.POST("/:name/toggle", rulesHandler.ToggleRule)
 		rulesGroup.POST("/validate", rulesHandler.ValidateRule)
 		rulesGroup.POST("/import", rulesHandler.ImportRules)

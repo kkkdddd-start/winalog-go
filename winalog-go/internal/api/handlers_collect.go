@@ -39,8 +39,13 @@ type LogCollectRequest struct {
 }
 
 type LogCollectOptions struct {
-	Compress      bool `json:"compress"`
-	CalculateHash bool `json:"calculate_hash"`
+	Workers           int    `json:"workers"`
+	IncludePrefetch   bool   `json:"include_prefetch"`
+	IncludeRegistry   bool   `json:"include_registry"`
+	IncludeSystemInfo bool   `json:"include_system_info"`
+	Compress          bool   `json:"compress"`
+	CalculateHash     bool   `json:"calculate_hash"`
+	OutputPath        string `json:"output_path"`
 }
 
 type LogImportRequest struct {
@@ -69,8 +74,32 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 		return
 	}
 
+	var req LogCollectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		req = LogCollectRequest{}
+	}
+
+	opts := collectors.CollectOptions{
+		Workers:           4,
+		IncludeSystemInfo: true,
+		Compress:          true,
+		CalculateHash:     true,
+	}
+
+	if req.Options.Workers > 0 {
+		opts.Workers = req.Options.Workers
+	}
+	opts.IncludePrefetch = req.Options.IncludePrefetch
+	opts.IncludeRegistry = req.Options.IncludeRegistry
+	opts.IncludeSystemInfo = req.Options.IncludeSystemInfo
+	opts.Compress = req.Options.Compress
+	opts.CalculateHash = req.Options.CalculateHash
+	if req.Options.OutputPath != "" {
+		opts.OutputPath = req.Options.OutputPath
+	}
+
 	ctx := context.Background()
-	result, err := collectors.RunOneClickCollection(ctx, nil)
+	result, err := collectors.RunOneClickCollection(ctx, opts)
 
 	if err != nil {
 		c.JSON(http.StatusOK, LogCollectResponse{

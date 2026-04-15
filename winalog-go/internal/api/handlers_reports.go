@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jung-kurt/gofpdf"
 	"github.com/kkkdddd-start/winalog-go/internal/exporters"
+	reporttemplate "github.com/kkkdddd-start/winalog-go/internal/reports/template"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
@@ -710,6 +711,86 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+type TemplateRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Content     string `json:"content" binding:"required"`
+	Description string `json:"description"`
+}
+
+func (h *ReportsHandler) ListTemplates(c *gin.Context) {
+	tmplMgr := reporttemplate.GetManager()
+	infos := tmplMgr.ListTemplateInfo()
+
+	c.JSON(200, gin.H{
+		"templates": infos,
+		"total":     len(infos),
+	})
+}
+
+func (h *ReportsHandler) GetTemplate(c *gin.Context) {
+	name := c.Param("name")
+	tmplMgr := reporttemplate.GetManager()
+
+	if tmpl, ok := tmplMgr.GetTemplate(name); ok {
+		c.JSON(200, gin.H{
+			"name":      name,
+			"content":   "",
+			"template":  tmpl.Root,
+			"is_custom": tmplMgr.IsCustomTemplate(name),
+		})
+		return
+	}
+
+	c.JSON(404, ErrorResponse{Error: "Template not found"})
+}
+
+func (h *ReportsHandler) CreateTemplate(c *gin.Context) {
+	var req TemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	tmplMgr := reporttemplate.GetManager()
+	if err := tmplMgr.SetCustomTemplate(req.Name, req.Content); err != nil {
+		c.JSON(400, ErrorResponse{Error: "Invalid template: " + err.Error()})
+		return
+	}
+
+	c.JSON(201, SuccessResponse{Message: "Template created"})
+}
+
+func (h *ReportsHandler) UpdateTemplate(c *gin.Context) {
+	name := c.Param("name")
+
+	var req TemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	tmplMgr := reporttemplate.GetManager()
+	if err := tmplMgr.SetCustomTemplate(name, req.Content); err != nil {
+		c.JSON(400, ErrorResponse{Error: "Invalid template: " + err.Error()})
+		return
+	}
+
+	c.JSON(200, SuccessResponse{Message: "Template updated"})
+}
+
+func (h *ReportsHandler) DeleteTemplate(c *gin.Context) {
+	name := c.Param("name")
+
+	tmplMgr := reporttemplate.GetManager()
+	if !tmplMgr.IsCustomTemplate(name) {
+		c.JSON(404, ErrorResponse{Error: "Template not found or cannot be deleted"})
+		return
+	}
+
+	tmplMgr.DeleteCustomTemplate(name)
+	c.JSON(200, SuccessResponse{Message: "Template deleted"})
+}
+
 func (h *ReportsHandler) ExportData(c *gin.Context) {
 	format := c.DefaultQuery("format", "json")
 
@@ -735,5 +816,14 @@ func SetupReportsRoutes(r *gin.Engine, reportsHandler *ReportsHandler) {
 		reportsGroup.POST("", reportsHandler.GenerateReport)
 		reportsGroup.GET("/:id", reportsHandler.GetReport)
 		reportsGroup.GET("/export", reportsHandler.ExportData)
+	}
+
+	templateGroup := r.Group("/api/report-templates")
+	{
+		templateGroup.GET("", reportsHandler.ListTemplates)
+		templateGroup.GET("/:name", reportsHandler.GetTemplate)
+		templateGroup.POST("", reportsHandler.CreateTemplate)
+		templateGroup.PUT("/:name", reportsHandler.UpdateTemplate)
+		templateGroup.DELETE("/:name", reportsHandler.DeleteTemplate)
 	}
 }

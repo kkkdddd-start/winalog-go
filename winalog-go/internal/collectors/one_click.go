@@ -22,6 +22,16 @@ type CollectConfig struct {
 	OutputPath        string
 }
 
+type CollectOptions struct {
+	Workers           int
+	IncludePrefetch   bool
+	IncludeRegistry   bool
+	IncludeSystemInfo bool
+	OutputPath        string
+	Compress          bool
+	CalculateHash     bool
+}
+
 type OneClickResult struct {
 	OutputPath string
 	Duration   time.Duration
@@ -50,6 +60,19 @@ func (c *OneClickCollector) Collect(ctx context.Context) ([]interface{}, error) 
 
 func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, error) {
 	c := NewOneClickCollector()
+
+	if opts != nil {
+		if collectOpts, ok := opts.(CollectOptions); ok {
+			c.cfg.Workers = collectOpts.Workers
+			c.cfg.IncludePrefetch = collectOpts.IncludePrefetch
+			c.cfg.IncludeRegistry = collectOpts.IncludeRegistry
+			c.cfg.IncludeSystemInfo = collectOpts.IncludeSystemInfo
+			if collectOpts.OutputPath != "" {
+				c.cfg.OutputPath = collectOpts.OutputPath
+			}
+		}
+	}
+
 	startTime := time.Now()
 	outputPath, err := c.FullCollect(ctx)
 	if err != nil {

@@ -22,6 +22,8 @@ func (f *ExporterFactory) Create(format string) Exporter {
 		return &ExcelExporter{}
 	case "json":
 		return &JsonExporter{prettyPrint: false}
+	case "xml", "evtx":
+		return NewEVTXExporter()
 	case "timeline-csv":
 		return NewTimelineExporter()
 	case "timeline-json":

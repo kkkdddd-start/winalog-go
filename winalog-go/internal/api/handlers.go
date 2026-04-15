@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -779,4 +780,305 @@ func sortTimeline(entries []*TimelineEntry) {
 			}
 		}
 	}
+}
+
+type TimelineStats struct {
+	TotalEvents  int64            `json:"total_events"`
+	TotalAlerts  int64            `json:"total_alerts"`
+	ByLevel      map[string]int64 `json:"by_level"`
+	ByCategory   map[string]int64 `json:"by_category"`
+	BySource     map[string]int64 `json:"by_source"`
+	TopEventIDs  map[int32]int64  `json:"top_event_ids"`
+	TimeRange    string           `json:"time_range"`
+	AttackChains int              `json:"attack_chains"`
+}
+
+type AttackChainInfo struct {
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	Technique  string    `json:"technique"`
+	Tactic     string    `json:"tactic"`
+	Severity   string    `json:"severity"`
+	EventCount int       `json:"event_count"`
+	StartTime  time.Time `json:"start_time"`
+	EndTime    time.Time `json:"end_time"`
+}
+
+func (h *TimelineHandler) GetTimelineStats(c *gin.Context) {
+	startTime := c.Query("start_time")
+	endTime := c.Query("end_time")
+
+	var start, end *time.Time
+	if startTime != "" {
+		if t, err := time.Parse(time.RFC3339, startTime); err == nil {
+			start = &t
+		}
+	}
+	if endTime != "" {
+		if t, err := time.Parse(time.RFC3339, endTime); err == nil {
+			end = &t
+		}
+	}
+
+	eventFilter := &storage.EventFilter{Limit: 10000}
+	if start != nil {
+		eventFilter.StartTime = start
+	}
+	if end != nil {
+		eventFilter.EndTime = end
+	}
+
+	events, _, _ := h.db.ListEvents(eventFilter)
+
+	stats := &TimelineStats{
+		ByLevel:     make(map[string]int64),
+		ByCategory:  make(map[string]int64),
+		BySource:    make(map[string]int64),
+		TopEventIDs: make(map[int32]int64),
+	}
+
+	stats.TotalEvents = int64(len(events))
+
+	for _, e := range events {
+		stats.ByLevel[e.Level.String()]++
+		stats.BySource[e.Source]++
+		stats.TopEventIDs[e.EventID]++
+		stats.ByCategory[categorizeEventID(e.EventID)]++
+	}
+
+	alertFilter := &storage.AlertFilter{Limit: 1000}
+	if start != nil {
+		alertFilter.StartTime = start
+	}
+	if end != nil {
+		alertFilter.EndTime = end
+	}
+	alerts, _ := h.db.AlertRepo().Query(alertFilter)
+	stats.TotalAlerts = int64(len(alerts))
+
+	if len(events) > 0 {
+		stats.TimeRange = fmt.Sprintf("%.1f hours", events[len(events)-1].Timestamp.Sub(events[0].Timestamp).Hours())
+	}
+
+	c.JSON(200, stats)
+}
+
+func categorizeEventID(eventID int32) string {
+	switch {
+	case eventID >= 4624 && eventID <= 4628:
+		return "Authentication"
+	case eventID >= 4648 && eventID <= 4650:
+		return "Remote Access"
+	case eventID >= 4660 && eventID <= 4663:
+		return "File/Registry"
+	case eventID >= 4670 && eventID <= 4674:
+		return "Authorization"
+	case eventID == 4688 || eventID == 4689:
+		return "Process"
+	case eventID >= 4696 && eventID <= 4702:
+		return "Scheduled Task/Service"
+	case eventID >= 4720 && eventID <= 4735:
+		return "Account"
+	case eventID >= 4740 && eventID <= 4769:
+		return "Account"
+	default:
+		return "Other"
+	}
+}
+
+func (h *TimelineHandler) GetAttackChains(c *gin.Context) {
+	startTime := c.Query("start_time")
+	endTime := c.Query("end_time")
+
+	var start, end *time.Time
+	if startTime != "" {
+		if t, err := time.Parse(time.RFC3339, startTime); err == nil {
+			start = &t
+		}
+	}
+	if endTime != "" {
+		if t, err := time.Parse(time.RFC3339, endTime); err == nil {
+			end = &t
+		}
+	}
+
+	eventFilter := &storage.EventFilter{Limit: 10000}
+	if start != nil {
+		eventFilter.StartTime = start
+	}
+	if end != nil {
+		eventFilter.EndTime = end
+	}
+
+	events, _, _ := h.db.ListEvents(eventFilter)
+
+	chains := detectAttackChains(events)
+
+	c.JSON(200, gin.H{
+		"chains": chains,
+		"total":  len(chains),
+	})
+}
+
+func detectAttackChains(events []*types.Event) []*AttackChainInfo {
+	chains := make([]*AttackChainInfo, 0)
+
+	bruteForceEvents := make([]*types.Event, 0)
+	lateralMovementEvents := make([]*types.Event, 0)
+	persistenceEvents := make([]*types.Event, 0)
+
+	for _, e := range events {
+		switch e.EventID {
+		case 4625:
+			bruteForceEvents = append(bruteForceEvents, e)
+		case 4624, 4648:
+			lateralMovementEvents = append(lateralMovementEvents, e)
+		case 4698, 4699, 4702:
+			persistenceEvents = append(persistenceEvents, e)
+		}
+	}
+
+	if len(bruteForceEvents) >= 10 {
+		chains = append(chains, &AttackChainInfo{
+			ID:         "brute-force",
+			Name:       "Brute Force Attack",
+			Technique:  "T1110",
+			Tactic:     "Credential Access",
+			Severity:   "high",
+			EventCount: len(bruteForceEvents),
+			StartTime:  bruteForceEvents[0].Timestamp,
+			EndTime:    bruteForceEvents[len(bruteForceEvents)-1].Timestamp,
+		})
+	}
+
+	if len(lateralMovementEvents) >= 3 {
+		chains = append(chains, &AttackChainInfo{
+			ID:         "lateral-movement",
+			Name:       "Lateral Movement",
+			Technique:  "T1021",
+			Tactic:     "Lateral Movement",
+			Severity:   "high",
+			EventCount: len(lateralMovementEvents),
+			StartTime:  lateralMovementEvents[0].Timestamp,
+			EndTime:    lateralMovementEvents[len(lateralMovementEvents)-1].Timestamp,
+		})
+	}
+
+	if len(persistenceEvents) > 0 {
+		chains = append(chains, &AttackChainInfo{
+			ID:         "persistence",
+			Name:       "Persistence Mechanism",
+			Technique:  "T1053",
+			Tactic:     "Persistence",
+			Severity:   "medium",
+			EventCount: len(persistenceEvents),
+			StartTime:  persistenceEvents[0].Timestamp,
+			EndTime:    persistenceEvents[len(persistenceEvents)-1].Timestamp,
+		})
+	}
+
+	return chains
+}
+
+func (h *TimelineHandler) ExportTimeline(c *gin.Context) {
+	format := c.DefaultQuery("format", "json")
+
+	startTime := c.Query("start_time")
+	endTime := c.Query("end_time")
+
+	var start, end *time.Time
+	if startTime != "" {
+		if t, err := time.Parse(time.RFC3339, startTime); err == nil {
+			start = &t
+		}
+	}
+	if endTime != "" {
+		if t, err := time.Parse(time.RFC3339, endTime); err == nil {
+			end = &t
+		}
+	}
+
+	eventFilter := &storage.EventFilter{Limit: 5000}
+	if start != nil {
+		eventFilter.StartTime = start
+	}
+	if end != nil {
+		eventFilter.EndTime = end
+	}
+
+	events, _, _ := h.db.ListEvents(eventFilter)
+
+	switch format {
+	case "csv":
+		c.Header("Content-Type", "text/csv")
+		c.Header("Content-Disposition", "attachment; filename=timeline.csv")
+		h.exportTimelineCSV(events, c.Writer)
+	case "html":
+		c.Header("Content-Type", "text/html")
+		c.Header("Content-Disposition", "attachment; filename=timeline.html")
+		h.exportTimelineHTML(events, c.Writer)
+	default:
+		c.JSON(200, gin.H{
+			"events": events,
+			"total":  len(events),
+		})
+	}
+}
+
+func (h *TimelineHandler) exportTimelineCSV(events []*types.Event, w gin.ResponseWriter) {
+	fmt.Fprintf(w, "ID,Timestamp,EventID,Level,Source,LogName,Computer,User,Message\n")
+	for _, e := range events {
+		user := ""
+		if e.User != nil {
+			user = *e.User
+		}
+		fmt.Fprintf(w, "%d,%s,%d,%s,%s,%s,%s,%s,%s\n",
+			e.ID, e.Timestamp.Format(time.RFC3339), e.EventID,
+			e.Level.String(), e.Source, e.LogName, e.Computer,
+			user, e.Message)
+	}
+}
+
+func (h *TimelineHandler) exportTimelineHTML(events []*types.Event, w gin.ResponseWriter) {
+	html := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WinLogAnalyzer Timeline</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #1a1a2e; color: #eee; padding: 20px; }
+        .timeline { position: relative; padding-left: 30px; }
+        .timeline::before { content: ''; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: #3498db; }
+        .event { position: relative; margin-bottom: 20px; padding: 10px 15px; background: #16213e; border-radius: 5px; }
+        .event::before { content: ''; position: absolute; left: -25px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: #3498db; }
+        .level-critical { border-left: 3px solid #dc3545; }
+        .level-error { border-left: 3px solid #fd7e14; }
+        .level-warning { border-left: 3px solid #ffc107; }
+        .level-info { border-left: 3px solid #3498db; }
+        .event-id { color: #00d9ff; font-weight: bold; }
+        .timestamp { color: #888; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <h2>WinLogAnalyzer Timeline</h2>
+    <p>Total Events: %d</p>
+    <div class="timeline">
+`
+	fmt.Fprintf(w, html, len(events))
+
+	for _, e := range events {
+		level := strings.ToLower(e.Level.String())
+		fmt.Fprintf(w, `        <div class="event level-%s">
+            <div class="timestamp">%s</div>
+            <div><span class="event-id">EventID: %d</span> - %s</div>
+            <div>Source: %s | Computer: %s</div>
+        </div>
+`, level, e.Timestamp.Format("2006-01-02 15:04:05"), e.EventID, e.Message, e.Source, e.Computer)
+	}
+
+	fmt.Fprint(w, `
+    </div>
+</body>
+</html>`)
 }

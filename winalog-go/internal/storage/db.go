@@ -250,6 +250,20 @@ func (d *DB) createTables() error {
 
 	CREATE INDEX IF NOT EXISTS idx_evidence_file_hash ON evidence_file(file_hash);
 	CREATE INDEX IF NOT EXISTS idx_evidence_file_evidence_id ON evidence_file(evidence_id);
+
+	CREATE TABLE IF NOT EXISTS suppress_rules (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		conditions TEXT,
+		duration INTEGER DEFAULT 0,
+		scope TEXT DEFAULT 'global',
+		enabled INTEGER DEFAULT 1,
+		expires_at TEXT,
+		created_at TEXT NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_suppress_rules_name ON suppress_rules(name);
+	CREATE INDEX IF NOT EXISTS idx_suppress_rules_enabled ON suppress_rules(enabled);
 	`
 
 	statements := strings.Split(schema, ";")
