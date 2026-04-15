@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../locales/I18n'
 import { rulesAPI, RuleInfo } from '../api'
 
 function Rules() {
+  const { t } = useI18n()
   const [rules, setRules] = useState<RuleInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -17,7 +19,7 @@ function Rules() {
         setLoading(false)
       })
       .catch(err => {
-        setError(err.message || 'Failed to load rules')
+        setError(err.message || t('common.error'))
         setLoading(false)
       })
   }
@@ -49,28 +51,28 @@ function Rules() {
     }
   }
 
-  if (loading) return <div className="rules-page"><div className="loading">Loading...</div></div>
+  if (loading) return <div className="rules-page"><div className="loading">{t('common.loading')}</div></div>
 
-  if (error) return <div className="rules-page"><div className="error">Error: {error}</div></div>
+  if (error) return <div className="rules-page"><div className="error">{t('common.error')}: {error}</div></div>
 
   return (
     <div className="rules-page">
-      <h2>Rule Management</h2>
+      <h2>{t('rules.title')}</h2>
       
       <div className="detail-panel">
-        <h3>Alert Rules ({enabledCount}/{totalCount} enabled)</h3>
-        <p>Configure and manage alert rules for security event detection.</p>
+        <h3>{t('rules.alertRules', { enabled: enabledCount, total: totalCount })}</h3>
+        <p>{t('rules.alertRulesDesc')}</p>
         
         <table className="rules-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Severity</th>
-              <th>Score</th>
-              <th>Description</th>
-              <th>MITRE</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t('rules.name')}</th>
+              <th>{t('rules.severity')}</th>
+              <th>{t('rules.score')}</th>
+              <th>{t('rules.description')}</th>
+              <th>{t('rules.mitre')}</th>
+              <th>{t('rules.status')}</th>
+              <th>{t('rules.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -100,7 +102,7 @@ function Rules() {
                   </label>
                 </td>
                 <td>
-                  <button className="small">Edit</button>
+                  <button className="small">{t('rules.edit')}</button>
                 </td>
               </tr>
             ))}
@@ -109,71 +111,10 @@ function Rules() {
       </div>
 
       <div className="detail-panel">
-        <h3>Correlation Rules</h3>
-        <p>Define rules to correlate events across multiple sources.</p>
-        <button>Add Correlation Rule</button>
+        <h3>{t('rules.correlationRules')}</h3>
+        <p>{t('rules.correlationRulesDesc')}</p>
+        <button>{t('rules.addCorrelationRule')}</button>
       </div>
-
-      <style>{`
-        .rules-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 15px 0;
-        }
-        .rules-table th, .rules-table td {
-          border: 1px solid #333;
-          padding: 10px;
-          text-align: left;
-          font-size: 0.9em;
-        }
-        .rules-table th {
-          background: #1a1a2e;
-          font-weight: bold;
-        }
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 40px;
-          height: 20px;
-        }
-        .switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #555;
-          border-radius: 20px;
-          transition: 0.3s;
-        }
-        .slider:before {
-          position: absolute;
-          content: "";
-          height: 14px;
-          width: 14px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          border-radius: 50%;
-          transition: 0.3s;
-        }
-        input:checked + .slider {
-          background-color: #00d9ff;
-        }
-        input:checked + .slider:before {
-          transform: translateX(20px);
-        }
-        button.small {
-          padding: 4px 8px;
-          font-size: 0.85em;
-        }
-      `}</style>
     </div>
   )
 }

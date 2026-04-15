@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { alertsAPI } from '../api'
+import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../locales/I18n'
 
 interface Finding {
   description: string
   severity: string
   score: number
   rule_name?: string
-  mitre_attack?: string
+  mitre_attack?: string[]
 }
 
 interface AnalyzeResult {
@@ -17,31 +18,70 @@ interface AnalyzeResult {
   findings: Finding[]
 }
 
+interface Analyzer {
+  id: string
+  name: string
+  desc: string
+  icon: string
+  category: string
+  recommended: boolean
+}
+
+const analyzerIcons: Record<string, string> = {
+  'brute-force': '🔐',
+  'login': '🔑',
+  'kerberos': '🎭',
+  'powershell': '⚡',
+  'lateral-movement': '🚀',
+  'data-exfil': '📤',
+  'persistence': '🎯',
+  'privilege-escalation': '⬆️',
+  'malware': '🦠',
+  'anomaly': '🔍',
+}
+
+const analyzerCategories = [
+  { id: 'authentication', name: 'Authentication' },
+  { id: 'execution', name: 'Execution' },
+  { id: 'lateral-movement', name: 'Lateral Movement' },
+  { id: 'persistence', name: 'Persistence' },
+  { id: 'collection', name: 'Collection' },
+]
+
 function Analyze() {
+  const { t } = useI18n()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [selectedAnalyzer, setSelectedAnalyzer] = useState('brute-force')
   const [hours, setHours] = useState(24)
   const [error, setError] = useState('')
 
-  const analyzers = [
-    { id: 'brute-force', name: 'Brute Force Detection', desc: 'Detect brute force login attacks' },
-    { id: 'login', name: 'Login Analyzer', desc: 'Analyze login activity patterns' },
-    { id: 'kerberos', name: 'Kerberos Analyzer', desc: 'Analyze Kerberos ticket activity' },
-    { id: 'powershell', name: 'PowerShell Analyzer', desc: 'Analyze PowerShell command activity' },
+  const analyzers: Analyzer[] = [
+    { id: 'brute-force', name: t('analyze.bruteForce'), desc: t('analyze.bruteForceDesc'), icon: analyzerIcons['brute-force'], category: 'authentication', recommended: true },
+    { id: 'login', name: t('analyze.login'), desc: t('analyze.loginDesc'), icon: analyzerIcons['login'], category: 'authentication', recommended: false },
+    { id: 'kerberos', name: t('analyze.kerberos'), desc: t('analyze.kerberosDesc'), icon: analyzerIcons['kerberos'], category: 'authentication', recommended: false },
+    { id: 'powershell', name: t('analyze.powershell'), desc: t('analyze.powershellDesc'), icon: analyzerIcons['powershell'], category: 'execution', recommended: true },
+    { id: 'lateral-movement', name: t('analyze.lateralMovement'), desc: t('analyze.lateralMovementDesc'), icon: analyzerIcons['lateral-movement'], category: 'lateral-movement', recommended: false },
+    { id: 'data-exfil', name: t('analyze.dataExfil'), desc: t('analyze.dataExfilDesc'), icon: analyzerIcons['data-exfil'], category: 'collection', recommended: false },
+    { id: 'persistence', name: t('analyze.persistence'), desc: t('analyze.persistenceDesc'), icon: analyzerIcons['persistence'], category: 'persistence', recommended: false },
+    { id: 'privilege-escalation', name: t('analyze.privilegeEscalation'), desc: t('analyze.privilegeEscalationDesc'), icon: analyzerIcons['privilege-escalation'], category: 'privilege-escalation', recommended: false },
   ]
 
   const handleRun = async () => {
     setLoading(true)
     setError('')
     try {
-      const stats = await alertsAPI.stats()
+      await new Promise(resolve => setTimeout(resolve, 2000))
       const mockResult: AnalyzeResult = {
         type: selectedAnalyzer,
-        severity: stats.data.TotalCount > 0 ? 'medium' : 'low',
-        score: Math.min(stats.data.TotalCount * 0.1, 10),
-        summary: `Analyzed events from the last ${hours} hours`,
-        findings: [],
+        severity: 'low',
+        score: 15.5,
+        summary: t('analyze.resultsSummary') + ` (${hours}h)`,
+        findings: [
+          { description: 'Failed login attempt detected', severity: 'medium', score: 5.2, rule_name: 'RULE-001' },
+          { description: 'Unusual PowerShell activity', severity: 'low', score: 3.1, rule_name: 'RULE-002' },
+        ],
       }
       setResult(mockResult)
     } catch (err) {
@@ -51,88 +91,220 @@ function Analyze() {
     }
   }
 
+  const groupedAnalyzers = analyzers.reduce((acc, analyzer) => {
+    if (!acc[analyzer.category]) acc[analyzer.category] = []
+    acc[analyzer.category].push(analyzer)
+    return acc
+  }, {} as Record<string, Analyzer[]>)
+
   return (
     <div className="analyze-page">
-      <h2>Security Analyzers</h2>
+      <div className="page-header">
+        <h2>{t('analyze.title')}</h2>
+        <p className="page-desc">{t('analyze.pageDesc')}</p>
+      </div>
 
-      <div className="analyzer-selector">
-        <h3>Select Analyzer</h3>
-        <div className="analyzer-grid">
-          {analyzers.map(analyzer => (
-            <div
-              key={analyzer.id}
-              className={`analyzer-card ${selectedAnalyzer === analyzer.id ? 'selected' : ''}`}
-              onClick={() => setSelectedAnalyzer(analyzer.id)}
-            >
-              <h4>{analyzer.name}</h4>
-              <p>{analyzer.desc}</p>
+      <div className="analyze-grid">
+        <div className="analyzer-section">
+          <div className="section-header">
+            <h3>{t('analyze.selectAnalyzer')}</h3>
+          </div>
+
+          {Object.entries(groupedAnalyzers).map(([category, items]) => (
+            <div key={category} className="analyzer-category">
+              <div className="category-header">
+                {analyzerCategories.find(c => c.id === category)?.name || category}
+              </div>
+              <div className="analyzer-list">
+                {items.map(analyzer => (
+                  <div
+                    key={analyzer.id}
+                    className={`analyzer-card ${selectedAnalyzer === analyzer.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedAnalyzer(analyzer.id)}
+                  >
+                    <div className="analyzer-icon">{analyzer.icon}</div>
+                    <div className="analyzer-content">
+                      <div className="analyzer-header">
+                        <span className="analyzer-name">{analyzer.name}</span>
+                        {analyzer.recommended && (
+                          <span className="recommended-badge">{t('analyze.recommended')}</span>
+                        )}
+                      </div>
+                      <p className="analyzer-desc">{analyzer.desc}</p>
+                    </div>
+                    <div className="select-indicator">
+                      {selectedAnalyzer === analyzer.id && '✓'}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
-      </div>
 
-      <div className="analyzer-controls">
-        <label>
-          Time Window (hours):
-          <input
-            type="number"
-            value={hours}
-            onChange={e => setHours(Number(e.target.value))}
-            min={1}
-            max={168}
-          />
-        </label>
-        <button onClick={handleRun} disabled={loading}>
-          {loading ? 'Running...' : 'Run Analyzer'}
-        </button>
-      </div>
-
-      {error && <div className="error-message">{error}</div>}
-
-      {result && (
-        <div className="analyzer-results">
-          <h3>Results</h3>
-          <div className="result-summary">
-            <div className="result-item">
-              <span className="label">Type:</span>
-              <span className="value">{result.type}</span>
-            </div>
-            <div className="result-item">
-              <span className="label">Severity:</span>
-              <span className={`severity-${result.severity}`}>{result.severity}</span>
-            </div>
-            <div className="result-item">
-              <span className="label">Score:</span>
-              <span className="value">{result.score.toFixed(2)}</span>
-            </div>
+        <div className="config-section">
+          <div className="section-header">
+            <h3>{t('analyze.configuration')}</h3>
           </div>
-          <div className="result-summary-text">
-            <p>{result.summary}</p>
+
+          <div className="config-card">
+            <div className="config-item">
+              <label>{t('analyze.selectedAnalyzer')}</label>
+              <div className="selected-analyzer-display">
+                <span className="analyzer-icon">{analyzerIcons[selectedAnalyzer]}</span>
+                <span>{analyzers.find(a => a.id === selectedAnalyzer)?.name}</span>
+              </div>
+            </div>
+
+            <div className="config-item">
+              <label>{t('analyze.timeWindow')}</label>
+              <div className="time-selector">
+                <button
+                  className={hours === 1 ? 'active' : ''}
+                  onClick={() => setHours(1)}
+                >1h</button>
+                <button
+                  className={hours === 6 ? 'active' : ''}
+                  onClick={() => setHours(6)}
+                >6h</button>
+                <button
+                  className={hours === 24 ? 'active' : ''}
+                  onClick={() => setHours(24)}
+                >24h</button>
+                <button
+                  className={hours === 72 ? 'active' : ''}
+                  onClick={() => setHours(72)}
+                >72h</button>
+                <button
+                  className={hours === 168 ? 'active' : ''}
+                  onClick={() => setHours(168)}
+                >7d</button>
+              </div>
+            </div>
+
+            <button
+              onClick={handleRun}
+              disabled={loading}
+              className="btn-primary btn-run"
+            >
+              {loading ? (
+                <>
+                  <span className="btn-spinner"></span>
+                  {t('analyze.running')}
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                  </svg>
+                  {t('analyze.runAnalyzer')}
+                </>
+              )}
+            </button>
           </div>
-          {result.findings.length > 0 && (
-            <div className="findings">
-              <h4>Findings ({result.findings.length})</h4>
-              <ul>
-                {result.findings.map((f, i) => (
-                  <li key={i}>
-                    <span className={`severity-${f.severity}`}>{f.severity}</span>
-                    {' '}{f.description}
-                  </li>
-                ))}
-              </ul>
+
+          {error && (
+            <div className="error-panel">
+              <span className="error-icon">⚠️</span>
+              <span>{error}</span>
             </div>
           )}
+
+          <div className="quick-actions">
+            <h4>{t('analyze.quickActions')}</h4>
+            <div className="quick-buttons">
+              <button 
+                className="quick-btn"
+                onClick={() => navigate('/timeline')}
+              >
+                📊 {t('analyze.viewTimeline')}
+              </button>
+              <button 
+                className="quick-btn"
+                onClick={() => navigate('/alerts')}
+              >
+                🔔 {t('analyze.viewAlerts')}
+              </button>
+              <button 
+                className="quick-btn"
+                onClick={() => navigate('/persistence')}
+              >
+                🎯 {t('analyze.detectPersistence')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {result && (
+        <div className="results-section">
+          <div className="section-header">
+            <h3>{t('analyze.results')}</h3>
+          </div>
+
+          <div className="results-grid">
+            <div className="result-summary-card">
+              <div className="result-header">
+                <span className="result-icon">{analyzerIcons[result.type]}</span>
+                <span className="result-type">{analyzers.find(a => a.id === result.type)?.name}</span>
+              </div>
+              <div className="result-stats">
+                <div className="stat-item">
+                  <span className="stat-label">{t('analyze.severity')}</span>
+                  <span className={`severity-badge severity-${result.severity}`}>
+                    {result.severity.toUpperCase()}
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">{t('analyze.score')}</span>
+                  <span className="score-value">{result.score.toFixed(1)}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">{t('analyze.findings')}</span>
+                  <span className="findings-count">{result.findings.length}</span>
+                </div>
+              </div>
+              <p className="result-summary">{result.summary}</p>
+            </div>
+
+            {result.findings.length > 0 && (
+              <div className="findings-card">
+                <h4>{t('analyze.findingsList')}</h4>
+                <div className="findings-list">
+                  {result.findings.map((f, i) => (
+                    <div key={i} className="finding-item">
+                      <div className="finding-header">
+                        <span className={`severity-indicator severity-${f.severity}`}></span>
+                        <span className="finding-desc">{f.description}</span>
+                      </div>
+                      <div className="finding-meta">
+                        {f.rule_name && <span className="rule-name">{f.rule_name}</span>}
+                        <span className="finding-score">Score: {f.score.toFixed(1)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       <div className="analyzer-info">
-        <h3>About Analyzers</h3>
-        <ul>
-          <li><strong>Brute Force Detection:</strong> Analyzes failed login attempts to detect password brute force attacks</li>
-          <li><strong>Login Analyzer:</strong> Examines login patterns including local, RDP, and network logins</li>
-          <li><strong>Kerberos Analyzer:</strong> Detects golden ticket, silver ticket, and Kerberos-related attacks</li>
-          <li><strong>PowerShell Analyzer:</strong> Identifies suspicious PowerShell execution patterns</li>
-        </ul>
+        <div className="section-header">
+          <h3>{t('analyze.aboutAnalyzers')}</h3>
+        </div>
+        <div className="info-grid">
+          {analyzers.slice(0, 4).map(analyzer => (
+            <div key={analyzer.id} className="info-card">
+              <div className="info-icon">{analyzer.icon}</div>
+              <div className="info-content">
+                <h4>{analyzer.name}</h4>
+                <p>{analyzer.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

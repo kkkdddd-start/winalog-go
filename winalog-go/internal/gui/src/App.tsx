@@ -1,4 +1,6 @@
 import { Routes, Route, Link } from 'react-router-dom'
+import { I18nProvider, useI18n } from './locales/I18n'
+import LangSwitcher from './components/LangSwitcher'
 import Dashboard from './pages/Dashboard'
 import Events from './pages/Events'
 import EventDetail from './pages/EventDetail'
@@ -16,27 +18,36 @@ import Analyze from './pages/Analyze'
 import Collect from './pages/Collect'
 import './App.css'
 
-function App() {
+function Navigation() {
+  const { t } = useI18n()
+  
   return (
-    <div className="app">
-      <nav className="sidebar">
-        <h1>WinLogAnalyzer</h1>
-        <ul>
-          <li><Link to="/">仪表盘</Link></li>
-          <li><Link to="/events">事件</Link></li>
-          <li><Link to="/alerts">告警</Link></li>
-          <li><Link to="/timeline">时间线</Link></li>
-          <li><Link to="/collect">采集</Link></li>
-          <li><Link to="/analyze">分析</Link></li>
-          <li><Link to="/persistence">持久化检测</Link></li>
-          <li><Link to="/reports">报告</Link></li>
-          <li><Link to="/forensics">取证</Link></li>
-          <li><Link to="/system-info">系统信息</Link></li>
-          <li><Link to="/rules">规则</Link></li>
-          <li><Link to="/metrics">指标</Link></li>
-          <li><Link to="/settings">设置</Link></li>
-        </ul>
-      </nav>
+    <nav className="sidebar">
+      <h1>{t('app.title')}</h1>
+      <ul>
+        <li><Link to="/">{t('nav.dashboard')}</Link></li>
+        <li><Link to="/events">{t('nav.events')}</Link></li>
+        <li><Link to="/alerts">{t('nav.alerts')}</Link></li>
+        <li><Link to="/timeline">{t('nav.timeline')}</Link></li>
+        <li><Link to="/collect">{t('nav.collect')}</Link></li>
+        <li><Link to="/analyze">{t('nav.analyze')}</Link></li>
+        <li><Link to="/persistence">{t('nav.persistence')}</Link></li>
+        <li><Link to="/reports">{t('nav.reports')}</Link></li>
+        <li><Link to="/forensics">{t('nav.forensics')}</Link></li>
+        <li><Link to="/system-info">{t('nav.systemInfo')}</Link></li>
+        <li><Link to="/rules">{t('nav.rules')}</Link></li>
+        <li><Link to="/metrics">{t('nav.metrics')}</Link></li>
+        <li><Link to="/settings">{t('nav.settings')}</Link></li>
+      </ul>
+    </nav>
+  )
+}
+
+function AppContent() {
+  return (
+    <>
+      <LangSwitcher />
+      <Navigation />
       <main className="content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -56,7 +67,17 @@ function App() {
           <Route path="/metrics" element={<Metrics />} />
         </Routes>
       </main>
-    </div>
+    </>
+  )
+}
+
+function App() {
+  return (
+    <I18nProvider>
+      <div className="app">
+        <AppContent />
+      </div>
+    </I18nProvider>
   )
 }
 

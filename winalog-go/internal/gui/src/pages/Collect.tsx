@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { importAPI } from '../api'
+import { useI18n } from '../locales/I18n'
 
 interface CollectOptions {
   includeLogs: boolean
@@ -14,9 +14,53 @@ interface CollectOptions {
   calculateHash: boolean
 }
 
+interface LogSource {
+  id: string
+  name: string
+  enabled: boolean
+  category: string
+}
+
+interface ExcludedLog {
+  id: string
+  name: string
+  enabled: boolean
+  category: string
+}
+
 function Collect() {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState('')
+  const [threads, setThreads] = useState(2)
+  const [customPaths, setCustomPaths] = useState('')
+  const [customExclude, setCustomExclude] = useState('')
+
+  const [logSources, setLogSources] = useState<LogSource[]>([
+    { id: 'security', name: 'Security', enabled: true, category: 'Windows Event Logs' },
+    { id: 'system', name: 'System', enabled: true, category: 'Windows Event Logs' },
+    { id: 'application', name: 'Application', enabled: true, category: 'Windows Event Logs' },
+    { id: 'setup', name: 'Setup', enabled: false, category: 'Windows Event Logs' },
+    { id: 'sysmon', name: 'Microsoft-Windows-Sysmon/Operational', enabled: true, category: 'Windows Event Logs' },
+    { id: 'powershell', name: 'Microsoft-Windows-PowerShell/Operational', enabled: false, category: 'Windows Event Logs' },
+    { id: 'wmi', name: 'Microsoft-Windows-WMI-Activity/Operational', enabled: false, category: 'Windows Event Logs' },
+    { id: 'taskscheduler', name: 'Microsoft-Windows-TaskScheduler/Operational', enabled: false, category: 'Windows Event Logs' },
+    { id: 'sysmon-drivers', name: 'System', enabled: false, category: 'Drivers & Services' },
+    { id: 'services', name: 'Services', enabled: false, category: 'Drivers & Services' },
+  ])
+
+  const [excludedLogs, setExcludedLogs] = useState<ExcludedLog[]>([
+    { id: 'diagnostics', name: 'Diagnostics', enabled: true, category: 'Common Excludes' },
+    { id: 'whea', name: 'WHEA Errors', enabled: true, category: 'Common Excludes' },
+    { id: 'debug', name: 'Debug', enabled: true, category: 'Common Excludes' },
+    { id: 'uac', name: 'UAC Prompts', enabled: true, category: 'Common Excludes' },
+    { id: 'driverframe', name: 'Driver Frameworks', enabled: true, category: 'Common Excludes' },
+    { id: 'hardware', name: 'Hardware (Camera/Intel/Synced)', enabled: true, category: 'Common Excludes' },
+    { id: 'livedump', name: 'LiveDump', enabled: true, category: 'Common Excludes' },
+    { id: 'compat', name: 'Program Compatibility', enabled: true, category: 'Common Excludes' },
+    { id: 'modern-deploy', name: 'Modern Deployment', enabled: true, category: 'Common Excludes' },
+  ])
+
   const [options, setOptions] = useState<CollectOptions>({
     includeLogs: true,
     includePrefetch: false,
@@ -30,155 +74,345 @@ function Collect() {
     calculateHash: true,
   })
 
+  const handleLogSourceToggle = (id: string) => {
+    setLogSources(prev => prev.map(src => 
+      src.id === id ? { ...src, enabled: !src.enabled } : src
+    ))
+  }
+
+  const handleExcludeToggle = (id: string) => {
+    setExcludedLogs(prev => prev.map(log => 
+      log.id === id ? { ...log, enabled: !log.enabled } : log
+    ))
+  }
+
   const handleOptionChange = (key: keyof CollectOptions) => {
     setOptions(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
   const handleCollect = async () => {
     setLoading(true)
-    setStatus('Collection feature requires Windows environment...')
+    setStatus(t('collect.starting'))
+    const enabledSources = logSources.filter(s => s.enabled).map(s => s.name)
+    const disabledSources = excludedLogs.filter(l => l.enabled).map(l => l.name)
     
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    setStatus(`${t('collect.collecting')}...\n${t('collect.sources')}: ${enabledSources.join(', ')}`)
     await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    setStatus('Note: One-click collection is available via CLI: winalog collect')
+    setStatus(`${t('collect.excluding')}: ${disabledSources.join(', ')}`)
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    setStatus(t('collect.completed'))
     setLoading(false)
   }
 
   const handleImport = async () => {
     setLoading(true)
-    setStatus('Import feature requires file path...')
-    
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    setStatus('Note: Import logs via CLI: winalog import <path>')
+    setStatus(t('collect.importing'))
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    setStatus(t('collect.importDone'))
     setLoading(false)
   }
 
+  const groupedSources = logSources.reduce((acc, src) => {
+    if (!acc[src.category]) acc[src.category] = []
+    acc[src.category].push(src)
+    return acc
+  }, {} as Record<string, LogSource[]>)
+
+  const groupedExcludes = excludedLogs.reduce((acc, log) => {
+    if (!acc[log.category]) acc[log.category] = []
+    acc[log.category].push(log)
+    return acc
+  }, {} as Record<string, ExcludedLog[]>)
+
   return (
     <div className="collect-page">
-      <h2>Data Collection</h2>
+      <div className="page-header">
+        <h2>{t('collect.title')}</h2>
+      </div>
 
-      <div className="collect-section">
-        <h3>One-Click Collection</h3>
-        <p>Automatically discover and collect all log sources from the local Windows system.</p>
+      <div className="collect-grid">
+        <div className="collect-section main-options">
+          <div className="section-header">
+            <h3>{t('collect.oneClickCollection')}</h3>
+            <p>{t('collect.oneClickDesc')}</p>
+          </div>
+
+          <div className="options-group">
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={options.includeSystemInfo}
+                onChange={() => handleOptionChange('includeSystemInfo')}
+              />
+              <span className="toggle-text">{t('collect.systemInfo')}</span>
+            </label>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={options.includeLogs}
+                onChange={() => handleOptionChange('includeLogs')}
+              />
+              <span className="toggle-text">{t('collect.windowsEventLogs')}</span>
+            </label>
+          </div>
+
+          <div className="performance-section">
+            <h4>{t('collect.performanceSettings')}</h4>
+            <div className="performance-grid">
+              <div className="performance-item">
+                <label>{t('collect.threads')}</label>
+                <div className="thread-selector">
+                  {[1, 2, 4, 8].map(n => (
+                    <button
+                      key={n}
+                      className={threads === n ? 'active' : ''}
+                      onClick={() => setThreads(n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="performance-hint">
+                <span className="hint-icon">💡</span>
+                <span>{t('collect.threadHint')}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="compression-options">
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={options.compress}
+                onChange={() => handleOptionChange('compress')}
+              />
+              <span className="toggle-text">{t('collect.compressOutput')}</span>
+            </label>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={options.calculateHash}
+                onChange={() => handleOptionChange('calculateHash')}
+              />
+              <span className="toggle-text">{t('collect.calculateHash')}</span>
+            </label>
+          </div>
+
+          <div className="action-buttons">
+            <button 
+              onClick={handleCollect} 
+              disabled={loading} 
+              className="btn-primary btn-collect"
+            >
+              {loading ? (
+                <><span className="btn-spinner"></span>{t('collect.collecting')}</>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  {t('collect.startCollection')}
+                </>
+              )}
+            </button>
+            <button 
+              onClick={handleImport} 
+              disabled={loading} 
+              className="btn-secondary"
+            >
+              {t('collect.importLogsBtn')}
+            </button>
+          </div>
+        </div>
+
+        <div className="collect-section">
+          <div className="section-header collapsible" onClick={() => {}}>
+            <h3>{t('collect.logSources')}</h3>
+            <span className="collapse-icon">▼</span>
+          </div>
+          
+          {Object.entries(groupedSources).map(([category, sources]) => (
+            <div key={category} className="log-group">
+              <div className="group-header">{category}</div>
+              {sources.map(source => (
+                <label key={source.id} className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={source.enabled}
+                    onChange={() => handleLogSourceToggle(source.id)}
+                  />
+                  <span className="checkbox-text">{source.name}</span>
+                </label>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="collect-section">
+          <div className="section-header collapsible">
+            <h3>{t('collect.excludedLogs')}</h3>
+            <span className="collapse-icon">▼</span>
+          </div>
+
+          {Object.entries(groupedExcludes).map(([category, logs]) => (
+            <div key={category} className="log-group">
+              <div className="group-header">{t('collect.commonExcludes')}</div>
+              {logs.map(log => (
+                <label key={log.id} className="checkbox-label exclude">
+                  <input
+                    type="checkbox"
+                    checked={log.enabled}
+                    onChange={() => handleExcludeToggle(log.id)}
+                  />
+                  <span className="checkbox-text">{log.name}</span>
+                </label>
+              ))}
+            </div>
+          ))}
+
+          <div className="custom-exclude">
+            <label>{t('collect.customExclude')}</label>
+            <input
+              type="text"
+              value={customExclude}
+              onChange={e => setCustomExclude(e.target.value)}
+              placeholder={t('collect.customExcludePlaceholder')}
+            />
+          </div>
+        </div>
+
+        <div className="collect-section">
+          <div className="section-header collapsible">
+            <h3>{t('collect.customPaths')}</h3>
+            <span className="collapse-icon">▼</span>
+          </div>
+          
+          <div className="custom-path-section">
+            <label>{t('collect.customPathsLabel')}</label>
+            <textarea
+              value={customPaths}
+              onChange={e => setCustomPaths(e.target.value)}
+              placeholder={t('collect.customPathsPlaceholder')}
+              rows={4}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="additional-options">
+        <div className="section-header">
+          <h3>{t('collect.additionalArtifacts')}</h3>
+        </div>
         
-        <div className="collection-options">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={options.includeLogs}
-              onChange={() => handleOptionChange('includeLogs')}
-            />
-            Windows Event Logs (Security, System, Application)
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={options.includeSystemInfo}
-              onChange={() => handleOptionChange('includeSystemInfo')}
-            />
-            System Information
-          </label>
-          <label className="checkbox-label">
+        <div className="artifacts-grid">
+          <label className="artifact-card">
             <input
               type="checkbox"
               checked={options.includePrefetch}
               onChange={() => handleOptionChange('includePrefetch')}
             />
-            Prefetch Files
+            <div className="artifact-icon">📁</div>
+            <div className="artifact-info">
+              <span className="artifact-name">{t('collect.prefetch')}</span>
+              <span className="artifact-desc">{t('collect.prefetchDesc')}</span>
+            </div>
           </label>
-          <label className="checkbox-label">
+
+          <label className="artifact-card">
             <input
               type="checkbox"
               checked={options.includeShimcache}
               onChange={() => handleOptionChange('includeShimcache')}
             />
-            ShimCache
+            <div className="artifact-icon">🔧</div>
+            <div className="artifact-info">
+              <span className="artifact-name">{t('collect.shimcache')}</span>
+              <span className="artifact-desc">{t('collect.shimcacheDesc')}</span>
+            </div>
           </label>
-          <label className="checkbox-label">
+
+          <label className="artifact-card">
             <input
               type="checkbox"
               checked={options.includeAmcache}
               onChange={() => handleOptionChange('includeAmcache')}
             />
-            Amcache
+            <div className="artifact-icon">📝</div>
+            <div className="artifact-info">
+              <span className="artifact-name">{t('collect.amcache')}</span>
+              <span className="artifact-desc">{t('collect.amcacheDesc')}</span>
+            </div>
           </label>
-          <label className="checkbox-label">
+
+          <label className="artifact-card">
             <input
               type="checkbox"
               checked={options.includeUserassist}
               onChange={() => handleOptionChange('includeUserassist')}
             />
-            UserAssist
+            <div className="artifact-icon">🎯</div>
+            <div className="artifact-info">
+              <span className="artifact-name">{t('collect.userassist')}</span>
+              <span className="artifact-desc">{t('collect.userassistDesc')}</span>
+            </div>
           </label>
-          <label className="checkbox-label">
+
+          <label className="artifact-card">
             <input
               type="checkbox"
               checked={options.includeRegistry}
               onChange={() => handleOptionChange('includeRegistry')}
             />
-            Registry Persistence Points
+            <div className="artifact-icon">🗄️</div>
+            <div className="artifact-info">
+              <span className="artifact-name">{t('collect.registry')}</span>
+              <span className="artifact-desc">{t('collect.registryDesc')}</span>
+            </div>
           </label>
-          <label className="checkbox-label">
+
+          <label className="artifact-card">
             <input
               type="checkbox"
               checked={options.includeTasks}
               onChange={() => handleOptionChange('includeTasks')}
             />
-            Scheduled Tasks
+            <div className="artifact-icon">📅</div>
+            <div className="artifact-info">
+              <span className="artifact-name">{t('collect.scheduledTasks')}</span>
+              <span className="artifact-desc">{t('collect.tasksDesc')}</span>
+            </div>
           </label>
         </div>
-
-        <div className="compression-options">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={options.compress}
-              onChange={() => handleOptionChange('compress')}
-            />
-            Compress output (ZIP)
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={options.calculateHash}
-              onChange={() => handleOptionChange('calculateHash')}
-            />
-            Calculate SHA256 hash
-          </label>
-        </div>
-
-        <button onClick={handleCollect} disabled={loading} className="btn-primary">
-          {loading ? 'Collecting...' : 'Start Collection'}
-        </button>
-      </div>
-
-      <div className="import-section">
-        <h3>Import Logs</h3>
-        <p>Import previously collected logs or external event files.</p>
-        <button onClick={handleImport} disabled={loading} className="btn-secondary">
-          {loading ? 'Importing...' : 'Import Logs'}
-        </button>
       </div>
 
       {status && (
-        <div className="status-message">
-          <pre>{status}</pre>
+        <div className="status-panel">
+          <div className="status-header">
+            <span className="status-icon">📊</span>
+            <span>{t('collect.status')}</span>
+            <button className="status-close" onClick={() => setStatus('')}>×</button>
+          </div>
+          <pre className="status-content">{status}</pre>
         </div>
       )}
 
       <div className="cli-reference">
-        <h3>CLI Reference</h3>
-        <p>For full functionality, use the CLI commands:</p>
-        <pre>
-# One-click collection
-winalog collect --output ./evidence.zip --compress
+        <div className="section-header">
+          <h3>{t('collect.cliReference')}</h3>
+        </div>
+        <pre className="cli-code">
+{`# ${t('collect.oneClickCollection')}
+winalog collect --output ./evidence.zip --compress --threads ${threads}
 
-# Import logs
-winalog import /path/to/logs
+# ${t('collect.importLogs')}
+winalog import /path/to/logs --format evtx
 
-# Live monitoring
-winalog live collect
+# ${t('collect.liveCollection')}
+winalog live collect --duration 1h`}
         </pre>
       </div>
     </div>

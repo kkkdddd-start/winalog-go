@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../locales/I18n'
 import { eventsAPI, ExportParams, SearchParams } from '../api'
 
 interface Event {
   id: number
   timestamp: string
   event_id: number
-  level: number
+  level: string
   source: string
   log_name: string
   computer: string
@@ -30,6 +31,7 @@ interface SearchResponse {
 }
 
 function Events() {
+  const { t } = useI18n()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -152,66 +154,66 @@ function Events() {
 
   return (
     <div className="events-page">
-      <h2>Event Viewer</h2>
+      <h2>{t('events.title')}</h2>
       
       <div className="filters">
         <input
           type="text"
-          placeholder="Search keywords..."
+          placeholder={t('events.searchPlaceholder')}
           value={filters?.keywords || ''}
           onChange={e => setFilters({...filters!, keywords: e.target.value})}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <input
           type="datetime-local"
-          placeholder="Start time"
+          placeholder={t('events.startTime')}
           value={filters?.start_time || ''}
           onChange={e => setFilters({...filters!, start_time: e.target.value})}
         />
         <input
           type="datetime-local"
-          placeholder="End time"
+          placeholder={t('events.endTime')}
           value={filters?.end_time || ''}
           onChange={e => setFilters({...filters!, end_time: e.target.value})}
         />
         <button onClick={handleSearch} disabled={loading}>
-          Search
+          {t('events.search')}
         </button>
         {searchMode && (
           <button onClick={handleClearSearch}>
-            Clear Search
+            {t('events.clearSearch')}
           </button>
         )}
       </div>
 
       <div className="actions">
         <button onClick={() => handleExport('csv')} disabled={exportLoading}>
-          {exportLoading ? 'Exporting...' : 'Export CSV'}
+          {exportLoading ? '...' : t('events.exportCsv')}
         </button>
         <button onClick={() => handleExport('excel')} disabled={exportLoading}>
-          {exportLoading ? 'Exporting...' : 'Export Excel'}
+          {exportLoading ? '...' : t('events.exportExcel')}
         </button>
       </div>
 
       {searchMode && (
         <div className="search-info">
-          Found {totalCount} events {queryTime > 0 && `(query time: ${queryTime}ms)`}
+          {t('events.found', { count: totalCount })} {queryTime > 0 && t('events.queryTime', { time: queryTime })}
         </div>
       )}
 
       {loading ? (
-        <p>Loading...</p>
+        <p>{t('events.loading')}</p>
       ) : (
         <>
           <table className="events-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Timestamp</th>
-                <th>Event ID</th>
-                <th>Level</th>
-                <th>Source</th>
-                <th>Message</th>
+                <th>{t('events.id')}</th>
+                <th>{t('events.timestamp')}</th>
+                <th>{t('events.eventId')}</th>
+                <th>{t('events.level')}</th>
+                <th>{t('events.source')}</th>
+                <th>{t('events.message')}</th>
               </tr>
             </thead>
             <tbody>
@@ -230,11 +232,11 @@ function Events() {
 
           <div className="pagination">
             <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-              Previous
+              {t('events.previous')}
             </button>
-            <span>Page {page} of {totalPages}</span>
+            <span>{t('events.page', { page, total: totalPages })}</span>
             <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-              Next
+              {t('events.next')}
             </button>
           </div>
         </>

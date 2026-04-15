@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../locales/I18n'
 import { systemAPI } from '../api'
 
 interface Metrics {
@@ -13,6 +14,7 @@ interface Metrics {
 }
 
 function Metrics() {
+  const { t } = useI18n()
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +26,7 @@ function Metrics() {
         setLoading(false)
       })
       .catch(err => {
-        setError(err.message || 'Failed to load metrics')
+        setError(err.message || t('common.error'))
         setLoading(false)
       })
   }
@@ -44,46 +46,46 @@ function Metrics() {
     return `${mins}m`
   }
 
-  if (loading) return <div className="metrics-page"><div className="loading">Loading...</div></div>
+  if (loading) return <div className="metrics-page"><div className="loading">{t('common.loading')}</div></div>
 
-  if (error) return <div className="metrics-page"><div className="error">Error: {error}</div></div>
+  if (error) return <div className="metrics-page"><div className="error">{t('common.error')}: {error}</div></div>
 
   return (
     <div className="metrics-page">
-      <h2>Prometheus Metrics</h2>
+      <h2>{t('metrics.title')}</h2>
       
       <div className="detail-panel">
-        <h3>Real-time Preview</h3>
+        <h3>{t('metrics.realTimePreview')}</h3>
         <div className="metrics-grid">
           <div className="metric-card">
-            <label>Total Events</label>
+            <label>{t('metrics.totalEvents')}</label>
             <span className="metric-value">{(metrics?.total_events || 0).toLocaleString()}</span>
           </div>
           <div className="metric-card">
-            <label>Total Alerts</label>
+            <label>{t('metrics.totalAlerts')}</label>
             <span className="metric-value">{(metrics?.total_alerts || 0).toLocaleString()}</span>
           </div>
           <div className="metric-card">
-            <label>Events/min</label>
+            <label>{t('metrics.eventsPerMin')}</label>
             <span className="metric-value">{(metrics?.events_per_minute || 0).toFixed(1)}</span>
           </div>
           <div className="metric-card">
-            <label>Alerts/hr</label>
+            <label>{t('metrics.alertsPerHour')}</label>
             <span className="metric-value">{(metrics?.alerts_per_hour || 0).toFixed(1)}</span>
           </div>
           <div className="metric-card">
-            <label>Memory (MB)</label>
+            <label>{t('metrics.memory')}</label>
             <span className="metric-value">{(metrics?.memory_usage_mb || 0).toFixed(2)}</span>
           </div>
           <div className="metric-card">
-            <label>Uptime</label>
+            <label>{t('systemInfo.uptime')}</label>
             <span className="metric-value">{metrics?.uptime_seconds ? formatUptime(metrics.uptime_seconds) : 'N/A'}</span>
           </div>
         </div>
       </div>
 
       <div className="detail-panel">
-        <h3>Prometheus Format</h3>
+        <h3>{t('metrics.prometheusFormat')}</h3>
         <pre className="metrics-output">{`# HELP winalog_events_total Total number of events
 # TYPE winalog_events_total counter
 winalog_events_total ${metrics?.total_events || 0}
@@ -116,40 +118,6 @@ winalog_memory_bytes ${((metrics?.memory_usage_mb || 0) * 1024 * 1024).toFixed(0
 # TYPE go_info gauge
 go_info{version="${metrics?.go_version || 'unknown'}"} 1`}</pre>
       </div>
-
-      <style>{`
-        .metrics-output {
-          background: #0a0a1a;
-          padding: 15px;
-          border-radius: 4px;
-          overflow-x: auto;
-          font-family: monospace;
-          font-size: 0.9em;
-        }
-        .metrics-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 15px;
-          margin-top: 15px;
-        }
-        .metric-card {
-          background: #0a0a1a;
-          padding: 15px;
-          border-radius: 8px;
-          text-align: center;
-        }
-        .metric-card label {
-          display: block;
-          color: #888;
-          font-size: 0.85em;
-          margin-bottom: 5px;
-        }
-        .metric-card .metric-value {
-          font-size: 1.5em;
-          font-weight: bold;
-          color: #00d9ff;
-        }
-      `}</style>
     </div>
   )
 }

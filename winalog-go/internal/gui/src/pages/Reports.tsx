@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useI18n } from '../locales/I18n'
 
 function Reports() {
+  const { t } = useI18n()
   const [generating, setGenerating] = useState(false)
 
   const handleGenerate = async () => {
@@ -13,25 +15,25 @@ function Reports() {
 
   return (
     <div className="reports-page">
-      <h2>Reports</h2>
+      <h2>{t('reports.title')}</h2>
       
       <div className="detail-panel">
-        <h3>Generate Security Report</h3>
-        <p>Generate comprehensive security analysis reports in various formats.</p>
+        <h3>{t('reports.generateReport')}</h3>
+        <p>{t('reports.generateDesc')}</p>
         
         <div className="report-options">
           <div className="option-group">
-            <label>Report Type:</label>
+            <label>{t('reports.reportType')}:</label>
             <select>
-              <option value="security">Security Summary</option>
-              <option value="alert">Alert Analysis</option>
-              <option value="timeline">Event Timeline</option>
-              <option value="compliance">Compliance Report</option>
+              <option value="security">{t('reports.securitySummary')}</option>
+              <option value="alert">{t('reports.alertAnalysis')}</option>
+              <option value="timeline">{t('reports.eventTimeline')}</option>
+              <option value="compliance">{t('reports.complianceReport')}</option>
             </select>
           </div>
 
           <div className="option-group">
-            <label>Format:</label>
+            <label>{t('reports.format')}:</label>
             <select>
               <option value="json">JSON</option>
               <option value="html">HTML</option>
@@ -40,45 +42,20 @@ function Reports() {
           </div>
 
           <div className="option-group">
-            <label>Date Range:</label>
+            <label>{t('reports.dateRange')}:</label>
             <input type="date" /> to <input type="date" />
           </div>
         </div>
 
         <button onClick={handleGenerate} disabled={generating}>
-          {generating ? 'Generating...' : 'Generate Report'}
+          {generating ? t('reports.generating') : t('reports.generate')}
         </button>
       </div>
 
       <div className="detail-panel">
-        <h3>Recent Reports</h3>
-        <p>No reports generated yet.</p>
+        <h3>{t('reports.recentReports')}</h3>
+        <p>{t('reports.noReports')}</p>
       </div>
-
-      <style>{`
-        .report-options {
-          display: flex;
-          flex-direction: column;
-          gap: 15px;
-          margin: 20px 0;
-        }
-        .option-group {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .option-group label {
-          width: 120px;
-          font-weight: bold;
-        }
-        .option-group select, .option-group input {
-          padding: 8px;
-          border: 1px solid #333;
-          border-radius: 4px;
-          background: #16213e;
-          color: #eee;
-        }
-      `}</style>
     </div>
   )
 }

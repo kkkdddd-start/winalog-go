@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../locales/I18n'
 import { systemAPI } from '../api'
 
-interface SystemInfo {
+interface SystemInfoData {
   hostname: string
   domain: string
   os_name: string
@@ -16,7 +17,8 @@ interface SystemInfo {
 }
 
 function SystemInfo() {
-  const [info, setInfo] = useState<SystemInfo | null>(null)
+  const { t } = useI18n()
+  const [info, setInfo] = useState<SystemInfoData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,7 +29,7 @@ function SystemInfo() {
         setLoading(false)
       })
       .catch(err => {
-        setError(err.message || 'Failed to load system info')
+        setError(err.message || t('common.error'))
         setLoading(false)
       })
   }, [])
@@ -41,94 +43,74 @@ function SystemInfo() {
     return `${mins}m`
   }
 
-  if (loading) return <div className="systeminfo-page"><div className="loading">Loading...</div></div>
+  if (loading) return <div className="systeminfo-page"><div className="loading">{t('common.loading')}</div></div>
 
-  if (error) return <div className="systeminfo-page"><div className="error">Error: {error}</div></div>
+  if (error) return <div className="systeminfo-page"><div className="error">{t('common.error')}: {error}</div></div>
 
   return (
     <div className="systeminfo-page">
-      <h2>System Information</h2>
+      <h2>{t('systemInfo.title')}</h2>
       
       <div className="detail-panel">
-        <h3>Operating System</h3>
+        <h3>{t('systemInfo.operatingSystem')}</h3>
         <div className="info-grid">
           <div className="info-item">
-            <label>Hostname:</label>
+            <label>{t('systemInfo.hostname')}:</label>
             <span>{info?.hostname || 'N/A'}</span>
           </div>
           <div className="info-item">
-            <label>Domain:</label>
+            <label>{t('systemInfo.domain')}:</label>
             <span>{info?.domain || 'N/A'}</span>
           </div>
           <div className="info-item">
-            <label>OS Name:</label>
+            <label>{t('systemInfo.osName')}:</label>
             <span>{info?.os_name || 'N/A'}</span>
           </div>
           <div className="info-item">
-            <label>OS Version:</label>
+            <label>{t('systemInfo.osVersion')}:</label>
             <span>{info?.os_version || 'N/A'}</span>
           </div>
           <div className="info-item">
-            <label>Architecture:</label>
+            <label>{t('systemInfo.architecture')}:</label>
             <span>{info?.architecture || 'N/A'}</span>
           </div>
           <div className="info-item">
-            <label>Timezone:</label>
+            <label>{t('systemInfo.timezone')}:</label>
             <span>{info?.timezone || 'N/A'}</span>
           </div>
           <div className="info-item">
-            <label>Admin:</label>
-            <span>{info?.is_admin ? 'Yes' : 'No'}</span>
+            <label>{t('systemInfo.admin')}:</label>
+            <span>{info?.is_admin ? t('systemInfo.yes') : t('systemInfo.no')}</span>
           </div>
           <div className="info-item">
-            <label>Local Time:</label>
+            <label>{t('systemInfo.localTime')}:</label>
             <span>{info?.local_time ? new Date(info.local_time).toLocaleString() : 'N/A'}</span>
           </div>
         </div>
       </div>
 
       <div className="detail-panel">
-        <h3>Runtime Information</h3>
+        <h3>{t('systemInfo.runtimeInfo')}</h3>
         <div className="info-grid">
           <div className="info-item">
-            <label>Go Version:</label>
+            <label>{t('systemInfo.goVersion')}:</label>
             <span>{info?.go_version || 'N/A'}</span>
           </div>
           <div className="info-item">
-            <label>CPU Count:</label>
+            <label>{t('systemInfo.cpuCount')}:</label>
             <span>{info?.cpu_count || 'N/A'}</span>
           </div>
           <div className="info-item">
-            <label>Uptime:</label>
+            <label>{t('systemInfo.uptime')}:</label>
             <span>{info?.uptime_seconds ? formatUptime(info.uptime_seconds) : 'N/A'}</span>
           </div>
         </div>
       </div>
 
       <div className="detail-panel">
-        <h3>Collection Status</h3>
-        <p>Last system information collection: {info?.local_time ? new Date(info.local_time).toLocaleString() : 'Never'}</p>
+        <h3>{t('systemInfo.collectionStatus')}</h3>
+        <p>{t('systemInfo.lastCollection')}: {info?.local_time ? new Date(info.local_time).toLocaleString() : t('systemInfo.never')}</p>
       </div>
-
-      <style>{`
-        .info-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 15px;
-        }
-        .info-item {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        .info-item label {
-          font-size: 0.85em;
-          color: #888;
-        }
-        .info-item span {
-          font-size: 1.1em;
-        }
-      `}</style>
     </div>
   )
 }

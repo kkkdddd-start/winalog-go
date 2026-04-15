@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useI18n } from '../locales/I18n'
 
 function Forensics() {
+  const { t } = useI18n()
   const [collecting, setCollecting] = useState(false)
   const [hashInput, setHashInput] = useState('')
   const [verifyResult, setVerifyResult] = useState<{match: boolean; hash: string} | null>(null)
@@ -8,7 +10,7 @@ function Forensics() {
   const handleCollect = async () => {
     setCollecting(true)
     setTimeout(() => {
-      alert('Forensics collection is not yet connected to backend')
+      alert(t('collect.collectionNote'))
       setCollecting(false)
     }, 1000)
   }
@@ -23,93 +25,52 @@ function Forensics() {
 
   return (
     <div className="forensics-page">
-      <h2>Forensics</h2>
+      <h2>{t('forensics.title')}</h2>
       
       <div className="detail-panel">
-        <h3>Evidence Collection</h3>
-        <p>Collect forensic evidence from the system including memory, registry, and event logs.</p>
+        <h3>{t('forensics.evidenceCollection')}</h3>
+        <p>{t('forensics.evidenceCollectionDesc')}</p>
         
         <div className="collect-options">
-          <label><input type="checkbox" defaultChecked /> Event Logs</label>
-          <label><input type="checkbox" defaultChecked /> Registry</label>
-          <label><input type="checkbox" /> Memory Dump</label>
-          <label><input type="checkbox" defaultChecked /> Prefetch</label>
-          <label><input type="checkbox" /> ShimCache</label>
-          <label><input type="checkbox" /> UserAssist</label>
+          <label><input type="checkbox" defaultChecked /> {t('forensics.eventLogs')}</label>
+          <label><input type="checkbox" defaultChecked /> {t('forensics.registry')}</label>
+          <label><input type="checkbox" /> {t('forensics.memoryDump')}</label>
+          <label><input type="checkbox" defaultChecked /> {t('forensics.prefetch')}</label>
+          <label><input type="checkbox" /> {t('forensics.shimcache')}</label>
+          <label><input type="checkbox" /> {t('forensics.userassist')}</label>
         </div>
 
         <button onClick={handleCollect} disabled={collecting}>
-          {collecting ? 'Collecting...' : 'Start Collection'}
+          {collecting ? t('collect.importing') : t('forensics.startCollection')}
         </button>
       </div>
 
       <div className="detail-panel">
-        <h3>Hash Verification</h3>
-        <p>Verify file integrity by comparing SHA256 hashes.</p>
+        <h3>{t('forensics.hashVerification')}</h3>
+        <p>{t('forensics.hashVerificationDesc')}</p>
         
         <div className="verify-form">
           <input
             type="text"
-            placeholder="Enter SHA256 hash to verify..."
+            placeholder={t('forensics.enterHash')}
             value={hashInput}
             onChange={e => setHashInput(e.target.value)}
           />
-          <button onClick={handleVerify}>Verify</button>
+          <button onClick={handleVerify}>{t('forensics.verify')}</button>
         </div>
 
         {verifyResult && (
           <div className={`verify-result ${verifyResult.match ? 'match' : 'no-match'}`}>
-            {verifyResult.match ? 'Hash matches!' : 'Hash does not match'}
+            {verifyResult.match ? t('forensics.hashMatch') : t('forensics.hashNoMatch')}
           </div>
         )}
       </div>
 
       <div className="detail-panel">
-        <h3>Chain of Custody</h3>
-        <p>Evidence chain of custody tracking will be displayed here.</p>
-        <p className="muted">No evidence collected yet.</p>
+        <h3>{t('forensics.chainOfCustody')}</h3>
+        <p>{t('forensics.chainOfCustodyDesc')}</p>
+        <p className="muted">{t('forensics.noEvidence')}</p>
       </div>
-
-      <style>{`
-        .collect-options {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-          margin: 15px 0;
-        }
-        .collect-options label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .verify-form {
-          display: flex;
-          gap: 10px;
-          margin: 15px 0;
-        }
-        .verify-form input {
-          flex: 1;
-          padding: 8px;
-          border: 1px solid #333;
-          border-radius: 4px;
-          background: #16213e;
-          color: #eee;
-        }
-        .verify-result {
-          padding: 10px;
-          border-radius: 4px;
-          margin-top: 10px;
-        }
-        .verify-result.match {
-          background: #28a745;
-        }
-        .verify-result.no-match {
-          background: #dc3545;
-        }
-        .muted {
-          color: #888;
-        }
-      `}</style>
     </div>
   )
 }

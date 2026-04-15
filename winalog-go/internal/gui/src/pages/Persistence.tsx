@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useI18n } from '../locales/I18n'
 import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -56,52 +57,8 @@ interface DetectionStats {
   by_technique: Record<string, number>
 }
 
-const severityColors: Record<string, string> = {
-  critical: '#dc2626',
-  high: '#ea580c',
-  medium: '#ca8a04',
-  low: '#65a30d',
-  info: '#3b82f6',
-}
-
-const severityLabels: Record<string, string> = {
-  critical: '严重',
-  high: '高危',
-  medium: '中危',
-  low: '低危',
-  info: '信息',
-}
-
-const categoryLabels: Record<string, string> = {
-  Registry: '注册表',
-  Accessibility: '辅助功能',
-  COM: 'COM劫持',
-  IFEO: 'IFEO劫持',
-  WMI: 'WMI持久化',
-  Service: '服务持久化',
-  ScheduledTask: '计划任务',
-  Startup: '启动项',
-  BITS: 'BITS作业',
-}
-
-const techniqueLabels: Record<string, string> = {
-  'T1546.001': '辅助功能后门',
-  'T1546.002': 'SCM',
-  'T1546.003': 'WMI事件订阅',
-  'T1546.007': 'Netsh Helper DLL',
-  'T1546.008': 'LSASS',
-  'T1546.010': 'AppInit_DLLs',
-  'T1546.012': 'IFEO调试器劫持',
-  'T1546.015': 'COM劫持',
-  'T1546.016': '启动项',
-  'T1053': '计划任务/作业',
-  'T1053.020': 'Cron',
-  'T1543.003': 'Windows服务',
-  'T1197': 'BITS作业',
-  'T1098': '账户操作/SID History',
-}
-
 function Persistence() {
+  const { t } = useI18n()
   const [detections, setDetections] = useState<Detection[]>([])
   const [stats, setStats] = useState<DetectionStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -122,14 +79,14 @@ function Persistence() {
       setLoading(true)
       const response = await fetch('/api/persistence/detect')
       if (!response.ok) {
-        throw new Error('获取检测结果失败')
+        throw new Error('Failed to fetch detections')
       }
       const data = await response.json()
       setDetections(data.detections || [])
       setStats(calculateStats(data.detections || []))
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '未知错误')
+      setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
@@ -148,7 +105,7 @@ function Persistence() {
     dets.forEach(d => {
       const sev = d.severity?.toLowerCase() || 'info'
       if (sev in stats.by_severity) {
-        stats.by_severity[sev as keyof typeof stats.by_severity]++
+        (stats.by_severity as any)[sev]++
       }
       stats.by_category[d.category] = (stats.by_category[d.category] || 0) + 1
       stats.by_technique[d.technique] = (stats.by_technique[d.technique] || 0) + 1
@@ -165,36 +122,23 @@ function Persistence() {
   })
 
   const severityChartData = {
-    labels: Object.keys(stats?.by_severity || {}).map(k => severityLabels[k] || k),
+    labels: Object.keys(stats?.by_severity || {}),
     datasets: [
       {
-        label: '按严重级别',
+        label: t('persistence.bySeverity'),
         data: Object.values(stats?.by_severity || {}),
-        backgroundColor: Object.keys(stats?.by_severity || {}).map(
-          k => severityColors[k] || '#6b7280'
-        ),
+        backgroundColor: ['#dc2626', '#ea580c', '#ca8a04', '#65a30d', '#3b82f6'],
       },
     ],
   }
 
   const categoryChartData = {
-    labels: Object.keys(stats?.by_category || {}).map(
-      k => categoryLabels[k] || k
-    ),
+    labels: Object.keys(stats?.by_category || {}),
     datasets: [
       {
-        label: '按类别',
+        label: t('persistence.byCategory'),
         data: Object.values(stats?.by_category || {}),
-        backgroundColor: [
-          '#3b82f6',
-          '#10b981',
-          '#f59e0b',
-          '#ef4444',
-          '#8b5cf6',
-          '#ec4899',
-          '#06b6d4',
-          '#84cc16',
-        ],
+        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'],
       },
     ],
   }
@@ -202,7 +146,7 @@ function Persistence() {
   if (loading) {
     return (
       <div className="persistence-page">
-        <div className="loading">正在加载持久化检测数据...</div>
+        <div className="loading">{t('common.loading')}</div>
       </div>
     )
   }
@@ -210,9 +154,9 @@ function Persistence() {
   if (error) {
     return (
       <div className="persistence-page">
-        <div className="error">错误: {error}</div>
+        <div className="error">{t('common.error')}: {error}</div>
         <button onClick={fetchDetections} className="btn btn-primary">
-          重试
+          {t('common.confirm')}
         </button>
       </div>
     )
@@ -221,9 +165,9 @@ function Persistence() {
   return (
     <div className="persistence-page">
       <div className="page-header">
-        <h1>持久化机制检测</h1>
+        <h1>{t('persistence.title')}</h1>
         <button onClick={fetchDetections} className="btn btn-primary">
-          重新扫描
+          {t('persistence.rescan')}
         </button>
       </div>
 
@@ -231,49 +175,43 @@ function Persistence() {
         <div className="stats-grid">
           <div className="stat-card stat-total">
             <div className="stat-value">{stats.total_detections}</div>
-            <div className="stat-label">检测总数</div>
+            <div className="stat-label">{t('persistence.total')}</div>
           </div>
           <div className="stat-card stat-critical">
             <div className="stat-value">{stats.by_severity.critical}</div>
-            <div className="stat-label">严重</div>
+            <div className="stat-label">{t('persistence.critical')}</div>
           </div>
           <div className="stat-card stat-high">
             <div className="stat-value">{stats.by_severity.high}</div>
-            <div className="stat-label">高危</div>
+            <div className="stat-label">{t('persistence.high')}</div>
           </div>
           <div className="stat-card stat-medium">
             <div className="stat-value">{stats.by_severity.medium}</div>
-            <div className="stat-label">中危</div>
+            <div className="stat-label">{t('persistence.medium')}</div>
           </div>
           <div className="stat-card stat-low">
             <div className="stat-value">{stats.by_severity.low}</div>
-            <div className="stat-label">低危</div>
+            <div className="stat-label">{t('persistence.low')}</div>
           </div>
         </div>
       )}
 
       <div className="charts-grid">
         <div className="chart-card">
-          <h3>按严重级别分布</h3>
+          <h3>{t('persistence.bySeverity')}</h3>
           <div className="chart-container">
             <Line
               data={severityChartData}
-              options={{
-                responsive: true,
-                plugins: { legend: { display: false } },
-              }}
+              options={{ responsive: true, plugins: { legend: { display: false } } }}
             />
           </div>
         </div>
         <div className="chart-card">
-          <h3>按类别分布</h3>
+          <h3>{t('persistence.byCategory')}</h3>
           <div className="chart-container">
             <Line
               data={categoryChartData}
-              options={{
-                responsive: true,
-                plugins: { legend: { display: false } },
-              }}
+              options={{ responsive: true, plugins: { legend: { display: false } } }}
             />
           </div>
         </div>
@@ -284,21 +222,11 @@ function Persistence() {
           value={filter.severity || ''}
           onChange={e => setFilter({ ...filter, severity: e.target.value || undefined })}
         >
-          <option value="">全部严重级别</option>
-          <option value="critical">严重</option>
-          <option value="high">高危</option>
-          <option value="medium">中危</option>
-          <option value="low">低危</option>
-          <option value="info">信息</option>
-        </select>
-        <select
-          value={filter.category || ''}
-          onChange={e => setFilter({ ...filter, category: e.target.value || undefined })}
-        >
-          <option value="">全部类别</option>
-          {Object.entries(categoryLabels).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
+          <option value="">{t('persistence.allSeverities')}</option>
+          <option value="critical">{t('persistence.critical')}</option>
+          <option value="high">{t('persistence.high')}</option>
+          <option value="medium">{t('persistence.medium')}</option>
+          <option value="low">{t('persistence.low')}</option>
         </select>
       </div>
 
@@ -306,12 +234,12 @@ function Persistence() {
         <table className="detections-table">
           <thead>
             <tr>
-              <th>严重级别</th>
-              <th>技术</th>
-              <th>类别</th>
-              <th>标题</th>
-              <th>注册表键/文件路径</th>
-              <th>误报风险</th>
+              <th>{t('persistence.severity')}</th>
+              <th>{t('persistence.technique')}</th>
+              <th>{t('persistence.category')}</th>
+              <th>{t('persistence.title')}</th>
+              <th>{t('persistence.evidence')}</th>
+              <th>{t('persistence.falsePositiveRisk')}</th>
             </tr>
           </thead>
           <tbody>
@@ -322,41 +250,19 @@ function Persistence() {
                 className="detection-row"
               >
                 <td>
-                  <span
-                    className="severity-badge"
-                    style={{ backgroundColor: severityColors[detection.severity?.toLowerCase()] || '#6b7280' }}
-                  >
-                    {severityLabels[detection.severity?.toLowerCase()] || detection.severity}
+                  <span className={`severity-badge severity-${detection.severity?.toLowerCase()}`}>
+                    {t(`persistence.${detection.severity?.toLowerCase()}`)}
                   </span>
                 </td>
                 <td>
-                  <span className="technique-tag">
-                    {techniqueLabels[detection.technique] || detection.technique}
-                  </span>
-                  <br />
-                  <small className="technique-id">{detection.technique}</small>
+                  <span className="technique-tag">{detection.technique}</span>
                 </td>
-                <td>{categoryLabels[detection.category] || detection.category}</td>
+                <td>{detection.category}</td>
                 <td>{detection.title}</td>
                 <td className="evidence-cell">
-                  {detection.evidence?.key && (
-                    <div className="evidence-key">{detection.evidence.key}</div>
-                  )}
-                  {detection.evidence?.value && (
-                    <div className="evidence-value">{detection.evidence.value}</div>
-                  )}
-                  {detection.evidence?.file_path && (
-                    <div className="evidence-file">{detection.evidence.file_path}</div>
-                  )}
+                  {detection.evidence?.key && <div className="evidence-key">{detection.evidence.key}</div>}
                 </td>
-                <td>
-                  <span className={`fp-risk fp-${detection.false_positive_risk?.toLowerCase()}`}>
-                    {detection.false_positive_risk === 'Low' ? '低' :
-                     detection.false_positive_risk === 'Medium' ? '中' :
-                     detection.false_positive_risk === 'High' ? '高' :
-                     detection.false_positive_risk || '未知'}
-                  </span>
-                </td>
+                <td>{t(`persistence.${detection.false_positive_risk?.toLowerCase()}Risk`) || detection.false_positive_risk}</td>
               </tr>
             ))}
           </tbody>
@@ -368,83 +274,22 @@ function Persistence() {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{selectedDetection.title}</h2>
-              <button className="close-btn" onClick={() => setSelectedDetection(null)}>
-                ×
-              </button>
+              <button className="close-btn" onClick={() => setSelectedDetection(null)}>×</button>
             </div>
             <div className="modal-body">
               <div className="detail-section">
-                <h4>基本信息</h4>
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <span className="detail-label">严重级别:</span>
-                    <span
-                      className="severity-badge"
-                      style={{
-                        backgroundColor: severityColors[selectedDetection.severity?.toLowerCase()] || '#6b7280',
-                      }}
-                    >
-                      {severityLabels[selectedDetection.severity?.toLowerCase()] || selectedDetection.severity}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">MITRE ATT&CK:</span>
-                    <span>{techniqueLabels[selectedDetection.technique] || selectedDetection.technique}</span>
-                    <code className="technique-id">{selectedDetection.technique}</code>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">类别:</span>
-                    <span>{categoryLabels[selectedDetection.category] || selectedDetection.category}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">时间:</span>
-                    <span>{new Date(selectedDetection.time).toLocaleString('zh-CN')}</span>
-                  </div>
-                </div>
+                <h4>{t('persistence.basicInfo')}</h4>
+                <p><strong>{t('persistence.severity')}:</strong> {selectedDetection.severity}</p>
+                <p><strong>{t('persistence.technique')}:</strong> {selectedDetection.technique}</p>
+                <p><strong>{t('persistence.time')}:</strong> {new Date(selectedDetection.time).toLocaleString()}</p>
               </div>
-
               <div className="detail-section">
-                <h4>描述</h4>
+                <h4>{t('persistence.description')}</h4>
                 <p>{selectedDetection.description}</p>
               </div>
-
               <div className="detail-section">
-                <h4>证据</h4>
-                <div className="evidence-details">
-                  {selectedDetection.evidence?.key && (
-                    <div className="evidence-row">
-                      <span className="evidence-label">注册表键:</span>
-                      <code className="evidence-value">{selectedDetection.evidence.key}</code>
-                    </div>
-                  )}
-                  {selectedDetection.evidence?.value && (
-                    <div className="evidence-row">
-                      <span className="evidence-label">注册表值:</span>
-                      <code className="evidence-value">{selectedDetection.evidence.value}</code>
-                    </div>
-                  )}
-                  {selectedDetection.evidence?.file_path && (
-                    <div className="evidence-row">
-                      <span className="evidence-label">文件路径:</span>
-                      <code className="evidence-value">{selectedDetection.evidence.file_path}</code>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="detail-section recommended-action">
-                <h4>建议操作</h4>
+                <h4>{t('persistence.recommendedAction')}</h4>
                 <p>{selectedDetection.recommended_action}</p>
-              </div>
-
-              <div className="detail-section">
-                <h4>误报风险</h4>
-                <span className={`fp-risk fp-${selectedDetection.false_positive_risk?.toLowerCase()}`}>
-                  {selectedDetection.false_positive_risk === 'Low' ? '低风险' :
-                   selectedDetection.false_positive_risk === 'Medium' ? '中风险' :
-                   selectedDetection.false_positive_risk === 'High' ? '高风险' :
-                   selectedDetection.false_positive_risk || '未知'}
-                </span>
               </div>
             </div>
           </div>
