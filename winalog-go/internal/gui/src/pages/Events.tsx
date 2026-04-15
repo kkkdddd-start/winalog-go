@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { eventsAPI, ExportParams } from '../api'
+import { eventsAPI, ExportParams, SearchParams } from '../api'
 
 interface Event {
   id: number
@@ -20,12 +20,24 @@ interface ListResponse {
   total_pages: number
 }
 
+interface SearchResponse {
+  events: Event[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+  query_time_ms: number
+}
+
 function Events() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
   const [exportLoading, setExportLoading] = useState(false)
+  const [searchMode, setSearchMode] = useState(false)
+  const [queryTime, setQueryTime] = useState(0)
 
   const [filters, setFilters] = useState<ExportParams['filters']>({
     event_ids: [],
@@ -37,16 +49,75 @@ function Events() {
     limit: 10000,
   })
 
-  useEffect(() => {
+  const doSearch = (pageNum: number = 1) => {
     setLoading(true)
-    eventsAPI.list(page, 50)
+    const searchParams: SearchParams = {
+      keywords: filters?.keywords || '',
+      page: pageNum,
+      page_size: 50,
+      sort_by: 'timestamp',
+      sort_order: 'desc',
+    }
+    
+    eventsAPI.search(searchParams)
       .then(res => {
-        const data = res.data as ListResponse
+        const data = res.data as SearchResponse
         setEvents(data.events || [])
-        setTotalPages(data.total_pages || 1)
+        setTotalCount(data.total || 0)
+        const pages = Math.ceil((data.total || 0) / 50)
+        setTotalPages(pages || 1)
+        setQueryTime(data.query_time_ms || 0)
+        setSearchMode(true)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        eventsAPI.list(pageNum, 50)
+          .then(res => {
+            const data = res.data as ListResponse
+            setEvents(data.events || [])
+            setTotalCount(data.total || 0)
+            setTotalPages(data.total_pages || 1)
+            setSearchMode(false)
+            setLoading(false)
+          })
+          .catch(() => setLoading(false))
+      })
+  }
+
+  const handleSearch = () => {
+    setPage(1)
+    doSearch(1)
+  }
+
+  const handleClearSearch = () => {
+    setFilters({
+      event_ids: [],
+      levels: [],
+      log_names: [],
+      start_time: '',
+      end_time: '',
+      keywords: '',
+      limit: 10000,
+    })
+    setSearchMode(false)
+    setPage(1)
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    if (filters?.keywords && filters.keywords.trim() !== '') {
+      doSearch(page)
+    } else {
+      eventsAPI.list(page, 50)
+        .then(res => {
+          const data = res.data as ListResponse
+          setEvents(data.events || [])
+          setTotalCount(data.total || 0)
+          setTotalPages(data.total_pages || 1)
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    }
   }, [page])
 
   const handleExport = async (format: 'csv' | 'excel' | 'json') => {
@@ -89,6 +160,7 @@ function Events() {
           placeholder="Search keywords..."
           value={filters?.keywords || ''}
           onChange={e => setFilters({...filters!, keywords: e.target.value})}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <input
           type="datetime-local"
@@ -102,6 +174,14 @@ function Events() {
           value={filters?.end_time || ''}
           onChange={e => setFilters({...filters!, end_time: e.target.value})}
         />
+        <button onClick={handleSearch} disabled={loading}>
+          Search
+        </button>
+        {searchMode && (
+          <button onClick={handleClearSearch}>
+            Clear Search
+          </button>
+        )}
       </div>
 
       <div className="actions">
@@ -112,6 +192,12 @@ function Events() {
           {exportLoading ? 'Exporting...' : 'Export Excel'}
         </button>
       </div>
+
+      {searchMode && (
+        <div className="search-info">
+          Found {totalCount} events {queryTime > 0 && `(query time: ${queryTime}ms)`}
+        </div>
+      )}
 
       {loading ? (
         <p>Loading...</p>

@@ -134,8 +134,29 @@ func (h *AlertHandler) SearchEvents(c *gin.Context) {
 		req.PageSize = 100
 	}
 
+	filter := &storage.EventFilter{
+		Keywords: req.Keywords,
+		Regex:    req.Regex,
+		Limit:    req.PageSize,
+		Offset:   (req.Page - 1) * req.PageSize,
+		EventIDs: req.EventIDs,
+		Levels:   req.Levels,
+		LogNames: req.LogNames,
+	}
+
+	if req.StartTime != "" {
+		if t, err := time.Parse(time.RFC3339, req.StartTime); err == nil {
+			filter.StartTime = &t
+		}
+	}
+	if req.EndTime != "" {
+		if t, err := time.Parse(time.RFC3339, req.EndTime); err == nil {
+			filter.EndTime = &t
+		}
+	}
+
 	start := time.Now()
-	events, total, err := h.db.SearchEvents(req.Keywords, req.PageSize)
+	events, total, err := h.db.SearchEvents(filter)
 	if err != nil {
 		c.JSON(500, ErrorResponse{Error: err.Error()})
 		return

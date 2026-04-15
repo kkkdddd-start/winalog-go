@@ -376,10 +376,13 @@ type ImportLogEntry struct {
 type EventFilter struct {
 	Limit     int
 	Offset    int
+	Keywords  string
+	Regex     bool
 	EventIDs  []int32
 	Levels    []int
 	LogNames  []string
 	Computers []string
+	Users     []string
 	StartTime *time.Time
 	EndTime   *time.Time
 }
@@ -394,6 +397,36 @@ func (d *DB) ListEvents(filter *EventFilter) ([]*types.Event, int64, error) {
 	req := &types.SearchRequest{
 		PageSize: filter.Limit,
 		Page:     1,
+		Keywords: filter.Keywords,
+		Regex:    filter.Regex,
+	}
+
+	if filter.Offset > 0 {
+		req.Page = (filter.Offset / filter.Limit) + 1
+	}
+
+	return eventRepo.Search(req)
+}
+
+func (d *DB) SearchEvents(filter *EventFilter) ([]*types.Event, int64, error) {
+	if filter == nil {
+		filter = &EventFilter{Limit: 100}
+	}
+
+	eventRepo := NewEventRepo(d)
+
+	req := &types.SearchRequest{
+		Keywords:  filter.Keywords,
+		Regex:     filter.Regex,
+		EventIDs:  filter.EventIDs,
+		Levels:    filter.Levels,
+		LogNames:  filter.LogNames,
+		Computers: filter.Computers,
+		Users:     filter.Users,
+		StartTime: filter.StartTime,
+		EndTime:   filter.EndTime,
+		PageSize:  filter.Limit,
+		Page:      1,
 	}
 
 	if filter.Offset > 0 {
@@ -479,16 +512,6 @@ func (d *DB) ListEventsFiltered(filter *EventFilter) ([]*types.Event, error) {
 func (d *DB) GetEventByID(id int64) (*types.Event, error) {
 	eventRepo := NewEventRepo(d)
 	return eventRepo.GetByID(id)
-}
-
-func (d *DB) SearchEvents(keyword string, limit int) ([]*types.Event, int64, error) {
-	eventRepo := NewEventRepo(d)
-	req := &types.SearchRequest{
-		Keywords: keyword,
-		PageSize: limit,
-		Page:     1,
-	}
-	return eventRepo.Search(req)
 }
 
 func (d *DB) AlertRepo() *AlertRepo {
