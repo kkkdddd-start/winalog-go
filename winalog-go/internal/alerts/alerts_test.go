@@ -76,7 +76,7 @@ func TestEngineLoadRules(t *testing.T) {
 	rule := &rules.AlertRule{
 		Name:     "Test Rule",
 		Enabled:  true,
-		Severity: rules.SeverityHigh,
+		Severity: types.SeverityHigh,
 	}
 
 	engine.LoadRules([]*rules.AlertRule{rule})
@@ -115,7 +115,7 @@ func TestEngineAddRule(t *testing.T) {
 	rule := &rules.AlertRule{
 		Name:     "Added Rule",
 		Enabled:  true,
-		Severity: rules.SeverityMedium,
+		Severity: types.SeverityMedium,
 	}
 
 	engine.AddRule(rule)
@@ -135,7 +135,7 @@ func TestEngineRemoveRule(t *testing.T) {
 	rule := &rules.AlertRule{
 		Name:     "To Be Removed",
 		Enabled:  true,
-		Severity: rules.SeverityLow,
+		Severity: types.SeverityLow,
 	}
 
 	engine.AddRule(rule)
@@ -180,7 +180,7 @@ func TestEngineEvaluateWithMatchingRule(t *testing.T) {
 	rule := &rules.AlertRule{
 		Name:     "Login Rule",
 		Enabled:  true,
-		Severity: rules.SeverityHigh,
+		Severity: types.SeverityHigh,
 		Filter: &rules.Filter{
 			EventIDs: []int32{4624},
 		},
@@ -222,7 +222,7 @@ func TestEngineEvaluateWithNonMatchingRule(t *testing.T) {
 	rule := &rules.AlertRule{
 		Name:     "Specific Event Rule",
 		Enabled:  true,
-		Severity: rules.SeverityHigh,
+		Severity: types.SeverityHigh,
 		Filter: &rules.Filter{
 			EventIDs: []int32{9999},
 		},
@@ -413,7 +413,7 @@ func TestEvaluatorMatchKeywords(t *testing.T) {
 	}
 
 	words := "login,failed"
-	mode := rules.LogicalOpAnd
+	mode := rules.OpAnd
 
 	if !eval.matchKeywords(words, event, mode) {
 		t.Error("matchKeywords returned false for matching keywords")

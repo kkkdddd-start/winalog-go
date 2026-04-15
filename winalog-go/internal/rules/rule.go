@@ -7,43 +7,33 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
-type Severity string
-
-const (
-	SeverityCritical Severity = "critical"
-	SeverityHigh     Severity = "high"
-	SeverityMedium   Severity = "medium"
-	SeverityLow      Severity = "low"
-	SeverityInfo     Severity = "info"
-)
-
 type LogicalOp string
 
 const (
-	LogicalOpAnd LogicalOp = "AND"
-	LogicalOpOr  LogicalOp = "OR"
+	OpAnd LogicalOp = "AND"
+	OpOr  LogicalOp = "OR"
 )
 
 type AlertRule struct {
-	Name           string        `yaml:"name"`
-	Description    string        `yaml:"description"`
-	Enabled        bool          `yaml:"enabled"`
-	Severity       Severity      `yaml:"severity"`
-	Score          float64       `yaml:"score"`
-	MitreAttack    string        `yaml:"mitre_attack,omitempty"`
-	Filter         *Filter       `yaml:"filter"`
-	Conditions     *Conditions   `yaml:"conditions,omitempty"`
-	Threshold      int           `yaml:"threshold,omitempty"`
-	TimeWindow     time.Duration `yaml:"time_window,omitempty"`
-	AggregationKey string        `yaml:"aggregation_key,omitempty"`
-	Message        string        `yaml:"message"`
-	Tags           []string      `yaml:"tags,omitempty"`
-	Status         string        `yaml:"status,omitempty"`
-	Product        string        `yaml:"logsource,omitempty"`
-	LogSource      *LogSource    `yaml:"logsource,omitempty"`
-	FalsePositives []string      `yaml:"falsepositives,omitempty"`
-	Level          string        `yaml:"level,omitempty"`
-	References     []string      `yaml:"references,omitempty"`
+	Name           string         `yaml:"name"`
+	Description    string         `yaml:"description"`
+	Enabled        bool           `yaml:"enabled"`
+	Severity       types.Severity `yaml:"severity"`
+	Score          float64        `yaml:"score"`
+	MitreAttack    string         `yaml:"mitre_attack,omitempty"`
+	Filter         *Filter        `yaml:"filter"`
+	Conditions     *Conditions    `yaml:"conditions,omitempty"`
+	Threshold      int            `yaml:"threshold,omitempty"`
+	TimeWindow     time.Duration  `yaml:"time_window,omitempty"`
+	AggregationKey string         `yaml:"aggregation_key,omitempty"`
+	Message        string         `yaml:"message"`
+	Tags           []string       `yaml:"tags,omitempty"`
+	Status         string         `yaml:"status,omitempty"`
+	Product        string         `yaml:"logsource,omitempty"`
+	LogSource      *LogSource     `yaml:"logsource,omitempty"`
+	FalsePositives []string       `yaml:"falsepositives,omitempty"`
+	Level          string         `yaml:"level,omitempty"`
+	References     []string       `yaml:"references,omitempty"`
 }
 
 func (r *AlertRule) BuildMessage(event *types.Event) string {
@@ -68,15 +58,15 @@ func (r *AlertRule) BuildMessage(event *types.Event) string {
 }
 
 type CorrelationRule struct {
-	Name        string        `yaml:"name"`
-	Description string        `yaml:"description"`
-	Enabled     bool          `yaml:"enabled"`
-	Severity    Severity      `yaml:"severity"`
-	Patterns    []*Pattern    `yaml:"patterns"`
-	TimeWindow  time.Duration `yaml:"time_window"`
-	Join        string        `yaml:"join"`
-	MitreAttack string        `yaml:"mitre_attack,omitempty"`
-	Tags        []string      `yaml:"tags,omitempty"`
+	Name        string         `yaml:"name"`
+	Description string         `yaml:"description"`
+	Enabled     bool           `yaml:"enabled"`
+	Severity    types.Severity `yaml:"severity"`
+	Patterns    []*Pattern     `yaml:"patterns"`
+	TimeWindow  time.Duration  `yaml:"time_window"`
+	Join        string         `yaml:"join"`
+	MitreAttack string         `yaml:"mitre_attack,omitempty"`
+	Tags        []string       `yaml:"tags,omitempty"`
 }
 
 type Pattern struct {
@@ -176,32 +166,32 @@ func replace(s, old, new string) string {
 	return result
 }
 
-func ParseSeverity(s string) (Severity, error) {
+func ParseSeverity(s string) (types.Severity, error) {
 	switch s {
 	case "critical":
-		return SeverityCritical, nil
+		return types.SeverityCritical, nil
 	case "high":
-		return SeverityHigh, nil
+		return types.SeverityHigh, nil
 	case "medium":
-		return SeverityMedium, nil
+		return types.SeverityMedium, nil
 	case "low":
-		return SeverityLow, nil
+		return types.SeverityLow, nil
 	case "info":
-		return SeverityInfo, nil
+		return types.SeverityInfo, nil
 	default:
-		return SeverityInfo, fmt.Errorf("unknown severity: %s", s)
+		return types.SeverityInfo, fmt.Errorf("unknown severity: %s", s)
 	}
 }
 
-func (s Severity) ScoreValue() float64 {
+func ScoreValue(s types.Severity) float64 {
 	switch s {
-	case SeverityCritical:
+	case types.SeverityCritical:
 		return 100
-	case SeverityHigh:
+	case types.SeverityHigh:
 		return 75
-	case SeverityMedium:
+	case types.SeverityMedium:
 		return 50
-	case SeverityLow:
+	case types.SeverityLow:
 		return 25
 	default:
 		return 10

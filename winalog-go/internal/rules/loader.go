@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -135,12 +136,12 @@ func (v *Validator) ValidateAlertRule(rule *AlertRule) error {
 		return fmt.Errorf("severity is required")
 	}
 
-	validSeverities := map[Severity]bool{
-		SeverityCritical: true,
-		SeverityHigh:     true,
-		SeverityMedium:   true,
-		SeverityLow:      true,
-		SeverityInfo:     true,
+	validSeverities := map[types.Severity]bool{
+		types.SeverityCritical: true,
+		types.SeverityHigh:     true,
+		types.SeverityMedium:   true,
+		types.SeverityLow:      true,
+		types.SeverityInfo:     true,
 	}
 
 	if !validSeverities[rule.Severity] {
@@ -192,7 +193,7 @@ func (v *Validator) validateFilter(filter *Filter) error {
 	}
 
 	if filter.Keywords != "" && filter.KeywordMode == "" {
-		filter.KeywordMode = LogicalOpAnd
+		filter.KeywordMode = OpAnd
 	}
 
 	return nil

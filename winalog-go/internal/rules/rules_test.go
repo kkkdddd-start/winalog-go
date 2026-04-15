@@ -57,7 +57,7 @@ func TestAlertRuleValidate(t *testing.T) {
 			name: "valid rule with filter",
 			rule: &AlertRule{
 				Name:     "Test Rule",
-				Severity: SeverityHigh,
+				Severity: types.SeverityHigh,
 				Filter:   &Filter{EventIDs: []int32{4624}},
 			},
 			wantErr: false,
@@ -66,7 +66,7 @@ func TestAlertRuleValidate(t *testing.T) {
 			name: "valid rule with conditions",
 			rule: &AlertRule{
 				Name:       "Test Rule",
-				Severity:   SeverityHigh,
+				Severity:   types.SeverityHigh,
 				Conditions: &Conditions{Any: []*Condition{{Field: "event_id", Operator: "==", Value: "4624"}}},
 			},
 			wantErr: false,
@@ -74,7 +74,7 @@ func TestAlertRuleValidate(t *testing.T) {
 		{
 			name: "missing name",
 			rule: &AlertRule{
-				Severity: SeverityHigh,
+				Severity: types.SeverityHigh,
 				Filter:   &Filter{EventIDs: []int32{4624}},
 			},
 			wantErr: true,
@@ -91,7 +91,7 @@ func TestAlertRuleValidate(t *testing.T) {
 			name: "missing filter and conditions",
 			rule: &AlertRule{
 				Name:     "Test Rule",
-				Severity: SeverityHigh,
+				Severity: types.SeverityHigh,
 			},
 			wantErr: true,
 		},
@@ -159,15 +159,15 @@ func TestCorrelationRuleValidate(t *testing.T) {
 func TestParseSeverity(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected Severity
+		expected types.Severity
 		wantErr  bool
 	}{
-		{"critical", SeverityCritical, false},
-		{"high", SeverityHigh, false},
-		{"medium", SeverityMedium, false},
-		{"low", SeverityLow, false},
-		{"info", SeverityInfo, false},
-		{"invalid", SeverityInfo, true},
+		{"critical", types.SeverityCritical, false},
+		{"high", types.SeverityHigh, false},
+		{"medium", types.SeverityMedium, false},
+		{"low", types.SeverityLow, false},
+		{"info", types.SeverityInfo, false},
+		{"invalid", types.SeverityInfo, true},
 	}
 
 	for _, tt := range tests {
@@ -186,20 +186,20 @@ func TestParseSeverity(t *testing.T) {
 
 func TestSeverityScoreValue(t *testing.T) {
 	tests := []struct {
-		severity Severity
+		severity types.Severity
 		expected float64
 	}{
-		{SeverityCritical, 100},
-		{SeverityHigh, 75},
-		{SeverityMedium, 50},
-		{SeverityLow, 25},
-		{SeverityInfo, 10},
-		{Severity("unknown"), 10},
+		{types.SeverityCritical, 100},
+		{types.SeverityHigh, 75},
+		{types.SeverityMedium, 50},
+		{types.SeverityLow, 25},
+		{types.SeverityInfo, 10},
+		{types.Severity("unknown"), 10},
 	}
 
 	for _, tt := range tests {
 		t.Run(string(tt.severity), func(t *testing.T) {
-			if score := tt.severity.ScoreValue(); score != tt.expected {
+			if score := ScoreValue(tt.severity); score != tt.expected {
 				t.Errorf("ScoreValue() = %v, want %v", score, tt.expected)
 			}
 		})
@@ -214,7 +214,7 @@ func TestFilterStruct(t *testing.T) {
 		Sources:     []string{"Microsoft-Windows-Security-Auditing"},
 		Computers:   []string{"WORKSTATION1"},
 		Keywords:    "login,failed",
-		KeywordMode: LogicalOpAnd,
+		KeywordMode: OpAnd,
 	}
 
 	if len(filter.EventIDs) != 2 {
@@ -286,7 +286,7 @@ func TestAlertRuleStruct(t *testing.T) {
 		Name:           "Test Rule",
 		Description:    "Test description",
 		Enabled:        true,
-		Severity:       SeverityHigh,
+		Severity:       types.SeverityHigh,
 		Score:          85.0,
 		MitreAttack:    "T1078",
 		Filter:         &Filter{EventIDs: []int32{4624}},
@@ -314,7 +314,7 @@ func TestCorrelationRuleStruct(t *testing.T) {
 		Name:        "Correlation Rule",
 		Description: "Test correlation rule",
 		Enabled:     true,
-		Severity:    SeverityMedium,
+		Severity:    types.SeverityMedium,
 		Patterns:    []*Pattern{{EventID: 4624}, {EventID: 4625}},
 		TimeWindow:  15 * time.Minute,
 		Join:        "AND",
@@ -368,28 +368,28 @@ func TestReplace(t *testing.T) {
 }
 
 func TestLogicalOpConstants(t *testing.T) {
-	if LogicalOpAnd != "AND" {
-		t.Errorf("LogicalOpAnd = %s, want AND", LogicalOpAnd)
+	if OpAnd != "AND" {
+		t.Errorf("OpAnd = %s, want AND", OpAnd)
 	}
-	if LogicalOpOr != "OR" {
-		t.Errorf("LogicalOpOr = %s, want OR", LogicalOpOr)
+	if OpOr != "OR" {
+		t.Errorf("OpOr = %s, want OR", OpOr)
 	}
 }
 
 func TestSeverityConstants(t *testing.T) {
-	if SeverityCritical != "critical" {
-		t.Errorf("SeverityCritical = %s, want critical", SeverityCritical)
+	if types.SeverityCritical != "critical" {
+		t.Errorf("SeverityCritical = %s, want critical", types.SeverityCritical)
 	}
-	if SeverityHigh != "high" {
-		t.Errorf("SeverityHigh = %s, want high", SeverityHigh)
+	if types.SeverityHigh != "high" {
+		t.Errorf("SeverityHigh = %s, want high", types.SeverityHigh)
 	}
-	if SeverityMedium != "medium" {
-		t.Errorf("SeverityMedium = %s, want medium", SeverityMedium)
+	if types.SeverityMedium != "medium" {
+		t.Errorf("SeverityMedium = %s, want medium", types.SeverityMedium)
 	}
-	if SeverityLow != "low" {
-		t.Errorf("SeverityLow = %s, want low", SeverityLow)
+	if types.SeverityLow != "low" {
+		t.Errorf("SeverityLow = %s, want low", types.SeverityLow)
 	}
-	if SeverityInfo != "info" {
-		t.Errorf("SeverityInfo = %s, want info", SeverityInfo)
+	if types.SeverityInfo != "info" {
+		t.Errorf("SeverityInfo = %s, want info", types.SeverityInfo)
 	}
 }

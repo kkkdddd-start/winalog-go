@@ -267,9 +267,9 @@ func (e *Evaluator) matchKeywords(keywords string, event *types.Event, mode rule
 	}
 
 	switch mode {
-	case rules.LogicalOpAnd:
+	case rules.OpAnd:
 		return matchedCount == len(words)
-	case rules.LogicalOpOr:
+	case rules.OpOr:
 		return matchedCount > 0
 	default:
 		return matchedCount == len(words)

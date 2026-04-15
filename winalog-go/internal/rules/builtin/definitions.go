@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type RuleDetail struct {
@@ -20,7 +21,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "failed-login-threshold",
 			Description: "失败登录次数超过阈值",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       70,
 			MitreAttack: "T1110",
 			Filter: &rules.Filter{
@@ -34,7 +35,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "admin-login-unusual",
 			Description: "管理员账户异常登录",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1078.004",
 			Filter: &rules.Filter{
@@ -48,7 +49,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "powershell-encoding",
 			Description: "PowerShell编码命令执行",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       85,
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
@@ -62,7 +63,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "security-log-cleared",
 			Description: "安全日志被清除",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1070.001",
 			Filter: &rules.Filter{
@@ -76,7 +77,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "account-lockout-alert",
 			Description: "账户被锁定",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       50,
 			MitreAttack: "T1078",
 			Filter: &rules.Filter{
@@ -90,7 +91,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "network-connection-alert",
 			Description: "可疑网络连接",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       60,
 			MitreAttack: "T1059",
 			Filter: &rules.Filter{
@@ -104,7 +105,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "service-creation-alert",
 			Description: "可疑服务创建",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1569.002",
 			Filter: &rules.Filter{
@@ -118,7 +119,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "scheduled-task-creation",
 			Description: "可疑计划任务创建",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1053.005",
 			Filter: &rules.Filter{
@@ -132,7 +133,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "usb-device-insertion",
 			Description: "USB设备接入",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       50,
 			MitreAttack: "T1091",
 			Filter: &rules.Filter{
@@ -146,7 +147,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "pass-the-hash-suspect",
 			Description: "Pass-the-Hash 可疑特征",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       85,
 			MitreAttack: "T1550.002",
 			Filter: &rules.Filter{
@@ -160,7 +161,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "mimikatz-suspect",
 			Description: "Mimikatz 相关工具执行",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1003",
 			Filter: &rules.Filter{
@@ -174,7 +175,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "encoded-powershell-alert",
 			Description: "PowerShell 远程编码命令",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       85,
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
@@ -188,7 +189,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "remote-tasking-creation",
 			Description: "远程任务创建 (SchTasks)",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       60,
 			MitreAttack: "T1053.005",
 			Filter: &rules.Filter{
@@ -202,7 +203,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "suspicious-run-key",
 			Description: "可疑注册表Run键自启动",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1547.001",
 			Filter: &rules.Filter{
@@ -216,7 +217,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "suspicious-dll-load",
 			Description: "可疑DLL加载",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       60,
 			MitreAttack: "T1574.001",
 			Filter: &rules.Filter{
@@ -230,7 +231,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "wmi-suspicious",
 			Description: "可疑WMI活动",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       65,
 			MitreAttack: "T1047",
 			Filter: &rules.Filter{
@@ -244,7 +245,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "registry-run-key-modification",
 			Description: "注册表Run键自启动项被修改",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1547.001",
 			Filter: &rules.Filter{
@@ -258,7 +259,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "registry-services-modification",
 			Description: "注册表服务启动类型被修改",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1543.003",
 			Filter: &rules.Filter{
@@ -272,7 +273,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "registry-hive-modification",
 			Description: "注册表Hive被修改(安全相关)",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1003.002",
 			Filter: &rules.Filter{
@@ -286,7 +287,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "registry-wmi-persistence",
 			Description: "WMI注册表持久化修改",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1546.003",
 			Filter: &rules.Filter{
@@ -300,7 +301,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "registry-bypass-detection",
 			Description: "注册表绕过技术(AlwaysInstallElevated)",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1548.001",
 			Filter: &rules.Filter{
@@ -314,7 +315,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "wmic-suspicious",
 			Description: "可疑WMIC命令执行",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1047",
 			Filter: &rules.Filter{
@@ -328,7 +329,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-suspicious",
 			Description: "可疑WinRM远程命令",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1028",
 			Filter: &rules.Filter{
@@ -342,7 +343,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-remote-connection",
 			Description: "WinRM远程连接",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       55,
 			MitreAttack: "T1028",
 			Filter: &rules.Filter{
@@ -356,7 +357,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "domain-recon",
 			Description: "域内侦察活动",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       70,
 			MitreAttack: "T1018",
 			Filter: &rules.Filter{
@@ -370,7 +371,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "domain-admin-login",
 			Description: "域管理员登录检测",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1078.002",
 			Filter: &rules.Filter{
@@ -384,7 +385,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "dc-sync-attack",
 			Description: "DCSync攻击特征检测",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1003.004",
 			Filter: &rules.Filter{
@@ -398,7 +399,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "kerberoasting",
 			Description: "Kerberoasting攻击检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       85,
 			MitreAttack: "T1558.003",
 			Filter: &rules.Filter{
@@ -412,7 +413,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "golden-ticket",
 			Description: "黄金票据特征检测",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1558.001",
 			Filter: &rules.Filter{
@@ -426,7 +427,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "powershell-remoting",
 			Description: "PowerShell远程执行",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1028.003",
 			Filter: &rules.Filter{
@@ -440,7 +441,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "powershell-download",
 			Description: "PowerShell恶意下载",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1105",
 			Filter: &rules.Filter{
@@ -454,7 +455,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "certutil-download",
 			Description: "CertUtil恶意下载",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       90,
 			MitreAttack: "T1105",
 			Filter: &rules.Filter{
@@ -468,7 +469,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "smb-lateral-movement",
 			Description: "SMB横向移动检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1021.002",
 			Filter: &rules.Filter{
@@ -482,7 +483,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "smb-unauthenticated-access",
 			Description: "SMB未授权访问",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1021.002",
 			Filter: &rules.Filter{
@@ -496,7 +497,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "rdp-lateral-movement",
 			Description: "RDP横向移动检测(外部IP)",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       90,
 			MitreAttack: "T1021.001",
 			Filter: &rules.Filter{
@@ -510,7 +511,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "rdp-brute-force",
 			Description: "RDP暴力破解检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1110.001",
 			Filter: &rules.Filter{
@@ -524,7 +525,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "wmi-event-subscription",
 			Description: "WMI Event Subscription持久化",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1546.003",
 			Filter: &rules.Filter{
@@ -538,7 +539,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "com-object-hijacking",
 			Description: "COM对象劫持持久化",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       85,
 			MitreAttack: "T1546.001",
 			Filter: &rules.Filter{
@@ -552,7 +553,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "dll-search-order-hijacking",
 			Description: "DLL搜索顺序劫持持久化",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1574.001",
 			Filter: &rules.Filter{
@@ -566,7 +567,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "service-dll-hijacking",
 			Description: "服务DLL劫持持久化",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1574.002",
 			Filter: &rules.Filter{
@@ -580,7 +581,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "dns-tunneling",
 			Description: "DNS隧道特征检测",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       90,
 			MitreAttack: "T1071.004",
 			Filter: &rules.Filter{
@@ -594,7 +595,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "cobalt-strike-beacon",
 			Description: "Cobalt Strike Beacon特征检测",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1027.005",
 			Filter: &rules.Filter{
@@ -608,7 +609,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "cobalt-strike-pipe",
 			Description: "Cobalt Strike命名管道特征",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1021.002",
 			Filter: &rules.Filter{
@@ -622,7 +623,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "suspicious-powershell-loop",
 			Description: "PowerShell循环执行检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
@@ -636,7 +637,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "powershell-no-profile",
 			Description: "PowerShell无Profile执行(规避检测)",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       55,
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
@@ -650,7 +651,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "sysmon-network-suspicious-port",
 			Description: "Sysmon可疑网络连接(高位端口)",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       60,
 			MitreAttack: "T1043",
 			Filter: &rules.Filter{
@@ -664,7 +665,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "sysmon-network-outbound",
 			Description: "Sysmon可疑出站连接",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       70,
 			MitreAttack: "T1049",
 			Filter: &rules.Filter{
@@ -678,7 +679,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "sysmon-dll-suspicious-path",
 			Description: "Sysmon可疑路径DLL加载",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1574.001",
 			Filter: &rules.Filter{
@@ -692,7 +693,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "sysmon-dll-lsass",
 			Description: "Sysmon LSASS进程DLL加载",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1003.001",
 			Filter: &rules.Filter{
@@ -706,7 +707,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "sysmon-file-suspicious-location",
 			Description: "Sysmon可疑位置文件创建",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       55,
 			MitreAttack: "T1547.001",
 			Filter: &rules.Filter{
@@ -720,7 +721,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "sysmon-file-executable",
 			Description: "Sysmon可执行文件创建",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       70,
 			MitreAttack: "T1127",
 			Filter: &rules.Filter{
@@ -734,7 +735,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "sysmon-pipe-suspicious",
 			Description: "Sysmon可疑命名管道",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1021.002",
 			Filter: &rules.Filter{
@@ -748,7 +749,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "ueba-off-hours-login",
 			Description: "用户异常时间登录(UEBA)",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       45,
 			MitreAttack: "T1078",
 			Filter: &rules.Filter{
@@ -762,7 +763,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "ueba-massive-file-access",
 			Description: "用户大量文件访问(UEBA)",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       50,
 			MitreAttack: "T1036",
 			Filter: &rules.Filter{
@@ -776,7 +777,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "ueba-privilege-escalation",
 			Description: "用户权限提升行为(UEBA)",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1068",
 			Filter: &rules.Filter{
@@ -790,7 +791,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "amsi-bypass",
 			Description: "AMSI绕过检测(篡改AmsiInitProvider或AmsiUtils)",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1562.001",
 			Filter: &rules.Filter{
@@ -804,7 +805,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "etw-tampering",
 			Description: "ETW日志干扰检测(禁用Windows事件追踪)",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1562.006",
 			Filter: &rules.Filter{
@@ -818,7 +819,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "defender-realtime-disabled",
 			Description: "Defender实时保护被禁用",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1562.001",
 			Filter: &rules.Filter{
@@ -832,7 +833,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "shadow-copy-deletion",
 			Description: "卷影副本删除(vssadmin/wmic)",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1490",
 			Filter: &rules.Filter{
@@ -846,7 +847,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "defender-exclusion-added",
 			Description: "Defender排除路径添加",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1562.001",
 			Filter: &rules.Filter{
@@ -860,7 +861,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "event-log-cleared-system",
 			Description: "系统日志被清除",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       85,
 			MitreAttack: "T1070.001",
 			Filter: &rules.Filter{
@@ -874,7 +875,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "ntlm-v1-authentication",
 			Description: "NTLMv1降级认证(易受中继攻击)",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1550.002",
 			Filter: &rules.Filter{
@@ -888,7 +889,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "bloodhound-detection",
 			Description: "BloodHound/SharpHound AD枚举工具检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       85,
 			MitreAttack: "T1018",
 			Filter: &rules.Filter{
@@ -902,7 +903,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "psexec-remote-execution",
 			Description: "PsExec远程执行检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1570",
 			Filter: &rules.Filter{
@@ -916,7 +917,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "certutil-download-suspect",
 			Description: "Certutil下载器检测(非证书操作)",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1105",
 			Filter: &rules.Filter{
@@ -930,7 +931,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "bcdedit-modification",
 			Description: "BCD启动配置修改检测",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       90,
 			MitreAttack: "T1542.003",
 			Filter: &rules.Filter{
@@ -944,7 +945,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "lsass-memory-dump",
 			Description: "LSASS内存转储检测(凭据窃取)",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1003.001",
 			Filter: &rules.Filter{
@@ -958,7 +959,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "dcsync-attack",
 			Description: "DCSync攻击检测(非授权目录复制)",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1003.006",
 			Filter: &rules.Filter{
@@ -972,7 +973,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "tunneling-tool-detected",
 			Description: "内网穿透工具检测(frp/ngrok/chisel等)",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       85,
 			MitreAttack: "T1090.002",
 			Filter: &rules.Filter{
@@ -986,7 +987,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "cloud-storage-upload",
 			Description: "云存储上传检测(数据外泄)",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       60,
 			MitreAttack: "T1567.002",
 			Filter: &rules.Filter{
@@ -1000,7 +1001,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "ransomware-file-encryption",
 			Description: "勒索软件文件加密行为检测",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       100,
 			MitreAttack: "T1486",
 			Filter: &rules.Filter{
@@ -1014,7 +1015,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "startup-folder-write",
 			Description: "启动文件夹写入检测(持久化)",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       55,
 			MitreAttack: "T1547.001",
 			Filter: &rules.Filter{
@@ -1028,7 +1029,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "registry-service-persistence",
 			Description: "注册表服务键持久化检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1543.003",
 			Filter: &rules.Filter{
@@ -1042,7 +1043,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-brute-force",
 			Description: "WinRM暴力破解检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1110.001",
 			Filter: &rules.Filter{
@@ -1056,7 +1057,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-unauthorized-enable",
 			Description: "WinRM服务被未授权启用",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1028",
 			Filter: &rules.Filter{
@@ -1070,7 +1071,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-suspicious-shell",
 			Description: "WinRM可疑Shell创建",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1028.003",
 			Filter: &rules.Filter{
@@ -1084,7 +1085,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-powershell-execution",
 			Description: "WinRM远程PowerShell命令执行",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       90,
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
@@ -1098,7 +1099,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-remote-command",
 			Description: "WinRM远程命令执行",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1028",
 			Filter: &rules.Filter{
@@ -1112,7 +1113,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-lateral-movement",
 			Description: "WinRM横向移动检测(外部IP)",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       90,
 			MitreAttack: "T1028.004",
 			Filter: &rules.Filter{
@@ -1126,7 +1127,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-admin-lateral",
 			Description: "WinRM管理员账户横向移动",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1028.004",
 			Filter: &rules.Filter{
@@ -1140,7 +1141,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-credential-theft",
 			Description: "WinRM凭据窃取特征检测",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Score:       95,
 			MitreAttack: "T1003.001",
 			Filter: &rules.Filter{
@@ -1154,7 +1155,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-suspicious-data-transfer",
 			Description: "WinRM可疑数据传输",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       55,
 			MitreAttack: "T1048",
 			Filter: &rules.Filter{
@@ -1168,7 +1169,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-channel-creation-flood",
 			Description: "WinRM Channel创建异常(可能的隧道建立)",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1028.003",
 			Filter: &rules.Filter{
@@ -1182,7 +1183,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-certificate-mapping-fail",
 			Description: "WinRM证书映射失败(可能的攻击探测)",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       50,
 			MitreAttack: "T1556",
 			Filter: &rules.Filter{
@@ -1196,7 +1197,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-plugin-loading",
 			Description: "WinRM插件加载检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1543",
 			Filter: &rules.Filter{
@@ -1210,7 +1211,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "winrm-remote-forwarding",
 			Description: "WinRM远程端口转发检测",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1028.004",
 			Filter: &rules.Filter{
@@ -1224,7 +1225,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "suspicious-privilege-use",
 			Description: "可疑特权使用",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       75,
 			MitreAttack: "T1098",
 			Filter: &rules.Filter{
@@ -1238,7 +1239,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "mass-privilege-assignment",
 			Description: "批量特权分配",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Score:       80,
 			MitreAttack: "T1098",
 			Filter: &rules.Filter{
@@ -1252,7 +1253,7 @@ func GetAlertRules() []*rules.AlertRule {
 			Name:        "key-operations-alert",
 			Description: "密钥操作告警",
 			Enabled:     true,
-			Severity:    rules.SeverityMedium,
+			Severity:    types.SeverityMedium,
 			Score:       55,
 			MitreAttack: "T1003",
 			Filter: &rules.Filter{
@@ -1271,7 +1272,7 @@ func GetCorrelationRules() []*rules.CorrelationRule {
 			Name:        "brute-force-attack",
 			Description: "暴力破解攻击模式",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Patterns: []*rules.Pattern{
 				{EventID: 4625},
 				{EventID: 4625},
@@ -1285,7 +1286,7 @@ func GetCorrelationRules() []*rules.CorrelationRule {
 			Name:        "lateral-movement",
 			Description: "横向移动攻击模式",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Patterns: []*rules.Pattern{
 				{EventID: 4624},
 				{EventID: 4648},
@@ -1298,7 +1299,7 @@ func GetCorrelationRules() []*rules.CorrelationRule {
 			Name:        "privilege-escalation-chain",
 			Description: "权限提升攻击链",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Patterns: []*rules.Pattern{
 				{EventID: 4672},
 				{EventID: 4688},
@@ -1311,7 +1312,7 @@ func GetCorrelationRules() []*rules.CorrelationRule {
 			Name:        "persistence-chain",
 			Description: "持久化攻击链",
 			Enabled:     true,
-			Severity:    rules.SeverityHigh,
+			Severity:    types.SeverityHigh,
 			Patterns: []*rules.Pattern{
 				{EventID: 4688},
 				{EventID: 4698},
@@ -1324,7 +1325,7 @@ func GetCorrelationRules() []*rules.CorrelationRule {
 			Name:        "credential-dump-chain",
 			Description: "凭据窃取攻击链",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Patterns: []*rules.Pattern{
 				{EventID: 4688, Conditions: []*rules.Condition{{Field: "NewProcessName", Operator: "contains", Value: "mimikatz"}}},
 				{EventID: 10},
@@ -1337,7 +1338,7 @@ func GetCorrelationRules() []*rules.CorrelationRule {
 			Name:        "ransomware-preparation",
 			Description: "勒索软件准备阶段",
 			Enabled:     true,
-			Severity:    rules.SeverityCritical,
+			Severity:    types.SeverityCritical,
 			Patterns: []*rules.Pattern{
 				{EventID: 4688, Conditions: []*rules.Condition{{Field: "CommandLine", Operator: "contains", Value: "vssadmin"}}},
 				{EventID: 4688, Conditions: []*rules.Condition{{Field: "CommandLine", Operator: "contains", Value: "delete"}}},

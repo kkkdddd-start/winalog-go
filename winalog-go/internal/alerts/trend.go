@@ -110,11 +110,11 @@ func (t *AlertTrend) GetBySeverity() map[string][]int64 {
 	return result
 }
 
-func (t *AlertTrend) CalculateTrend(days int) ([]*TrendPoint, error) {
+func (t *AlertTrend) CalculateTrend(days int) ([]*types.TrendPoint, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	points := make([]*TrendPoint, 0, days)
+	points := make([]*types.TrendPoint, 0, days)
 	now := time.Now()
 
 	for i := days - 1; i >= 0; i-- {
@@ -126,18 +126,13 @@ func (t *AlertTrend) CalculateTrend(days int) ([]*TrendPoint, error) {
 			count = day
 		}
 
-		points = append(points, &TrendPoint{
-			Date:  date,
+		points = append(points, &types.TrendPoint{
+			Date:  dateStr,
 			Count: count,
 		})
 	}
 
 	return points, nil
-}
-
-type TrendPoint struct {
-	Date  time.Time
-	Count int64
 }
 
 func (t *AlertTrend) Reset() {
