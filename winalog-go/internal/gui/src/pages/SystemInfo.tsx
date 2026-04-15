@@ -41,10 +41,13 @@ interface NetworkConnInfo {
 
 function SystemInfo() {
   const { t } = useI18n()
-  const [activeTab, setActiveTab] = useState<'system' | 'processes' | 'network'>('system')
+  const [activeTab, setActiveTab] = useState<'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers'>('system')
   const [info, setInfo] = useState<SystemInfoData | null>(null)
   const [processes, setProcesses] = useState<ProcessInfo[]>([])
   const [networkConnections, setNetworkConnections] = useState<NetworkConnInfo[]>([])
+  const [envVars, setEnvVars] = useState<any[]>([])
+  const [dlls, setDlls] = useState<any[]>([])
+  const [drivers, setDrivers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -87,10 +90,46 @@ function SystemInfo() {
       .catch(() => setLoading(false))
   }
 
-  const handleTabChange = (tab: 'system' | 'processes' | 'network') => {
+  const fetchEnvVars = () => {
+    if (envVars.length > 0) return
+    setLoading(true)
+    systemAPI.getEnvVariables()
+      .then(res => {
+        setEnvVars(res.data.variables || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  const fetchDlls = () => {
+    if (dlls.length > 0) return
+    setLoading(true)
+    systemAPI.getLoadedDLLs(100)
+      .then(res => {
+        setDlls(res.data.modules || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  const fetchDrivers = () => {
+    if (drivers.length > 0) return
+    setLoading(true)
+    systemAPI.getDrivers()
+      .then(res => {
+        setDrivers(res.data.drivers || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  const handleTabChange = (tab: 'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers') => {
     setActiveTab(tab)
     if (tab === 'processes') fetchProcesses()
     if (tab === 'network') fetchNetwork()
+    if (tab === 'env') fetchEnvVars()
+    if (tab === 'dlls') fetchDlls()
+    if (tab === 'drivers') fetchDrivers()
   }
 
   const formatUptime = (seconds: number) => {
@@ -156,6 +195,24 @@ function SystemInfo() {
           onClick={() => handleTabChange('network')}
         >
           Network ({networkConnections.length || '...'})
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'env' ? 'active' : ''}`}
+          onClick={() => handleTabChange('env')}
+        >
+          Env ({envVars.length || '...'})
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'dlls' ? 'active' : ''}`}
+          onClick={() => handleTabChange('dlls')}
+        >
+          DLLs ({dlls.length || '...'})
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'drivers' ? 'active' : ''}`}
+          onClick={() => handleTabChange('drivers')}
+        >
+          Drivers ({drivers.length || '...'})
         </button>
       </div>
 
@@ -352,6 +409,96 @@ function SystemInfo() {
           </table>
           {networkConnections.length === 0 && !loading && (
             <div className="empty-state">No network connection data available</div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'env' && (
+        <div className="data-table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Variable Name</th>
+                <th>Value</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {envVars.map((v, idx) => (
+                <tr key={`${v.name}-${idx}`}>
+                  <td className="mono highlight">{v.name}</td>
+                  <td className="truncate" title={v.value}>{v.value}</td>
+                  <td><span className="type-badge">{v.type}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {envVars.length === 0 && !loading && (
+            <div className="empty-state">No environment variables available</div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'dlls' && (
+        <div className="data-table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>PID</th>
+                <th>Process</th>
+                <th>DLL Name</th>
+                <th>Path</th>
+                <th>Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dlls.map((dll, idx) => (
+                <tr key={`${dll.process_id}-${dll.name}-${idx}`}>
+                  <td className="mono">{dll.process_id}</td>
+                  <td>{dll.process_name}</td>
+                  <td className="mono highlight">{dll.name}</td>
+                  <td className="truncate" title={dll.path}>{dll.path}</td>
+                  <td className="mono">{(dll.size / 1024).toFixed(1)} KB</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {dlls.length === 0 && !loading && (
+            <div className="empty-state">No DLL information available</div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'drivers' && (
+        <div className="data-table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Display Name</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Path</th>
+              </tr>
+            </thead>
+            <tbody>
+              {drivers.map((driver, idx) => (
+                <tr key={`${driver.name}-${idx}`}>
+                  <td className="mono highlight">{driver.name}</td>
+                  <td>{driver.display_name || driver.name}</td>
+                  <td className="truncate" title={driver.description}>{driver.description || '-'}</td>
+                  <td>
+                    <span className={`status-badge ${driver.status?.toLowerCase()}`}>
+                      {driver.status}
+                    </span>
+                  </td>
+                  <td className="truncate mono" title={driver.path}>{driver.path || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {drivers.length === 0 && !loading && (
+            <div className="empty-state">No driver information available</div>
           )}
         </div>
       )}
@@ -681,11 +828,31 @@ function SystemInfo() {
           font-weight: 600;
           font-size: 0.85rem;
         }
+
+        .state-badge.running {
+          color: #22c55e;
+        }
+
+        .state-badge.stopped {
+          color: #ef4444;
+        }
         
         .empty-state {
           padding: 40px;
           text-align: center;
           color: #888;
+        }
+
+        .data-table .highlight {
+          color: #00d9ff;
+        }
+
+        .type-badge {
+          background: rgba(168, 85, 247, 0.2);
+          color: #a855f7;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.8rem;
         }
       `}</style>
     </div>

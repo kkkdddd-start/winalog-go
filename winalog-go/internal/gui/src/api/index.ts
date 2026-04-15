@@ -86,6 +86,29 @@ export const importAPI = {
 export const liveAPI = {
   getStats: () =>
     api.get('/live/stats'),
+  streamEvents: (onEvent: (data: any) => void, onStats: (data: any) => void, onError?: (err: any) => void) => {
+    const eventSource = new EventSource('/api/live/events')
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'event') {
+          onEvent(data.data)
+        } else if (data.type === 'stats') {
+          onStats(data)
+        }
+      } catch (e) {
+        console.error('Failed to parse SSE data:', e)
+      }
+    }
+    
+    eventSource.onerror = (err) => {
+      console.error('SSE error:', err)
+      onError?.(err)
+    }
+    
+    return eventSource
+  },
 }
 
 export const systemAPI = {
@@ -99,6 +122,12 @@ export const systemAPI = {
     api.get(`/system/processes?limit=${limit}`),
   getNetwork: (limit = 100, protocol?: string) =>
     api.get(`/system/network?limit=${limit}${protocol ? `&protocol=${protocol}` : ''}`),
+  getEnvVariables: () =>
+    api.get('/system/env'),
+  getLoadedDLLs: (limit = 100) =>
+    api.get(`/system/dlls?limit=${limit}`),
+  getDrivers: () =>
+    api.get('/system/drivers'),
 }
 
 export const rulesAPI = {

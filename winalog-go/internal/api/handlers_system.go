@@ -76,6 +76,45 @@ type NetworkConnInfo struct {
 	ProcessName string `json:"process_name"`
 }
 
+type EnvVarResponse struct {
+	Variables []*EnvVar `json:"variables"`
+	Total     int       `json:"total"`
+}
+
+type EnvVar struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	Type  string `json:"type"`
+}
+
+type DLLResponse struct {
+	Modules []*DLLInfo `json:"modules"`
+	Total   int        `json:"total"`
+}
+
+type DLLInfo struct {
+	ProcessID   int32  `json:"process_id"`
+	ProcessName string `json:"process_name"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	Size        uint32 `json:"size"`
+	Version     string `json:"version"`
+}
+
+type DriverResponse struct {
+	Drivers []*DriverInfo `json:"drivers"`
+	Total   int           `json:"total"`
+}
+
+type DriverInfo struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	Description string `json:"description"`
+	Path        string `json:"path"`
+	Status      string `json:"status"`
+	StartMode   string `json:"start_mode"`
+}
+
 var startTime = time.Now()
 
 func NewSystemHandler(db *storage.DB) *SystemHandler {
@@ -280,6 +319,9 @@ func SetupSystemRoutes(r *gin.Engine, systemHandler *SystemHandler) {
 		system.GET("/metrics", systemHandler.GetMetrics)
 		system.GET("/processes", systemHandler.GetProcesses)
 		system.GET("/network", systemHandler.GetNetworkConnections)
+		system.GET("/env", systemHandler.GetEnvironmentVariables)
+		system.GET("/dlls", systemHandler.GetLoadedDLLs)
+		system.GET("/drivers", systemHandler.GetDrivers)
 	}
 }
 
@@ -297,4 +339,100 @@ func getTimezone() string {
 	_, offset := time.Now().Zone()
 	hours := offset / 3600
 	return fmt.Sprintf("UTC%+d", hours)
+}
+
+func (h *SystemHandler) GetEnvironmentVariables(c *gin.Context) {
+	vars, err := collectors.ListEnvironmentVariables()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := make([]*EnvVar, 0, len(vars))
+	for _, v := range vars {
+		result = append(result, &EnvVar{
+			Name:  v.Name,
+			Value: v.Value,
+			Type:  v.Type,
+		})
+	}
+
+	c.JSON(http.StatusOK, EnvVarResponse{
+		Variables: result,
+		Total:     len(result),
+	})
+}
+
+func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, DLLResponse{
+			Modules: []*DLLInfo{},
+			Total:   0,
+		})
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "100")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	dlls, err := collectors.ListLoadedDLLs()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := make([]*DLLInfo, 0, len(dlls))
+	for _, dll := range dlls {
+		result = append(result, &DLLInfo{
+			ProcessID:   dll.ProcessID,
+			ProcessName: dll.ProcessName,
+			Name:        dll.Name,
+			Path:        dll.Path,
+			Size:        dll.Size,
+			Version:     dll.Version,
+		})
+		if len(result) >= limit {
+			break
+		}
+	}
+
+	c.JSON(http.StatusOK, DLLResponse{
+		Modules: result,
+		Total:   len(dlls),
+	})
+}
+
+func (h *SystemHandler) GetDrivers(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, DriverResponse{
+			Drivers: []*DriverInfo{},
+			Total:   0,
+		})
+		return
+	}
+
+	drivers, err := collectors.ListDrivers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := make([]*DriverInfo, 0, len(drivers))
+	for _, d := range drivers {
+		result = append(result, &DriverInfo{
+			Name:        d.Name,
+			DisplayName: d.DisplayName,
+			Description: d.Description,
+			Path:        d.Path,
+			Status:      d.Status,
+		})
+	}
+
+	c.JSON(http.StatusOK, DriverResponse{
+		Drivers: result,
+		Total:   len(result),
+	})
 }

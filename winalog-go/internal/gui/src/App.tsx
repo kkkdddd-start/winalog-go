@@ -15,6 +15,7 @@ import Settings from './pages/Settings'
 import Metrics from './pages/Metrics'
 import Persistence from './pages/Persistence'
 import Analyze from './pages/Analyze'
+import Live from './pages/Live'
 import Collect from './pages/Collect'
 import './App.css'
 
@@ -31,6 +32,7 @@ function Navigation() {
         <li><Link to="/timeline">{t('nav.timeline')}</Link></li>
         <li><Link to="/collect">{t('nav.collect')}</Link></li>
         <li><Link to="/analyze">{t('nav.analyze')}</Link></li>
+        <li><Link to="/live">{t('nav.live')}</Link></li>
         <li><Link to="/persistence">{t('nav.persistence')}</Link></li>
         <li><Link to="/reports">{t('nav.reports')}</Link></li>
         <li><Link to="/forensics">{t('nav.forensics')}</Link></li>
@@ -58,6 +60,7 @@ function AppContent() {
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/collect" element={<Collect />} />
           <Route path="/analyze" element={<Analyze />} />
+          <Route path="/live" element={<Live />} />
           <Route path="/persistence" element={<Persistence />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/forensics" element={<Forensics />} />

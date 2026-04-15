@@ -35,3 +35,20 @@ type OneClickResult struct {
 	Errors     []string
 	FileCount  int
 }
+
+type DLLModuleInfo struct {
+	ProcessID   int32
+	ProcessName string
+	Name        string
+	Path        string
+	Size        uint32
+	Version     string
+}
+
+type Driver struct {
+	Name        string
+	DisplayName string
+	Description string
+	Path        string
+	Status      string
+}
