@@ -1,19 +1,24 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/alerts"
 	"github.com/kkkdddd-start/winalog-go/internal/engine"
 	"github.com/kkkdddd-start/winalog-go/internal/exporters"
+	"github.com/kkkdddd-start/winalog-go/internal/rules"
+	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type AlertHandler struct {
-	db *storage.DB
+	db          *storage.DB
+	alertEngine *alerts.Engine
 }
 
 type ImportHandler struct {
@@ -266,6 +271,95 @@ type ListAlertsResponse struct {
 	Page       int            `json:"page"`
 	PageSize   int            `json:"page_size"`
 	TotalPages int            `json:"total_pages"`
+}
+
+type RunAnalysisResponse struct {
+	Success        bool     `json:"success"`
+	AlertsCreated  int      `json:"alerts_created"`
+	EventsAnalyzed int      `json:"events_analyzed"`
+	RulesExecuted  int      `json:"rules_executed"`
+	Duration       string   `json:"duration"`
+	Errors         []string `json:"errors,omitempty"`
+}
+
+func (h *AlertHandler) RunAnalysis(c *gin.Context) {
+	if h.alertEngine == nil {
+		c.JSON(500, ErrorResponse{Error: "alert engine not initialized", Code: ErrCodeInternal})
+		return
+	}
+
+	startTime := time.Now()
+	ctx := context.Background()
+
+	builtinRules := builtin.GetAlertRules()
+	enabledRules := make([]*rules.AlertRule, 0)
+	for _, r := range builtinRules {
+		if r.Enabled {
+			enabledRules = append(enabledRules, r)
+		}
+	}
+
+	if len(enabledRules) == 0 {
+		c.JSON(200, RunAnalysisResponse{
+			Success:        true,
+			AlertsCreated:  0,
+			EventsAnalyzed: 0,
+			RulesExecuted:  0,
+			Duration:       time.Since(startTime).String(),
+		})
+		return
+	}
+
+	h.alertEngine.LoadRules(enabledRules)
+
+	const batchSize = 1000
+	var totalEvents, totalAlerts int
+	var errors []string
+
+	offset := 0
+	for {
+		events, _, err := h.db.ListEvents(&storage.EventFilter{
+			Limit:  batchSize,
+			Offset: offset,
+		})
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("failed to fetch events at offset %d: %v", offset, err))
+			break
+		}
+
+		if len(events) == 0 {
+			break
+		}
+
+		alerts, err := h.alertEngine.EvaluateBatch(ctx, events)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("failed to evaluate batch: %v", err))
+		}
+
+		if len(alerts) > 0 {
+			if err := h.alertEngine.SaveAlerts(alerts); err != nil {
+				errors = append(errors, fmt.Sprintf("failed to save alerts: %v", err))
+			} else {
+				totalAlerts += len(alerts)
+			}
+		}
+
+		totalEvents += len(events)
+		offset += batchSize
+
+		if len(events) < batchSize {
+			break
+		}
+	}
+
+	c.JSON(200, RunAnalysisResponse{
+		Success:        len(errors) == 0,
+		AlertsCreated:  totalAlerts,
+		EventsAnalyzed: totalEvents,
+		RulesExecuted:  len(enabledRules),
+		Duration:       time.Since(startTime).String(),
+		Errors:         errors,
+	})
 }
 
 func (h *AlertHandler) ListAlerts(c *gin.Context) {

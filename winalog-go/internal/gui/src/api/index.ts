@@ -60,13 +60,6 @@ export const alertsAPI = {
     api.post('/alerts/batch', { ids, action, notes }),
 }
 
-export const importAPI = {
-  importLogs: (files: string[]) =>
-    api.post('/import/logs', { files }),
-  getStatus: (path: string) =>
-    api.get(`/import/status?path=${path}`),
-}
-
 export interface CollectParams {
   sources?: string[]
   excludes?: string[]
@@ -79,10 +72,15 @@ export interface CollectParams {
 export const collectAPI = {
   collect: (params: CollectParams) =>
     api.post('/collect', params),
-  import: (filePaths: string[]) =>
-    api.post('/collect/import', { file_paths: filePaths }),
   getStatus: () =>
     api.get('/collect/status'),
+}
+
+export const importAPI = {
+  importLogs: (filePaths: string[]) =>
+    api.post('/import/logs', { files: filePaths }),
+  getStatus: () =>
+    api.get('/import/status'),
 }
 
 export const liveAPI = {
@@ -145,6 +143,8 @@ export const forensicsAPI = {
     api.get('/forensics/evidence'),
   getEvidence: (id: string) =>
     api.get(`/forensics/evidence/${id}`),
+  exportEvidence: (id: string, format: string) =>
+    api.get(`/forensics/evidence/${id}/export?format=${format}`, { responseType: 'blob' }),
   chainOfCustody: () =>
     api.get('/forensics/chain-of-custody'),
   memoryDump: (pid?: number) =>

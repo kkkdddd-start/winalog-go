@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useI18n } from '../locales/I18n'
-import { collectAPI } from '../api'
+import { collectAPI, importAPI } from '../api'
 
 interface CollectOptions {
   includeLogs: boolean
@@ -135,12 +135,12 @@ function Collect() {
         return
       }
       
-      const response = await collectAPI.import(customPathsList)
+      const response = await importAPI.importLogs(customPathsList)
       
-      if (response.data.status === 'completed') {
-        setStatus(`${t('collect.importDone')}\nImported: ${response.data.imported}\nFailed: ${response.data.failed}\nEvents: ${response.data.total_events}`)
-      } else if (response.data.status === 'error') {
-        setStatus(`${t('collect.failed')}: ${response.data.message}`)
+      if (response.data.success) {
+        setStatus(`${t('collect.importDone')}\nImported: ${response.data.files_imported}\nFailed: ${response.data.files_failed}\nEvents: ${response.data.events_imported}`)
+      } else {
+        setStatus(`${t('collect.failed')}: ${response.data.errors?.join(', ') || 'Unknown error'}`)
       }
     } catch (error) {
       setStatus(`${t('collect.failed')}: ${error instanceof Error ? error.message : 'Unknown error'}`)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../locales/I18n'
-import { alertsAPI, eventsAPI, timelineAPI, dashboardAPI } from '../api'
+import { alertsAPI, timelineAPI, dashboardAPI } from '../api'
 import {
   Chart as ChartJS,
   CategoryScale,

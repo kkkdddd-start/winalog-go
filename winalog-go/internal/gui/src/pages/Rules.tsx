@@ -42,6 +42,13 @@ function Rules() {
       })
   }
 
+  const handleEditRule = (rule: RuleInfo) => {
+    const newDescription = prompt('Edit rule description:', rule.description)
+    if (newDescription !== null && newDescription !== rule.description) {
+      console.log('Rule update would go here:', rule.name, newDescription)
+    }
+  }
+
   const getSeverityClass = (severity: string) => {
     switch (severity?.toLowerCase()) {
       case 'critical': return 'severity-critical'
@@ -181,7 +188,7 @@ function Rules() {
                   <span key={m} className="mitre-tag">{m}</span>
                 ))}
               </div>
-              <button className="rule-action">Edit</button>
+              <button className="rule-action" onClick={() => handleEditRule(rule)}>Edit</button>
             </div>
           </div>
         ))}

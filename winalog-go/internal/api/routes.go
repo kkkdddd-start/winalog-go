@@ -24,6 +24,7 @@ func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *Impor
 			alerts.GET("", alertHandler.ListAlerts)
 			alerts.GET("/stats", alertHandler.GetAlertStats)
 			alerts.GET("/trend", alertHandler.GetAlertTrend)
+			alerts.POST("/run-analysis", alertHandler.RunAnalysis)
 			alerts.GET("/:id", alertHandler.GetAlert)
 			alerts.POST("/:id/resolve", alertHandler.ResolveAlert)
 			alerts.POST("/:id/false-positive", alertHandler.MarkFalsePositive)

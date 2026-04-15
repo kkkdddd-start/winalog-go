@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/alerts"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
@@ -56,8 +57,13 @@ func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Ser
 }
 
 func (s *Server) setupHandlers() {
+	alertEngine := alerts.NewEngine(s.db, alerts.EngineConfig{
+		DedupWindow: 5 * time.Minute,
+		StatsWindow: 24 * time.Hour,
+	})
 	s.alertEng = &AlertHandler{
-		db: s.db,
+		db:          s.db,
+		alertEngine: alertEngine,
 	}
 	s.importEng = &ImportHandler{
 		db: s.db,

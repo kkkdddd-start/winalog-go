@@ -53,12 +53,22 @@ function Events() {
 
   const doSearch = (pageNum: number = 1) => {
     setLoading(true)
+    const levelMap: Record<string, number> = {
+      'Critical': 1,
+      'Error': 2,
+      'Warning': 3,
+      'Info': 4,
+      'Debug': 5,
+    }
     const searchParams: SearchParams = {
       keywords: filters?.keywords || '',
       page: pageNum,
       page_size: 50,
       sort_by: 'timestamp',
       sort_order: 'desc',
+      start_time: filters?.start_time || undefined,
+      end_time: filters?.end_time || undefined,
+      levels: selectedLevels.map(l => levelMap[l]).filter(l => l),
     }
     
     eventsAPI.search(searchParams)
