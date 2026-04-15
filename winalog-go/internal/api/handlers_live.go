@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type LiveHandler struct {
@@ -49,17 +50,66 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 
 	clientGone := c.Request.Context().Done()
 
-	ticker := time.NewTicker(1 * time.Second)
+	var lastEventID int64 = 0
+
+	c.SSEvent("connected", map[string]interface{}{
+		"message": "Connected to live event stream",
+		"time":    time.Now().Format(time.RFC3339),
+	})
+	c.Writer.Flush()
+
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			c.SSEvent("ping", "")
+			if h.db != nil {
+				filter := &storage.EventFilter{
+					Limit: 50,
+				}
+				events, _, err := h.db.ListEvents(filter)
+				if err == nil && len(events) > 0 {
+					for _, event := range events {
+						if event.ID > lastEventID {
+							msg := LiveEventMessage{
+								Type: "event",
+								Data: formatLiveEvent(event),
+							}
+							c.SSEvent("event", msg)
+							lastEventID = event.ID
+						}
+					}
+				}
+
+				stats, err := h.db.GetStats()
+				if err == nil {
+					c.SSEvent("stats", map[string]interface{}{
+						"total_events": stats.EventCount,
+						"alerts":       stats.AlertCount,
+						"timestamp":    time.Now().Format(time.RFC3339),
+					})
+				}
+			}
 			c.Writer.Flush()
 		case <-clientGone:
 			return
 		}
+	}
+}
+
+func formatLiveEvent(event *types.Event) map[string]interface{} {
+	return map[string]interface{}{
+		"id":         event.ID,
+		"timestamp":  event.Timestamp,
+		"event_id":   event.EventID,
+		"level":      event.Level,
+		"source":     event.Source,
+		"log_name":   event.LogName,
+		"computer":   event.Computer,
+		"user":       event.User,
+		"message":    event.Message,
+		"ip_address": event.IPAddress,
 	}
 }
 

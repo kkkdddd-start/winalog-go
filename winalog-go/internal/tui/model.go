@@ -134,6 +134,21 @@ func (m *Model) SetView(view ViewType) {
 			m.persistenceResults = result.Detections
 		}
 	}
+
+	if view == ViewTimeline {
+		m.loadTimelineEvents()
+	}
+}
+
+func (m *Model) loadTimelineEvents() {
+	filter := &storage.EventFilter{
+		Limit: 200,
+	}
+	events, _, err := m.db.ListEvents(filter)
+	if err != nil {
+		return
+	}
+	m.timelineEvents = events
 }
 
 func (m *Model) SetError(err error) {

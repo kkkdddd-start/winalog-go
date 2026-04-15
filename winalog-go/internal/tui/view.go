@@ -316,8 +316,40 @@ func (m Model) renderTimeline() string {
 
 	sb.WriteString(styles.HeaderStyle.Render(" Timeline ") + "\n")
 	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
-	sb.WriteString(styles.EmptyStyle.Render("  Timeline view - use [correlate] command to analyze attack chains ") + "\n")
-	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	if len(m.timelineEvents) == 0 {
+		sb.WriteString("  No events in database.\n")
+		sb.WriteString("  Import event logs to build timeline.\n")
+	} else {
+		sb.WriteString(fmt.Sprintf("  Showing %d most recent events\n\n", len(m.timelineEvents)))
+
+		for i, event := range m.timelineEvents {
+			if i >= 30 {
+				sb.WriteString(fmt.Sprintf("\n  ... and %d more events (press [R] to refresh)", len(m.timelineEvents)-30))
+				break
+			}
+			ts := event.Timestamp.Format("06-01-02 15:04:05")
+			levelColor := getLevelColor(event.Level)
+			sevStr := ""
+			switch event.Level {
+			case 1:
+				sevStr = "CRIT"
+			case 2:
+				sevStr = "ERR"
+			case 3:
+				sevStr = "WARN"
+			default:
+				sevStr = "INFO"
+			}
+			sb.WriteString(fmt.Sprintf("  %s %s %s %s\n",
+				levelColor,
+				ts,
+				styles.WarningStyle.Render(fmt.Sprintf("[%s]", sevStr)),
+				truncate(event.Message, 50)))
+		}
+	}
+
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back [R] Refresh "))
 
 	return sb.String()
 }
