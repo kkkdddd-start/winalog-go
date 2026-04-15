@@ -1,74 +1,64 @@
-# AGENTS.md
+# WinLogAnalyzer-Go
 
-## Repository Purpose
+**Repository structure**: Design docs live at repo root. Go source code is in `winalog-go/` subdirectory.
 
-This repository contains **design documentation** for WinLogAnalyzer-Go, a Windows security forensics and log analysis tool being ported from Python to Go. The actual source code lives in a separate repo (https://github.com/kkkdddd-start/winalog-go).
+```
+/workspace/winalog-go/
+├── winalog-go/           # Go source (actual project)
+│   ├── cmd/winalog/     # CLI entrypoint
+│   ├── internal/        # Core packages
+│   ├── pkg/             # Public packages (evtx, mitre)
+│   ├── Makefile         # Build commands
+│   └── go.mod           # Go 1.25.6
+├── dev-pkg/             # Design documents (~90KB design.md)
+└── .monkeycode/specs/   # Implementation plans (phase1-5 tasklists)
+```
 
-## Design Documents
+## Build & Test
 
-| File | Purpose |
+```bash
+cd winalog-go/winalog-go
+
+make build               # Build binary (outputs ./winalog)
+make test                # Run tests with race detection
+make lint                # vet + golangci-lint if installed
+make deps                # Download and tidy dependencies
+```
+
+## Critical Constraints
+
+- **SQLite**: Must use `modernc.org/sqlite` (pure Go, no CGO). Never use `github.com/mattn/go-sqlite3`.
+- **Go version**: 1.25.6 (minimum 1.22+ stated in README, but actual mod says 1.25.6)
+- **Windows-focused**: Event log analysis tool; some code is platform-specific (`*_windows.go` files)
+- **Web UI is P1**: TUI (Bubble Tea) is primary interface for emergency response
+
+## Key Directories
+
+| Path | Purpose |
 |------|---------|
-| `dev-pkg/design.md` | Architecture, directory structure, type definitions, CLI, API, TUI designs |
-| `dev-pkg/requirements.md` | Product requirements, user stories |
-| `dev-pkg/FEATURES.md` | Detailed feature清单 (~450+ features) |
-| `dev-pkg/MODULES_COMPARISON.md` | Python→Go module mapping |
-| `dev-pkg/ISSUES_FIX.md` | Known issues and fixes from v2.3.0→v2.4.0 |
+| `internal/types/` | All type definitions (Event, Alert, Rule, etc.) |
+| `internal/parsers/` | EVTX/ETL/CSV/IIS/Sysmon parsers |
+| `internal/storage/` | SQLite WAL mode storage |
+| `internal/alerts/` | 7 modules: engine, dedup, evaluator, stats, trend, upgrade, suppress |
+| `internal/rules/builtin/` | 60+ built-in rules with MITRE ATT&CK mapping |
+| `internal/collectors/` | Live + persistence collectors |
+| `internal/api/` | Gin HTTP API handlers |
+| `internal/tui/` | Bubble Tea TUI (11 views) |
+| `cmd/winalog/commands/` | 19 CLI commands (Cobra) |
 
-## Key Technical Decisions
+## Implementation Tracking
 
-### SQLite Driver
-- **MUST use `modernc.org/sqlite`** (pure Go, no CGO)
-- **NOT** `github.com/mattn/go-sqlite3` (requires CGO, breaks single-binary goal)
+Implementation plans are in `.monkeycode/specs/`:
+- `phase1-core-modules/tasklist.md` - MVP: parsers, storage, collectors, CLI
+- `phase2-analysis/tasklist.md` - Alerts, correlation, rules, analyzers
+- `phase3-ui/tasklist.md` - TUI, HTTP API, Web UI
+- `phase4-enhancement/tasklist.md` - Forensics, reports, exporters, timeline
+- `phase5-persistence-detection/tasklist.md` - Windows persistence detection
 
-### Frontend Strategy
-- **TUI (Bubble Tea)** = P0, **Web UI (React+Vite)** = P1
-- TUI is the primary interface for emergency response scenarios
+## Design Docs Reference
 
-### Concurrency
-- Use goroutine + channel for event pipeline (avoids Python GIL issues)
-- Worker pool pattern for parallel EVTX parsing
-
-### Type System
-- All types in `internal/types/` - no type scattering across modules
-- Unified `AlertRule` + `CorrelationRule` implementing common `Rule` interface
-
-## Development Phases
-
-```
-Phase 1 (MVP): parsers → storage → collectors → CLI
-Phase 2:       alerts → correlation → rules → analyzers
-Phase 3:       TUI → API → Web UI
-Phase 4:       forensics → reports → multi-machine
-```
-
-## Directory Structure (Target)
-
-```
-winalog-go/
-├── cmd/winalog/commands/    # 19 CLI commands (Cobra)
-├── internal/
-│   ├── engine/              # Core engine + pipeline
-│   ├── parsers/             # EVTX/ETL/CSV/IIS/Sysmon
-│   ├── collectors/           # live/ + persistence/
-│   ├── alerts/               # 7 modules (engine, dedup, evaluator, stats, trend, upgrade, suppress)
-│   ├── storage/              # db.go, schema.go, repository.go, events.go, alerts.go
-│   ├── api/                  # Gin HTTP API
-│   ├── tui/                  # Bubble Tea
-│   └── ...
-└── pkg/evtx/                # Standalone EVTX library
-```
-
-## Performance Targets
-
-| Metric | Target |
-|--------|--------|
-| EVTX parse speed | ≥150万 events/min |
-| Memory (1GB EVTX) | ≤200MB |
-| Startup time | ≤100ms |
-
-## When Implementing Features
-
-1. Read relevant section in `dev-pkg/design.md` first
-2. Cross-reference with `dev-pkg/MODULES_COMPARISON.md` for Python→Go mapping
-3. Check `dev-pkg/FEATURES.md` for detailed requirements
-4. Use `dev-pkg/requirements.md` for acceptance criteria
+Before implementing features, read:
+1. `dev-pkg/design.md` - Architecture, CLI, API, TUI designs
+2. `dev-pkg/MODULES_COMPARISON.md` - Python→Go module mapping
+3. `dev-pkg/FEATURES.md` - Detailed feature requirements (~450+)
+4. `dev-pkg/requirements.md` - Acceptance criteria
