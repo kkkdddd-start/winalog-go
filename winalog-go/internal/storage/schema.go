@@ -176,6 +176,22 @@ CREATE TABLE IF NOT EXISTS system_info (
 	disk_free_gb REAL,
 	collected_at TEXT NOT NULL
 );
+
+-- Reports table
+CREATE TABLE IF NOT EXISTS reports (
+	id TEXT PRIMARY KEY,
+	type TEXT NOT NULL,
+	format TEXT NOT NULL,
+	title TEXT,
+	description TEXT,
+	status TEXT DEFAULT 'pending',
+	generated_at TEXT,
+	completed_at TEXT,
+	file_path TEXT,
+	file_size INTEGER DEFAULT 0,
+	error_message TEXT,
+	query_params TEXT
+);
 `
 
 var TableDefinitions = map[string]TableDefinition{
@@ -292,7 +308,6 @@ var TableDefinitions = map[string]TableDefinition{
 	"system_info": {
 		Name: "system_info",
 		Columns: []ColumnDefinition{
-			{Name: "id", Type: "INTEGER", PrimaryKey: true, AutoIncrement: true},
 			{Name: "hostname", Type: "TEXT"},
 			{Name: "domain", Type: "TEXT"},
 			{Name: "os_name", Type: "TEXT"},
@@ -311,6 +326,27 @@ var TableDefinitions = map[string]TableDefinition{
 		Indexes: []IndexDefinition{
 			{Name: "idx_hostname", Columns: []string{"hostname"}},
 			{Name: "idx_collected_at", Columns: []string{"collected_at"}},
+		},
+	},
+	"reports": {
+		Name: "reports",
+		Columns: []ColumnDefinition{
+			{Name: "id", Type: "TEXT", PrimaryKey: true},
+			{Name: "type", Type: "TEXT", NotNull: true},
+			{Name: "format", Type: "TEXT", NotNull: true},
+			{Name: "title", Type: "TEXT"},
+			{Name: "description", Type: "TEXT"},
+			{Name: "status", Type: "TEXT", Default: "'pending'"},
+			{Name: "generated_at", Type: "TEXT"},
+			{Name: "completed_at", Type: "TEXT"},
+			{Name: "file_path", Type: "TEXT"},
+			{Name: "file_size", Type: "INTEGER", Default: "0"},
+			{Name: "error_message", Type: "TEXT"},
+			{Name: "query_params", Type: "TEXT"},
+		},
+		Indexes: []IndexDefinition{
+			{Name: "idx_generated_at", Columns: []string{"generated_at"}},
+			{Name: "idx_status", Columns: []string{"status"}},
 		},
 	},
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useI18n } from '../locales/I18n'
+import { collectAPI } from '../api'
 
 interface CollectOptions {
   includeLogs: boolean
@@ -94,22 +95,57 @@ function Collect() {
     setLoading(true)
     setStatus(t('collect.starting'))
     const enabledSources = logSources.filter(s => s.enabled).map(s => s.name)
-    const disabledSources = excludedLogs.filter(l => l.enabled).map(l => l.name)
     
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setStatus(`${t('collect.collecting')}...\n${t('collect.sources')}: ${enabledSources.join(', ')}`)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setStatus(`${t('collect.excluding')}: ${disabledSources.join(', ')}`)
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setStatus(t('collect.completed'))
+    try {
+      const response = await collectAPI.collect({
+        sources: enabledSources,
+        options: {
+          compress: options.compress,
+          calculate_hash: options.calculateHash,
+        },
+      })
+      
+      if (response.data.status === 'completed') {
+        setStatus(`${t('collect.completed')}\n${response.data.output_path}\nDuration: ${response.data.duration}`)
+      } else if (response.data.status === 'error') {
+        setStatus(`${t('collect.failed')}: ${response.data.message}`)
+      } else {
+        setStatus(`${t('collect.collecting')}...\n${t('collect.sources')}: ${enabledSources.join(', ')}`)
+      }
+    } catch (error) {
+      setStatus(`${t('collect.failed')}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+    
     setLoading(false)
   }
 
   const handleImport = async () => {
     setLoading(true)
     setStatus(t('collect.importing'))
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setStatus(t('collect.importDone'))
+    
+    try {
+      const customPathsList = customPaths
+        .split('\n')
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+      
+      if (customPathsList.length === 0) {
+        setStatus(t('collect.noFilesSelected'))
+        setLoading(false)
+        return
+      }
+      
+      const response = await collectAPI.import(customPathsList)
+      
+      if (response.data.status === 'completed') {
+        setStatus(`${t('collect.importDone')}\nImported: ${response.data.imported}\nFailed: ${response.data.failed}\nEvents: ${response.data.total_events}`)
+      } else if (response.data.status === 'error') {
+        setStatus(`${t('collect.failed')}: ${response.data.message}`)
+      }
+    } catch (error) {
+      setStatus(`${t('collect.failed')}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+    
     setLoading(false)
   }
 

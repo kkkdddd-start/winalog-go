@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useI18n } from '../locales/I18n'
 import { reportsAPI } from '../api'
 
@@ -20,6 +20,10 @@ function Reports() {
   const [reports, setReports] = useState<Report[]>([])
   const [lastGenerated, setLastGenerated] = useState<string | null>(null)
   const [generateError, setGenerateError] = useState<string | null>(null)
+
+  useEffect(() => {
+    reportsAPI.list().then(res => setReports(res.data.reports)).catch(console.error)
+  }, [])
 
   const handleGenerate = async () => {
     setGenerating(true)
