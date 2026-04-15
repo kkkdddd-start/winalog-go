@@ -128,6 +128,54 @@ CREATE TABLE IF NOT EXISTS evidence_file (
 	collected_at TEXT NOT NULL,
 	collector TEXT
 );
+
+-- Processes table (snapshot of system processes)
+CREATE TABLE IF NOT EXISTS processes (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	pid INTEGER NOT NULL,
+	name TEXT NOT NULL,
+	exe TEXT,
+	command_line TEXT,
+	username TEXT,
+	parent_pid INTEGER,
+	started_at TEXT,
+	memory_mb REAL,
+	cpu_percent REAL,
+	collected_at TEXT NOT NULL
+);
+
+-- Network connections table
+CREATE TABLE IF NOT EXISTS network_connections (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	pid INTEGER,
+	process_name TEXT,
+	protocol TEXT NOT NULL,
+	local_addr TEXT NOT NULL,
+	local_port INTEGER NOT NULL,
+	remote_addr TEXT,
+	remote_port INTEGER,
+	state TEXT,
+	collected_at TEXT NOT NULL
+);
+
+-- System info table (persistent system snapshots)
+CREATE TABLE IF NOT EXISTS system_info (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	hostname TEXT,
+	domain TEXT,
+	os_name TEXT,
+	os_version TEXT,
+	architecture TEXT,
+	is_admin INTEGER,
+	uptime_seconds INTEGER,
+	cpu_count INTEGER,
+	cpu_model TEXT,
+	memory_total_gb REAL,
+	memory_free_gb REAL,
+	disk_total_gb REAL,
+	disk_free_gb REAL,
+	collected_at TEXT NOT NULL
+);
 `
 
 var TableDefinitions = map[string]TableDefinition{
@@ -198,6 +246,71 @@ var TableDefinitions = map[string]TableDefinition{
 		},
 		Indexes: []IndexDefinition{
 			{Name: "idx_import_time", Columns: []string{"import_time"}},
+		},
+	},
+	"processes": {
+		Name: "processes",
+		Columns: []ColumnDefinition{
+			{Name: "id", Type: "INTEGER", PrimaryKey: true, AutoIncrement: true},
+			{Name: "pid", Type: "INTEGER", NotNull: true},
+			{Name: "name", Type: "TEXT", NotNull: true},
+			{Name: "exe", Type: "TEXT"},
+			{Name: "command_line", Type: "TEXT"},
+			{Name: "username", Type: "TEXT"},
+			{Name: "parent_pid", Type: "INTEGER"},
+			{Name: "started_at", Type: "TEXT"},
+			{Name: "memory_mb", Type: "REAL"},
+			{Name: "cpu_percent", Type: "REAL"},
+			{Name: "collected_at", Type: "TEXT", NotNull: true},
+		},
+		Indexes: []IndexDefinition{
+			{Name: "idx_pid", Columns: []string{"pid"}},
+			{Name: "idx_name", Columns: []string{"name"}},
+			{Name: "idx_collected_at", Columns: []string{"collected_at"}},
+		},
+	},
+	"network_connections": {
+		Name: "network_connections",
+		Columns: []ColumnDefinition{
+			{Name: "id", Type: "INTEGER", PrimaryKey: true, AutoIncrement: true},
+			{Name: "pid", Type: "INTEGER"},
+			{Name: "process_name", Type: "TEXT"},
+			{Name: "protocol", Type: "TEXT", NotNull: true},
+			{Name: "local_addr", Type: "TEXT", NotNull: true},
+			{Name: "local_port", Type: "INTEGER", NotNull: true},
+			{Name: "remote_addr", Type: "TEXT"},
+			{Name: "remote_port", Type: "INTEGER"},
+			{Name: "state", Type: "TEXT"},
+			{Name: "collected_at", Type: "TEXT", NotNull: true},
+		},
+		Indexes: []IndexDefinition{
+			{Name: "idx_protocol", Columns: []string{"protocol"}},
+			{Name: "idx_local_port", Columns: []string{"local_port"}},
+			{Name: "idx_collected_at", Columns: []string{"collected_at"}},
+		},
+	},
+	"system_info": {
+		Name: "system_info",
+		Columns: []ColumnDefinition{
+			{Name: "id", Type: "INTEGER", PrimaryKey: true, AutoIncrement: true},
+			{Name: "hostname", Type: "TEXT"},
+			{Name: "domain", Type: "TEXT"},
+			{Name: "os_name", Type: "TEXT"},
+			{Name: "os_version", Type: "TEXT"},
+			{Name: "architecture", Type: "TEXT"},
+			{Name: "is_admin", Type: "INTEGER"},
+			{Name: "uptime_seconds", Type: "INTEGER"},
+			{Name: "cpu_count", Type: "INTEGER"},
+			{Name: "cpu_model", Type: "TEXT"},
+			{Name: "memory_total_gb", Type: "REAL"},
+			{Name: "memory_free_gb", Type: "REAL"},
+			{Name: "disk_total_gb", Type: "REAL"},
+			{Name: "disk_free_gb", Type: "REAL"},
+			{Name: "collected_at", Type: "TEXT", NotNull: true},
+		},
+		Indexes: []IndexDefinition{
+			{Name: "idx_hostname", Columns: []string{"hostname"}},
+			{Name: "idx_collected_at", Columns: []string{"collected_at"}},
 		},
 	},
 }

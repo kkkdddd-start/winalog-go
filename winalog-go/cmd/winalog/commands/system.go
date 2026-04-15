@@ -1,9 +1,15 @@
 package commands
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"runtime"
+	"strings"
+	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/api"
+	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/tui"
 	"github.com/spf13/cobra"
@@ -23,7 +29,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Show system information",
-	Long:  `Display Windows system information.`,
+	Long:  `Display system information including processes and network connections.`,
 	RunE:  runInfo,
 }
 
@@ -33,6 +39,7 @@ var infoFlags struct {
 	users    bool
 	registry bool
 	tasks    bool
+	save     bool
 }
 
 func init() {
@@ -41,9 +48,164 @@ func init() {
 	infoCmd.Flags().BoolVar(&infoFlags.users, "users", false, "Show user accounts")
 	infoCmd.Flags().BoolVar(&infoFlags.registry, "registry", false, "Show registry persistence")
 	infoCmd.Flags().BoolVar(&infoFlags.tasks, "tasks", false, "Show scheduled tasks")
+	infoCmd.Flags().BoolVar(&infoFlags.save, "save", false, "Save to database")
 }
 
 func runInfo(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	showAll := !infoFlags.process && !infoFlags.network && !infoFlags.users && !infoFlags.registry && !infoFlags.tasks
+
+	fmt.Println("=" + strings.Repeat("=", 60))
+	fmt.Println("  System Information")
+	fmt.Println("=" + strings.Repeat("=", 60))
+
+	if showAll || infoFlags.process {
+		fmt.Println("\n[Process Information]")
+		processes, err := collectors.ListProcesses()
+		if err != nil {
+			fmt.Printf("  Error: %v\n", err)
+		} else {
+			fmt.Printf("  Total Processes: %d\n", len(processes))
+			fmt.Printf("  %-8s %-8s %-30s %-20s\n", "PID", "PPID", "NAME", "COMMAND")
+			fmt.Println("  " + strings.Repeat("-", 66))
+			for i, p := range processes {
+				if i >= 20 {
+					fmt.Printf("  ... and %d more processes\n", len(processes)-20)
+					break
+				}
+				name := p.Name
+				if len(name) > 28 {
+					name = name[:25] + "..."
+				}
+				args := p.Args
+				if len(args) > 18 {
+					args = args[:15] + "..."
+				}
+				fmt.Printf("  %-8d %-8d %-30s %-20s\n", p.PID, p.PPID, name, args)
+			}
+		}
+	}
+
+	if showAll || infoFlags.network {
+		fmt.Println("\n[Network Connections]")
+		connections, err := collectors.ListNetworkConnections()
+		if err != nil {
+			fmt.Printf("  Error: %v\n", err)
+		} else {
+			fmt.Printf("  Total Connections: %d\n", len(connections))
+			fmt.Printf("  %-6s %-20s %-8s %-20s %-8s %-15s\n", "PROTO", "LOCAL ADDRESS", "PORT", "REMOTE ADDRESS", "PORT", "STATE")
+			fmt.Println("  " + strings.Repeat("-", 85))
+			for i, c := range connections {
+				if i >= 20 {
+					fmt.Printf("  ... and %d more connections\n", len(connections)-20)
+					break
+				}
+				local := c.LocalAddr
+				if len(local) > 18 {
+					local = local[:15] + "..."
+				}
+				remote := c.RemoteAddr
+				if len(remote) > 18 {
+					remote = remote[:15] + "..."
+				}
+				state := c.State
+				if len(state) > 13 {
+					state = state[:10] + "..."
+				}
+				fmt.Printf("  %-6s %-20s %-8d %-20s %-8d %-15s\n",
+					c.Protocol, local, c.LocalPort, remote, c.RemotePort, state)
+			}
+		}
+	}
+
+	if showAll || (!infoFlags.process && !infoFlags.network) {
+		fmt.Println("\n[Basic System Info]")
+		hostname, _ := os.Hostname()
+		fmt.Printf("  Hostname:     %s\n", hostname)
+		fmt.Printf("  OS:           %s\n", runtime.GOOS)
+		fmt.Printf("  Architecture: %s\n", runtime.GOARCH)
+		fmt.Printf("  Go Version:   %s\n", runtime.Version())
+		fmt.Printf("  CPUs:         %d\n", runtime.NumCPU())
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		fmt.Printf("  Memory:       %.2f MB allocated\n", float64(m.Alloc)/1024/1024)
+	}
+
+	fmt.Println("\n" + strings.Repeat("=", 61))
+
+	if infoFlags.save {
+		fmt.Println("\n[Saving to database...]")
+		if err := saveSystemSnapshot(ctx); err != nil {
+			fmt.Printf("  Error saving: %v\n", err)
+		} else {
+			fmt.Println("  Saved successfully!")
+		}
+	}
+
+	return nil
+}
+
+func saveSystemSnapshot(ctx context.Context) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	repo := storage.NewSystemRepo(db)
+
+	hostname, _ := os.Hostname()
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	snapshot := &storage.SystemSnapshot{
+		Hostname:      hostname,
+		OSName:        runtime.GOOS,
+		Architecture:  runtime.GOARCH,
+		CPUCount:      runtime.NumCPU(),
+		MemoryTotalGB: float64(m.Sys) / 1024 / 1024 / 1024,
+		MemoryFreeGB:  float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024,
+		CollectedAt:   time.Now(),
+	}
+
+	if err := repo.SaveSnapshot(snapshot); err != nil {
+		return err
+	}
+
+	processes, _ := collectors.ListProcesses()
+	processInfos := make([]*storage.ProcessInfo, 0, len(processes))
+	for _, p := range processes {
+		processInfos = append(processInfos, &storage.ProcessInfo{
+			PID:         p.PID,
+			Name:        p.Name,
+			Exe:         p.Exe,
+			CommandLine: p.Args,
+			Username:    p.User,
+			ParentPID:   p.PPID,
+			CollectedAt: time.Now(),
+		})
+	}
+	repo.SaveProcesses(processInfos)
+
+	connections, _ := collectors.ListNetworkConnections()
+	netConnections := make([]*storage.NetworkConnection, 0, len(connections))
+	for _, c := range connections {
+		netConnections = append(netConnections, &storage.NetworkConnection{
+			PID:         c.PID,
+			ProcessName: c.ProcessName,
+			Protocol:    c.Protocol,
+			LocalAddr:   c.LocalAddr,
+			LocalPort:   c.LocalPort,
+			RemoteAddr:  c.RemoteAddr,
+			RemotePort:  c.RemotePort,
+			State:       c.State,
+			CollectedAt: time.Now(),
+		})
+	}
+	repo.SaveNetworkConnections(netConnections)
+
 	return nil
 }
 

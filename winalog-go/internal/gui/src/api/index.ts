@@ -79,6 +79,10 @@ export const systemAPI = {
     api.get('/system/info'),
   getMetrics: () =>
     api.get('/system/metrics'),
+  getProcesses: (limit = 100) =>
+    api.get(`/system/processes?limit=${limit}`),
+  getNetwork: (limit = 100, protocol?: string) =>
+    api.get(`/system/network?limit=${limit}${protocol ? `&protocol=${protocol}` : ''}`),
 }
 
 export const rulesAPI = {

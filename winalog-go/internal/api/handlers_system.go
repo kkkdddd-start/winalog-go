@@ -3,10 +3,13 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
 
@@ -26,6 +29,8 @@ type SystemInfo struct {
 	UptimeSeconds int64     `json:"uptime_seconds"`
 	GoVersion     string    `json:"go_version"`
 	CPUCount      int       `json:"cpu_count"`
+	MemoryTotalGB float64   `json:"memory_total_gb"`
+	MemoryFreeGB  float64   `json:"memory_free_gb"`
 }
 
 type MetricsResponse struct {
@@ -39,6 +44,37 @@ type MetricsResponse struct {
 	MemoryUsageMB float64 `json:"memory_usage_mb"`
 }
 
+type ProcessResponse struct {
+	Processes []*ProcessInfo `json:"processes"`
+	Total     int            `json:"total"`
+}
+
+type ProcessInfo struct {
+	PID    int    `json:"pid"`
+	PPID   int    `json:"ppid"`
+	Name   string `json:"name"`
+	Exe    string `json:"exe"`
+	Args   string `json:"args"`
+	User   string `json:"user"`
+	Status string `json:"status"`
+}
+
+type NetworkConnectionResponse struct {
+	Connections []*NetworkConnInfo `json:"connections"`
+	Total       int                `json:"total"`
+}
+
+type NetworkConnInfo struct {
+	PID         int    `json:"pid"`
+	Protocol    string `json:"protocol"`
+	LocalAddr   string `json:"local_addr"`
+	LocalPort   int    `json:"local_port"`
+	RemoteAddr  string `json:"remote_addr"`
+	RemotePort  int    `json:"remote_port"`
+	State       string `json:"state"`
+	ProcessName string `json:"process_name"`
+}
+
 var startTime = time.Now()
 
 func NewSystemHandler(db *storage.DB) *SystemHandler {
@@ -46,18 +82,24 @@ func NewSystemHandler(db *storage.DB) *SystemHandler {
 }
 
 func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
+	hostname, _ := os.Hostname()
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
 	info := SystemInfo{
-		Hostname:      "Linux Host",
+		Hostname:      hostname,
 		Domain:        "workgroup",
 		OSName:        runtime.GOOS,
 		OSVersion:     runtime.Version(),
 		Architecture:  runtime.GOARCH,
-		IsAdmin:       false,
+		IsAdmin:       os.Geteuid() == 0,
 		Timezone:      "UTC",
 		LocalTime:     time.Now(),
 		UptimeSeconds: int64(time.Since(startTime).Seconds()),
 		GoVersion:     runtime.Version(),
 		CPUCount:      runtime.NumCPU(),
+		MemoryTotalGB: float64(m.Sys) / 1024 / 1024 / 1024,
+		MemoryFreeGB:  float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024,
 	}
 
 	c.JSON(http.StatusOK, info)
@@ -85,6 +127,82 @@ func (h *SystemHandler) GetMetrics(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, metrics)
+}
+
+func (h *SystemHandler) GetProcesses(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "100")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	processes, err := collectors.ListProcesses()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := make([]*ProcessInfo, 0, len(processes))
+	for _, p := range processes {
+		result = append(result, &ProcessInfo{
+			PID:    p.PID,
+			PPID:   p.PPID,
+			Name:   p.Name,
+			Exe:    p.Exe,
+			Args:   p.Args,
+			User:   p.User,
+			Status: p.Status,
+		})
+		if len(result) >= limit {
+			break
+		}
+	}
+
+	c.JSON(http.StatusOK, ProcessResponse{
+		Processes: result,
+		Total:     len(processes),
+	})
+}
+
+func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "100")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	protocol := c.Query("protocol")
+
+	connections, err := collectors.ListNetworkConnections()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := make([]*NetworkConnInfo, 0, len(connections))
+	for _, conn := range connections {
+		if protocol != "" && conn.Protocol != protocol {
+			continue
+		}
+		result = append(result, &NetworkConnInfo{
+			PID:         conn.PID,
+			Protocol:    conn.Protocol,
+			LocalAddr:   conn.LocalAddr,
+			LocalPort:   conn.LocalPort,
+			RemoteAddr:  conn.RemoteAddr,
+			RemotePort:  conn.RemotePort,
+			State:       conn.State,
+			ProcessName: conn.ProcessName,
+		})
+		if len(result) >= limit {
+			break
+		}
+	}
+
+	c.JSON(http.StatusOK, NetworkConnectionResponse{
+		Connections: result,
+		Total:       len(connections),
+	})
 }
 
 func (h *SystemHandler) GetPrometheusMetrics(c *gin.Context) {
@@ -137,5 +255,7 @@ func SetupSystemRoutes(r *gin.Engine, systemHandler *SystemHandler) {
 	{
 		system.GET("/info", systemHandler.GetSystemInfo)
 		system.GET("/metrics", systemHandler.GetMetrics)
+		system.GET("/processes", systemHandler.GetProcesses)
+		system.GET("/network", systemHandler.GetNetworkConnections)
 	}
 }
