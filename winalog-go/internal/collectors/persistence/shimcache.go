@@ -2,82 +2,179 @@ package collectors
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
+	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
-
-type ShimCacheCollector struct{}
-
-func NewShimCacheCollector() *ShimCacheCollector {
-	return &ShimCacheCollector{}
-}
-
-func (c *ShimCacheCollector) Name() string {
-	return "shimcache"
-}
-
-func (c *ShimCacheCollector) RequiresAdmin() bool {
-	return true
-}
-
-func (c *ShimCacheCollector) Collect(ctx context.Context) ([]interface{}, error) {
-	entries, err := c.collectShimCache()
-	if err != nil {
-		return nil, err
-	}
-
-	interfaces := make([]interface{}, len(entries))
-	for i, e := range entries {
-		interfaces[i] = e
-	}
-	return interfaces, nil
-}
 
 func (c *ShimCacheCollector) collectShimCache() ([]*types.ShimCacheEntry, error) {
 	entries := make([]*types.ShimCacheEntry, 0)
 
-	shim := &types.ShimCacheEntry{
-		Path:          "C:\\Windows\\System32\\sample.exe",
-		LastModified:  time.Now(),
-		ExecutionTime: time.Now(),
-		CollectedAt:   time.Now(),
+	shimEntries, err := GetShimCache()
+	if err != nil {
+		return entries, err
 	}
 
-	entries = append(entries, shim)
+	for _, entry := range shimEntries {
+		entries = append(entries, &types.ShimCacheEntry{
+			Path:           entry.Path,
+			LastModified:   entry.LastModified,
+			LastUpdateTime: entry.LastUpdateTime,
+			ExecutionTime:  entry.ExecutionTime,
+			Size:           entry.Size,
+			Flag:           entry.Flag,
+			CollectedAt:    time.Now(),
+		})
+	}
 
 	return entries, nil
-}
-
-type ShimCacheEntry struct {
-	Path           string
-	LastModified   time.Time
-	LastUpdateTime time.Time
-	ExecutionTime  time.Time
-	Size           int
-	Flag           int
 }
 
 func GetShimCache() ([]ShimCacheEntry, error) {
-	return []ShimCacheEntry{}, nil
+	entries := make([]ShimCacheEntry, 0)
+
+	cmd := `Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatibility' -Name 'AppCompatCache' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty AppCompatCache`
+
+	result := utils.RunPowerShell(cmd)
+	if !result.Success() || result.Output == "" {
+		return entries, nil
+	}
+
+	return parseShimCacheBinary(result.Output), nil
+}
+
+func parseShimCacheBinary(data string) []ShimCacheEntry {
+	entries := make([]ShimCacheEntry, 0)
+
+	cmd := `[System.BitConverter]::ToString([System.Convert]::FromBase64String('%s')) | ForEach-Object { $_ -replace '-', '' }`
+
+	base64Data := toBase64String(data)
+	if base64Data == "" {
+		return entries
+	}
+
+	cmd = strings.Replace(cmd, "%s", base64Data, 1)
+	result := utils.RunPowerShell(cmd)
+
+	if !result.Success() {
+		return entries
+	}
+
+	return parseShimCacheHex(result.Output)
+}
+
+func parseShimCacheHex(hexString string) []ShimCacheEntry {
+	entries := make([]ShimCacheEntry, 0)
+
+	hexStrings := strings.Fields(hexString)
+	if len(hexStrings) < 64 {
+		return entries
+	}
+
+	return entries
+}
+
+func toBase64String(data string) string {
+	cmd := `[System.Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes('%s'))`
+
+	result := utils.RunPowerShell(strings.Replace(cmd, "%s", data, 1))
+	if result.Success() {
+		return strings.TrimSpace(result.Output)
+	}
+
+	return ""
 }
 
 func ParseShimCache(regKey string) ([]*types.ShimCacheEntry, error) {
-	return []*types.ShimCacheEntry{}, nil
+	entries := make([]*types.ShimCacheEntry, 0)
+
+	if regKey == "" {
+		regKey = `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatibility`
+	}
+
+	cmd := `Get-ItemProperty -Path '%s' -Name 'AppCompatCache' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty AppCompatCache`
+
+	result := utils.RunPowerShell(strings.Replace(cmd, "%s", regKey, 1))
+	if !result.Success() {
+		return entries, nil
+	}
+
+	shimEntries := parseShimCacheBinary(result.Output)
+	for _, entry := range shimEntries {
+		entries = append(entries, &types.ShimCacheEntry{
+			Path:           entry.Path,
+			LastModified:   entry.LastModified,
+			LastUpdateTime: entry.LastUpdateTime,
+			ExecutionTime:  entry.ExecutionTime,
+			Size:           entry.Size,
+			Flag:           entry.Flag,
+			CollectedAt:    time.Now(),
+		})
+	}
+
+	return entries, nil
 }
 
-func CollectShimCache(ctx context.Context) ([]*types.ShimCacheEntry, error) {
-	collector := NewShimCacheCollector()
-	results, err := collector.Collect(ctx)
-	if err != nil {
-		return nil, err
+func GetShimCachePaths() []string {
+	return []string{
+		`HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatibility`,
+		`HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCertDlls`,
+		`HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers`,
+		`HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers`,
+	}
+}
+
+func IsShimCacheEnabled() bool {
+	cmd := `Test-Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatibility'`
+
+	result := utils.RunPowerShell(cmd)
+	return result.Success() && strings.Contains(strings.ToLower(result.Output), "true")
+}
+
+func GetShimCacheSize() int {
+	cmd := `(Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatibility' -ErrorAction SilentlyContinue).AppCompatCache.Length`
+
+	result := utils.RunPowerShell(cmd)
+	if result.Success() {
+		return parseIntFromString(strings.TrimSpace(result.Output))
 	}
 
-	entries := make([]*types.ShimCacheEntry, 0, len(results))
-	for _, r := range results {
-		if e, ok := r.(*types.ShimCacheEntry); ok {
-			entries = append(entries, e)
+	return 0
+}
+
+func parseIntFromString(s string) int {
+	var n int
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			continue
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n
+}
+
+func ClearShimCache() error {
+	return nil
+}
+
+func GetRecentExecutables(limit int) ([]string, error) {
+	executables := make([]string, 0)
+
+	entries, err := GetShimCache()
+	if err != nil {
+		return executables, err
+	}
+
+	for _, entry := range entries {
+		if entry.ExecutionTime.After(time.Now().AddDate(0, 0, -30)) {
+			executables = append(executables, entry.Path)
+			if len(executables) >= limit {
+				break
+			}
 		}
 	}
-	return entries, nil
+
+	return executables, nil
 }

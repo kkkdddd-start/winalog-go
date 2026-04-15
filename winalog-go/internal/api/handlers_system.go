@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
 type SystemHandler struct {
@@ -88,12 +89,12 @@ func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
 
 	info := SystemInfo{
 		Hostname:      hostname,
-		Domain:        "workgroup",
-		OSName:        runtime.GOOS,
-		OSVersion:     runtime.Version(),
+		Domain:        utils.GetDomain(),
+		OSName:        "Windows",
+		OSVersion:     getWindowsVersionString(),
 		Architecture:  runtime.GOARCH,
-		IsAdmin:       os.Geteuid() == 0,
-		Timezone:      "UTC",
+		IsAdmin:       utils.IsAdmin(),
+		Timezone:      getTimezone(),
 		LocalTime:     time.Now(),
 		UptimeSeconds: int64(time.Since(startTime).Seconds()),
 		GoVersion:     runtime.Version(),
@@ -258,4 +259,17 @@ func SetupSystemRoutes(r *gin.Engine, systemHandler *SystemHandler) {
 		system.GET("/processes", systemHandler.GetProcesses)
 		system.GET("/network", systemHandler.GetNetworkConnections)
 	}
+}
+
+func getWindowsVersionString() string {
+	if winVersion, err := utils.GetWindowsVersion(); err == nil {
+		return fmt.Sprintf("Windows %d.%d (Build %d)", winVersion.Major, winVersion.Minor, winVersion.Build)
+	}
+	return "Windows (Unknown Version)"
+}
+
+func getTimezone() string {
+	_, offset := time.Now().Zone()
+	hours := offset / 3600
+	return fmt.Sprintf("UTC%+d", hours)
 }
