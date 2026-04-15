@@ -50,17 +50,39 @@ func (p *SysmonParser) ParseBatch(path string) ([]*types.Event, error) {
 }
 
 type SysmonEvent struct {
-	EventID           int
-	Schema            string
-	Image             string
-	CommandLine       string
-	TargetFilename    string
-	Hashes            map[string]string
-	ParentImage       string
-	ParentCommandLine string
-	UserName          string
-	Computer          string
-	TimeCreated       time.Time
+	EventID             int
+	Schema              string
+	Image               string
+	ImageLoaded         string
+	CommandLine         string
+	TargetFilename      string
+	Hashes              map[string]string
+	ParentImage         string
+	ParentCommandLine   string
+	UserName            string
+	Computer            string
+	TimeCreated         time.Time
+	Signed              bool
+	Signature           string
+	SignatureStatus     string
+	ProcessId           string
+	SourceImage         string
+	SourceProcessId     string
+	TargetImage         string
+	TargetProcessId     string
+	GrantedAccess       string
+	CallTrace           string
+	Protocol            string
+	SourcePort          int
+	DestinationPort     int
+	SourceHostname      string
+	DestinationHostname string
+	QueryName           string
+	QueryResults        string
+	QueryStatus         string
+	PipeName            string
+	RuleName            string
+	EventType           string
 }
 
 func (p *SysmonParser) parseSysmon(path string) ([]*types.Event, error) {
@@ -219,17 +241,16 @@ func (p *SysmonParser) buildMessage(eventID int, data map[string]string) string 
 	case 5:
 		return fmt.Sprintf("Process Terminated: %s (PID: %s)", data["Image"], data["ProcessId"])
 	case 6:
-		return fmt.Sprintf("Driver Loaded: %s [Hash: %s]", data["ImageLoaded"], data["Hashes"])
+		return fmt.Sprintf("Driver Loaded: %s [Hash: %s] [Signed: %s]",
+			data["ImageLoaded"], data["Hashes"], data["Signature"])
 	case 7:
-		return fmt.Sprintf("Image Loaded: %s in %s", data["ImageLoaded"], data["Image"])
+		return p.buildImageLoadedMessage(data)
 	case 8:
-		return fmt.Sprintf("CreateRemoteThread: %s -> %s in %s",
-			data["SourceImage"], data["TargetImage"], data["TargetProcessId"])
+		return p.buildCreateRemoteThreadMessage(data)
 	case 9:
 		return fmt.Sprintf("Raw Access Read: %s by %s", data["Image"], data["Device"])
 	case 10:
-		return fmt.Sprintf("Process Access: %s -> %s [%s]",
-			data["SourceImage"], data["TargetImage"], data["GrantedAccess"])
+		return p.buildProcessAccessMessage(data)
 	case 11:
 		return fmt.Sprintf("File Created: %s", data["TargetFilename"])
 	case 12:
@@ -253,8 +274,189 @@ func (p *SysmonParser) buildMessage(eventID int, data map[string]string) string 
 	case 21:
 		return fmt.Sprintf("WMI Consumer Filter Binding: %s -> %s", data["Filter"], data["Consumer"])
 	case 22:
-		return fmt.Sprintf("DNS Query: %s [%s]", data["QueryName"], data["QueryResults"])
+		return p.buildDNSQueryMessage(data)
 	default:
 		return fmt.Sprintf("Sysmon Event %d", eventID)
 	}
+}
+
+func (p *SysmonParser) buildImageLoadedMessage(data map[string]string) string {
+	imageLoaded := data["ImageLoaded"]
+	signature := data["Signature"]
+	signatureStatus := data["SignatureStatus"]
+	hashes := data["Hashes"]
+
+	msg := fmt.Sprintf("Image Loaded: %s", imageLoaded)
+
+	if signature != "" {
+		msg += fmt.Sprintf(" [Signature: %s]", signature)
+	}
+
+	if signatureStatus != "" {
+		msg += fmt.Sprintf(" [%s]", signatureStatus)
+	}
+
+	if hashes != "" {
+		msg += fmt.Sprintf(" [Hash: %s]", hashes)
+	}
+
+	if p.isSuspiciousImageLoadedPath(imageLoaded) {
+		msg += " [SUSPICIOUS PATH]"
+	}
+
+	return msg
+}
+
+func (p *SysmonParser) buildProcessAccessMessage(data map[string]string) string {
+	sourceImage := data["SourceImage"]
+	targetImage := data["TargetImage"]
+	grantedAccess := data["GrantedAccess"]
+	callTrace := data["CallTrace"]
+
+	msg := fmt.Sprintf("Process Access: %s -> %s", sourceImage, targetImage)
+
+	if grantedAccess != "" {
+		accessDesc := p.decodeGrantedAccess(grantedAccess)
+		msg += fmt.Sprintf(" [Access: %s (%s)]", grantedAccess, accessDesc)
+	}
+
+	if callTrace != "" && p.isSuspiciousCallTrace(callTrace) {
+		msg += " [SUSPICIOUS CALL TRACE]"
+	}
+
+	return msg
+}
+
+func (p *SysmonParser) buildCreateRemoteThreadMessage(data map[string]string) string {
+	sourceImage := data["SourceImage"]
+	targetImage := data["TargetImage"]
+	targetProcessId := data["TargetProcessId"]
+	startAddress := data["StartAddress"]
+
+	msg := fmt.Sprintf("CreateRemoteThread: %s -> %s (PID: %s)", sourceImage, targetImage, targetProcessId)
+
+	if startAddress != "" {
+		msg += fmt.Sprintf(" [StartAddress: %s]", startAddress)
+	}
+
+	if p.isSuspiciousRemoteThread(targetImage, startAddress) {
+		msg += " [SUSPICIOUS TARGET]"
+	}
+
+	return msg
+}
+
+func (p *SysmonParser) buildDNSQueryMessage(data map[string]string) string {
+	queryName := data["QueryName"]
+	queryResults := data["QueryResults"]
+	queryStatus := data["QueryStatus"]
+
+	msg := fmt.Sprintf("DNS Query: %s", queryName)
+
+	if queryResults != "" {
+		msg += fmt.Sprintf(" -> %s", queryResults)
+	}
+
+	if queryStatus != "" && queryStatus != "0" {
+		msg += fmt.Sprintf(" [Status: %s]", queryStatus)
+	}
+
+	if p.isSuspiciousDNSQuery(queryName) {
+		msg += " [SUSPICIOUS DOMAIN]"
+	}
+
+	return msg
+}
+
+func (p *SysmonParser) isSuspiciousImageLoadedPath(imagePath string) bool {
+	suspiciousPatterns := []string{
+		"%TEMP%", "%APPDATA%", "%LOCALAPPDATA%",
+		"\\Temp\\", "\\AppData\\",
+		"\\\\", "http://", "https://",
+		":\\Windows\\Temp\\",
+		":\\Users\\",
+		"\\Downloads\\",
+	}
+
+	upperPath := strings.ToUpper(imagePath)
+	for _, pattern := range suspiciousPatterns {
+		if strings.Contains(upperPath, strings.ToUpper(pattern)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (p *SysmonParser) isSuspiciousCallTrace(callTrace string) bool {
+	suspiciousPatterns := []string{
+		"ntdll.dll",
+		"LSASRV.dll",
+		"msvcrt.dll",
+	}
+
+	for _, pattern := range suspiciousPatterns {
+		if strings.Contains(strings.ToUpper(callTrace), pattern) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (p *SysmonParser) isSuspiciousRemoteThread(targetImage string, startAddress string) bool {
+	upperTarget := strings.ToUpper(targetImage)
+
+	if strings.Contains(upperTarget, "LSASS") && startAddress != "" {
+		return true
+	}
+
+	return false
+}
+
+func (p *SysmonParser) isSuspiciousDNSQuery(queryName string) bool {
+	suspiciousDomains := []string{
+		".tk", ".ml", ".ga", ".cf", ".gq",
+		"pastebin", "githubusercontent",
+		"cobaltstrike", "metasploit",
+	}
+
+	upperQuery := strings.ToLower(queryName)
+	for _, domain := range suspiciousDomains {
+		if strings.Contains(upperQuery, domain) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (p *SysmonParser) decodeGrantedAccess(accessMask string) string {
+	accessMap := map[string]string{
+		"0x00000000": "None",
+		"0x00000001": "DELETE",
+		"0x00000002": "READ_CONTROL",
+		"0x00000010": "WRITE_DAC",
+		"0x00000020": "WRITE_OWNER",
+		"0x00000040": "SYNCHRONIZE",
+		"0x00010000": "PROCESS_ALL_ACCESS",
+		"0x00020000": "STANDARD_RIGHTS_REQUIRED",
+		"0x00040000": "STANDARD_RIGHTS_ALL",
+		"0x00100000": "TOKEN_ASSIGN_PRIMARY",
+		"0x00200000": "TOKEN_DUPLICATE",
+		"0x00800000": "PROCESS_ALL_ACCESS",
+	}
+
+	if desc, ok := accessMap[accessMask]; ok {
+		return desc
+	}
+
+	if strings.HasPrefix(accessMask, "0x1F0") {
+		return "AllAccess"
+	}
+	if strings.HasPrefix(accessMask, "0x1F") {
+		return "FullAccess"
+	}
+
+	return "Unknown"
 }

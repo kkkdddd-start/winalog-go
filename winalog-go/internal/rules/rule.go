@@ -38,6 +38,12 @@ type AlertRule struct {
 	AggregationKey string        `yaml:"aggregation_key,omitempty"`
 	Message        string        `yaml:"message"`
 	Tags           []string      `yaml:"tags,omitempty"`
+	Status         string        `yaml:"status,omitempty"`
+	Product        string        `yaml:"logsource,omitempty"`
+	LogSource      *LogSource    `yaml:"logsource,omitempty"`
+	FalsePositives []string      `yaml:"falsepositives,omitempty"`
+	Level          string        `yaml:"level,omitempty"`
+	References     []string      `yaml:"references,omitempty"`
 }
 
 func (r *AlertRule) BuildMessage(event *types.Event) string {
@@ -102,6 +108,13 @@ type Condition struct {
 	Operator string `yaml:"operator"`
 	Value    string `yaml:"value"`
 	Regex    bool   `yaml:"regex,omitempty"`
+}
+
+type LogSource struct {
+	Product    string `yaml:"product,omitempty"`
+	Service    string `yaml:"service,omitempty"`
+	Category   string `yaml:"category,omitempty"`
+	Definition string `yaml:"definition,omitempty"`
 }
 
 type BaseRule struct {

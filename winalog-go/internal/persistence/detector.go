@@ -195,6 +195,11 @@ func RunAllDetectors(ctx context.Context) *DetectionResult {
 	engine.Register(NewAppInitDetector())
 	engine.Register(NewWMIPersistenceDetector())
 	engine.Register(NewServicePersistenceDetector())
+	engine.Register(NewLSAPersistenceDetector())
+	engine.Register(NewWinsockDetector())
+	engine.Register(NewBHODetector())
+	engine.Register(NewPrintMonitorDetector())
+	engine.Register(NewBootExecuteDetector())
 
 	return engine.Detect(ctx)
 }
@@ -211,6 +216,11 @@ func DetectByCategory(ctx context.Context, category string) *DetectionResult {
 	engine.Register(NewAppInitDetector())
 	engine.Register(NewWMIPersistenceDetector())
 	engine.Register(NewServicePersistenceDetector())
+	engine.Register(NewLSAPersistenceDetector())
+	engine.Register(NewWinsockDetector())
+	engine.Register(NewBHODetector())
+	engine.Register(NewPrintMonitorDetector())
+	engine.Register(NewBootExecuteDetector())
 
 	return engine.DetectCategory(ctx, category)
 }
@@ -227,6 +237,11 @@ func DetectByTechnique(ctx context.Context, technique Technique) *DetectionResul
 	engine.Register(NewAppInitDetector())
 	engine.Register(NewWMIPersistenceDetector())
 	engine.Register(NewServicePersistenceDetector())
+	engine.Register(NewLSAPersistenceDetector())
+	engine.Register(NewWinsockDetector())
+	engine.Register(NewBHODetector())
+	engine.Register(NewPrintMonitorDetector())
+	engine.Register(NewBootExecuteDetector())
 
 	return engine.DetectTechnique(ctx, technique)
 }
