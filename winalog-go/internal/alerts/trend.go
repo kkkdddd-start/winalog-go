@@ -121,7 +121,7 @@ func (t *AlertTrend) CalculateTrend(days int) ([]*types.TrendPoint, error) {
 		date := now.AddDate(0, 0, -i)
 		dateStr := date.Format("2006-01-02")
 
-		count := t.daily[date.Weekday().String()]
+		count := int64(0)
 		if day, ok := t.daily[dateStr]; ok {
 			count = day
 		}
