@@ -462,8 +462,8 @@ function Rules() {
                   onClick={() => {
                     const textarea = document.querySelector('.validate-input') as HTMLTextAreaElement
                     if (textarea?.value) {
+                      const content = textarea.value
                       try {
-                        const content = textarea.value
                         if (content.trim().startsWith('-')) {
                           handleValidateRule({ name: 'temp', description: content, severity: 'medium', enabled: true, score: 50 })
                         } else {

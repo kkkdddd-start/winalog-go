@@ -25,6 +25,8 @@ type Settings struct {
 	CORSEnabled          bool   `json:"cors_enabled"`
 	MaxImportFileSize    int    `json:"max_import_file_size"`
 	ExportDirectory      string `json:"export_directory"`
+	ParserWorkers        int    `json:"parser_workers"`
+	MemoryLimit          int    `json:"memory_limit"`
 }
 
 func NewSettingsHandler(cfg *config.Config, configPath string) *SettingsHandler {
@@ -48,6 +50,8 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		CORSEnabled:          len(h.cfg.API.CORS.AllowedOrigins) > 0,
 		MaxImportFileSize:    h.cfg.Import.BatchSize,
 		ExportDirectory:      h.cfg.Report.OutputDir,
+		ParserWorkers:        h.cfg.Parser.Workers,
+		MemoryLimit:          h.cfg.Parser.MemoryLimit,
 	})
 }
 
@@ -69,6 +73,8 @@ func (h *SettingsHandler) SaveSettings(c *gin.Context) {
 	h.cfg.API.Host = settings.APIHost
 	h.cfg.Import.BatchSize = settings.MaxImportFileSize
 	h.cfg.Report.OutputDir = settings.ExportDirectory
+	h.cfg.Parser.Workers = settings.ParserWorkers
+	h.cfg.Parser.MemoryLimit = settings.MemoryLimit
 
 	if h.configPath != "" {
 		loader := config.NewLoader()

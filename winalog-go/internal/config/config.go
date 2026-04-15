@@ -7,6 +7,7 @@ import (
 type Config struct {
 	Database    DatabaseConfig    `yaml:"database"`
 	Import      ImportConfig      `yaml:"import"`
+	Parser      ParserConfig      `yaml:"parser"`
 	Search      SearchConfig      `yaml:"search"`
 	Alerts      AlertsConfig      `yaml:"alerts"`
 	Correlation CorrelationConfig `yaml:"correlation"`
@@ -31,6 +32,11 @@ type ImportConfig struct {
 	Incremental      bool     `yaml:"incremental"`
 	CalculateHash    bool     `yaml:"calculate_hash"`
 	ProgressCallback bool     `yaml:"progress_callback"`
+}
+
+type ParserConfig struct {
+	Workers     int `yaml:"workers"`
+	MemoryLimit int `yaml:"memory_limit"` // in MB
 }
 
 type SearchConfig struct {
@@ -141,6 +147,10 @@ func DefaultConfig() *Config {
 			Incremental:      true,
 			CalculateHash:    true,
 			ProgressCallback: true,
+		},
+		Parser: ParserConfig{
+			Workers:     4,
+			MemoryLimit: 2048,
 		},
 		Search: SearchConfig{
 			MaxResults:         100000,

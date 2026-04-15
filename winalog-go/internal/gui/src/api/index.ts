@@ -277,6 +277,8 @@ export interface Settings {
   cors_enabled: boolean
   max_import_file_size: number
   export_directory: string
+  parser_workers: number
+  memory_limit: number
 }
 
 export const settingsAPI = {

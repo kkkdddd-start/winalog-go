@@ -20,6 +20,8 @@ function Settings() {
     corsEnabled: true,
     maxImportFileSize: 1024,
     exportDirectory: './exports',
+    parserWorkers: 4,
+    memoryLimit: 2048,
   })
 
   useEffect(() => {
@@ -38,6 +40,8 @@ function Settings() {
         corsEnabled: data.cors_enabled ?? true,
         maxImportFileSize: data.max_import_file_size || 1024,
         exportDirectory: data.export_directory || './exports',
+        parserWorkers: data.parser_workers || 4,
+        memoryLimit: data.memory_limit || 2048,
       })
     }).catch(console.error)
   }, [])
@@ -59,6 +63,8 @@ function Settings() {
         cors_enabled: settings.corsEnabled,
         max_import_file_size: settings.maxImportFileSize,
         export_directory: settings.exportDirectory,
+        parser_workers: settings.parserWorkers,
+        memory_limit: settings.memoryLimit,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -362,7 +368,8 @@ function Settings() {
                 </div>
                 <input
                   type="number"
-                  value="4"
+                  value={settings.parserWorkers}
+                  onChange={e => handleChange('parserWorkers', Number(e.target.value))}
                   className="number-input"
                   min="1"
                   max="32"
@@ -376,7 +383,8 @@ function Settings() {
                 </div>
                 <input
                   type="number"
-                  value="2048"
+                  value={settings.memoryLimit}
+                  onChange={e => handleChange('memoryLimit', Number(e.target.value))}
                   className="number-input"
                   min="256"
                   max="16384"
