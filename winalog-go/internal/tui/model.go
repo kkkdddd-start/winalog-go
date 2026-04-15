@@ -75,7 +75,18 @@ type Model struct {
 	stats *types.AlertStats
 	trend *types.AlertTrend
 
-	inputBuffer string
+	inputBuffer    string
+	inputMode      bool
+	importPath     string
+	importing      bool
+	importProgress *ImportProgress
+}
+
+type ImportProgress struct {
+	CurrentFile     int
+	TotalFiles      int
+	CurrentFileName string
+	EventsImported  int64
 }
 
 func NewModel(cfg *config.Config) (*Model, error) {

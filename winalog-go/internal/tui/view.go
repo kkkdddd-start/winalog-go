@@ -325,10 +325,35 @@ func (m Model) renderTimeline() string {
 func (m Model) renderCollect() string {
 	var sb strings.Builder
 
-	sb.WriteString(styles.HeaderStyle.Render(" Live Collect ") + "\n")
+	sb.WriteString(styles.HeaderStyle.Render(" Data Collection ") + "\n")
 	sb.WriteString(styles.DividerStyle.Render(styles.RepeatStr("─", m.width-4)) + "\n")
-	sb.WriteString(styles.EmptyStyle.Render("  Collection view - use [collect] command to start gathering ") + "\n")
-	sb.WriteString("\n" + styles.HelpStyle.Render(" [q] Back "))
+
+	if m.importing {
+		sb.WriteString("\n  Importing...\n")
+		if m.importProgress != nil {
+			sb.WriteString(fmt.Sprintf("  [%d/%d] %s: %d events\n",
+				m.importProgress.CurrentFile,
+				m.importProgress.TotalFiles,
+				m.importProgress.CurrentFileName,
+				m.importProgress.EventsImported))
+		}
+	} else {
+		sb.WriteString("  [i] Import Logs\n")
+		sb.WriteString("      Import EVTX/ETL/CSV files into database\n\n")
+		sb.WriteString("  [2] One-Click Collection\n")
+		sb.WriteString("      Collect all log sources (Windows)\n\n")
+		sb.WriteString("  [3] Live Monitoring\n")
+		sb.WriteString("      Real-time event log monitoring\n")
+	}
+
+	sb.WriteString("\n")
+	if m.inputMode {
+		sb.WriteString(fmt.Sprintf("  > %s_\n", m.inputBuffer))
+	} else if m.inputBuffer != "" {
+		sb.WriteString(fmt.Sprintf("  Path: %s\n", m.inputBuffer))
+	}
+
+	sb.WriteString("\n" + styles.HelpStyle.Render(" [i] Import [2] Collect [3] Live [q] Back "))
 
 	return sb.String()
 }

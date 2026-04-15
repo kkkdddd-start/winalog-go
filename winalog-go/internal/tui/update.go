@@ -2,8 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/charmbracelet/bubbletea"
+	"github.com/kkkdddd-start/winalog-go/internal/engine"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -34,7 +38,27 @@ type (
 	clearErrorMsg struct{}
 )
 
+func (m Model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		return m.handleImport()
+	case "esc":
+		m.inputMode = false
+		m.inputBuffer = ""
+	case "backspace":
+		if len(m.inputBuffer) > 0 {
+			m.inputBuffer = m.inputBuffer[:len(m.inputBuffer)-1]
+		}
+	default:
+		if len(msg.String()) == 1 {
+			m.inputBuffer += msg.String()
+		}
+	}
+	return m, nil
+}
+
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -67,6 +91,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.SetView(ViewMetrics)
 	case ",":
 		m.SetView(ViewSettings)
+	case "l":
+		m.SetView(ViewCollect)
+	case "i":
+		m.SetView(ViewCollect)
+		m.inputMode = true
+		m.inputBuffer = ""
 
 	case "j", "down":
 		m.selectedIdx = min(m.selectedIdx+1, m.maxItems()-1)
@@ -79,8 +109,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "enter":
 		return m.handleEnter()
-	case "l":
-		m.SetView(ViewCollect)
 	case "R":
 		switch m.currentView {
 		case ViewEvents:
@@ -105,22 +133,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-		case ViewAlerts:
-			if err := m.RefreshAlerts(); err != nil {
-				m.err = err
-			}
-		case ViewDashboard:
-			if err := m.RefreshStats(); err != nil {
-				m.err = err
-			}
-		}
-	case "0":
-		if m.currentView == ViewSearch {
-			m.selectedIdx = 0
-		}
-	}
-	return m, nil
-}
 
 func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.currentView {
@@ -132,10 +144,86 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		m.SetView(ViewAlertDetail)
 	case ViewSearch:
 		m.SetView(ViewEventDetail)
+	case ViewCollect:
+		return m.handleImport()
 	case ViewEventDetail, ViewAlertDetail:
 		return m, nil
 	}
 	return m, nil
+}
+
+func (m Model) handleImport() (tea.Model, tea.Cmd) {
+	if m.inputBuffer == "" {
+		m.err = fmt.Errorf("no path specified")
+		return m, nil
+	}
+
+	m.importing = true
+	m.importProgress = &ImportProgress{}
+
+	go func() {
+		eng := engine.NewEngine(m.db)
+
+		files := collectImportFiles(m.inputBuffer)
+		if len(files) == 0 {
+			m.err = fmt.Errorf("no supported files found in %s", m.inputBuffer)
+			m.importing = false
+			return
+		}
+
+		req := &engine.ImportRequest{
+			Paths: files,
+		}
+
+		result, err := eng.Import(nil, req, func(progress *engine.ImportProgress) {
+			m.importProgress = &ImportProgress{
+				CurrentFile:     progress.CurrentFile,
+				TotalFiles:      progress.TotalFiles,
+				CurrentFileName: progress.CurrentFileName,
+				EventsImported:  progress.EventsImported,
+			}
+		})
+
+		if err != nil {
+			m.err = fmt.Errorf("import failed: %v", err)
+		} else {
+			m.err = nil
+			fmt.Printf("\nImported %d events from %d files\n", result.EventsImported, result.FilesImported)
+		}
+		m.importing = false
+		m.inputBuffer = ""
+	}()
+
+	return m, nil
+}
+
+func collectImportFiles(path string) []string {
+	var files []string
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return files
+	}
+
+	if info.IsDir() {
+		filepath.Walk(path, func(fpath string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil
+			}
+			if info.IsDir() {
+				return nil
+			}
+			ext := strings.ToLower(filepath.Ext(fpath))
+			if ext == ".evtx" || ext == ".etl" || ext == ".csv" || ext == ".log" || ext == ".txt" {
+				files = append(files, fpath)
+			}
+			return nil
+		})
+	} else {
+		files = append(files, path)
+	}
+
+	return files
 }
 
 func (m Model) maxItems() int {
