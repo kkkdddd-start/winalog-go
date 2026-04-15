@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -125,6 +126,14 @@ func (m *Model) SelectedIdx() int {
 func (m *Model) SetView(view ViewType) {
 	m.currentView = view
 	m.selectedIdx = 0
+
+	if view == ViewPersistence {
+		ctx := context.Background()
+		result := persistence.RunAllDetectors(ctx)
+		if result != nil {
+			m.persistenceResults = result.Detections
+		}
+	}
 }
 
 func (m *Model) SetError(err error) {
@@ -188,6 +197,18 @@ func (m *Model) RefreshAlerts() error {
 	}
 
 	m.alerts = alerts
+	return nil
+}
+
+func (m *Model) LoadPersistence() error {
+	m.SetLoading(true, "Detecting persistence mechanisms...")
+	defer m.SetLoading(false, "")
+
+	ctx := context.Background()
+	result := persistence.RunAllDetectors(ctx)
+	if result != nil {
+		m.persistenceResults = result.Detections
+	}
 	return nil
 }
 

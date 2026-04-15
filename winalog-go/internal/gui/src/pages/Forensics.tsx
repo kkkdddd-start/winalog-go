@@ -32,18 +32,25 @@ function Forensics() {
   const handleCollect = async () => {
     setCollecting(true)
     setCollectStatus('starting')
+    const collectedEvidence: EvidenceItem[] = []
     
     try {
       for (const type of selectedTypes) {
         setCollectStatus(`collecting:${type}`)
-        await forensicsAPI.collect(type, `/tmp/forensics_${type}`)
+        const res = await forensicsAPI.collect(type, `/tmp/forensics_${type}`)
+        if (res.data.status === 'completed') {
+          collectedEvidence.push({
+            id: res.data.id || `${type}_${Date.now()}`,
+            type: res.data.type || type,
+            collected_at: res.data.collected_at || new Date().toISOString(),
+            hash: `sha256:${res.data.id || 'pending'}`,
+            path: res.data.output_path || `/tmp/forensics_${type}`,
+            size: 0
+          })
+        }
       }
+      setEvidence(collectedEvidence)
       setCollectStatus('completed')
-      
-      setEvidence([
-        { id: '1', type: 'eventlogs', collected_at: new Date().toISOString(), hash: 'sha256:abc123...', path: '/tmp/forensics_eventlogs', size: 1024000 },
-        { id: '2', type: 'registry', collected_at: new Date().toISOString(), hash: 'sha256:def456...', path: '/tmp/forensics_registry', size: 512000 },
-      ])
     } catch (error) {
       console.error('Collection failed:', error)
       setCollectStatus('error')

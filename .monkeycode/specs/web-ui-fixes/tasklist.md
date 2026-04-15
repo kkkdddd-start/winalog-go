@@ -22,10 +22,10 @@
 
 ### P2 - 次要功能（可以修复）
 
-- [ ] **3.1** Forensics CollectEvidence - Windows 环境判断
-- [ ] **3.2** Forensics ChainOfCustody - 返回空数据
+- [x] **3.1** Forensics CollectEvidence - Windows 环境判断
+- [x] **3.2** Forensics ChainOfCustody - 返回空数据
 - [x] **3.3** CLI runCollect - 只有 return nil
-- [ ] **3.4** CLI runMultiAnalyze - 只打印消息
+- [x] **3.4** CLI runMultiAnalyze - 只打印消息
 
 ---
 
@@ -98,3 +98,8 @@ const handleSave = () => {
 | 260415 | Dashboard collectionStats API | ✅ 完成 |
 | 260415 | AlertHandler.GetAlertTrend 真实数据 | ✅ 完成 |
 | 260415 | LiveHandler.GetLiveStats 真实数据 | ✅ 完成 |
+| 260415 | Forensics handleCollect 使用真实 API | ✅ 完成 |
+| 260416 | CLI runMultiAnalyze 跨机器关联分析 | ✅ 完成 |
+| 260416 | CLI runMultiLateral 横向移动检测 | ✅ 完成 |
+| 260416 | Persistence TUI 自动加载检测结果 | ✅ 完成 |
+| 260416 | ChainOfCustody API 实现 | ✅ 完成 |

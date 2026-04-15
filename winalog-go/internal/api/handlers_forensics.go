@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -220,9 +221,100 @@ func (h *ForensicsHandler) GenerateManifest(c *gin.Context) {
 }
 
 func (h *ForensicsHandler) ChainOfCustody(c *gin.Context) {
+	evidenceID := c.Query("evidence_id")
+
+	if evidenceID == "" {
+		rows, err := h.db.Query(`
+			SELECT id, evidence_id, timestamp, operator, action, input_hash, output_hash, previous_hash
+			FROM evidence_chain
+			ORDER BY timestamp DESC
+			LIMIT 100
+		`)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error: err.Error(),
+			})
+			return
+		}
+		defer rows.Close()
+
+		chain := []map[string]interface{}{}
+		for rows.Next() {
+			var id int64
+			var evidenceID, timestamp, operator, action, inputHash, outputHash, previousHash sql.NullString
+			if err := rows.Scan(&id, &evidenceID, &timestamp, &operator, &action, &inputHash, &outputHash, &previousHash); err != nil {
+				continue
+			}
+			entry := map[string]interface{}{
+				"id":          id,
+				"evidence_id": evidenceID.String,
+				"timestamp":   timestamp.String,
+				"operator":    operator.String,
+				"action":      action.String,
+			}
+			if inputHash.Valid {
+				entry["input_hash"] = inputHash.String
+			}
+			if outputHash.Valid {
+				entry["output_hash"] = outputHash.String
+			}
+			if previousHash.Valid {
+				entry["previous_hash"] = previousHash.String
+			}
+			chain = append(chain, entry)
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"chain": chain,
+			"total": len(chain),
+		})
+		return
+	}
+
+	rows, err := h.db.Query(`
+		SELECT id, evidence_id, timestamp, operator, action, input_hash, output_hash, previous_hash
+		FROM evidence_chain
+		WHERE evidence_id = ?
+		ORDER BY timestamp DESC
+	`, evidenceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: err.Error(),
+		})
+		return
+	}
+	defer rows.Close()
+
+	chain := []map[string]interface{}{}
+	for rows.Next() {
+		var id int64
+		var evID, timestamp, operator, action, inputHash, outputHash, previousHash sql.NullString
+		if err := rows.Scan(&id, &evID, &timestamp, &operator, &action, &inputHash, &outputHash, &previousHash); err != nil {
+			continue
+		}
+		entry := map[string]interface{}{
+			"id":          id,
+			"evidence_id": evID.String,
+			"timestamp":   timestamp.String,
+			"operator":    operator.String,
+			"action":      action.String,
+		}
+		if inputHash.Valid {
+			entry["input_hash"] = inputHash.String
+		}
+		if outputHash.Valid {
+			entry["output_hash"] = outputHash.String
+		}
+		if previousHash.Valid {
+			entry["previous_hash"] = previousHash.String
+		}
+		chain = append(chain, entry)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"chain": []interface{}{},
-		"total": 0,
+		"chain":       chain,
+		"total":       len(chain),
+		"evidence_id": evidenceID,
 	})
 }
 

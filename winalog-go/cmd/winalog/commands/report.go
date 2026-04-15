@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/exporters"
@@ -325,13 +326,270 @@ func init() {
 }
 
 func runMultiAnalyze(cmd *cobra.Command, args []string) error {
-	fmt.Println("Multi-machine analysis requires multiple machine contexts in the database.")
-	fmt.Println("This feature analyzes events across different machines to detect patterns.")
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	fmt.Println("Running multi-machine correlation analysis...")
+	fmt.Println()
+
+	rows, err := db.Query(`
+		SELECT machine_id, machine_name, ip_address, domain, role, os_version
+		FROM machine_context
+		ORDER BY last_seen DESC
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to query machine contexts: %w", err)
+	}
+	defer rows.Close()
+
+	var machines []struct {
+		ID        string
+		Name      string
+		IP        string
+		Domain    string
+		Role      string
+		OSVersion string
+	}
+
+	for rows.Next() {
+		var m struct {
+			ID        string
+			Name      string
+			IP        string
+			Domain    string
+			Role      string
+			OSVersion string
+		}
+		if err := rows.Scan(&m.ID, &m.Name, &m.IP, &m.Domain, &m.Role, &m.OSVersion); err != nil {
+			continue
+		}
+		machines = append(machines, m)
+	}
+
+	if len(machines) == 0 {
+		fmt.Println("No machine contexts found in database.")
+		fmt.Println("Import event logs from multiple machines to enable cross-machine analysis.")
+		fmt.Println()
+		fmt.Println("To add machine context:")
+		fmt.Println("  1. Import event logs from each machine")
+		fmt.Println("  2. Each import will automatically create a machine context")
+		return nil
+	}
+
+	fmt.Printf("Found %d machine context(s) in database\n\n", len(machines))
+
+	fmt.Println("Machine Overview:")
+	fmt.Println(strings.Repeat("-", 70))
+	for _, m := range machines {
+		role := m.Role
+		if role == "" {
+			role = "unknown"
+		}
+		fmt.Printf("  %s (%s) - %s\n", m.Name, m.IP, role)
+	}
+	fmt.Println()
+
+	fmt.Println("Cross-Machine Correlation Analysis")
+	fmt.Println(strings.Repeat("=", 70))
+
+	authEvents, err := db.Query(`
+		SELECT computer, user, event_id, timestamp, ip_address, message
+		FROM events
+		WHERE event_id IN (4624, 4625, 4648, 4672, 4728, 4729, 4732, 4756, 4757)
+		AND timestamp > datetime('now', '-7 days')
+		ORDER BY timestamp DESC
+		LIMIT 1000
+	`)
+	if err != nil {
+		fmt.Printf("Warning: Failed to query authentication events: %v\n", err)
+	} else {
+		defer authEvents.Close()
+
+		loginCounts := make(map[string]map[string]int)
+		userMachines := make(map[string][]string)
+
+		for authEvents.Next() {
+			var computer, user, timestamp, ipAddress, message string
+			var eventID int64
+			if err := authEvents.Scan(&computer, &user, &eventID, &timestamp, &ipAddress, &message); err != nil {
+				continue
+			}
+
+			if loginCounts[user] == nil {
+				loginCounts[user] = make(map[string]int)
+			}
+			loginCounts[user][computer]++
+			if !contains(userMachines[user], computer) {
+				userMachines[user] = append(userMachines[user], computer)
+			}
+		}
+
+		fmt.Println("\nSuspicious Cross-Machine Activity:")
+		fmt.Println(strings.Repeat("-", 70))
+
+		suspiciousCount := 0
+		for user, comps := range userMachines {
+			if len(comps) >= 3 {
+				suspiciousCount++
+				fmt.Printf("\n[!] User '%s' logged into %d different machines:\n", user, len(comps))
+				for _, c := range comps {
+					fmt.Printf("    - %s\n", c)
+				}
+			}
+		}
+
+		if suspiciousCount == 0 {
+			fmt.Println("  No suspicious cross-machine activity detected.")
+		}
+
+		fmt.Println("\nAuthentication Summary by User:")
+		fmt.Println(strings.Repeat("-", 70))
+		for user, comps := range loginCounts {
+			totalLogins := 0
+			for _, count := range comps {
+				totalLogins += count
+			}
+			fmt.Printf("  %s: %d logins across %d machine(s)\n", user, totalLogins, len(comps))
+		}
+	}
+
+	analysisID := fmt.Sprintf("multi_%d", time.Now().Unix())
+	_, err = db.Exec(`
+		INSERT INTO multi_machine_analysis (analysis_id, rule_name, description, severity, start_time, end_time, events_count, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, analysisID, "cross_machine_correlation", "Cross-machine correlation analysis", "medium",
+		time.Now().Add(-7*24*time.Hour).Format(time.RFC3339), time.Now().Format(time.RFC3339),
+		0, time.Now().Format(time.RFC3339))
+	if err != nil {
+		fmt.Printf("Warning: Failed to save analysis result: %v\n", err)
+	}
+
+	fmt.Println()
+	fmt.Printf("Analysis complete. Report ID: %s\n", analysisID)
 	return nil
 }
 
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
 func runMultiLateral(cmd *cobra.Command, args []string) error {
-	fmt.Println("Lateral movement detection analyzes remote login and authentication events.")
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	fmt.Println("Lateral Movement Detection")
+	fmt.Println("=" + strings.Repeat("=", 69))
+	fmt.Println()
+
+	patterns := []struct {
+		name        string
+		description string
+		eventIDs    []int
+		severity    string
+	}{
+		{
+			name:        "Pass-the-Hash Attack",
+			description: "Authentication using NTLM without actual password",
+			eventIDs:    []int{4624},
+			severity:    "high",
+		},
+		{
+			name:        "Remote Desktop Jump",
+			description: "RDP connection between machines",
+			eventIDs:    []int{4624, 4648},
+			severity:    "medium",
+		},
+		{
+			name:        "Admin to Admin",
+			description: "Administrative account remote login",
+			eventIDs:    []int{4672},
+			severity:    "high",
+		},
+		{
+			name:        "Account Creation on Remote",
+			description: "User account created or enabled remotely",
+			eventIDs:    []int{4728, 4729, 4732, 4756, 4757},
+			severity:    "critical",
+		},
+	}
+
+	allFindings := []string{}
+
+	for _, pattern := range patterns {
+		placeholders := make([]string, len(pattern.eventIDs))
+		args := make([]interface{}, len(pattern.eventIDs))
+		for i, id := range pattern.eventIDs {
+			placeholders[i] = "?"
+			args[i] = id
+		}
+
+		query := fmt.Sprintf(`
+			SELECT computer, user, ip_address, timestamp, message
+			FROM events
+			WHERE event_id IN (%s)
+			AND timestamp > datetime('now', '-7 days')
+			ORDER BY timestamp DESC
+			LIMIT 100
+		`, strings.Join(placeholders, ","))
+
+		rows, err := db.Query(query, args...)
+		if err != nil {
+			fmt.Printf("Warning: Failed to query for %s: %v\n", pattern.name, err)
+			continue
+		}
+
+		findings := 0
+		fmt.Printf("\n[%s] %s\n", pattern.severity, pattern.name)
+		fmt.Printf("Description: %s\n", pattern.description)
+		fmt.Println(strings.Repeat("-", 70))
+
+		for rows.Next() {
+			var computer, user, ipAddress, timestamp, message string
+			if err := rows.Scan(&computer, &user, &ipAddress, &timestamp, &message); err != nil {
+				continue
+			}
+			findings++
+			if findings <= 10 {
+				fmt.Printf("  [%s] %s | User: %s | IP: %s\n", timestamp[:19], computer, user, ipAddress)
+			}
+		}
+		rows.Close()
+
+		if findings == 0 {
+			fmt.Println("  No events detected")
+		} else if findings > 10 {
+			fmt.Printf("  ... and %d more events\n", findings-10)
+		}
+
+		if findings > 0 {
+			allFindings = append(allFindings, fmt.Sprintf("%s: %d events", pattern.name, findings))
+		}
+	}
+
+	fmt.Println()
+	fmt.Println(strings.Repeat("=", 70))
+	fmt.Println("Detection Summary:")
+	if len(allFindings) == 0 {
+		fmt.Println("  No lateral movement indicators detected.")
+	} else {
+		for _, f := range allFindings {
+			fmt.Printf("  - %s\n", f)
+		}
+	}
+
 	return nil
 }
 
