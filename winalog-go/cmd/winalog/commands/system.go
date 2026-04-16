@@ -276,18 +276,6 @@ func init() {
 		Args:  cobra.ExactArgs(1),
 		RunE:  runRulesValidate,
 	})
-	rulesCmd.AddCommand(&cobra.Command{
-		Use:   "enable <name>",
-		Short: "Enable a rule",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runRulesEnable,
-	})
-	rulesCmd.AddCommand(&cobra.Command{
-		Use:   "disable <name>",
-		Short: "Disable a rule",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runRulesDisable,
-	})
 }
 
 func runRulesList(cmd *cobra.Command, args []string) error {
@@ -362,14 +350,28 @@ func runRulesValidate(cmd *cobra.Command, args []string) error {
 func runRulesEnable(cmd *cobra.Command, args []string) error {
 	ruleName := args[0]
 	fmt.Printf("Enabling rule: %s\n", ruleName)
-	fmt.Println("Note: Built-in rules cannot be disabled. Custom rules can be enabled via config file.")
+	fmt.Println()
+	fmt.Println("NOTE: Built-in rules (loaded from builtin package) cannot be enabled/disabled at runtime.")
+	fmt.Println()
+	fmt.Println("To manage rules:")
+	fmt.Println("  1. Rules are loaded from internal/rules/builtin/ directory")
+	fmt.Println("  2. To disable a rule permanently, edit the rule file directly")
+	fmt.Println("  3. Or create a custom rules file and modify config.yaml")
+	fmt.Println()
 	return nil
 }
 
 func runRulesDisable(cmd *cobra.Command, args []string) error {
 	ruleName := args[0]
 	fmt.Printf("Disabling rule: %s\n", ruleName)
-	fmt.Println("Note: Built-in rules cannot be disabled. Custom rules can be disabled via config file.")
+	fmt.Println()
+	fmt.Println("NOTE: Built-in rules (loaded from builtin package) cannot be enabled/disabled at runtime.")
+	fmt.Println()
+	fmt.Println("To manage rules:")
+	fmt.Println("  1. Rules are loaded from internal/rules/builtin/ directory")
+	fmt.Println("  2. To disable a rule permanently, edit the rule file directly")
+	fmt.Println("  3. Or create a custom rules file and modify config.yaml")
+	fmt.Println()
 	return nil
 }
 
