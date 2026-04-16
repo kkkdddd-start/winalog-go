@@ -276,6 +276,23 @@ func init() {
 		Args:  cobra.ExactArgs(1),
 		RunE:  runRulesValidate,
 	})
+	rulesCmd.AddCommand(&cobra.Command{
+		Use:   "enable <name>",
+		Short: "Enable a rule",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runRulesEnable,
+	})
+	rulesCmd.AddCommand(&cobra.Command{
+		Use:   "disable <name>",
+		Short: "Disable a rule",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runRulesDisable,
+	})
+	rulesCmd.AddCommand(&cobra.Command{
+		Use:   "status [name]",
+		Short: "Show rule status (or all rules if no name provided)",
+		RunE:  runRulesStatus,
+	})
 }
 
 func runRulesList(cmd *cobra.Command, args []string) error {
@@ -348,31 +365,140 @@ func runRulesValidate(cmd *cobra.Command, args []string) error {
 }
 
 func runRulesEnable(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
 	ruleName := args[0]
-	fmt.Printf("Enabling rule: %s\n", ruleName)
-	fmt.Println()
-	fmt.Println("NOTE: Built-in rules (loaded from builtin package) cannot be enabled/disabled at runtime.")
-	fmt.Println()
-	fmt.Println("To manage rules:")
-	fmt.Println("  1. Rules are loaded from internal/rules/builtin/ directory")
-	fmt.Println("  2. To disable a rule permanently, edit the rule file directly")
-	fmt.Println("  3. Or create a custom rules file and modify config.yaml")
-	fmt.Println()
+	ruleType := detectRuleType(ruleName)
+
+	if ruleType == "" {
+		fmt.Printf("Error: Unknown rule '%s'\n", ruleName)
+		fmt.Println("Please specify rule type using --type flag (alert or correlation)")
+		return fmt.Errorf("unknown rule type for: %s", ruleName)
+	}
+
+	err = db.SetRuleEnabled(ruleName, ruleType, true)
+	if err != nil {
+		return fmt.Errorf("failed to enable rule: %w", err)
+	}
+
+	fmt.Printf("Rule '%s' (type: %s) has been enabled\n", ruleName, ruleType)
 	return nil
 }
 
 func runRulesDisable(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
 	ruleName := args[0]
-	fmt.Printf("Disabling rule: %s\n", ruleName)
-	fmt.Println()
-	fmt.Println("NOTE: Built-in rules (loaded from builtin package) cannot be enabled/disabled at runtime.")
-	fmt.Println()
-	fmt.Println("To manage rules:")
-	fmt.Println("  1. Rules are loaded from internal/rules/builtin/ directory")
-	fmt.Println("  2. To disable a rule permanently, edit the rule file directly")
-	fmt.Println("  3. Or create a custom rules file and modify config.yaml")
-	fmt.Println()
+	ruleType := detectRuleType(ruleName)
+
+	if ruleType == "" {
+		fmt.Printf("Error: Unknown rule '%s'\n", ruleName)
+		fmt.Println("Please specify rule type using --type flag (alert or correlation)")
+		return fmt.Errorf("unknown rule type for: %s", ruleName)
+	}
+
+	err = db.SetRuleEnabled(ruleName, ruleType, false)
+	if err != nil {
+		return fmt.Errorf("failed to disable rule: %w", err)
+	}
+
+	fmt.Printf("Rule '%s' (type: %s) has been disabled\n", ruleName, ruleType)
 	return nil
+}
+
+func runRulesStatus(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	if len(args) == 0 {
+		return listAllRuleStates(db)
+	}
+
+	ruleName := args[0]
+	ruleType := detectRuleType(ruleName)
+	if ruleType == "" {
+		return fmt.Errorf("unknown rule type for: %s", ruleName)
+	}
+
+	enabled, err := db.IsRuleEnabled(ruleName, ruleType)
+	if err != nil {
+		return fmt.Errorf("failed to get rule status: %w", err)
+	}
+
+	status := "enabled"
+	if !enabled {
+		status = "disabled"
+	}
+	fmt.Printf("Rule '%s' (type: %s) is %s\n", ruleName, ruleType, status)
+	return nil
+}
+
+func listAllRuleStates(db *storage.DB) error {
+	alertRules := builtin.GetAlertRules()
+	correlationRules := builtin.GetCorrelationRules()
+
+	states, err := db.GetRuleStateSummary()
+	if err != nil {
+		return fmt.Errorf("failed to get rule states: %w", err)
+	}
+
+	fmt.Println("=" + strings.Repeat("=", 60))
+	fmt.Println("  Alert Rules Status")
+	fmt.Println("=" + strings.Repeat("=", 60))
+
+	for _, rule := range alertRules {
+		status := "enabled"
+		if s, ok := states[rule.Name]; ok && !s {
+			status = "disabled"
+		}
+		fmt.Printf("  [%s] %s - %s\n", status, rule.Severity, rule.Name)
+	}
+
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("  Correlation Rules Status")
+	fmt.Println(strings.Repeat("=", 60))
+
+	for _, rule := range correlationRules {
+		status := "enabled"
+		if s, ok := states[rule.Name]; ok && !s {
+			status = "disabled"
+		}
+		fmt.Printf("  [%s] %s\n", status, rule.Name)
+	}
+
+	return nil
+}
+
+func detectRuleType(ruleName string) string {
+	alertRules := builtin.GetAlertRules()
+	for _, r := range alertRules {
+		if r.Name == ruleName {
+			return "alert"
+		}
+	}
+
+	correlationRules := builtin.GetCorrelationRules()
+	for _, r := range correlationRules {
+		if r.Name == ruleName {
+			return "correlation"
+		}
+	}
+
+	return ""
 }
 
 var dbCmd = &cobra.Command{

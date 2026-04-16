@@ -204,6 +204,15 @@ CREATE TABLE IF NOT EXISTS suppress_rules (
 	expires_at TEXT,
 	created_at TEXT NOT NULL
 );
+
+-- Rule states table (for enable/disable)
+CREATE TABLE IF NOT EXISTS rule_states (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	rule_name TEXT NOT NULL UNIQUE,
+	rule_type TEXT NOT NULL,
+	enabled INTEGER DEFAULT 1,
+	updated_at TEXT NOT NULL
+);
 `
 
 var TableDefinitions = map[string]TableDefinition{

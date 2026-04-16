@@ -10,7 +10,6 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
 	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
-	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type CorrelationHandler struct {
@@ -51,23 +50,14 @@ func (h *CorrelationHandler) Analyze(c *gin.Context) {
 	startTime := time.Now().Add(-timeWindow)
 	endTime := time.Now()
 
-	rows, err := h.db.Query(`
-		SELECT id, timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id
-		FROM events WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp`,
-		startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
+	events, _, err := h.db.SearchEvents(&storage.EventFilter{
+		StartTime: &startTime,
+		EndTime:   &endTime,
+		Limit:     100000,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
-	}
-	defer rows.Close()
-
-	var events []*types.Event
-	for rows.Next() {
-		event, err := types.ScanEvent(rows)
-		if err != nil {
-			continue
-		}
-		events = append(events, event)
 	}
 
 	if len(events) == 0 {
