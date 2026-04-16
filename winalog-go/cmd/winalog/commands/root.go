@@ -28,4 +28,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(analyzeCmd)
 	root.AddCommand(forensicsCmd)
 	root.AddCommand(persistenceCmd)
+	root.AddCommand(dashboardCmd)
+	root.AddCommand(whitelistCmd)
+	root.AddCommand(uebaCmd)
 }

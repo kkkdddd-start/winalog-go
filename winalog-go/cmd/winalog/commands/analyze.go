@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -93,7 +94,7 @@ func runCorrelate(cmd *cobra.Command, args []string) error {
 		correlationRules = filtered
 	}
 
-	results, err := engine.Analyze(nil, correlationRules)
+	results, err := engine.Analyze(context.Background(), correlationRules)
 	if err != nil {
 		return fmt.Errorf("failed to run correlation: %w", err)
 	}

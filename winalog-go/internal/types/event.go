@@ -157,10 +157,11 @@ func ScanEvent(row interface{ Scan(...interface{}) error }) (*Event, error) {
 	var e Event
 	var user, userSID, rawXML, sessionID, ipAddress sql.NullString
 	var importID sql.NullInt64
+	var timestampStr, importTimeStr string
 
 	err := row.Scan(
 		&e.ID,
-		&e.Timestamp,
+		&timestampStr,
 		&e.EventID,
 		&e.Level,
 		&e.Source,
@@ -172,11 +173,23 @@ func ScanEvent(row interface{ Scan(...interface{}) error }) (*Event, error) {
 		&rawXML,
 		&sessionID,
 		&ipAddress,
-		&e.ImportTime,
+		&importTimeStr,
 		&importID,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if timestampStr != "" {
+		if ts, err := time.Parse(time.RFC3339, timestampStr); err == nil {
+			e.Timestamp = ts
+		}
+	}
+
+	if importTimeStr != "" {
+		if it, err := time.Parse(time.RFC3339, importTimeStr); err == nil {
+			e.ImportTime = it
+		}
 	}
 
 	if user.Valid {

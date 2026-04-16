@@ -36,6 +36,9 @@ type Server struct {
 	collectEng     *CollectHandler
 	suppressEng    *SuppressHandler
 	uebaEng        *UEBAHandler
+	correlationEng *CorrelationHandler
+	multiEng       *MultiHandler
+	queryEng       *QueryHandler
 }
 
 func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Server {
@@ -90,6 +93,9 @@ func (s *Server) setupHandlers() {
 	s.collectEng = NewCollectHandler(s.db)
 	s.suppressEng = NewSuppressHandler(s.db, s.alertEngine)
 	s.uebaEng = NewUEBAHandler(s.db)
+	s.correlationEng = NewCorrelationHandler(s.db)
+	s.multiEng = NewMultiHandler(s.db)
+	s.queryEng = NewQueryHandler(s.db)
 }
 
 func (s *Server) createAnalyzerManager() *analyzers.AnalyzerManager {
@@ -115,6 +121,9 @@ func (s *Server) setupRoutes() {
 	SetupCollectRoutes(s.engine, s.collectEng)
 	SetupSuppressRoutes(s.engine, s.suppressEng)
 	SetupUEBARoutes(s.engine, s.uebaEng)
+	SetupCorrelationRoutes(s.engine, s.correlationEng)
+	SetupMultiRoutes(s.engine, s.multiEng)
+	SetupQueryRoutes(s.engine, s.queryEng)
 
 	staticDir := filepath.Join("internal", "gui", "dist")
 	staticFs := http.Dir(staticDir)

@@ -327,4 +327,92 @@ export interface RuleInfo {
   tags?: string[]
 }
 
+export interface CorrelationParams {
+  time_window?: string
+  rules?: string[]
+}
+
+export interface CorrelationResult {
+  rule_name: string
+  severity: string
+  event_count: number
+  start_time: string
+  end_time: string
+  description: string
+}
+
+export interface CorrelationResponse {
+  results: CorrelationResult[]
+  count: number
+}
+
+export const correlationAPI = {
+  analyze: (params?: CorrelationParams) =>
+    api.post('/correlation/analyze', params || {}),
+}
+
+export interface MultiParams {
+  time_window?: string
+}
+
+export interface MultiResponse {
+  machines: Array<{
+    id: string
+    name: string
+    ip: string
+    domain: string
+    role: string
+    os_version: string
+    last_seen: string
+  }>
+  cross_machine_activity: Array<{
+    user: string
+    machine_count: number
+    machines: string[]
+    login_count: number
+    suspicious: boolean
+    severity: string
+    recommendation: string
+  }>
+  lateral_movement: Array<{
+    source_machine: string
+    target_machine: string
+    user: string
+    event_id: number
+    timestamp: string
+    ip_address: string
+    severity: string
+    description: string
+    mitre_attack: string[]
+  }>
+  summary: string
+  suspicious_count: number
+  analysis_id: string
+}
+
+export const multiAPI = {
+  analyze: (params?: MultiParams) =>
+    api.post('/multi/analyze', params || {}),
+  lateral: () =>
+    api.get('/multi/lateral'),
+}
+
+export interface QueryParams {
+  sql: string
+  limit?: number
+  offset?: number
+}
+
+export interface QueryResponse {
+  columns: string[]
+  rows: Record<string, any>[]
+  count: number
+  total: number
+}
+
+export const queryAPI = {
+  execute: (params: QueryParams) =>
+    api.post('/query/execute', params),
+}
+
 export default api
