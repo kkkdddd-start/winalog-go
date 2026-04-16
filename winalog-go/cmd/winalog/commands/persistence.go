@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
+	"github.com/kkkdddd-start/winalog-go/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -168,34 +168,7 @@ func writeOutput(result *persistence.DetectionResult, outputPath, format string)
 }
 
 func exportToCSV(detections []*persistence.Detection) ([]byte, error) {
-	var sb strings.Builder
-
-	sb.WriteString("ID,Time,Technique,Category,Severity,Title,Description,Key,Value,FilePath,RecommendedAction\n")
-
-	for _, det := range detections {
-		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
-			det.ID,
-			det.Time.Format("2006-01-02 15:04:05"),
-			det.Technique,
-			det.Category,
-			det.Severity,
-			escapeCSV(det.Title),
-			escapeCSV(det.Description),
-			escapeCSV(det.Evidence.Key),
-			escapeCSV(det.Evidence.Value),
-			escapeCSV(det.Evidence.FilePath),
-			escapeCSV(det.RecommendedAction),
-		))
-	}
-
-	return []byte(sb.String()), nil
-}
-
-func escapeCSV(s string) string {
-	s = strings.ReplaceAll(s, "\"", "\"\"")
-	s = strings.ReplaceAll(s, "\n", " ")
-	s = strings.ReplaceAll(s, "\r", "")
-	return s
+	return utils.ExportDetectionsToCSV(detections)
 }
 
 var detectCmd = &cobra.Command{
