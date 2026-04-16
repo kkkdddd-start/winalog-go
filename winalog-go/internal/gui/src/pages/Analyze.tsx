@@ -59,14 +59,14 @@ function Analyze() {
   const [error, setError] = useState('')
 
   const analyzers: Analyzer[] = [
-    { id: 'brute-force', name: t('analyze.bruteForce'), desc: t('analyze.bruteForceDesc'), icon: analyzerIcons['brute-force'], category: 'authentication', recommended: true },
+    { id: 'brute_force', name: t('analyze.bruteForce'), desc: t('analyze.bruteForceDesc'), icon: analyzerIcons['brute-force'], category: 'authentication', recommended: true },
     { id: 'login', name: t('analyze.login'), desc: t('analyze.loginDesc'), icon: analyzerIcons['login'], category: 'authentication', recommended: false },
     { id: 'kerberos', name: t('analyze.kerberos'), desc: t('analyze.kerberosDesc'), icon: analyzerIcons['kerberos'], category: 'authentication', recommended: false },
     { id: 'powershell', name: t('analyze.powershell'), desc: t('analyze.powershellDesc'), icon: analyzerIcons['powershell'], category: 'execution', recommended: true },
-    { id: 'lateral-movement', name: t('analyze.lateralMovement'), desc: t('analyze.lateralMovementDesc'), icon: analyzerIcons['lateral-movement'], category: 'lateral-movement', recommended: false },
-    { id: 'data-exfil', name: t('analyze.dataExfil'), desc: t('analyze.dataExfilDesc'), icon: analyzerIcons['data-exfil'], category: 'collection', recommended: false },
+    { id: 'lateral_movement', name: t('analyze.lateralMovement'), desc: t('analyze.lateralMovementDesc'), icon: analyzerIcons['lateral-movement'], category: 'lateral-movement', recommended: false },
+    { id: 'data_exfiltration', name: t('analyze.dataExfil'), desc: t('analyze.dataExfilDesc'), icon: analyzerIcons['data-exfil'], category: 'collection', recommended: false },
     { id: 'persistence', name: t('analyze.persistence'), desc: t('analyze.persistenceDesc'), icon: analyzerIcons['persistence'], category: 'persistence', recommended: false },
-    { id: 'privilege-escalation', name: t('analyze.privilegeEscalation'), desc: t('analyze.privilegeEscalationDesc'), icon: analyzerIcons['privilege-escalation'], category: 'privilege-escalation', recommended: false },
+    { id: 'privilege_escalation', name: t('analyze.privilegeEscalation'), desc: t('analyze.privilegeEscalationDesc'), icon: analyzerIcons['privilege-escalation'], category: 'privilege-escalation', recommended: false },
   ]
 
   const handleRun = async () => {

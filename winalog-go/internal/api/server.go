@@ -106,6 +106,8 @@ func (s *Server) createAnalyzerManager() *analyzers.AnalyzerManager {
 	mgr.Register(analyzers.NewPowerShellAnalyzer())
 	mgr.Register(analyzers.NewDataExfiltrationAnalyzer())
 	mgr.Register(analyzers.NewLateralMovementAnalyzer())
+	mgr.Register(analyzers.NewPersistenceAnalyzer())
+	mgr.Register(analyzers.NewPrivilegeEscalationAnalyzer())
 	return mgr
 }
 
