@@ -440,3 +440,193 @@ func TestDashboardHandler_GetCollectionStats_WithDB(t *testing.T) {
 		t.Errorf("GetCollectionStats() status = %v, want %v", w.Code, http.StatusOK)
 	}
 }
+
+func TestAlertHandler_GetAlertStats_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := &AlertHandler{db: db, alertEngine: nil}
+
+	router := gin.New()
+	router.GET("/api/alerts/stats", handler.GetAlertStats)
+
+	req, _ := http.NewRequest("GET", "/api/alerts/stats", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("GetAlertStats() status = %v, want %v", w.Code, http.StatusOK)
+	}
+}
+
+func TestAlertHandler_GetAlert_NotFound(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := &AlertHandler{db: db, alertEngine: nil}
+
+	router := gin.New()
+	router.GET("/api/alerts/:id", handler.GetAlert)
+
+	req, _ := http.NewRequest("GET", "/api/alerts/999", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("GetAlert() status = %v, want %v", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestReportsHandler_ListTemplates_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := NewReportsHandler(db)
+
+	router := gin.New()
+	router.GET("/api/reports/templates", handler.ListTemplates)
+
+	req, _ := http.NewRequest("GET", "/api/reports/templates", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("ListTemplates() status = %v, want %v", w.Code, http.StatusOK)
+	}
+}
+
+func TestRulesHandler_ListRules(t *testing.T) {
+	t.Helper()
+	handler := NewRulesHandler()
+
+	router := gin.New()
+	router.GET("/api/rules", handler.ListRules)
+
+	req, _ := http.NewRequest("GET", "/api/rules", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("ListRules() status = %v, want %v", w.Code, http.StatusOK)
+	}
+
+	var response RulesListResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if response.TotalCount < 0 {
+		t.Errorf("ListRules() total_count = %v, want >= 0", response.TotalCount)
+	}
+}
+
+func TestUEBAHandler_GetProfiles_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := NewUEBAHandler(db)
+
+	router := gin.New()
+	router.GET("/api/ueba/profiles", handler.GetProfiles)
+
+	req, _ := http.NewRequest("GET", "/api/ueba/profiles", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("GetProfiles() status = %v, want %v", w.Code, http.StatusOK)
+	}
+}
+
+func TestCorrelationHandler_Analyze_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := NewCorrelationHandler(db)
+
+	router := gin.New()
+	router.POST("/api/correlation/analyze", handler.Analyze)
+
+	body := bytes.NewBufferString(`{"time_window": "1h"}`)
+	req, _ := http.NewRequest("POST", "/api/correlation/analyze", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Analyze() status = %v, want %v", w.Code, http.StatusOK)
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if response["count"] == nil {
+		t.Error("Analyze() response missing count")
+	}
+}
+
+func TestMultiHandler_Analyze_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := NewMultiHandler(db)
+
+	router := gin.New()
+	router.POST("/api/multi/analyze", handler.Analyze)
+
+	body := bytes.NewBufferString(`{}`)
+	req, _ := http.NewRequest("POST", "/api/multi/analyze", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Analyze() status = %v, want %v", w.Code, http.StatusOK)
+	}
+}
+
+func TestCollectHandler_GetCollectStatus(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := NewCollectHandler(db)
+
+	router := gin.New()
+	router.GET("/api/collect/status", handler.GetCollectStatus)
+
+	req, _ := http.NewRequest("GET", "/api/collect/status", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("GetCollectStatus() status = %v, want %v", w.Code, http.StatusOK)
+	}
+}
+
+func TestForensicsHandler_ListEvidence(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := NewForensicsHandler(db)
+
+	router := gin.New()
+	router.GET("/api/forensics/evidence", handler.ListEvidence)
+
+	req, _ := http.NewRequest("GET", "/api/forensics/evidence", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("ListEvidence() status = %v, want %v", w.Code, http.StatusOK)
+	}
+}
