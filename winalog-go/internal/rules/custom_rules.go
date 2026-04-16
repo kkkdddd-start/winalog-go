@@ -2,8 +2,10 @@ package rules
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -30,6 +32,78 @@ type CustomRule struct {
 	Tags        []string          `json:"tags"`
 	CreatedAt   string            `json:"created_at"`
 	UpdatedAt   string            `json:"updated_at"`
+	IsTemplate  bool              `json:"is_template"`
+	Parameters  []TemplateParam   `json:"parameters,omitempty"`
+	TemplateID  string            `json:"template_id,omitempty"`
+}
+
+type TemplateParam struct {
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Default     string   `json:"default,omitempty"`
+	Required    bool     `json:"required"`
+	Type        string   `json:"type"`
+	Options     []string `json:"options,omitempty"`
+}
+
+func (r *CustomRule) GetDefaultParameters() map[string]string {
+	params := make(map[string]string)
+	for _, p := range r.Parameters {
+		if p.Default != "" {
+			params[p.Name] = p.Default
+		}
+	}
+	return params
+}
+
+func (r *CustomRule) Instantiate(paramValues map[string]string) *CustomRule {
+	if !r.IsTemplate {
+		return r
+	}
+
+	rule := *r
+	rule.Name = r.Name
+	rule.IsTemplate = false
+	rule.TemplateID = r.Name
+	rule.Parameters = nil
+
+	for key, value := range paramValues {
+		rule.Name = replace(rule.Name, "{{"+key+"}}", value)
+		rule.Description = replace(rule.Description, "{{"+key+"}}", value)
+		rule.Message = replace(rule.Message, "{{"+key+"}}", value)
+		if rule.Filter != nil {
+			for i, eventID := range rule.Filter.EventIDs {
+				if s := fmt.Sprintf("%d", eventID); strings.Contains(s, "{{"+key+"}}") {
+					newStr := replace(s, "{{"+key+"}}", value)
+					if newID, err := strconv.Atoi(newStr); err == nil {
+						rule.Filter.EventIDs[i] = int32(newID)
+					}
+				}
+			}
+			for i, kw := range rule.Filter.Keywords {
+				rule.Filter.Keywords[i] = replace(kw, "{{"+key+"}}", value)
+			}
+		}
+	}
+
+	return &rule
+}
+
+func (r *CustomRule) ValidateParameters(paramValues map[string]string) error {
+	if !r.IsTemplate {
+		return nil
+	}
+
+	for _, p := range r.Parameters {
+		if p.Required {
+			if val, ok := paramValues[p.Name]; !ok || val == "" {
+				if p.Default == "" {
+					return fmt.Errorf("required parameter '%s' is missing", p.Name)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 type CustomRuleFilter struct {
@@ -219,4 +293,67 @@ func (m *CustomRuleManager) Update(rule *CustomRule) error {
 
 	m.rules[rule.Name] = rule
 	return nil
+}
+
+func (m *CustomRuleManager) ListTemplates() []*CustomRule {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	templates := make([]*CustomRule, 0)
+	for _, rule := range m.rules {
+		if rule.IsTemplate {
+			templates = append(templates, rule)
+		}
+	}
+	return templates
+}
+
+func (m *CustomRuleManager) GetTemplate(name string) (*CustomRule, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	rule, ok := m.rules[name]
+	if ok && rule.IsTemplate {
+		return rule, true
+	}
+	return nil, false
+}
+
+func (m *CustomRuleManager) InstantiateTemplate(name string, paramValues map[string]string) (*CustomRule, error) {
+	m.mu.RLock()
+	rule, ok := m.rules[name]
+	m.mu.RUnlock()
+
+	if !ok {
+		return nil, fmt.Errorf("template '%s' not found", name)
+	}
+
+	if !rule.IsTemplate {
+		return nil, fmt.Errorf("rule '%s' is not a template", name)
+	}
+
+	if err := rule.ValidateParameters(paramValues); err != nil {
+		return nil, err
+	}
+
+	instantiated := rule.Instantiate(paramValues)
+
+	if err := m.Add(instantiated); err != nil {
+		return nil, err
+	}
+
+	return instantiated, nil
+}
+
+func (m *CustomRuleManager) GetAllAlertRules() []*AlertRule {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	alertRules := make([]*AlertRule, 0, len(m.rules))
+	for _, rule := range m.rules {
+		if !rule.IsTemplate {
+			alertRules = append(alertRules, rule.ToAlertRule())
+		}
+	}
+	return alertRules
 }

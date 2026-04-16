@@ -2,6 +2,7 @@ package alerts
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -279,4 +280,115 @@ func (e *Engine) ClearSuppressions() {
 
 func (e *Engine) ClearDedup() {
 	e.dedup.Clear()
+}
+
+func (e *Engine) ApplyPolicyTemplates() error {
+	policyMgr := GetPolicyManager()
+	return policyMgr.ApplyToEngine(e)
+}
+
+func (e *Engine) LoadPolicyTemplate(templateName string, ruleName string, params map[string]string) error {
+	policyMgr := GetPolicyManager()
+
+	instance, err := policyMgr.InstantiateTemplate(templateName, ruleName, params)
+	if err != nil {
+		return err
+	}
+
+	if !instance.Enabled {
+		return nil
+	}
+
+	template, ok := policyMgr.GetTemplate(templateName)
+	if !ok {
+		return fmt.Errorf("template not found")
+	}
+
+	switch template.PolicyType {
+	case PolicyTypeUpgrade:
+		e.applyUpgradeInstance(template, instance)
+	case PolicyTypeSuppress:
+		e.applySuppressInstance(template, instance)
+	}
+
+	return nil
+}
+
+func (e *Engine) applyUpgradeInstance(template *PolicyTemplate, instance *PolicyInstance) {
+	for _, action := range template.Actions {
+		if action.Type == "upgrade_severity" {
+			severityStr := instance.Parameters["new_severity"]
+			if severityStr == "" {
+				severityStr = "high"
+			}
+
+			threshold := 5
+			if t, ok := instance.Parameters["threshold"]; ok {
+				fmt.Sscanf(t, "%d", &threshold)
+			}
+
+			upgradeRule := &types.AlertUpgradeRule{
+				ID:          0,
+				Name:        instance.RuleName,
+				Condition:   template.Name,
+				Threshold:   threshold,
+				NewSeverity: types.Severity(severityStr),
+				Notify:      true,
+				Enabled:     true,
+			}
+			e.AddUpgradeRule(upgradeRule)
+		}
+	}
+}
+
+func (e *Engine) applySuppressInstance(template *PolicyTemplate, instance *PolicyInstance) {
+	for _, action := range template.Actions {
+		if action.Type == "suppress" {
+			duration := 24 * time.Hour
+			if d, ok := instance.Parameters["duration"]; ok {
+				var hours int
+				fmt.Sscanf(d, "%d", &hours)
+				duration = time.Duration(hours) * time.Hour
+			}
+
+			sourceComputer := instance.Parameters["source_computer"]
+			if sourceComputer == "" {
+				sourceComputer = "*"
+			}
+
+			suppressRule := &types.SuppressRule{
+				ID:       0,
+				Name:     instance.RuleName,
+				Scope:    sourceComputer,
+				Duration: duration,
+				Enabled:  true,
+			}
+
+			for _, cond := range template.Conditions {
+				suppressRule.Conditions = append(suppressRule.Conditions, types.SuppressCondition{
+					Field:    cond.Field,
+					Operator: cond.Operator,
+					Value:    cond.Value,
+				})
+			}
+
+			e.AddSuppressRule(suppressRule)
+		}
+	}
+}
+
+func (e *Engine) EvaluateWithPolicies(ctx context.Context, event *types.Event) ([]*types.Alert, error) {
+	alerts, err := e.Evaluate(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, alert := range alerts {
+		shouldUpgrade, upgradeRule := e.CheckUpgrade(alert)
+		if shouldUpgrade && upgradeRule != nil {
+			alert.Severity = upgradeRule.NewSeverity
+		}
+	}
+
+	return alerts, nil
 }

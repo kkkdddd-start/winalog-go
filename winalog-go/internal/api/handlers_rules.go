@@ -736,5 +736,118 @@ func SetupRulesRoutes(r *gin.Engine, rulesHandler *RulesHandler) {
 		rulesGroup.POST("/validate", rulesHandler.ValidateRule)
 		rulesGroup.POST("/import", rulesHandler.ImportRules)
 		rulesGroup.GET("/export", rulesHandler.ExportRules)
+		rulesGroup.GET("/templates", rulesHandler.ListTemplates)
+		rulesGroup.GET("/templates/:name", rulesHandler.GetTemplate)
+		rulesGroup.POST("/templates/:name/instantiate", rulesHandler.InstantiateTemplate)
 	}
+}
+
+type TemplateInfo struct {
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Parameters  []TemplateParamInfo `json:"parameters"`
+	IsTemplate  bool                `json:"is_template"`
+}
+
+type TemplateParamInfo struct {
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Default     string   `json:"default,omitempty"`
+	Required    bool     `json:"required"`
+	Type        string   `json:"type"`
+	Options     []string `json:"options,omitempty"`
+}
+
+type InstantiateTemplateRequest struct {
+	Name   string            `json:"name" binding:"required"`
+	Params map[string]string `json:"params"`
+}
+
+func (h *RulesHandler) ListTemplates(c *gin.Context) {
+	templates := h.customManager.ListTemplates()
+	response := make([]TemplateInfo, 0, len(templates))
+	for _, t := range templates {
+		params := make([]TemplateParamInfo, 0, len(t.Parameters))
+		for _, p := range t.Parameters {
+			params = append(params, TemplateParamInfo{
+				Name:        p.Name,
+				Description: p.Description,
+				Default:     p.Default,
+				Required:    p.Required,
+				Type:        p.Type,
+				Options:     p.Options,
+			})
+		}
+		response = append(response, TemplateInfo{
+			Name:        t.Name,
+			Description: t.Description,
+			Parameters:  params,
+			IsTemplate:  t.IsTemplate,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"templates": response,
+		"total":     len(response),
+	})
+}
+
+func (h *RulesHandler) GetTemplate(c *gin.Context) {
+	name := c.Param("name")
+	template, ok := h.customManager.GetTemplate(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, ErrorResponse{
+			Error: "Template not found",
+			Code:  "TEMPLATE_NOT_FOUND",
+		})
+		return
+	}
+
+	params := make([]TemplateParamInfo, 0, len(template.Parameters))
+	for _, p := range template.Parameters {
+		params = append(params, TemplateParamInfo{
+			Name:        p.Name,
+			Description: p.Description,
+			Default:     p.Default,
+			Required:    p.Required,
+			Type:        p.Type,
+			Options:     p.Options,
+		})
+	}
+
+	c.JSON(http.StatusOK, TemplateInfo{
+		Name:        template.Name,
+		Description: template.Description,
+		Parameters:  params,
+		IsTemplate:  template.IsTemplate,
+	})
+}
+
+func (h *RulesHandler) InstantiateTemplate(c *gin.Context) {
+	name := c.Param("name")
+
+	var req InstantiateTemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: err.Error(),
+			Code:  types.ErrCodeInvalidRequest,
+		})
+		return
+	}
+
+	req.Name = name
+
+	instantiated, err := h.customManager.InstantiateTemplate(req.Name, req.Params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: err.Error(),
+			Code:  "INSTANTIATE_ERROR",
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":   "Template instantiated successfully",
+		"rule_name": instantiated.Name,
+		"template":  instantiated,
+	})
 }

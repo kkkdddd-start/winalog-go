@@ -39,6 +39,8 @@ type Server struct {
 	correlationEng *CorrelationHandler
 	multiEng       *MultiHandler
 	queryEng       *QueryHandler
+	policyEng      *PolicyHandler
+	uiEng          *UIHandler
 }
 
 func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Server {
@@ -96,6 +98,8 @@ func (s *Server) setupHandlers() {
 	s.correlationEng = NewCorrelationHandler(s.db)
 	s.multiEng = NewMultiHandler(s.db)
 	s.queryEng = NewQueryHandler(s.db)
+	s.policyEng = NewPolicyHandler(s.alertEngine)
+	s.uiEng = NewUIHandler(s.db)
 }
 
 func (s *Server) createAnalyzerManager() *analyzers.AnalyzerManager {
@@ -126,6 +130,8 @@ func (s *Server) setupRoutes() {
 	SetupCorrelationRoutes(s.engine, s.correlationEng)
 	SetupMultiRoutes(s.engine, s.multiEng)
 	SetupQueryRoutes(s.engine, s.queryEng)
+	SetupPolicyRoutes(s.engine, s.policyEng)
+	SetupUIRoutes(s.engine, s.uiEng)
 
 	staticDir := filepath.Join("internal", "gui", "dist")
 	staticFs := http.Dir(staticDir)

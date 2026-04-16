@@ -49,18 +49,83 @@ type ReportRequest struct {
 }
 
 type Report struct {
-	GeneratedAt time.Time      `json:"generated_at"`
-	Title       string         `json:"title"`
-	TimeRange   TimeRange      `json:"time_range"`
-	Summary     ReportSummary  `json:"summary"`
-	Stats       *SecurityStats `json:"stats,omitempty"`
-	TopAlerts   []*types.Alert `json:"top_alerts,omitempty"`
-	TopEvents   []*types.Event `json:"top_events,omitempty"`
-	EventDist   *EventDist     `json:"event_distribution,omitempty"`
-	LoginStats  *LoginStats    `json:"login_stats,omitempty"`
-	IOCs        *IOCSummary    `json:"iocs,omitempty"`
-	MITREDist   *MITREDist     `json:"mitre_distribution,omitempty"`
-	RawEvents   []*types.Event `json:"raw_events,omitempty"`
+	GeneratedAt      time.Time         `json:"generated_at"`
+	Title            string            `json:"title"`
+	TimeRange        TimeRange         `json:"time_range"`
+	Summary          ReportSummary     `json:"summary"`
+	Stats            *SecurityStats    `json:"stats,omitempty"`
+	TopAlerts        []*types.Alert    `json:"top_alerts,omitempty"`
+	TopEvents        []*types.Event    `json:"top_events,omitempty"`
+	EventDist        *EventDist        `json:"event_distribution,omitempty"`
+	LoginStats       *LoginStats       `json:"login_stats,omitempty"`
+	IOCs             *IOCSummary       `json:"iocs,omitempty"`
+	MITREDist        *MITREDist        `json:"mitre_distribution,omitempty"`
+	RawEvents        []*types.Event    `json:"raw_events,omitempty"`
+	ExecutiveSummary *ExecutiveSummary `json:"executive_summary,omitempty"`
+	TimelineAnalysis *TimelineAnalysis `json:"timeline_analysis,omitempty"`
+	ThreatLandscape  *ThreatLandscape  `json:"threat_landscape,omitempty"`
+	Recommendations  []Recommendation  `json:"recommendations,omitempty"`
+	AttackPatterns   []*AttackPattern  `json:"attack_patterns,omitempty"`
+	ComplianceStatus *ComplianceStatus `json:"compliance_status,omitempty"`
+}
+
+type ExecutiveSummary struct {
+	RiskScore        float64  `json:"risk_score"`
+	RiskLevel        string   `json:"risk_level"`
+	TotalAlerts      int64    `json:"total_alerts"`
+	ResolvedAlerts   int64    `json:"resolved_alerts"`
+	UnresolvedAlerts int64    `json:"unresolved_alerts"`
+	TopThreat        string   `json:"top_threat"`
+	KeyFindings      []string `json:"key_findings"`
+	ActionItems      int      `json:"action_items"`
+}
+
+type TimelineAnalysis struct {
+	EventsByHour     map[int]int64    `json:"events_by_hour"`
+	EventsByDay      map[string]int64 `json:"events_by_day"`
+	AlertsByHour     map[int]int64    `json:"alerts_by_hour"`
+	AlertsByDay      map[string]int64 `json:"alerts_by_day"`
+	PeakActivityHour int              `json:"peak_activity_hour"`
+	PeakActivityDay  string           `json:"peak_activity_day"`
+}
+
+type ThreatLandscape struct {
+	CriticalThreats  int64          `json:"critical_threats"`
+	HighThreats      int64          `json:"high_threats"`
+	MediumThreats    int64          `json:"medium_threats"`
+	LowThreats       int64          `json:"low_threats"`
+	TopAttackVectors []AttackVector `json:"top_attack_vectors"`
+	AffectedSystems  []string       `json:"affected_systems"`
+}
+
+type AttackVector struct {
+	Name       string  `json:"name"`
+	Count      int64   `json:"count"`
+	Percentage float64 `json:"percentage"`
+}
+
+type AttackPattern struct {
+	Name          string   `json:"name"`
+	TechniqueID   string   `json:"technique_id"`
+	Count         int64    `json:"count"`
+	Severity      string   `json:"severity"`
+	Indicators    []string `json:"indicators"`
+	AffectedHosts []string `json:"affected_hosts"`
+}
+
+type Recommendation struct {
+	Priority    string `json:"priority"`
+	Category    string `json:"category"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Actionable  string `json:"actionable"`
+}
+
+type ComplianceStatus struct {
+	PassedChecks  []string `json:"passed_checks"`
+	FailedChecks  []string `json:"failed_checks"`
+	Warnings      []string `json:"warnings"`
+	OverallStatus string   `json:"overall_status"`
 }
 
 type TimeRange struct {
@@ -164,6 +229,30 @@ func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
 			return nil, fmt.Errorf("failed to get top events: %w", err)
 		}
 		report.RawEvents = events
+	}
+
+	if execSummary, err := g.generateExecutiveSummary(req); err == nil {
+		report.ExecutiveSummary = execSummary
+	}
+
+	if timeline, err := g.generateTimelineAnalysis(req); err == nil {
+		report.TimelineAnalysis = timeline
+	}
+
+	if threat, err := g.generateThreatLandscape(req); err == nil {
+		report.ThreatLandscape = threat
+	}
+
+	if recs, err := g.generateRecommendations(req); err == nil {
+		report.Recommendations = recs
+	}
+
+	if patterns, err := g.generateAttackPatterns(req); err == nil {
+		report.AttackPatterns = patterns
+	}
+
+	if compliance, err := g.generateComplianceStatus(req); err == nil {
+		report.ComplianceStatus = compliance
 	}
 
 	return report, nil
@@ -427,4 +516,369 @@ func (g *Generator) getUniqueComputers() ([]string, error) {
 
 func (g *Generator) SetConfig(config *GeneratorConfig) {
 	g.config = config
+}
+
+func (g *Generator) generateExecutiveSummary(req *ReportRequest) (*ExecutiveSummary, error) {
+	summary := &ExecutiveSummary{}
+
+	alertFilter := &storage.AlertFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     10000,
+	}
+	alerts, err := g.db.AlertRepo().Query(alertFilter)
+	if err != nil {
+		return summary, err
+	}
+
+	summary.TotalAlerts = int64(len(alerts))
+	for _, alert := range alerts {
+		if alert.Resolved {
+			summary.ResolvedAlerts++
+		} else {
+			summary.UnresolvedAlerts++
+		}
+	}
+
+	if summary.TotalAlerts > 0 {
+		summary.RiskScore = float64(summary.UnresolvedAlerts) / float64(summary.TotalAlerts) * 100
+	}
+
+	if summary.RiskScore >= 75 {
+		summary.RiskLevel = "Critical"
+	} else if summary.RiskScore >= 50 {
+		summary.RiskLevel = "High"
+	} else if summary.RiskScore >= 25 {
+		summary.RiskLevel = "Medium"
+	} else {
+		summary.RiskLevel = "Low"
+	}
+
+	alertStats, _ := g.db.AlertRepo().GetStats()
+	if alertStats != nil {
+		if critical, ok := alertStats.BySeverity["critical"]; ok && critical > 0 {
+			summary.TopThreat = "Critical severity alerts detected"
+			summary.KeyFindings = append(summary.KeyFindings, fmt.Sprintf("%d critical alerts require immediate attention", critical))
+		}
+		if high, ok := alertStats.BySeverity["high"]; ok && high > 0 {
+			summary.KeyFindings = append(summary.KeyFindings, fmt.Sprintf("%d high severity alerts detected", high))
+		}
+	}
+
+	summary.ActionItems = int(summary.UnresolvedAlerts)
+
+	return summary, nil
+}
+
+func (g *Generator) generateTimelineAnalysis(req *ReportRequest) (*TimelineAnalysis, error) {
+	analysis := &TimelineAnalysis{
+		EventsByHour: make(map[int]int64),
+		EventsByDay:  make(map[string]int64),
+		AlertsByHour: make(map[int]int64),
+		AlertsByDay:  make(map[string]int64),
+	}
+
+	eventFilter := &storage.EventFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     100000,
+	}
+	events, _, err := g.db.ListEvents(eventFilter)
+	if err != nil {
+		return analysis, err
+	}
+
+	var maxEventCount int64
+	var peakHour int
+
+	for _, event := range events {
+		hour := event.Timestamp.Hour()
+		day := event.Timestamp.Format("2006-01-02")
+
+		analysis.EventsByHour[hour]++
+		analysis.EventsByDay[day]++
+
+		if analysis.EventsByHour[hour] > maxEventCount {
+			maxEventCount = analysis.EventsByHour[hour]
+			peakHour = hour
+		}
+	}
+
+	analysis.PeakActivityHour = peakHour
+
+	alertFilter := &storage.AlertFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     10000,
+	}
+	alerts, err := g.db.AlertRepo().Query(alertFilter)
+	if err == nil {
+		for _, alert := range alerts {
+			hour := alert.FirstSeen.Hour()
+			day := alert.FirstSeen.Format("2006-01-02")
+			analysis.AlertsByHour[hour]++
+			analysis.AlertsByDay[day]++
+		}
+	}
+
+	var maxDayCount int64
+	for day, count := range analysis.EventsByDay {
+		if count > maxDayCount {
+			maxDayCount = count
+			analysis.PeakActivityDay = day
+		}
+	}
+
+	return analysis, nil
+}
+
+func (g *Generator) generateThreatLandscape(req *ReportRequest) (*ThreatLandscape, error) {
+	landscape := &ThreatLandscape{
+		TopAttackVectors: make([]AttackVector, 0),
+		AffectedSystems:  make([]string, 0),
+	}
+
+	alertFilter := &storage.AlertFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     10000,
+	}
+	alerts, err := g.db.AlertRepo().Query(alertFilter)
+	if err != nil {
+		return landscape, err
+	}
+
+	systemSet := make(map[string]bool)
+	for _, alert := range alerts {
+		switch alert.Severity {
+		case types.SeverityCritical:
+			landscape.CriticalThreats++
+		case types.SeverityHigh:
+			landscape.HighThreats++
+		case types.SeverityMedium:
+			landscape.MediumThreats++
+		case types.SeverityLow, types.SeverityInfo:
+			landscape.LowThreats++
+		}
+
+		if alert.LogName != "" {
+			systemSet[alert.LogName] = true
+		}
+	}
+
+	for sys := range systemSet {
+		landscape.AffectedSystems = append(landscape.AffectedSystems, sys)
+	}
+
+	mitreCounts := make(map[string]int64)
+	for _, alert := range alerts {
+		for _, mitre := range alert.MITREAttack {
+			mitreCounts[mitre]++
+		}
+	}
+
+	type mitrePair struct {
+		name  string
+		count int64
+	}
+	var mitrePairs []mitrePair
+	for mitre, count := range mitreCounts {
+		mitrePairs = append(mitrePairs, mitrePair{name: mitre, count: count})
+	}
+
+	sort.Slice(mitrePairs, func(i, j int) bool {
+		return mitrePairs[i].count > mitrePairs[j].count
+	})
+
+	var total int64
+	for _, p := range mitrePairs {
+		total += p.count
+	}
+
+	for i := 0; i < 5 && i < len(mitrePairs); i++ {
+		percentage := 0.0
+		if total > 0 {
+			percentage = float64(mitrePairs[i].count) / float64(total) * 100
+		}
+		landscape.TopAttackVectors = append(landscape.TopAttackVectors, AttackVector{
+			Name:       mitrePairs[i].name,
+			Count:      mitrePairs[i].count,
+			Percentage: percentage,
+		})
+	}
+
+	return landscape, nil
+}
+
+func (g *Generator) generateRecommendations(req *ReportRequest) ([]Recommendation, error) {
+	recommendations := make([]Recommendation, 0)
+
+	alertFilter := &storage.AlertFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     10000,
+	}
+	alerts, err := g.db.AlertRepo().Query(alertFilter)
+	if err != nil {
+		return recommendations, err
+	}
+
+	criticalCount := int64(0)
+	highCount := int64(0)
+	unresolvedCount := int64(0)
+
+	for _, alert := range alerts {
+		if !alert.Resolved {
+			unresolvedCount++
+			switch alert.Severity {
+			case types.SeverityCritical:
+				criticalCount++
+			case types.SeverityHigh:
+				highCount++
+			}
+		}
+	}
+
+	if criticalCount > 0 {
+		recommendations = append(recommendations, Recommendation{
+			Priority:    "Critical",
+			Category:    "Incident Response",
+			Title:       "Address Critical Alerts Immediately",
+			Description: fmt.Sprintf("There are %d unresolved critical alerts that require immediate investigation.", criticalCount),
+			Actionable:  "Review and respond to critical alerts in the alerts dashboard",
+		})
+	}
+
+	if highCount > 0 {
+		recommendations = append(recommendations, Recommendation{
+			Priority:    "High",
+			Category:    "Security Monitoring",
+			Title:       "Investigate High Severity Alerts",
+			Description: fmt.Sprintf(" %d high severity alerts need investigation.", highCount),
+			Actionable:  "Conduct threat hunting based on high severity alerts",
+		})
+	}
+
+	recommendations = append(recommendations, Recommendation{
+		Priority:    "Medium",
+		Category:    "Prevention",
+		Title:       "Implement Additional Logging",
+		Description: "Consider expanding event collection to improve detection coverage",
+		Actionable:  "Review and update event sources configuration",
+	})
+
+	recommendations = append(recommendations, Recommendation{
+		Priority:    "Low",
+		Category:    "Hardening",
+		Title:       "Review User Access Controls",
+		Description: "Regularly review user accounts and access permissions",
+		Actionable:  "Run access review and remove unnecessary privileges",
+	})
+
+	return recommendations, nil
+}
+
+func (g *Generator) generateAttackPatterns(req *ReportRequest) ([]*AttackPattern, error) {
+	patterns := make([]*AttackPattern, 0)
+
+	alertFilter := &storage.AlertFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     10000,
+	}
+	alerts, err := g.db.AlertRepo().Query(alertFilter)
+	if err != nil {
+		return patterns, err
+	}
+
+	mitreAlerts := make(map[string][]*types.Alert)
+	for _, alert := range alerts {
+		for _, mitre := range alert.MITREAttack {
+			mitreAlerts[mitre] = append(mitreAlerts[mitre], alert)
+		}
+	}
+
+	for mitre, alertList := range mitreAlerts {
+		hosts := make(map[string]bool)
+		for _, alert := range alertList {
+			hosts[alert.LogName] = true
+		}
+
+		var severity string
+		if len(alertList) > 10 {
+			severity = "Critical"
+		} else if len(alertList) > 5 {
+			severity = "High"
+		} else {
+			severity = "Medium"
+		}
+
+		pattern := &AttackPattern{
+			Name:          mitre,
+			TechniqueID:   mitre,
+			Count:         int64(len(alertList)),
+			Severity:      severity,
+			Indicators:    []string{},
+			AffectedHosts: make([]string, 0),
+		}
+
+		for host := range hosts {
+			pattern.AffectedHosts = append(pattern.AffectedHosts, host)
+		}
+
+		patterns = append(patterns, pattern)
+	}
+
+	sort.Slice(patterns, func(i, j int) bool {
+		return patterns[i].Count > patterns[j].Count
+	})
+
+	if len(patterns) > 20 {
+		patterns = patterns[:20]
+	}
+
+	return patterns, nil
+}
+
+func (g *Generator) generateComplianceStatus(req *ReportRequest) (*ComplianceStatus, error) {
+	status := &ComplianceStatus{
+		PassedChecks: make([]string, 0),
+		FailedChecks: make([]string, 0),
+		Warnings:     make([]string, 0),
+	}
+
+	alertFilter := &storage.AlertFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     10000,
+	}
+	alerts, _ := g.db.AlertRepo().Query(alertFilter)
+
+	criticalUnresolved := int64(0)
+	for _, alert := range alerts {
+		if !alert.Resolved && alert.Severity == types.SeverityCritical {
+			criticalUnresolved++
+		}
+	}
+
+	if criticalUnresolved == 0 {
+		status.PassedChecks = append(status.PassedChecks, "No unresolved critical alerts")
+	} else {
+		status.FailedChecks = append(status.FailedChecks, fmt.Sprintf("Critical alerts require attention: %d unresolved", criticalUnresolved))
+	}
+
+	stats, _ := g.db.GetStats()
+	if stats != nil && stats.EventCount > 0 {
+		status.PassedChecks = append(status.PassedChecks, "Event collection is active")
+	} else {
+		status.Warnings = append(status.Warnings, "Low event collection activity detected")
+	}
+
+	if len(status.FailedChecks) == 0 {
+		status.OverallStatus = "Compliant"
+	} else {
+		status.OverallStatus = "Non-Compliant"
+	}
+
+	return status, nil
 }
