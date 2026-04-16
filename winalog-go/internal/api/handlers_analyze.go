@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/analyzers"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type AnalyzeHandler struct {
@@ -55,7 +56,7 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 	if h.manager == nil {
 		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
 			Error: "analyzer manager not initialized",
-			Code:  ErrCodeInternal,
+			Code:  types.ErrCodeInternalError,
 		})
 		return
 	}
@@ -64,7 +65,7 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 	if !ok {
 		c.JSON(http.StatusNotFound, ErrorResponse{
 			Error: "analyzer not found: " + analyzerType,
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -152,7 +153,7 @@ func (h *AnalyzeHandler) GetAnalyzerInfo(c *gin.Context) {
 	if h.manager == nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{
 			Error: "analyzer not found: " + analyzerType,
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -161,7 +162,7 @@ func (h *AnalyzeHandler) GetAnalyzerInfo(c *gin.Context) {
 	if !ok {
 		c.JSON(http.StatusNotFound, ErrorResponse{
 			Error: "analyzer not found: " + analyzerType,
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}

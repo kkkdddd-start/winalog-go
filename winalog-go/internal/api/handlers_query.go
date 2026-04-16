@@ -2,9 +2,11 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type QueryHandler struct {
@@ -28,12 +30,61 @@ func NewQueryHandler(db *storage.DB) *QueryHandler {
 	return &QueryHandler{db: db}
 }
 
+func validateSQL(sql string) error {
+	sql = strings.TrimSpace(sql)
+	sqlUpper := strings.ToUpper(sql)
+
+	if sqlUpper == "" {
+		return types.NewValidationError("sql", "sql query is required", nil)
+	}
+
+	allowedPrefixes := []string{
+		"SELECT",
+		"PRAGMA",
+		"EXPLAIN",
+		"WITH",
+	}
+
+	isAllowed := false
+	for _, prefix := range allowedPrefixes {
+		if strings.HasPrefix(sqlUpper, prefix) {
+			isAllowed = true
+			break
+		}
+	}
+
+	if !isAllowed {
+		return types.NewValidationError("sql", "only SELECT queries are allowed", nil)
+	}
+
+	forbidden := []string{
+		";", "--", "/*", "*/",
+		"INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE",
+		"EXEC", "EXECUTE", "CALL", "GRANT", "REVOKE", "DENY",
+	}
+	for _, f := range forbidden {
+		if strings.Contains(sqlUpper, f) {
+			return types.NewValidationError("sql", "forbidden keyword in query", f)
+		}
+	}
+
+	return nil
+}
+
 func (h *QueryHandler) Execute(c *gin.Context) {
 	var req QueryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: "sql query is required",
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
+		})
+		return
+	}
+
+	if err := validateSQL(req.SQL); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: err.Error(),
+			Code:  types.ErrCodeInvalidQuery,
 		})
 		return
 	}
@@ -49,7 +100,7 @@ func (h *QueryHandler) Execute(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: "query failed: " + err.Error(),
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidQuery,
 		})
 		return
 	}
@@ -59,6 +110,7 @@ func (h *QueryHandler) Execute(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error: "failed to get columns: " + err.Error(),
+			Code:  types.ErrCodeInternalError,
 		})
 		return
 	}

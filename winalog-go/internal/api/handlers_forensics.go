@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/forensics"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type ForensicsHandler struct {
@@ -77,7 +78,7 @@ func (h *ForensicsHandler) CalculateHash(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: err.Error(),
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -106,7 +107,7 @@ func (h *ForensicsHandler) VerifyHash(c *gin.Context) {
 	if path == "" || expected == "" {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: "path and expected hash are required",
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -144,7 +145,7 @@ func (h *ForensicsHandler) VerifySignature(c *gin.Context) {
 	if path == "" {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: "path is required",
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -173,7 +174,7 @@ func (h *ForensicsHandler) IsSigned(c *gin.Context) {
 	if path == "" {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: "path is required",
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -197,7 +198,7 @@ func (h *ForensicsHandler) CollectEvidence(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: err.Error(),
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}

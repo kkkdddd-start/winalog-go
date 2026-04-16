@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -27,20 +28,19 @@ type ImportHandler struct {
 }
 
 type ErrorResponse struct {
-	Error   string         `json:"error"`
-	Code    ErrorCode      `json:"code,omitempty"`
-	Details map[string]any `json:"details,omitempty"`
+	Error   string          `json:"error"`
+	Code    types.ErrorCode `json:"code,omitempty"`
+	Details map[string]any  `json:"details,omitempty"`
 }
 
-type ErrorCode string
+type ValidationError struct {
+	Field   string
+	Message string
+}
 
-const (
-	ErrCodeAlertNotFound        ErrorCode = "ALERT_NOT_FOUND"
-	ErrCodeAlertAlreadyResolved ErrorCode = "ALERT_ALREADY_RESOLVED"
-	ErrCodeEventNotFound        ErrorCode = "EVENT_NOT_FOUND"
-	ErrCodeInvalidRequest       ErrorCode = "INVALID_REQUEST"
-	ErrCodeInternal             ErrorCode = "INTERNAL_ERROR"
-)
+func (e *ValidationError) Error() string {
+	return e.Message
+}
 
 type SuccessResponse struct {
 	Message string      `json:"message"`
@@ -50,6 +50,20 @@ type SuccessResponse struct {
 type PaginationRequest struct {
 	Page     int `form:"page,default=1" binding:"min=1"`
 	PageSize int `form:"page_size,default=100" binding:"min=1,max=10000"`
+}
+
+func internalError(c *gin.Context, err error) {
+	c.JSON(http.StatusInternalServerError, ErrorResponse{
+		Error: err.Error(),
+		Code:  types.ErrCodeInternalError,
+	})
+}
+
+func badRequestError(c *gin.Context, err error) {
+	c.JSON(http.StatusBadRequest, ErrorResponse{
+		Error: err.Error(),
+		Code:  types.ErrCodeInvalidRequest,
+	})
 }
 
 type ListEventsResponse struct {
@@ -63,7 +77,7 @@ type ListEventsResponse struct {
 func (h *AlertHandler) ListEvents(c *gin.Context) {
 	var req PaginationRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -96,13 +110,13 @@ func (h *AlertHandler) GetEvent(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, ErrorResponse{Error: "invalid event id", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "invalid event id", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
 	event, err := h.db.GetEventByID(id)
 	if err != nil {
-		c.JSON(404, ErrorResponse{Error: "event not found", Code: ErrCodeEventNotFound})
+		c.JSON(404, ErrorResponse{Error: "event not found", Code: types.ErrCodeEventNotFound})
 		return
 	}
 
@@ -130,7 +144,7 @@ type SearchEventsRequest struct {
 func (h *AlertHandler) SearchEvents(c *gin.Context) {
 	var req SearchEventsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -212,7 +226,7 @@ type ExportResponse struct {
 func (h *AlertHandler) ExportEvents(c *gin.Context) {
 	var req ExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -287,7 +301,7 @@ type RunAnalysisResponse struct {
 
 func (h *AlertHandler) RunAnalysis(c *gin.Context) {
 	if h.alertEngine == nil {
-		c.JSON(500, ErrorResponse{Error: "alert engine not initialized", Code: ErrCodeInternal})
+		c.JSON(500, ErrorResponse{Error: "alert engine not initialized", Code: types.ErrCodeInternalError})
 		return
 	}
 
@@ -373,7 +387,7 @@ func (h *AlertHandler) ListAlerts(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -445,13 +459,13 @@ func (h *AlertHandler) GetAlert(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
 	alert, err := h.db.AlertRepo().GetByID(id)
 	if err != nil {
-		c.JSON(404, ErrorResponse{Error: "alert not found", Code: ErrCodeAlertNotFound})
+		c.JSON(404, ErrorResponse{Error: "alert not found", Code: types.ErrCodeAlertNotFound})
 		return
 	}
 
@@ -466,24 +480,24 @@ func (h *AlertHandler) ResolveAlert(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
 	var req ResolveAlertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
 	alert, err := h.db.AlertRepo().GetByID(id)
 	if err != nil {
-		c.JSON(404, ErrorResponse{Error: "alert not found", Code: ErrCodeAlertNotFound})
+		c.JSON(404, ErrorResponse{Error: "alert not found", Code: types.ErrCodeAlertNotFound})
 		return
 	}
 
 	if alert.Resolved {
-		c.JSON(400, ErrorResponse{Error: "alert already resolved", Code: ErrCodeAlertAlreadyResolved})
+		c.JSON(400, ErrorResponse{Error: "alert already resolved", Code: types.ErrCodeAlertAlreadyResolved})
 		return
 	}
 
@@ -503,13 +517,13 @@ func (h *AlertHandler) MarkFalsePositive(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
 	var req MarkFalsePositiveRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -525,7 +539,7 @@ func (h *AlertHandler) DeleteAlert(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -547,12 +561,12 @@ type BatchAlertActionRequest struct {
 func (h *AlertHandler) BatchAlertAction(c *gin.Context) {
 	var req BatchAlertActionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
 	if len(req.IDs) == 0 {
-		c.JSON(400, ErrorResponse{Error: "no alert IDs provided", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "no alert IDs provided", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -597,12 +611,12 @@ type ImportRequest struct {
 func (h *ImportHandler) ImportLogs(c *gin.Context) {
 	var req ImportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
 	if len(req.Files) == 0 {
-		c.JSON(400, ErrorResponse{Error: "no files provided", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "no files provided", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -634,7 +648,7 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 func (h *ImportHandler) GetImportStatus(c *gin.Context) {
 	filePath := c.Query("path")
 	if filePath == "" {
-		c.JSON(400, ErrorResponse{Error: "path parameter required", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "path parameter required", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
@@ -762,7 +776,7 @@ func (h *TimelineHandler) DeleteAlert(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: ErrCodeInvalidRequest})
+		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: types.ErrCodeInvalidRequest})
 		return
 	}
 

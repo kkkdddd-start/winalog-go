@@ -306,7 +306,7 @@ func (h *RulesHandler) CreateRule(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: err.Error(),
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -397,7 +397,7 @@ func (h *RulesHandler) UpdateRule(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: err.Error(),
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -554,7 +554,7 @@ func (h *RulesHandler) ValidateRule(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: err.Error(),
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}
@@ -628,7 +628,7 @@ func (h *RulesHandler) ImportRules(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: err.Error(),
-			Code:  ErrCodeInvalidRequest,
+			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
 	}

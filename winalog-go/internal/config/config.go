@@ -14,6 +14,8 @@ type Config struct {
 	Report      ReportConfig      `yaml:"report"`
 	Forensics   ForensicsConfig   `yaml:"forensics"`
 	API         APIConfig         `yaml:"api"`
+	Auth        AuthConfig        `yaml:"auth"`
+	Audit       AuditConfig       `yaml:"audit"`
 	Log         LogConfig         `yaml:"log"`
 	TUI         TUIConfig         `yaml:"tui"`
 }
@@ -102,7 +104,6 @@ type APIConfig struct {
 	Port int        `yaml:"port"`
 	Mode string     `yaml:"mode"`
 	CORS CORSConfig `yaml:"cors"`
-	Auth AuthConfig `yaml:"auth"`
 }
 
 type CORSConfig struct {
@@ -114,6 +115,15 @@ type CORSConfig struct {
 type AuthConfig struct {
 	Enabled   bool   `yaml:"enabled"`
 	JWTSecret string `yaml:"jwt_secret"`
+}
+
+type AuditConfig struct {
+	Enabled    bool          `yaml:"enabled"`
+	OutputDir  string        `yaml:"output_dir"`
+	MaxSize    int           `yaml:"max_size"`
+	MaxAge     int           `yaml:"max_age"`
+	Retention  time.Duration `yaml:"retention"`
+	IncludeGET bool          `yaml:"include_get_requests"`
 }
 
 type LogConfig struct {
@@ -186,9 +196,17 @@ func DefaultConfig() *Config {
 				AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 				AllowedHeaders: []string{"*"},
 			},
-			Auth: AuthConfig{
-				Enabled: false,
-			},
+		},
+		Auth: AuthConfig{
+			Enabled: false,
+		},
+		Audit: AuditConfig{
+			Enabled:    true,
+			OutputDir:  "./audit",
+			MaxSize:    100,
+			MaxAge:     30,
+			Retention:  90 * 24 * time.Hour,
+			IncludeGET: false,
 		},
 		Log: LogConfig{
 			Level:      "info",

@@ -249,10 +249,6 @@ func TestAPIConfig(t *testing.T) {
 			AllowedOrigins: []string{"https://example.com"},
 			AllowedMethods: []string{"GET", "POST"},
 		},
-		Auth: AuthConfig{
-			Enabled:   true,
-			JWTSecret: "secret123",
-		},
 	}
 
 	if apiCfg.Host != "0.0.0.0" {
