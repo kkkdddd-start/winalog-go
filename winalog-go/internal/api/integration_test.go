@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -200,14 +201,19 @@ func TestIntegration_ForensicsHandler(t *testing.T) {
 	router.GET("/api/forensics/evidence", handler.ListEvidence)
 	router.GET("/api/forensics/calculate-hash", handler.CalculateHash)
 
+	expectedStatus := http.StatusOK
+	if runtime.GOOS != "windows" {
+		expectedStatus = http.StatusNotImplemented
+	}
+
 	t.Run("ListEvidence empty", func(t *testing.T) {
 		w, _ := makeRequest(t, "GET", "/api/forensics/evidence", nil, handler.ListEvidence)
-		AssertStatus(t, w, http.StatusOK)
+		AssertStatus(t, w, expectedStatus)
 	})
 
 	t.Run("CalculateHash", func(t *testing.T) {
 		w, _ := makeRequest(t, "GET", "/api/forensics/calculate-hash", nil, handler.CalculateHash)
-		AssertStatus(t, w, http.StatusOK)
+		AssertStatus(t, w, expectedStatus)
 	})
 }
 

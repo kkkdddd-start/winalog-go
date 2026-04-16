@@ -67,9 +67,9 @@ func NewForensicsHandler(db *storage.DB) *ForensicsHandler {
 
 func (h *ForensicsHandler) CalculateHash(c *gin.Context) {
 	if runtime.GOOS != "windows" {
-		c.JSON(http.StatusOK, HashResponse{
-			Status: "unavailable",
-			Error:  "forensics is only supported on Windows",
+		c.JSON(http.StatusNotImplemented, ErrorResponse{
+			Error: "forensics is only supported on Windows",
+			Code:  types.ErrCodeNotSupported,
 		})
 		return
 	}
@@ -133,9 +133,9 @@ func (h *ForensicsHandler) VerifyHash(c *gin.Context) {
 
 func (h *ForensicsHandler) VerifySignature(c *gin.Context) {
 	if runtime.GOOS != "windows" {
-		c.JSON(http.StatusOK, SignatureResponse{
-			Status: "unavailable",
-			Error:  "signature verification is only supported on Windows",
+		c.JSON(http.StatusNotImplemented, ErrorResponse{
+			Error: "signature verification is only supported on Windows",
+			Code:  types.ErrCodeNotSupported,
 		})
 		return
 	}
@@ -194,6 +194,14 @@ func (h *ForensicsHandler) IsSigned(c *gin.Context) {
 }
 
 func (h *ForensicsHandler) CollectEvidence(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusNotImplemented, ErrorResponse{
+			Error: "evidence collection is only supported on Windows",
+			Code:  types.ErrCodeNotSupported,
+		})
+		return
+	}
+
 	var req CollectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
@@ -216,11 +224,19 @@ func (h *ForensicsHandler) CollectEvidence(c *gin.Context) {
 		Status:      "completed",
 		OutputPath:  outputPath,
 		CollectedAt: time.Now(),
-		Message:     "Evidence collection requires Windows environment",
+		Message:     "Evidence collection complete",
 	})
 }
 
 func (h *ForensicsHandler) ListEvidence(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusNotImplemented, ErrorResponse{
+			Error: "evidence listing is only supported on Windows",
+			Code:  types.ErrCodeNotSupported,
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"evidence": []interface{}{},
 		"total":    0,
@@ -228,6 +244,14 @@ func (h *ForensicsHandler) ListEvidence(c *gin.Context) {
 }
 
 func (h *ForensicsHandler) GetEvidence(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusNotImplemented, ErrorResponse{
+			Error: "evidence retrieval is only supported on Windows",
+			Code:  types.ErrCodeNotSupported,
+		})
+		return
+	}
+
 	evidenceID := c.Param("id")
 
 	c.JSON(http.StatusOK, gin.H{
@@ -341,6 +365,14 @@ func (h *ForensicsHandler) ChainOfCustody(c *gin.Context) {
 }
 
 func (h *ForensicsHandler) MemoryDump(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusNotImplemented, ErrorResponse{
+			Error: "memory dump is only supported on Windows",
+			Code:  types.ErrCodeNotSupported,
+		})
+		return
+	}
+
 	pidStr := c.Query("pid")
 
 	if pidStr != "" {

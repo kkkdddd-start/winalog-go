@@ -32,6 +32,7 @@ const (
 	ErrCodeResultTooLarge       ErrorCode = "RESULT_TOO_LARGE"
 	ErrCodeHashMismatch         ErrorCode = "HASH_MISMATCH"
 	ErrCodeSignatureInvalid     ErrorCode = "SIGNATURE_INVALID"
+	ErrCodeNotSupported         ErrorCode = "NOT_SUPPORTED"
 )
 
 type WinError struct {

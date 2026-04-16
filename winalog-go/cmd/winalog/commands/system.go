@@ -746,9 +746,28 @@ func init() {
 }
 
 func runForensicsCollect(cmd *cobra.Command, args []string) error {
+	if runtime.GOOS != "windows" {
+		return fmt.Errorf("forensics collection requires Windows environment (current: %s)", runtime.GOOS)
+	}
+
 	fmt.Println("Starting forensics evidence collection...")
 	fmt.Println("Collecting: Registry, Prefetch, ShimCache, UserAssist, Scheduled Tasks")
-	fmt.Printf("Evidence collection complete.\n")
+
+	ctx := context.Background()
+	result, err := collectors.RunOneClickCollection(ctx, nil)
+	if err != nil {
+		if err == collectors.ErrNotSupported {
+			return fmt.Errorf("forensics collection requires Windows environment")
+		}
+		return fmt.Errorf("forensics collection failed: %w", err)
+	}
+
+	if result != nil {
+		fmt.Printf("Evidence collection complete.\n")
+	} else {
+		fmt.Printf("Evidence collection complete (no data collected).\n")
+	}
+
 	return nil
 }
 

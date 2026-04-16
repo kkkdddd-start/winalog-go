@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 
@@ -626,7 +627,13 @@ func TestForensicsHandler_ListEvidence(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("ListEvidence() status = %v, want %v", w.Code, http.StatusOK)
+	if runtime.GOOS != "windows" {
+		if w.Code != http.StatusNotImplemented {
+			t.Errorf("ListEvidence() status = %v, want %v on non-Windows", w.Code, http.StatusNotImplemented)
+		}
+	} else {
+		if w.Code != http.StatusOK {
+			t.Errorf("ListEvidence() status = %v, want %v on Windows", w.Code, http.StatusOK)
+		}
 	}
 }
