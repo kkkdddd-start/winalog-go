@@ -111,12 +111,38 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 	var args []interface{}
 
 	if len(req.Keywords) > 0 {
+		keywordMode := strings.ToUpper(req.KeywordMode)
+		if keywordMode == "" {
+			keywordMode = "AND"
+		}
+
 		if req.Regex {
-			conditions = append(conditions, "message GLOB ?")
-			args = append(args, req.Keywords)
+			if keywordMode == "OR" {
+				conditions = append(conditions, fmt.Sprintf("message GLOB '%s'", req.Keywords))
+			} else {
+				words := strings.Fields(req.Keywords)
+				for _, word := range words {
+					conditions = append(conditions, fmt.Sprintf("message GLOB '%s'", word))
+				}
+			}
 		} else {
-			conditions = append(conditions, "message LIKE ?")
-			args = append(args, "%"+req.Keywords+"%")
+			words := strings.Fields(req.Keywords)
+			if len(words) == 0 {
+				conditions = append(conditions, "message LIKE ?")
+				args = append(args, "%"+req.Keywords+"%")
+			} else if keywordMode == "OR" {
+				var likeConditions []string
+				for _, word := range words {
+					likeConditions = append(likeConditions, "message LIKE ?")
+					args = append(args, "%"+word+"%")
+				}
+				conditions = append(conditions, "("+strings.Join(likeConditions, " OR ")+")")
+			} else {
+				for _, word := range words {
+					conditions = append(conditions, "message LIKE ?")
+					args = append(args, "%"+word+"%")
+				}
+			}
 		}
 	}
 

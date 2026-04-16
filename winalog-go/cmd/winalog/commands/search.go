@@ -105,20 +105,21 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	req := &types.SearchRequest{
-		Keywords:  searchFlags.keywords,
-		Regex:     searchFlags.regex,
-		EventIDs:  eventIDs,
-		Levels:    searchFlags.levels,
-		LogNames:  searchFlags.logNames,
-		Sources:   searchFlags.sources,
-		Users:     searchFlags.users,
-		Computers: searchFlags.computers,
-		StartTime: startTime,
-		EndTime:   endTime,
-		Page:      searchFlags.page,
-		PageSize:  searchFlags.pageSize,
-		SortBy:    searchFlags.sortBy,
-		SortOrder: searchFlags.sortOrder,
+		Keywords:    searchFlags.keywords,
+		KeywordMode: searchFlags.keywordMode,
+		Regex:       searchFlags.regex,
+		EventIDs:    eventIDs,
+		Levels:      searchFlags.levels,
+		LogNames:    searchFlags.logNames,
+		Sources:     searchFlags.sources,
+		Users:       searchFlags.users,
+		Computers:   searchFlags.computers,
+		StartTime:   startTime,
+		EndTime:     endTime,
+		Page:        searchFlags.page,
+		PageSize:    searchFlags.pageSize,
+		SortBy:      searchFlags.sortBy,
+		SortOrder:   searchFlags.sortOrder,
 	}
 
 	result, err := eng.Search(req)
