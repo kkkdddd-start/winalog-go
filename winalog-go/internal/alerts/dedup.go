@@ -119,16 +119,20 @@ func (c *DedupCache) cleanup() {
 func (c *DedupCache) generateKey(ruleName string, event *types.Event) string {
 	var keyData string
 
+	userStr := ""
 	if event.UserSID != nil && *event.UserSID != "" {
-		keyData = fmt.Sprintf("%s|%d|%s|%s|%s",
-			ruleName, event.EventID, event.Computer, event.Source, *event.UserSID)
+		userStr = *event.UserSID
 	} else if event.User != nil && *event.User != "" {
-		keyData = fmt.Sprintf("%s|%d|%s|%s|%s",
-			ruleName, event.EventID, event.Computer, event.Source, *event.User)
-	} else {
-		keyData = fmt.Sprintf("%s|%d|%s|%s",
-			ruleName, event.EventID, event.Computer, event.Source)
+		userStr = *event.User
 	}
+
+	ipStr := ""
+	if event.IPAddress != nil && *event.IPAddress != "" {
+		ipStr = *event.IPAddress
+	}
+
+	keyData = fmt.Sprintf("%s|%d|%s|%s|%s|%s",
+		ruleName, event.EventID, event.Computer, event.Source, userStr, ipStr)
 
 	hash := sha256.Sum256([]byte(keyData))
 	return hex.EncodeToString(hash[:])

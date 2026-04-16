@@ -221,6 +221,10 @@ func (p *SysmonParser) getLevelForEventID(eventID int) types.EventLevel {
 		return types.EventLevelInfo
 	case 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22:
 		return types.EventLevelInfo
+	case 23, 24, 25, 26, 27, 28, 29, 30, 31, 32:
+		return types.EventLevelInfo
+	case 33, 34, 35:
+		return types.EventLevelInfo
 	default:
 		return types.EventLevelInfo
 	}
@@ -275,6 +279,32 @@ func (p *SysmonParser) buildMessage(eventID int, data map[string]string) string 
 		return fmt.Sprintf("WMI Consumer Filter Binding: %s -> %s", data["Filter"], data["Consumer"])
 	case 22:
 		return p.buildDNSQueryMessage(data)
+	case 23:
+		return fmt.Sprintf("File Delete: %s [Hash: %s]", data["TargetFilename"], data["Hashes"])
+	case 24:
+		return fmt.Sprintf("Clipboard Changed: %s -> %s", data["SourceImage"], data["DestinationImage"])
+	case 25:
+		return fmt.Sprintf("Process Tampering: %s [%s]", data["Image"], data["Type"])
+	case 26:
+		return fmt.Sprintf("File Delete Logged: %s [Hash: %s]", data["TargetFilename"], data["Hashes"])
+	case 27:
+		return fmt.Sprintf("File Block: %s", data["TargetFilename"])
+	case 28:
+		return fmt.Sprintf("File Block Executable: %s", data["TargetFilename"])
+	case 29:
+		return fmt.Sprintf("Process Injection: %s -> %s [%s]", data["SourceImage"], data["TargetImage"], data["Type"])
+	case 30:
+		return fmt.Sprintf("File Created with Alternate Data Stream: %s -> %s", data["TargetFilename"], data["AlternateDataStream"])
+	case 31:
+		return fmt.Sprintf("王朝配置变更: %s", data["Name"])
+	case 32:
+		return fmt.Sprintf("Access Key: %s [%s]", data["TargetObject"], data["ProcessName"])
+	case 33:
+		return fmt.Sprintf("Registry Event: %s", data["TargetObject"])
+	case 34:
+		return fmt.Sprintf("Registry Event via ETW: %s", data["TargetObject"])
+	case 35:
+		return fmt.Sprintf("王朝轮询检测: %s", data["TargetObject"])
 	default:
 		return fmt.Sprintf("Sysmon Event %d", eventID)
 	}

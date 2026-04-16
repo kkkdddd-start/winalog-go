@@ -40,10 +40,10 @@ func (t *AlertTrend) Record(alert *types.Alert) {
 
 	now := time.Now()
 	hour := now.Hour()
-	day := now.Weekday().String()
+	dayStr := now.Format("2006-01-02")
 
 	t.hourly[hour]++
-	t.daily[day]++
+	t.daily[dayStr]++
 	t.byHour[hour]++
 
 	dayIndex := int(now.Weekday())
@@ -141,5 +141,4 @@ func (t *AlertTrend) Reset() {
 	t.weekly = make(map[int]map[int]int64)
 	t.bySeverity = make(map[string][]int64)
 	t.byHour = make([]int64, 24)
-	t.byDay = make([]int64, 7)
 }
