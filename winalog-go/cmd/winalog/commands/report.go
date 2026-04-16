@@ -3,7 +3,9 @@ package commands
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/exporters"
@@ -608,8 +610,53 @@ func init() {
 }
 
 func runLiveCollect(cmd *cobra.Command, args []string) error {
+	cfg := getConfig()
+	db, err := storage.NewDB(cfg.Database.Path)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
 	fmt.Println("Starting live event collection...")
 	fmt.Println("Press Ctrl+C to stop.")
-	time.Sleep(time.Hour)
-	return nil
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	var lastEventID int64 = 0
+	eventCount := 0
+
+	for {
+		select {
+		case <-ticker.C:
+			filter := &storage.EventFilter{
+				Limit: 50,
+			}
+			events, _, err := db.ListEvents(filter)
+			if err != nil {
+				continue
+			}
+
+			newEvents := 0
+			for _, event := range events {
+				if event.ID > lastEventID {
+					newEvents++
+					lastEventID = event.ID
+				}
+			}
+
+			if newEvents > 0 {
+				eventCount += newEvents
+				fmt.Printf("[%s] New events: %d (Total streamed: %d)\n",
+					time.Now().Format("15:04:05"), newEvents, eventCount)
+			}
+		case <-sigChan:
+			fmt.Println("\nStopping live collection...")
+			fmt.Printf("Total events streamed: %d\n", eventCount)
+			return nil
+		}
+	}
 }
