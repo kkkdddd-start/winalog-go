@@ -130,62 +130,70 @@ func runCorrelate(cmd *cobra.Command, args []string) error {
 }
 
 var analyzeCmd = &cobra.Command{
-	Use:   "analyze [subcommand]",
-	Short: "Run specialized analyzers",
-	Long:  `Run specialized analyzers for specific threat detection.`,
-}
-
-var analyzeBruteForceCmd = &cobra.Command{
-	Use:   "brute-force",
-	Short: "Detect brute force attacks",
-	RunE:  runAnalyzeBruteForce,
-}
-
-var analyzeLoginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Analyze login activity",
-	RunE:  runAnalyzeLogin,
-}
-
-var analyzeKerberosCmd = &cobra.Command{
-	Use:   "kerberos",
-	Short: "Analyze Kerberos activity",
-	RunE:  runAnalyzeKerberos,
-}
-
-var analyzePowerShellCmd = &cobra.Command{
-	Use:   "powershell",
-	Short: "Analyze PowerShell activity",
-	RunE:  runAnalyzePowerShell,
+	Use:   "analyze <type>",
+	Short: "Run threat analyzer",
+	Long:  `Run a specific threat analyzer by type. Use 'analyze list' to see available analyzers.`,
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runAnalyzeDynamic,
 }
 
 var analyzeFlags struct {
-	hours  int
-	format string
-	output string
+	hours      int
+	format     string
+	output     string
+	timeWindow string
 }
 
 func init() {
-	analyzeCmd.AddCommand(analyzeBruteForceCmd)
-	analyzeCmd.AddCommand(analyzeLoginCmd)
-	analyzeCmd.AddCommand(analyzeKerberosCmd)
-	analyzeCmd.AddCommand(analyzePowerShellCmd)
+	analyzeCmd.Flags().IntVar(&analyzeFlags.hours, "hours", 24, "Time window in hours")
+	analyzeCmd.Flags().StringVar(&analyzeFlags.format, "format", "table", "Output format: table, json")
+	analyzeCmd.Flags().StringVarP(&analyzeFlags.output, "output", "o", "", "Output file")
+	analyzeCmd.Flags().StringVar(&analyzeFlags.timeWindow, "time-window", "", "Time window (overrides --hours, e.g., 24h, 7d)")
+}
 
-	analyzeBruteForceCmd.Flags().IntVar(&analyzeFlags.hours, "hours", 24, "Time window in hours")
-	analyzeBruteForceCmd.Flags().StringVar(&analyzeFlags.format, "format", "table", "Output format: table, json")
-	analyzeBruteForceCmd.Flags().StringVarP(&analyzeFlags.output, "output", "o", "", "Output file")
+func createAnalyzerManager() *analyzers.AnalyzerManager {
+	mgr := analyzers.NewAnalyzerManager()
+	mgr.Register(analyzers.NewBruteForceAnalyzer())
+	mgr.Register(analyzers.NewLoginAnalyzer())
+	mgr.Register(analyzers.NewKerberosAnalyzer())
+	mgr.Register(analyzers.NewPowerShellAnalyzer())
+	mgr.Register(analyzers.NewDataExfiltrationAnalyzer())
+	mgr.Register(analyzers.NewLateralMovementAnalyzer())
+	mgr.Register(analyzers.NewPersistenceAnalyzer())
+	mgr.Register(analyzers.NewPrivilegeEscalationAnalyzer())
+	return mgr
+}
 
-	analyzeLoginCmd.Flags().IntVar(&analyzeFlags.hours, "hours", 24, "Time window in hours")
-	analyzeLoginCmd.Flags().StringVar(&analyzeFlags.format, "format", "table", "Output format: table, json")
-	analyzeLoginCmd.Flags().StringVarP(&analyzeFlags.output, "output", "o", "", "Output file")
+func runAnalyzeDynamic(cmd *cobra.Command, args []string) error {
+	manager := createAnalyzerManager()
 
-	analyzeKerberosCmd.Flags().IntVar(&analyzeFlags.hours, "hours", 24, "Time window in hours")
-	analyzeKerberosCmd.Flags().StringVar(&analyzeFlags.format, "format", "table", "Output format: table, json")
-	analyzeKerberosCmd.Flags().StringVarP(&analyzeFlags.output, "output", "o", "", "Output file")
+	if len(args) == 0 {
+		fmt.Println("Available analyzers:")
+		for _, name := range manager.List() {
+			fmt.Printf("  - %s\n", name)
+		}
+		return nil
+	}
 
-	analyzePowerShellCmd.Flags().IntVar(&analyzeFlags.hours, "hours", 24, "Time window in hours")
-	analyzePowerShellCmd.Flags().StringVar(&analyzeFlags.format, "format", "table", "Output format: table, json")
-	analyzePowerShellCmd.Flags().StringVarP(&analyzeFlags.output, "output", "o", "", "Output file")
+	analyzerName := args[0]
+	if analyzerName == "list" {
+		fmt.Println("Available analyzers:")
+		for _, name := range manager.List() {
+			fmt.Printf("  - %s\n", name)
+		}
+		return nil
+	}
+
+	analyzer, ok := manager.Get(analyzerName)
+	if !ok {
+		fmt.Printf("Unknown analyzer: %s\n\nAvailable analyzers:\n", analyzerName)
+		for _, name := range manager.List() {
+			fmt.Printf("  - %s\n", name)
+		}
+		return fmt.Errorf("unknown analyzer: %s", analyzerName)
+	}
+
+	return runAnalyzerWithResult(analyzerName, analyzer)
 }
 
 func getEventsForAnalysis(hours int) ([]*types.Event, error) {
@@ -219,7 +227,21 @@ func getEventsForAnalysis(hours int) ([]*types.Event, error) {
 	return events, nil
 }
 
-func runAnalyzerWithResult(name string, analyzer analyzers.Analyzer, hours int) error {
+func runAnalyzerWithResult(name string, analyzer analyzers.Analyzer) error {
+	var hours int
+	if analyzeFlags.timeWindow != "" {
+		d, err := parseDuration(analyzeFlags.timeWindow)
+		if err != nil {
+			return fmt.Errorf("invalid time window: %w", err)
+		}
+		hours = int(d.Hours())
+		if hours < 1 {
+			hours = 1
+		}
+	} else {
+		hours = analyzeFlags.hours
+	}
+
 	events, err := getEventsForAnalysis(hours)
 	if err != nil {
 		return fmt.Errorf("failed to get events: %w", err)
@@ -266,26 +288,6 @@ func runAnalyzerWithResult(name string, analyzer analyzers.Analyzer, hours int) 
 	}
 
 	return nil
-}
-
-func runAnalyzeBruteForce(cmd *cobra.Command, args []string) error {
-	analyzer := analyzers.NewBruteForceAnalyzer()
-	return runAnalyzerWithResult("Brute Force Detection", analyzer, analyzeFlags.hours)
-}
-
-func runAnalyzeLogin(cmd *cobra.Command, args []string) error {
-	analyzer := analyzers.NewLoginAnalyzer()
-	return runAnalyzerWithResult("Login Activity", analyzer, analyzeFlags.hours)
-}
-
-func runAnalyzeKerberos(cmd *cobra.Command, args []string) error {
-	analyzer := analyzers.NewKerberosAnalyzer()
-	return runAnalyzerWithResult("Kerberos Activity", analyzer, analyzeFlags.hours)
-}
-
-func runAnalyzePowerShell(cmd *cobra.Command, args []string) error {
-	analyzer := analyzers.NewPowerShellAnalyzer()
-	return runAnalyzerWithResult("PowerShell Activity", analyzer, analyzeFlags.hours)
 }
 
 func parseDuration(s string) (time.Duration, error) {
