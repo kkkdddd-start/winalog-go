@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -315,5 +316,127 @@ func BenchmarkQueryHandler_Execute(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		router.ServeHTTP(w, req)
+	}
+}
+
+func TestSuppressHandler_ListSuppressRules_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	router := gin.New()
+	handler := NewSuppressHandler(db, nil)
+	router.GET("/api/suppress", handler.ListSuppressRules)
+
+	req, _ := http.NewRequest("GET", "/api/suppress", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("ListSuppressRules() status = %v, want %v", w.Code, http.StatusOK)
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if response["total"] != float64(0) {
+		t.Errorf("ListSuppressRules() total = %v, want 0", response["total"])
+	}
+}
+
+func TestSuppressHandler_CreateSuppressRule_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	router := gin.New()
+	handler := NewSuppressHandler(db, nil)
+	router.POST("/api/suppress", handler.CreateSuppressRule)
+
+	body := bytes.NewBufferString(`{"name": "test_rule", "conditions": [], "duration": 60, "scope": "global", "enabled": true}`)
+	req, _ := http.NewRequest("POST", "/api/suppress", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated && w.Code != http.StatusOK {
+		t.Errorf("CreateSuppressRule() status = %v, want %v or %v", w.Code, http.StatusOK, http.StatusCreated)
+	}
+}
+
+func TestQueryHandler_Execute_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := db.Exec(`
+		INSERT INTO events (timestamp, event_id, level, log_name, computer, message, import_time)
+		VALUES (?, 4624, 1, 'Security', 'WORKSTATION1', 'Test event', ?)
+	`, time.Now().Format(time.RFC3339), time.Now().Format(time.RFC3339))
+	if err != nil {
+		t.Fatalf("Failed to insert test data: %v", err)
+	}
+
+	router := gin.New()
+	handler := NewQueryHandler(db)
+	router.POST("/api/query/execute", handler.Execute)
+
+	body := bytes.NewBufferString(`{"sql": "SELECT * FROM events"}`)
+	req, _ := http.NewRequest("POST", "/api/query/execute", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Execute() status = %v, want %v", w.Code, http.StatusOK)
+	}
+
+	var response QueryResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if response.Count != 1 {
+		t.Errorf("Execute() count = %v, want 1", response.Count)
+	}
+}
+
+func TestSystemHandler_GetSystemInfo_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := NewSystemHandler(db)
+
+	router := gin.New()
+	router.GET("/api/system/info", handler.GetSystemInfo)
+
+	req, _ := http.NewRequest("GET", "/api/system/info", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("GetSystemInfo() status = %v, want %v", w.Code, http.StatusOK)
+	}
+}
+
+func TestDashboardHandler_GetCollectionStats_WithDB(t *testing.T) {
+	t.Helper()
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	handler := NewDashboardHandler(db)
+
+	router := gin.New()
+	router.GET("/api/dashboard/collection", handler.GetCollectionStats)
+
+	req, _ := http.NewRequest("GET", "/api/dashboard/collection", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("GetCollectionStats() status = %v, want %v", w.Code, http.StatusOK)
 	}
 }
