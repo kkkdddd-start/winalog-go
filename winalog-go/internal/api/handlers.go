@@ -110,26 +110,26 @@ func (h *AlertHandler) GetEvent(c *gin.Context) {
 }
 
 type SearchEventsRequest struct {
-	Keywords  string   `form:"keywords"`
-	Regex     bool     `form:"regex"`
-	EventIDs  []int32  `form:"event_ids"`
-	Levels    []int    `form:"levels"`
-	LogNames  []string `form:"log_names"`
-	Sources   []string `form:"sources"`
-	Users     []string `form:"users"`
-	Computers []string `form:"computers"`
-	StartTime string   `form:"start_time"`
-	EndTime   string   `form:"end_time"`
-	Page      int      `form:"page,default=1"`
-	PageSize  int      `form:"page_size,default=100"`
-	SortBy    string   `form:"sort_by,default=timestamp"`
-	SortOrder string   `form:"sort_order,default=desc"`
-	Highlight bool     `form:"highlight"`
+	Keywords  string   `json:"keywords"`
+	Regex     bool     `json:"regex"`
+	EventIDs  []int32  `json:"event_ids"`
+	Levels    []int    `json:"levels"`
+	LogNames  []string `json:"log_names"`
+	Sources   []string `json:"sources"`
+	Users     []string `json:"users"`
+	Computers []string `json:"computers"`
+	StartTime string   `json:"start_time"`
+	EndTime   string   `json:"end_time"`
+	Page      int      `json:"page"`
+	PageSize  int      `json:"page_size"`
+	SortBy    string   `json:"sort_by"`
+	SortOrder string   `json:"sort_order"`
+	Highlight bool     `json:"highlight"`
 }
 
 func (h *AlertHandler) SearchEvents(c *gin.Context) {
 	var req SearchEventsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, ErrorResponse{Error: err.Error(), Code: ErrCodeInvalidRequest})
 		return
 	}
@@ -142,13 +142,15 @@ func (h *AlertHandler) SearchEvents(c *gin.Context) {
 	}
 
 	filter := &storage.EventFilter{
-		Keywords: req.Keywords,
-		Regex:    req.Regex,
-		Limit:    req.PageSize,
-		Offset:   (req.Page - 1) * req.PageSize,
-		EventIDs: req.EventIDs,
-		Levels:   req.Levels,
-		LogNames: req.LogNames,
+		Keywords:  req.Keywords,
+		Regex:     req.Regex,
+		Limit:     req.PageSize,
+		Offset:    (req.Page - 1) * req.PageSize,
+		EventIDs:  req.EventIDs,
+		Levels:    req.Levels,
+		LogNames:  req.LogNames,
+		Computers: req.Computers,
+		Users:     req.Users,
 	}
 
 	if req.StartTime != "" {

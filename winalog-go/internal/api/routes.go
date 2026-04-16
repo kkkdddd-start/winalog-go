@@ -16,7 +16,7 @@ func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *Impor
 			events.GET("", alertHandler.ListEvents)
 			events.GET("/:id", alertHandler.GetEvent)
 			events.POST("/search", alertHandler.SearchEvents)
-			events.GET("/export", alertHandler.ExportEvents)
+			events.POST("/export", alertHandler.ExportEvents)
 		}
 
 		alerts := api.Group("/alerts")
