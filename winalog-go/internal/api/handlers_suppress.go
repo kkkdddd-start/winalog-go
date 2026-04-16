@@ -2,15 +2,18 @@ package api
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/alerts"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type SuppressHandler struct {
-	db *storage.DB
+	db          *storage.DB
+	alertEngine *alerts.Engine
 }
 
 type SuppressRuleRequest struct {
@@ -39,8 +42,8 @@ type SuppressRuleResponse struct {
 	CreatedAt  string                    `json:"created_at"`
 }
 
-func NewSuppressHandler(db *storage.DB) *SuppressHandler {
-	return &SuppressHandler{db: db}
+func NewSuppressHandler(db *storage.DB, alertEngine *alerts.Engine) *SuppressHandler {
+	return &SuppressHandler{db: db, alertEngine: alertEngine}
 }
 
 func (h *SuppressHandler) ListSuppressRules(c *gin.Context) {
@@ -111,6 +114,8 @@ func (h *SuppressHandler) CreateSuppressRule(c *gin.Context) {
 
 	id, _ := result.LastInsertId()
 
+	h.loadRulesToEngine()
+
 	c.JSON(http.StatusCreated, SuppressRuleResponse{
 		ID:         id,
 		Name:       req.Name,
@@ -155,6 +160,8 @@ func (h *SuppressHandler) UpdateSuppressRule(c *gin.Context) {
 		return
 	}
 
+	h.loadRulesToEngine()
+
 	c.JSON(http.StatusOK, SuccessResponse{Message: "Suppress rule updated"})
 }
 
@@ -171,6 +178,8 @@ func (h *SuppressHandler) DeleteSuppressRule(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
+
+	h.loadRulesToEngine()
 
 	c.JSON(http.StatusOK, SuccessResponse{Message: "Suppress rule deleted"})
 }
@@ -190,6 +199,8 @@ func (h *SuppressHandler) ToggleSuppressRule(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
+
+	h.loadRulesToEngine()
 
 	c.JSON(http.StatusOK, SuccessResponse{Message: "Suppress rule toggled"})
 }
@@ -271,12 +282,113 @@ func convertToSuppressConditions(req []SuppressConditionReq) []types.SuppressCon
 	return result
 }
 
+func parseConditionsToSuppress(jsonStr string) []types.SuppressCondition {
+	result := make([]types.SuppressCondition, 0)
+	start := 0
+	for start < len(jsonStr) {
+		objStart := strings.Index(jsonStr[start:], "{")
+		if objStart == -1 {
+			break
+		}
+		start += objStart
+		objEnd := strings.Index(jsonStr[start:], "}")
+		if objEnd == -1 {
+			break
+		}
+		objEnd += start + 1
+		objStr := jsonStr[start+1 : objEnd-1]
+
+		var field, operator, value string
+		for _, part := range strings.Split(objStr, ",") {
+			part = strings.TrimSpace(part)
+			if strings.HasPrefix(part, `"field"`) {
+				parts := strings.Split(part, `":"`)
+				if len(parts) == 2 {
+					field = strings.TrimSuffix(parts[1], `"`)
+				}
+			}
+			if strings.HasPrefix(part, `"operator"`) {
+				parts := strings.Split(part, `":"`)
+				if len(parts) == 2 {
+					operator = strings.TrimSuffix(parts[1], `"`)
+				}
+			}
+			if strings.HasPrefix(part, `"value"`) {
+				parts := strings.Split(part, `":"`)
+				if len(parts) == 2 {
+					value = strings.TrimSuffix(parts[1], `"`)
+				}
+			}
+		}
+		if field != "" {
+			result = append(result, types.SuppressCondition{
+				Field:    field,
+				Operator: operator,
+				Value:    value,
+			})
+		}
+		start = objEnd
+	}
+	return result
+}
+
 func toString(v interface{}) string {
 	switch val := v.(type) {
 	case string:
 		return val
 	default:
 		return ""
+	}
+}
+
+func (h *SuppressHandler) loadRulesToEngine() {
+	if h.alertEngine == nil {
+		return
+	}
+	h.alertEngine.ClearSuppressions()
+
+	rows, err := h.db.Query(`
+		SELECT id, name, conditions, duration, scope, enabled, expires_at, created_at
+		FROM suppress_rules
+		WHERE enabled = 1
+	`)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		var name, conditionsJSON, scope, expiresAt, createdAt string
+		var duration int
+		var enabled bool
+
+		if err := rows.Scan(&id, &name, &conditionsJSON, &duration, &scope, &enabled, &expiresAt, &createdAt); err != nil {
+			continue
+		}
+
+		if !enabled {
+			continue
+		}
+
+		rule := &types.SuppressRule{
+			Name:     name,
+			Duration: time.Duration(duration) * time.Minute,
+			Scope:    scope,
+			Enabled:  enabled,
+		}
+
+		if expiresAt != "" {
+			if t, err := time.Parse(time.RFC3339, expiresAt); err == nil {
+				rule.ExpiresAt = t
+			}
+		}
+
+		if conditionsJSON != "" && conditionsJSON != "[]" {
+			rule.Conditions = parseConditionsToSuppress(conditionsJSON)
+		}
+
+		h.alertEngine.AddSuppressRule(rule)
 	}
 }
 

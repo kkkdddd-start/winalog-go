@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/alerts"
+	"github.com/kkkdddd-start/winalog-go/internal/analyzers"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
@@ -19,6 +20,7 @@ type Server struct {
 	cfg            *config.Config
 	configPath     string
 	addr           string
+	alertEngine    *alerts.Engine
 	alertEng       *AlertHandler
 	importEng      *ImportHandler
 	liveEng        *LiveHandler
@@ -59,13 +61,13 @@ func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Ser
 }
 
 func (s *Server) setupHandlers() {
-	alertEngine := alerts.NewEngine(s.db, alerts.EngineConfig{
+	s.alertEngine = alerts.NewEngine(s.db, alerts.EngineConfig{
 		DedupWindow: 5 * time.Minute,
 		StatsWindow: 24 * time.Hour,
 	})
 	s.alertEng = &AlertHandler{
 		db:          s.db,
-		alertEngine: alertEngine,
+		alertEngine: s.alertEngine,
 	}
 	s.importEng = &ImportHandler{
 		db: s.db,
@@ -81,10 +83,24 @@ func (s *Server) setupHandlers() {
 	s.forensicsEng = NewForensicsHandler(s.db)
 	s.dashboardEng = NewDashboardHandler(s.db)
 	s.settingsEng = NewSettingsHandler(s.cfg, s.configPath)
-	s.analyzeEng = NewAnalyzeHandler(s.db, nil)
+
+	analyzerManager := s.createAnalyzerManager()
+	s.analyzeEng = NewAnalyzeHandler(s.db, analyzerManager)
+
 	s.collectEng = NewCollectHandler(s.db)
-	s.suppressEng = NewSuppressHandler(s.db)
+	s.suppressEng = NewSuppressHandler(s.db, s.alertEngine)
 	s.uebaEng = NewUEBAHandler(s.db)
+}
+
+func (s *Server) createAnalyzerManager() *analyzers.AnalyzerManager {
+	mgr := analyzers.NewAnalyzerManager()
+	mgr.Register(analyzers.NewBruteForceAnalyzer())
+	mgr.Register(analyzers.NewLoginAnalyzer())
+	mgr.Register(analyzers.NewKerberosAnalyzer())
+	mgr.Register(analyzers.NewPowerShellAnalyzer())
+	mgr.Register(analyzers.NewDataExfiltrationAnalyzer())
+	mgr.Register(analyzers.NewLateralMovementAnalyzer())
+	return mgr
 }
 
 func (s *Server) setupRoutes() {
