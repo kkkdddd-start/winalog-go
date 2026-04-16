@@ -415,4 +415,54 @@ export const queryAPI = {
     api.post('/query/execute', params),
 }
 
+export interface SuppressRule {
+  id: number
+  name: string
+  conditions: any[]
+  duration: number
+  scope: string
+  enabled: boolean
+  expires_at: string
+  created_at: string
+}
+
+export const suppressAPI = {
+  list: () => api.get('/suppress'),
+  create: (rule: Partial<SuppressRule>) => api.post('/suppress', rule),
+  update: (id: number, rule: Partial<SuppressRule>) => api.put(`/suppress/${id}`, rule),
+  delete: (id: number) => api.delete(`/suppress/${id}`),
+  toggle: (id: number, enabled: boolean) => api.post(`/suppress/${id}/toggle`, { enabled }),
+}
+
+export interface UEBAAnomaly {
+  type: string
+  user?: string
+  severity: string
+  score: number
+  description: string
+  details?: Record<string, any>
+  event_ids?: number[]
+}
+
+export interface UEBAResponse {
+  type: string
+  anomalies: UEBAAnomaly[]
+  total_anomaly: number
+  high_risk_count: number
+  medium_risk_count: number
+  duration: string
+}
+
+export interface UserProfile {
+  user: string
+  login_count: number
+  last_updated: string
+  avg_events_per_day: number
+}
+
+export const uebaAPI = {
+  analyze: (params?: { hours?: number }) => api.post('/ueba/analyze', params || {}),
+  profiles: () => api.get('/ueba/profiles'),
+}
+
 export default api

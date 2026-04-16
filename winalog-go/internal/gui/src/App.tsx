@@ -18,6 +18,8 @@ import Analyze from './pages/Analyze'
 import Correlation from './pages/Correlation'
 import Multi from './pages/Multi'
 import Query from './pages/Query'
+import UEBA from './pages/UEBA'
+import Suppress from './pages/Suppress'
 import Live from './pages/Live'
 import Collect from './pages/Collect'
 import './App.css'
@@ -38,6 +40,8 @@ function Navigation() {
         <li><Link to="/correlation">{t('nav.correlation')}</Link></li>
         <li><Link to="/multi">{t('nav.multi')}</Link></li>
         <li><Link to="/query">{t('nav.query')}</Link></li>
+        <li><Link to="/ueba">{t('nav.ueba')}</Link></li>
+        <li><Link to="/suppress">{t('nav.suppress')}</Link></li>
         <li><Link to="/live">{t('nav.live')}</Link></li>
         <li><Link to="/persistence">{t('nav.persistence')}</Link></li>
         <li><Link to="/reports">{t('nav.reports')}</Link></li>
@@ -69,6 +73,8 @@ function AppContent() {
           <Route path="/correlation" element={<Correlation />} />
           <Route path="/multi" element={<Multi />} />
           <Route path="/query" element={<Query />} />
+          <Route path="/ueba" element={<UEBA />} />
+          <Route path="/suppress" element={<Suppress />} />
           <Route path="/live" element={<Live />} />
           <Route path="/persistence" element={<Persistence />} />
           <Route path="/reports" element={<Reports />} />
