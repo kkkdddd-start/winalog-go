@@ -15,7 +15,7 @@
 
 ### P0 — 立即修复（影响正确性）
 
-- [ ] 1. CLI analyze 缺少 4 个分析器
+- [x] 1. CLI analyze 缺少 4 个分析器
   - 将 `cmd/winalog/commands/analyze.go` 改为动态入口 `winalog analyze <type>`
   - 复用 `internal/analyzers/` 中的 AnalyzerManager 模式
   - 支持分析器: brute-force, login, kerberos, powershell, data-exfiltration, lateral-movement, persistence, privilege-escalation
@@ -23,33 +23,33 @@
   - 参考: `internal/api/server.go` 中的分析器注册逻辑
   - 关联分析报告: 1.3
 
-- [ ] 2. search keyword-mode 参数丢失
+- [x] 2. search keyword-mode 参数丢失
   - 在 `cmd/winalog/commands/search.go` 中传递 `KeywordMode` 参数
   - 在 `internal/storage/events.go` 的搜索查询中实现 AND/OR 逻辑
   - 确保 `SearchRequest.KeywordMode` 被正确使用
   - 关联分析报告: 3.2
 
-- [ ] 3. forensics collect 假成功问题
+- [x] 3. forensics collect 假成功问题
   - 修改 `cmd/winalog/commands/forensics.go` 中 `runForensicsCollect`
   - 在非 Windows 环境返回明确的 unsupported 错误
   - 对接 `internal/collectors/` 中已有的采集能力
   - 修改 `internal/api/handlers_forensics.go` 返回 HTTP 501
   - 关联分析报告: 2.1
 
-- [ ] 4. live collect 直接 sleep 问题
+- [x] 4. live collect 直接 sleep 问题
   - 修改 `cmd/winalog/commands/live.go` 中 `runLiveCollect`
   - 对接 `internal/collectors/live/collector.go` 中的实时采集逻辑
   - 实现 Ctrl+C 优雅退出
   - 关联分析报告: 2.3
 
-- [ ] 5. rules enable/disable 空操作问题
+- [x] 5. rules enable/disable 空操作问题（重新实现：写入数据库）
   - 实现真正的规则启用/禁用功能（写入配置或数据库）
   - 或移除这些子命令避免误导用户
   - 关联分析报告: 2.2
 
 ### P1 — 近期优化（影响可维护性）
 
-- [ ] 6. 提取 escapeCSV/exportToCSV 公共函数
+- [x] 6. 提取 escapeCSV/exportToCSV 公共函数
   - 创建 `internal/utils/csv.go`
   - 实现 `EscapeCSV(s string) string` 函数
   - 实现 `ExportToCSV(headers []string, rows [][]string) ([]byte, error)` 函数
@@ -57,16 +57,16 @@
   - 更新 `internal/api/handlers_persistence.go` 使用公共函数
   - 关联分析报告: 1.1, 1.2
 
-- [ ] 7. 统一事件查询入口
+- [x] 7. 统一事件查询入口
   - 审查所有散落的 SQL 查询（`analyze.go`, `handlers_correlation.go` 等）
   - 强制所有事件查询走 `storage.ListEvents()` 或 `EventRepo`
   - 删除裸 SQL 字符串
   - 关联分析报告: 1.3
 
 - [ ] 8. 提取 DB 初始化公共函数
-  - 创建 `cmd/winalog/commands/db_util.go`
+  - 创建 `cmd/winalog/commands/db_util.go` (基础文件已创建)
   - 实现 `openDB() (*storage.DB, func(), error)` 函数
-  - 更新所有 CLI 命令使用 `openDB()`
+  - 需要更新所有 CLI 命令使用 `openDB()` 替换现有调用 (33处)
   - 涉及文件: alert.go, ueba.go, whitelist.go, system.go, dashboard.go, search.go, report.go, analyze.go, import.go
   - 关联分析报告: 1.4
 
