@@ -396,12 +396,11 @@ curl http://localhost:8080/api/health
 ./winalog alert list --rule "brute-force"
 
 # 按状态过滤
-./winalog alert list --status open
-./winalog alert list --status resolved
-./winalog alert list --status false-positive
+./winalog alert list --resolved
+./winalog alert list  # 默认显示未 resolved
 
 # 分页
-./winalog alert list --page 1 --page-size 50
+./winalog alert list --page 1 --limit 50
 ```
 
 #### 测试 2.5.2：显示告警详情

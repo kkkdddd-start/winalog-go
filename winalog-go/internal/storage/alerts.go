@@ -611,7 +611,7 @@ func (r *AlertRepo) CountByRule() ([]*types.RuleCount, error) {
 func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error) {
 	var a types.Alert
 	var eventIDsJSON, mitreJSON sql.NullString
-	var resolvedTime sql.NullInt64
+	var resolvedTime sql.NullString
 	var notes sql.NullString
 
 	err := row.Scan(
@@ -642,8 +642,10 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 		json.Unmarshal([]byte(mitreJSON.String), &a.MITREAttack)
 	}
 	if resolvedTime.Valid {
-		t := time.Unix(resolvedTime.Int64, 0)
-		a.ResolvedTime = &t
+		t, err := time.Parse(time.RFC3339, resolvedTime.String)
+		if err == nil {
+			a.ResolvedTime = &t
+		}
 	}
 	if notes.Valid {
 		a.Notes = notes.String
@@ -655,7 +657,7 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 	var a types.Alert
 	var eventIDsJSON, mitreJSON sql.NullString
-	var resolvedTime sql.NullInt64
+	var resolvedTime sql.NullString
 	var notes sql.NullString
 
 	err := rows.Scan(
@@ -686,8 +688,10 @@ func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 		json.Unmarshal([]byte(mitreJSON.String), &a.MITREAttack)
 	}
 	if resolvedTime.Valid {
-		t := time.Unix(resolvedTime.Int64, 0)
-		a.ResolvedTime = &t
+		t, err := time.Parse(time.RFC3339, resolvedTime.String)
+		if err == nil {
+			a.ResolvedTime = &t
+		}
 	}
 	if notes.Valid {
 		a.Notes = notes.String
