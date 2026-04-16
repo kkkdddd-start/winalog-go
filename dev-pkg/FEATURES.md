@@ -2,8 +2,8 @@
 
 **项目**: WinLogAnalyzer  
 **版本**: Go v2.4.0  
-**日期**: 2026-04-13  
-**状态**: 已完成设计
+**日期**: 2026-04-16  
+**状态**: 已完成实现
 
 ---
 
@@ -1291,6 +1291,56 @@ type SuspiciousCmd struct {
 }
 ```
 
+### 8.5 数据外泄分析 (`data_exfiltration.go`)
+
+**功能需求**:
+```go
+type DataExfiltrationAnalyzer struct {
+    BaseAnalyzer
+}
+
+type DataExfiltrationResult struct {
+    SuspiciousTransfers []*SuspiciousTransfer `json:"suspicious_transfers"`
+    LargeFileAccess     []*LargeFileAccess     `json:"large_file_access"`
+    ExternalDestinations []*ExternalDestination `json:"external_destinations"`
+    RiskScore           float64               `json:"risk_score"`
+}
+
+type SuspiciousTransfer struct {
+    User       string    `json:"user"`
+    SourcePath string    `json:"source_path"`
+    DestIP     string    `json:"dest_ip"`
+    BytesOut   int64     `json:"bytes_out"`
+    Timestamp  time.Time `json:"timestamp"`
+    RiskLevel  string    `json:"risk_level"`
+}
+```
+
+### 8.6 横向移动分析 (`lateral_movement.go`)
+
+**功能需求**:
+```go
+type LateralMovementAnalyzer struct {
+    BaseAnalyzer
+}
+
+type LateralMovementResult struct {
+    SuspiciousConnections []*SuspiciousConnection `json:"suspicious_connections"`
+    RemoteExecutions     []*RemoteExecution     `json:"remote_executions"`
+    PassTheHash         []*PassTheHashEvent    `json:"pass_the_hash"`
+    RiskScore           float64               `json:"risk_score"`
+}
+
+type SuspiciousConnection struct {
+    SourceIP   string    `json:"source_ip"`
+    DestIP     string    `json:"dest_ip"`
+    Protocol   string    `json:"protocol"`
+    Port       int       `json:"port"`
+    Timestamp  time.Time `json:"timestamp"`
+    RiskLevel  string    `json:"risk_level"`
+}
+```
+
 ---
 
 ## 九、存储 (`internal/storage/`)
@@ -1914,4 +1964,84 @@ var keyMap = KeyMap{
 
 ---
 
-*文档版本: v1.0 | 更新日期: 2026-04-13*
+## 十八、实现状态跟踪 (2026-04-16 更新)
+
+### 18.1 已完成模块 ✅
+
+| 模块 | 状态 | 文件数 | 说明 |
+|------|------|--------|------|
+| **CLI 命令** | ✅ 完成 | 13 | import, search, collect, alert, correlate, report, export, timeline, live, status, info, verify, rules, db, config, metrics, query, tui, serve |
+| **核心引擎** | ✅ 完成 | 3 | engine.go, importer.go, pipeline.go |
+| **解析器** | ✅ 完成 | 6 | evtx, etl, csv, iis, sysmon, parser.go |
+| **系统信息采集** | ✅ 完成 | 10+ | process, network, registry, driver, dll, task, user, env, system_info, one_click |
+| **持久化检测** | ✅ 完成 | 15 | RunKey, UserInit, StartupFolder, Accessibility, COM, IFEO, AppInit, WMI, Service, LSA, Winsock, BHO, PrintMonitor, BootExecute, ETW |
+| **实时采集** | ✅ 完成 | 4+ | collector, filtered, bookmark, stats |
+| **告警引擎** | ✅ 完成 | 7 | engine, dedup, evaluator, stats, trend, upgrade, suppress |
+| **关联引擎** | ✅ 完成 | 3 | engine, matcher, chain |
+| **规则系统** | ✅ 完成 | 4+ | rule, loader, validator, custom_rules, builtin |
+| **分析器** | ✅ 完成 | 6 | brute_force, login, kerberos, powershell, data_exfiltration, lateral_movement |
+| **存储** | ✅ 完成 | 5+ | db, events, alerts, system, schema |
+| **报告** | ✅ 完成 | 4+ | generator, html, json, security_stats, template |
+| **导出器** | ✅ 完成 | 5 | csv, evtx, excel, json, timeline |
+| **时间线** | ✅ 完成 | 2 | builder, visualizer |
+| **取证** | ✅ 完成 | 5 | chain, hash, memory, signature, timestamp |
+| **可观测性** | ✅ 完成 | 3 | logging, metrics, system |
+| **API Handlers** | ✅ 完成 | 16 | handlers, handlers_analyze, handlers_collect, handlers_dashboard, handlers_forensics, handlers_live, handlers_persistence, handlers_reports, handlers_rules, handlers_settings, handlers_suppress, handlers_system, handlers_ueba |
+| **TUI** | ✅ 完成 | 4 | model, update, view, styles |
+| **Web UI** | ✅ 完成 | React+Vite | React + TypeScript + Vite + Chart.js |
+
+### 18.2 API 路由清单
+
+| 路由组 | 端点数 | 说明 |
+|--------|--------|------|
+| `/api/events` | 4 | 列表、详情、搜索、导出 |
+| `/api/alerts` | 8 | 列表、详情、解决、误报、趋势、运行分析 |
+| `/api/timeline` | 4 | 时间线、统计、攻击链、导出 |
+| `/api/import` | 2 | 导入日志、状态查询 |
+| `/api/live` | 2 | 实时事件流、统计 |
+| `/api/dashboard` | 1 | 采集统计 |
+| `/api/persistence` | 4 | 检测、详情、导出 |
+| `/api/system` | 4 | 信息、指标、驱动器、进程 |
+| `/api/rules` | 8 | CRUD、切换、验证、导入导出 |
+| `/api/reports` | 5+ | 列表、生成、详情、模板管理 |
+| `/api/forensics` | 4 | 证据、哈希、时间戳、链式取证 |
+| `/api/settings` | 4 | 配置管理 |
+| `/api/analyze` | 2+ | 分析器执行 |
+| `/api/collect` | 3 | 一键采集 |
+| `/api/suppress` | 6 | 白名单规则管理 |
+| `/api/ueba` | 3 | UEBA分析 |
+
+### 18.3 分析器清单
+
+| 分析器 | 功能 | MITRE |
+|--------|------|-------|
+| BruteForceAnalyzer | 暴力破解检测 | T1110 |
+| LoginAnalyzer | 登录分析 | T1078 |
+| KerberosAnalyzer | Kerberos攻击检测 | T1558 |
+| PowerShellAnalyzer | PowerShell命令分析 | T1059.001 |
+| DataExfiltrationAnalyzer | 数据外泄检测 | T1041 |
+| LateralMovementAnalyzer | 横向移动检测 | T1021 |
+
+### 18.4 持久化检测器清单 (15个)
+
+| 检测器 | 技术ID | 说明 |
+|--------|--------|------|
+| RunKeyDetector | T1547.001 | 注册表Run键 |
+| UserInitDetector | T1547.001 | UserInit执行 |
+| StartupFolderDetector | T1547.001 | 启动文件夹 |
+| AccessibilityDetector | T1546.008 | 辅助功能 |
+| COMHijackDetector | T1546.015 | COM劫持 |
+| IFEODetector | T1546.008 | IFEO注入 |
+| AppInitDetector | T1546.016 | AppInit DLL |
+| WMIPersistenceDetector | T1546.003 | WMI持久化 |
+| ServicePersistenceDetector | T1543.003 | 服务创建 |
+| LSAPersistenceDetector | T1546.008 | LSA保护 |
+| WinsockDetector | T1546.011 | Winsock LSP |
+| BHODetector | T1546.008 | 浏览器扩展 |
+| PrintMonitorDetector | T1546.010 | 打印监视器 |
+| BootExecuteDetector | T1546.009 | Boot执行 |
+| ETWDetector | T1546.006 | ETW绕过 |
+
+---
+
+*文档版本: v2.0 | 更新日期: 2026-04-16 | 状态: 实现完成*
