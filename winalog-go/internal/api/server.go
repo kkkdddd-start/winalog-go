@@ -15,33 +15,30 @@ import (
 )
 
 type Server struct {
-	engine            *gin.Engine
-	db                *storage.DB
-	cfg               *config.Config
-	configPath        string
-	addr              string
-	alertEngine       *alerts.Engine
-	alertEng          *AlertHandler
-	importEng         *ImportHandler
-	liveEng           *LiveHandler
-	persistenceEng    *PersistenceHandler
-	timelineEng       *TimelineHandler
-	systemEng         *SystemHandler
-	rulesEng          *RulesHandler
-	reportsEng        *ReportsHandler
-	forensicsEng      *ForensicsHandler
-	dashboardEng      *DashboardHandler
-	settingsEng       *SettingsHandler
-	analyzeEng        *AnalyzeHandler
-	collectEng        *CollectHandler
-	suppressEng       *SuppressHandler
-	uebaEng           *UEBAHandler
-	correlationEng    *CorrelationHandler
-	multiEng          *MultiHandler
-	queryEng          *QueryHandler
-	policyTemplateEng *PolicyTemplateHandler
-	ruleTemplateEng   *RuleTemplateHandler
-	modernReportEng   *ModernReportHandler
+	engine         *gin.Engine
+	db             *storage.DB
+	cfg            *config.Config
+	configPath     string
+	addr           string
+	alertEngine    *alerts.Engine
+	alertEng       *AlertHandler
+	importEng      *ImportHandler
+	liveEng        *LiveHandler
+	persistenceEng *PersistenceHandler
+	timelineEng    *TimelineHandler
+	systemEng      *SystemHandler
+	rulesEng       *RulesHandler
+	reportsEng     *ReportsHandler
+	forensicsEng   *ForensicsHandler
+	dashboardEng   *DashboardHandler
+	settingsEng    *SettingsHandler
+	analyzeEng     *AnalyzeHandler
+	collectEng     *CollectHandler
+	suppressEng    *SuppressHandler
+	uebaEng        *UEBAHandler
+	correlationEng *CorrelationHandler
+	multiEng       *MultiHandler
+	queryEng       *QueryHandler
 }
 
 func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Server {
@@ -99,9 +96,6 @@ func (s *Server) setupHandlers() {
 	s.correlationEng = NewCorrelationHandler(s.db)
 	s.multiEng = NewMultiHandler(s.db)
 	s.queryEng = NewQueryHandler(s.db)
-	s.policyTemplateEng = NewPolicyTemplateHandler()
-	s.ruleTemplateEng = NewRuleTemplateHandler()
-	s.modernReportEng = NewModernReportHandler(s.db)
 }
 
 func (s *Server) createAnalyzerManager() *analyzers.AnalyzerManager {
@@ -132,9 +126,6 @@ func (s *Server) setupRoutes() {
 	SetupCorrelationRoutes(s.engine, s.correlationEng)
 	SetupMultiRoutes(s.engine, s.multiEng)
 	SetupQueryRoutes(s.engine, s.queryEng)
-	SetupPolicyTemplateRoutes(s.engine, s.policyTemplateEng)
-	SetupRuleTemplateRoutes(s.engine, s.ruleTemplateEng)
-	SetupModernReportRoutes(s.engine, s.modernReportEng)
 
 	staticDir := filepath.Join("internal", "gui", "dist")
 	staticFs := http.Dir(staticDir)
