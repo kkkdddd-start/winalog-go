@@ -1,6 +1,7 @@
 package analyzers
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -351,7 +352,7 @@ func (a *PrivilegeEscalationAnalyzer) generateSummary(findings []Finding) string
 		}
 	}
 
-	return sprintf("Found %d privilege escalation indicators (%d critical, %d high, %d medium)",
+	return fmt.Sprintf("Found %d privilege escalation indicators (%d critical, %d high, %d medium)",
 		len(findings), criticalCount, highCount, mediumCount)
 }
 

@@ -165,7 +165,7 @@ func (a *LateralMovementAnalyzer) performAnalysis(events []*types.Event) *Latera
 }
 
 func (a *LateralMovementAnalyzer) getLogonType(e *types.Event) int {
-	return 0
+	return e.GetLogonType()
 }
 
 func (a *LateralMovementAnalyzer) getSourceIP(e *types.Event) string {
@@ -180,6 +180,14 @@ func (a *LateralMovementAnalyzer) getSourceIPFromEvent(e *types.Event) string {
 }
 
 func (a *LateralMovementAnalyzer) getSourceHost(e *types.Event) string {
+	if v := e.GetExtractedField("WorkstationName"); v != nil {
+		if s, ok := v.(string); ok && s != "" {
+			return s
+		}
+	}
+	if e.IPAddress != nil && *e.IPAddress != "" && *e.IPAddress != "-" {
+		return *e.IPAddress
+	}
 	return ""
 }
 

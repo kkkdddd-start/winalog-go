@@ -1,6 +1,7 @@
 package analyzers
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -244,7 +245,7 @@ func (a *BruteForceAnalyzer) generateSummary(userInfo map[string]*UserBruteForce
 		}
 	}
 
-	return sprintf("Found %d compromised accounts and %d suspicious IPs from brute force analysis",
+	return fmt.Sprintf("Found %d compromised accounts and %d suspicious IPs from brute force analysis",
 		compromisedCount, suspiciousCount)
 }
 
@@ -265,10 +266,6 @@ func containsUser(users []string, user string) bool {
 		}
 	}
 	return false
-}
-
-func sprintf(format string, args ...interface{}) string {
-	return format
 }
 
 func sortMapByValue(m map[string]*UserBruteForceInfo) []struct {

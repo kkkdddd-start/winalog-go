@@ -1,6 +1,7 @@
 package analyzers
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -220,7 +221,7 @@ func (a *PersistenceAnalyzer) generateSummary(findings []Finding) string {
 		}
 	}
 
-	return sprintf("Found %d persistence mechanisms (%d critical, %d high severity)", len(findings), criticalCount, highCount)
+	return fmt.Sprintf("Found %d persistence mechanisms (%d critical, %d high severity)", len(findings), criticalCount, highCount)
 }
 
 func extractServiceName(message string) string {

@@ -111,19 +111,18 @@ func (e *Engine) Analyze(ctx context.Context, rules []*rules.CorrelationRule) ([
 			continue
 		}
 
-		result := e.analyzeRule(rule)
-		if result != nil {
-			results = append(results, result)
-		}
+		ruleResults := e.analyzeRule(rule)
+		results = append(results, ruleResults...)
 	}
 
 	return results, nil
 }
 
-func (e *Engine) analyzeRule(rule *rules.CorrelationRule) *types.CorrelationResult {
+func (e *Engine) analyzeRule(rule *rules.CorrelationRule) []*types.CorrelationResult {
+	allResults := make([]*types.CorrelationResult, 0)
 	patterns := rule.Patterns
 	if len(patterns) < 2 {
-		return nil
+		return allResults
 	}
 
 	for i, pattern := range patterns {
@@ -144,30 +143,42 @@ func (e *Engine) analyzeRule(rule *rules.CorrelationRule) *types.CorrelationResu
 			events = events[:pattern.MaxCount]
 		}
 
-		baseEvent := events[0]
-		if baseEvent == nil {
-			continue
-		}
-
-		if i == len(patterns)-1 {
-			if pattern.Negate {
+		for idx := 0; idx < len(events); idx++ {
+			baseEvent := events[idx]
+			if baseEvent == nil {
 				continue
 			}
-			return e.chain.Build(baseEvent, events[1:], rule)
-		}
 
-		nextPattern := patterns[i+1]
-		nextEvents := e.findRelatedEvents(baseEvent, nextPattern)
-
-		if len(nextEvents) > 0 {
-			if !e.matcher.CheckOrderedSequence([]*types.Event{baseEvent, nextEvents[0]}, nextPattern) {
+			if i == len(patterns)-1 {
+				if pattern.Negate {
+					continue
+				}
+				result := e.chain.Build(baseEvent, events[idx+1:], rule)
+				if result != nil {
+					allResults = append(allResults, result)
+				}
 				continue
 			}
-			return e.chain.Build(baseEvent, nextEvents, rule)
+
+			nextPattern := patterns[i+1]
+			nextEvents := e.findRelatedEvents(baseEvent, nextPattern)
+
+			if len(nextEvents) > 0 {
+				for _, nextEvent := range nextEvents {
+					if !e.matcher.CheckOrderedSequence([]*types.Event{baseEvent, nextEvent}, nextPattern) {
+						continue
+					}
+					result := e.chain.Build(baseEvent, []*types.Event{nextEvent}, rule)
+					if result != nil {
+						allResults = append(allResults, result)
+					}
+					break
+				}
+			}
 		}
 	}
 
-	return nil
+	return allResults
 }
 
 func (e *Engine) filterByTimeWindow(events []*types.Event, window time.Duration) []*types.Event {
@@ -175,11 +186,17 @@ func (e *Engine) filterByTimeWindow(events []*types.Event, window time.Duration)
 		return events
 	}
 
-	cutoff := time.Now().Add(-window)
+	baseTime := events[0].Timestamp
+	for _, event := range events {
+		if event.Timestamp.Before(baseTime) {
+			baseTime = event.Timestamp
+		}
+	}
+	cutoff := baseTime.Add(window)
 	filtered := make([]*types.Event, 0)
 
 	for _, event := range events {
-		if event.Timestamp.After(cutoff) {
+		if event.Timestamp.After(baseTime) && event.Timestamp.Before(cutoff) {
 			filtered = append(filtered, event)
 		}
 	}

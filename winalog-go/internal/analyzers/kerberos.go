@@ -239,10 +239,10 @@ func (a *KerberosAnalyzer) isKerberoasting(e *types.Event) bool {
 	}
 
 	if !strings.Contains(serviceName, "$") {
-		return false
+		return true
 	}
 
-	return true
+	return false
 }
 
 func (a *KerberosAnalyzer) isSuspiciousPreauth(e *types.Event) bool {

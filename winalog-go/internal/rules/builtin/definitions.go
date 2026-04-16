@@ -18,12 +18,15 @@ type RuleDetail struct {
 func GetAlertRules() []*rules.AlertRule {
 	return []*rules.AlertRule{
 		{
-			Name:        "failed-login-threshold",
-			Description: "失败登录次数超过阈值",
-			Enabled:     true,
-			Severity:    types.SeverityHigh,
-			Score:       70,
-			MitreAttack: "T1110",
+			Name:           "failed-login-threshold",
+			Description:    "失败登录次数超过阈值",
+			Enabled:        true,
+			Severity:       types.SeverityHigh,
+			Score:          70,
+			MitreAttack:    "T1110",
+			Threshold:      10,
+			TimeWindow:     5 * time.Minute,
+			AggregationKey: "user",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4625},
 				Levels:   []int{2},

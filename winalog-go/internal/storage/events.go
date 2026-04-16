@@ -9,6 +9,20 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
+var allowedSortFields = map[string]bool{
+	"timestamp":   true,
+	"event_id":    true,
+	"level":       true,
+	"source":      true,
+	"log_name":    true,
+	"computer":    true,
+	"user":        true,
+	"user_sid":    true,
+	"session_id":  true,
+	"ip_address":  true,
+	"import_time": true,
+}
+
 type EventRepo struct {
 	db *DB
 }
@@ -209,7 +223,10 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 	}
 	sortBy := "timestamp"
 	if req.SortBy != "" {
-		sortBy = req.SortBy
+		sanitized := strings.ToLower(strings.TrimSpace(req.SortBy))
+		if allowedSortFields[sanitized] {
+			sortBy = sanitized
+		}
 	}
 
 	offset := (req.Page - 1) * req.PageSize

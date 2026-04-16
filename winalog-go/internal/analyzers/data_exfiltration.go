@@ -1,6 +1,7 @@
 package analyzers
 
 import (
+	"net"
 	"strings"
 	"time"
 
@@ -259,17 +260,37 @@ func (a *DataExfiltrationAnalyzer) isCloudService(ip string) bool {
 	if ip == "" {
 		return false
 	}
-	cloudPatterns := []string{
-		"dropbox", "box", "google", "microsoft",
-		"amazon", "aws", "azure", "icloud",
-		"mega", "pcloud", "onedrive",
+
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return false
 	}
-	ipLower := strings.ToLower(ip)
-	for _, pattern := range cloudPatterns {
-		if strings.Contains(ipLower, pattern) {
-			return true
+
+	cloudCIDRs := []string{
+		"162.125.0.0/16",   // Dropbox
+		"108.160.160.0/19", // Dropbox
+		"34.64.0.0/10",     // Google Cloud
+		"35.190.0.0/17",    // Google Cloud
+		"13.64.0.0/11",     // Azure
+		"13.104.0.0/14",    // Azure
+		"52.96.0.0/14",     // Azure
+		"104.40.0.0/13",    // Azure
+		"54.240.0.0/16",    // Amazon AWS
+		"99.77.0.0/16",     // Amazon CloudFront
+		"185.60.216.0/22",  // iCloud
+		"17.0.0.0/8",       // Apple iCloud
+		"130.211.0.0/16",   // Google
+		"199.16.156.0/22",  // Dropbox
+	}
+
+	for _, cidr := range cloudCIDRs {
+		if _, ipNet, err := net.ParseCIDR(cidr); err == nil {
+			if ipNet.Contains(parsedIP) {
+				return true
+			}
 		}
 	}
+
 	return false
 }
 

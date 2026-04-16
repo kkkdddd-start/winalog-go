@@ -1,6 +1,7 @@
 package ueba
 
 import (
+	"net"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -247,9 +248,36 @@ func (e *Engine) detectPrivilegeEscalation(events []*types.Event) []*AnomalyResu
 	return results
 }
 
+func isPrivateIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+
+	if ip4 := ip.To4(); ip4 != nil {
+		return ip4[0] == 10 ||
+			(ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31) ||
+			(ip4[0] == 192 && ip4[1] == 168) ||
+			(ip4[0] == 127)
+	}
+
+	return false
+}
+
 func calculateIPDistance(ip1, ip2 string) float64 {
 	if ip1 == "" || ip2 == "" || ip1 == ip2 {
 		return 0
+	}
+
+	priv1 := isPrivateIP(ip1)
+	priv2 := isPrivateIP(ip2)
+
+	if priv1 && priv2 {
+		return 100.0
+	}
+
+	if !priv1 && !priv2 {
+		return 100.0
 	}
 
 	return 1000.0

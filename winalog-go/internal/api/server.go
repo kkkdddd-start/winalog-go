@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 type Server struct {
 	engine         *gin.Engine
+	httpServer     *http.Server
 	db             *storage.DB
 	cfg            *config.Config
 	configPath     string
@@ -154,7 +156,7 @@ func (s *Server) setupRoutes() {
 func (s *Server) Start() error {
 	log.Printf("Starting HTTP API server on %s", s.addr)
 
-	server := &http.Server{
+	s.httpServer = &http.Server{
 		Addr:         s.addr,
 		Handler:      s.engine,
 		ReadTimeout:  30 * time.Second,
@@ -162,7 +164,7 @@ func (s *Server) Start() error {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("failed to start server: %w", err)
 	}
 
@@ -170,5 +172,17 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) Stop() error {
+	if s.httpServer == nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	log.Println("Shutting down HTTP server gracefully...")
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		return fmt.Errorf("server shutdown error: %w", err)
+	}
+	log.Println("HTTP server gracefully stopped")
 	return nil
 }

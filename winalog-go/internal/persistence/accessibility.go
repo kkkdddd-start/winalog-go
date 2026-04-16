@@ -37,11 +37,6 @@ var AccessibilityBinaries = map[string]string{
 	"displayswitch.exe": "Display Switch",
 	"magnifyhost.exe":   "Magnifier Host",
 	"tabtip.exe":        "Touch Keyboard and Handwriting Panel",
-	" narrator.exe":     "Narrator",
-	"ctfmon.exe":        "CTF Loader",
-	"cleanmgr.exe":      "Disk Cleanup",
-	"Spestered":         "SystemPropertiesPerformance",
-	"sysdm.cpl":         "System Properties",
 }
 
 var AccessibilityPaths = []string{
@@ -66,8 +61,6 @@ func (d *AccessibilityDetector) Detect(ctx context.Context) ([]*Detection, error
 func (d *AccessibilityDetector) checkAccessibilityBinary(binary, description string) *Detection {
 	system32Path := `C:\Windows\System32\` + binary
 
-	expectedHash, _ := utils.GetFileHash(system32Path)
-
 	_, exists, _ := utils.FileExists(system32Path)
 	if !exists {
 		return nil
@@ -75,7 +68,8 @@ func (d *AccessibilityDetector) checkAccessibilityBinary(binary, description str
 
 	currentHash, _ := utils.GetFileHash(system32Path)
 
-	if currentHash != expectedHash && expectedHash != "" {
+	expectedHash := KnownAccessibilityHashes[binary]
+	if expectedHash != "" && currentHash != "" && currentHash != expectedHash {
 		return &Detection{
 			Technique:   TechniqueT1546001,
 			Category:    "Accessibility",
@@ -116,6 +110,8 @@ func (d *AccessibilityDetector) checkAccessibilityBinary(binary, description str
 
 	return nil
 }
+
+var KnownAccessibilityHashes = map[string]string{}
 
 func (d *AccessibilityDetector) DetectViaEventLog(ctx context.Context, taskName, taskCommand string) *Detection {
 	taskNameLower := strings.ToLower(taskName)

@@ -3,15 +3,50 @@ package alerts
 import (
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
-type Evaluator struct{}
+type eventCountKey struct {
+	ruleName string
+	aggKey   string
+}
+
+type eventCountEntry struct {
+	count     int
+	firstTime time.Time
+	lastTime  time.Time
+}
+
+type Evaluator struct {
+	mu         sync.RWMutex
+	eventCount map[eventCountKey]*eventCountEntry
+}
 
 func NewEvaluator() *Evaluator {
-	return &Evaluator{}
+	e := &Evaluator{
+		eventCount: make(map[eventCountKey]*eventCountEntry),
+	}
+	go e.cleanupExpiredEntries()
+	return e
+}
+
+func (e *Evaluator) cleanupExpiredEntries() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		e.mu.Lock()
+		now := time.Now()
+		for key, entry := range e.eventCount {
+			if now.Sub(entry.lastTime) > 2*time.Hour {
+				delete(e.eventCount, key)
+			}
+		}
+		e.mu.Unlock()
+	}
 }
 
 func (e *Evaluator) Evaluate(rule *rules.AlertRule, event *types.Event) (bool, error) {
@@ -328,7 +363,42 @@ func (e *Evaluator) matchTimeRange(tr *types.TimeRange, event *types.Event) bool
 }
 
 func (e *Evaluator) checkThreshold(rule *rules.AlertRule, event *types.Event) bool {
-	return true
+	if rule.Threshold <= 0 {
+		return true
+	}
+	if rule.TimeWindow <= 0 {
+		return true
+	}
+
+	aggKey := e.getAggregationKey(rule, event)
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	key := eventCountKey{ruleName: rule.Name, aggKey: aggKey}
+	now := event.Timestamp
+
+	entry, exists := e.eventCount[key]
+	if !exists {
+		entry = &eventCountEntry{
+			count:     1,
+			firstTime: now,
+			lastTime:  now,
+		}
+		e.eventCount[key] = entry
+		return entry.count >= rule.Threshold
+	}
+
+	if now.Sub(entry.firstTime) > rule.TimeWindow {
+		entry.count = 1
+		entry.firstTime = now
+		entry.lastTime = now
+	} else {
+		entry.count++
+		entry.lastTime = now
+	}
+
+	return entry.count >= rule.Threshold
 }
 
 func (e *Evaluator) getAggregationKey(rule *rules.AlertRule, event *types.Event) string {

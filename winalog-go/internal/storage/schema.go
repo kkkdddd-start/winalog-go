@@ -213,6 +213,46 @@ CREATE TABLE IF NOT EXISTS rule_states (
 	enabled INTEGER DEFAULT 1,
 	updated_at TEXT NOT NULL
 );
+
+-- Indexes for events table
+CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_events_event_id ON events(event_id);
+CREATE INDEX IF NOT EXISTS idx_events_level ON events(level);
+CREATE INDEX IF NOT EXISTS idx_events_log_name ON events(log_name);
+CREATE INDEX IF NOT EXISTS idx_events_computer ON events(computer);
+CREATE INDEX IF NOT EXISTS idx_events_user ON events(user);
+CREATE INDEX IF NOT EXISTS idx_events_import_time ON events(import_time);
+
+-- Indexes for alerts table
+CREATE INDEX IF NOT EXISTS idx_alerts_rule_name ON alerts(rule_name);
+CREATE INDEX IF NOT EXISTS idx_alerts_first_seen ON alerts(first_seen);
+CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);
+CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON alerts(resolved);
+
+-- Indexes for import_log table
+CREATE INDEX IF NOT EXISTS idx_import_log_import_time ON import_log(import_time);
+
+-- Indexes for processes table
+CREATE INDEX IF NOT EXISTS idx_processes_pid ON processes(pid);
+CREATE INDEX IF NOT EXISTS idx_processes_name ON processes(name);
+CREATE INDEX IF NOT EXISTS idx_processes_collected_at ON processes(collected_at);
+
+-- Indexes for network_connections table
+CREATE INDEX IF NOT EXISTS idx_network_connections_protocol ON network_connections(protocol);
+CREATE INDEX IF NOT EXISTS idx_network_connections_local_port ON network_connections(local_port);
+CREATE INDEX IF NOT EXISTS idx_network_connections_collected_at ON network_connections(collected_at);
+
+-- Indexes for system_info table
+CREATE INDEX IF NOT EXISTS idx_system_info_hostname ON system_info(hostname);
+CREATE INDEX IF NOT EXISTS idx_system_info_collected_at ON system_info(collected_at);
+
+-- Indexes for reports table
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_generated_at ON reports(generated_at);
+
+-- Indexes for suppress_rules table
+CREATE INDEX IF NOT EXISTS idx_suppress_rules_name ON suppress_rules(name);
+CREATE INDEX IF NOT EXISTS idx_suppress_rules_enabled ON suppress_rules(enabled);
 `
 
 var TableDefinitions = map[string]TableDefinition{
