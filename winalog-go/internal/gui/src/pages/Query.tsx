@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useI18n } from '../locales/I18n'
 
 interface QueryResponse {
@@ -8,12 +8,25 @@ interface QueryResponse {
   total: number
 }
 
+interface QueryHistoryItem {
+  id: string
+  sql: string
+  timestamp: string
+  success: boolean
+  rowCount: number
+  duration?: string
+}
+
 function Query() {
   const { t } = useI18n()
   const [sql, setSql] = useState('SELECT * FROM events LIMIT 10')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<QueryResponse | null>(null)
   const [error, setError] = useState('')
+  const [history, setHistory] = useState<QueryHistoryItem[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [executionTime, setExecutionTime] = useState<string>('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleExecute = async () => {
     if (!sql.trim()) {
@@ -24,6 +37,7 @@ function Query() {
     setLoading(true)
     setError('')
     setResult(null)
+    const startTime = performance.now()
 
     try {
       const res = await fetch('/api/query/execute', {
@@ -32,25 +46,128 @@ function Query() {
         body: JSON.stringify({ sql, limit: 100 }),
       })
       const data = await res.json()
+      const duration = ((performance.now() - startTime) / 1000).toFixed(2)
+      setExecutionTime(duration)
+      
       if (!res.ok) {
         setError(data.error || 'Query failed')
+        addToHistory(sql, false, 0, duration)
       } else {
         setResult(data)
+        addToHistory(sql, true, data.count, duration)
       }
     } catch (err: any) {
       setError(err.message || 'Failed to execute query')
+      addToHistory(sql, false, 0)
     } finally {
       setLoading(false)
     }
   }
 
+  const addToHistory = (sqlQuery: string, success: boolean, rowCount: number, duration?: string) => {
+    const newItem: QueryHistoryItem = {
+      id: Date.now().toString(),
+      sql: sqlQuery,
+      timestamp: new Date().toISOString(),
+      success,
+      rowCount,
+      duration,
+    }
+    setHistory(prev => [newItem, ...prev.slice(0, 49)])
+  }
+
+  const loadFromHistory = (item: QueryHistoryItem) => {
+    setSql(item.sql)
+    setShowHistory(false)
+  }
+
+  const clearHistory = () => {
+    setHistory([])
+  }
+
+  const highlightSQL = (query: string): JSX.Element => {
+    const keywords = ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON', 'GROUP', 'BY', 'ORDER', 'HAVING', 'LIMIT', 'OFFSET', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'CREATE', 'TABLE', 'DROP', 'ALTER', 'INDEX', 'AS', 'ASC', 'DESC', 'DISTINCT', 'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'LIKE', 'IN', 'BETWEEN', 'IS', 'NULL', 'NOT', 'EXISTS', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'UNION', 'ALL', 'INTO', 'OUTFILE']
+    const functions = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'COALESCE', 'IFNULL', 'NULLIF', 'CAST', 'DATE', 'TIME', 'DATETIME', 'STRFTIME', 'SUBSTR', 'LENGTH', 'UPPER', 'LOWER', 'TRIM', 'REPLACE', 'GROUP_CONCAT']
+    const operators = ['=', '!=', '<>', '<', '>', '<=', '>=', '+', '-', '*', '/', '%', '||']
+    
+    const parts: JSX.Element[] = []
+    const regex = /('[^']*'|"[^"]*"|\b(?:[\w]+)\b|[=<>!+\-*/%,()]+|\S)/g
+    const tokens = query.match(regex) || []
+    
+    let key = 0
+    for (const token of tokens) {
+      const upperToken = token.toUpperCase()
+      
+      if (token.startsWith("'") && token.endsWith("'")) {
+        parts.push(<span key={key++} className="sql-string">{token}</span>)
+      } else if (token.startsWith('"') && token.endsWith('"')) {
+        parts.push(<span key={key++} className="sql-string">{token}</span>)
+      } else if (operators.includes(token)) {
+        parts.push(<span key={key++} className="sql-operator">{token}</span>)
+      } else if (functions.includes(upperToken)) {
+        parts.push(<span key={key++} className="sql-function">{token}</span>)
+      } else if (keywords.includes(upperToken)) {
+        parts.push(<span key={key++} className="sql-keyword">{token}</span>)
+      } else if (/^\d+$/.test(token)) {
+        parts.push(<span key={key++} className="sql-number">{token}</span>)
+      } else {
+        parts.push(<span key={key++} className="sql-identifier">{token}</span>)
+      }
+    }
+    
+    return <>{parts}</>
+  }
+
   const presetQueries = [
-    { label: t('query.presetEvents'), sql: 'SELECT * FROM events LIMIT 10' },
-    { label: t('query.presetAlerts'), sql: 'SELECT * FROM alerts LIMIT 10' },
-    { label: t('query.presetAuth'), sql: "SELECT * FROM events WHERE event_id IN (4624, 4625) LIMIT 20" },
-    { label: t('query.presetPowerShell'), sql: "SELECT * FROM events WHERE message LIKE '%PowerShell%' LIMIT 10" },
-    { label: t('query.presetSchema'), sql: "SELECT name, type FROM sqlite_master WHERE type='table'" },
+    { label: t('query.presetEvents') || 'Top Events', sql: 'SELECT event_id, COUNT(*) as cnt FROM events GROUP BY event_id ORDER BY cnt DESC LIMIT 10' },
+    { label: t('query.presetAlerts') || 'Recent Alerts', sql: 'SELECT * FROM alerts ORDER BY first_seen DESC LIMIT 10' },
+    { label: t('query.presetAuth') || 'Auth Events', sql: 'SELECT * FROM events WHERE event_id IN (4624, 4625, 4648) ORDER BY timestamp DESC LIMIT 20' },
+    { label: t('query.presetPowerShell') || 'PowerShell', sql: "SELECT * FROM events WHERE message LIKE '%PowerShell%' LIMIT 10" },
+    { label: t('query.presetSchema') || 'DB Schema', sql: "SELECT name, type FROM sqlite_master WHERE type='table'" },
+    { label: t('query.presetTimeline') || 'Event Timeline', sql: 'SELECT timestamp, event_id, computer, message FROM events ORDER BY timestamp DESC LIMIT 20' },
   ]
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      handleExecute()
+    }
+  }
+
+  const exportResults = (format: 'json' | 'csv') => {
+    if (!result) return
+    
+    let content: string
+    let filename: string
+    let mimeType: string
+
+    if (format === 'json') {
+      content = JSON.stringify(result, null, 2)
+      filename = 'query_result.json'
+      mimeType = 'application/json'
+    } else {
+      const header = result.columns.join(',')
+      const rows = result.rows.map(row => 
+        result.columns.map(col => {
+          const val = row[col]
+          if (val === null || val === undefined) return ''
+          const str = String(val)
+          return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str
+        }).join(',')
+      ).join('\n')
+      content = header + '\n' + rows
+      filename = 'query_result.csv'
+      mimeType = 'text/csv'
+    }
+
+    const blob = new Blob([content], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="query-page">
@@ -75,20 +192,90 @@ function Query() {
             ))}
           </div>
         </div>
+        <div className="toolbar-right">
+          <button 
+            className="history-btn" 
+            onClick={() => setShowHistory(!showHistory)}
+          >
+            📜 {t('query.history') || 'History'} ({history.length})
+          </button>
+        </div>
       </div>
+
+      {showHistory && (
+        <div className="query-history-panel">
+          <div className="history-header">
+            <h4>{t('query.recentQueries') || 'Recent Queries'}</h4>
+            <button className="clear-btn" onClick={clearHistory}>
+              🗑️ Clear
+            </button>
+          </div>
+          <div className="history-list">
+            {history.length === 0 ? (
+              <p className="empty-history">No query history</p>
+            ) : (
+              history.map(item => (
+                <div 
+                  key={item.id} 
+                  className={`history-item ${item.success ? 'success' : 'error'}`}
+                  onClick={() => loadFromHistory(item)}
+                >
+                  <div className="history-sql">{item.sql}</div>
+                  <div className="history-meta">
+                    <span className="history-status">{item.success ? '✓' : '✗'}</span>
+                    <span className="history-rows">{item.rowCount} rows</span>
+                    {item.duration && <span className="history-duration">{item.duration}s</span>}
+                    <span className="history-time">{new Date(item.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="query-editor">
         <div className="editor-header">
           <label>{t('query.sqlQuery')}</label>
+          <div className="editor-actions">
+            <button 
+              className="format-btn" 
+              onClick={() => {
+                const formatted = sql
+                  .replace(/\s+/g, ' ')
+                  .replace(/,\s*/g, ',\n  ')
+                  .replace(/\bSELECT\b/gi, 'SELECT\n  ')
+                  .replace(/\bFROM\b/gi, '\nFROM')
+                  .replace(/\bWHERE\b/gi, '\nWHERE')
+                  .replace(/\bAND\b/gi, '  AND')
+                  .replace(/\bOR\b/gi, '  OR')
+                  .replace(/\bGROUP BY\b/gi, '\nGROUP BY')
+                  .replace(/\bORDER BY\b/gi, '\nORDER BY')
+                  .replace(/\bLIMIT\b/gi, '\nLIMIT')
+                  .trim()
+                setSql(formatted)
+              }}
+            >
+              🎨 Format
+            </button>
+          </div>
         </div>
-        <textarea
-          className="sql-input"
-          value={sql}
-          onChange={(e) => setSql(e.target.value)}
-          placeholder={t('query.enterSQL')}
-          rows={6}
-          spellCheck={false}
-        />
+        <div className="editor-wrapper">
+          <div className="sql-highlight">{highlightSQL(sql)}</div>
+          <textarea
+            ref={textareaRef}
+            className="sql-input"
+            value={sql}
+            onChange={(e) => setSql(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t('query.enterSQL')}
+            rows={8}
+            spellCheck={false}
+          />
+        </div>
+        <div className="editor-hint">
+          Press Ctrl+Enter to execute | SQL syntax is SQLite compatible
+        </div>
       </div>
 
       <div className="query-actions">
@@ -111,6 +298,16 @@ function Query() {
             </>
           )}
         </button>
+        {result && (
+          <div className="result-actions">
+            <button className="export-btn" onClick={() => exportResults('json')}>
+              📥 JSON
+            </button>
+            <button className="export-btn" onClick={() => exportResults('csv')}>
+              📥 CSV
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -124,9 +321,16 @@ function Query() {
         <div className="query-results">
           <div className="results-header">
             <h3>{t('query.results')}</h3>
-            <span className="results-count">
-              {result.count} {t('query.rowsReturned')}
-            </span>
+            <div className="results-meta">
+              <span className="results-count">
+                {result.count} {t('query.rowsReturned')}
+              </span>
+              {executionTime && (
+                <span className="execution-time">
+                  ⏱️ {executionTime}s
+                </span>
+              )}
+            </div>
           </div>
 
           {result.columns.length > 0 && result.rows.length > 0 ? (
@@ -134,6 +338,7 @@ function Query() {
               <table className="results-table">
                 <thead>
                   <tr>
+                    <th className="row-num">#</th>
                     {result.columns.map((col, index) => (
                       <th key={index}>{col}</th>
                     ))}
@@ -142,8 +347,9 @@ function Query() {
                 <tbody>
                   {result.rows.map((row, rowIndex) => (
                     <tr key={rowIndex}>
+                      <td className="row-num">{rowIndex + 1}</td>
                       {result.columns.map((col, colIndex) => (
-                        <td key={colIndex}>
+                        <td key={colIndex} className={row[col] === null ? 'null-value' : ''}>
                           {formatCellValue(row[col])}
                         </td>
                       ))}
@@ -193,8 +399,8 @@ function formatCellValue(value: any): string {
     return JSON.stringify(value)
   }
   const str = String(value)
-  if (str.length > 100) {
-    return str.substring(0, 100) + '...'
+  if (str.length > 200) {
+    return str.substring(0, 200) + '...'
   }
   return str
 }
