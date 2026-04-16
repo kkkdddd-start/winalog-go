@@ -202,6 +202,7 @@ func RunAllDetectors(ctx context.Context) *DetectionResult {
 	engine.Register(NewBHODetector())
 	engine.Register(NewPrintMonitorDetector())
 	engine.Register(NewBootExecuteDetector())
+	engine.Register(NewETWDetector())
 
 	return engine.Detect(ctx)
 }
@@ -223,6 +224,7 @@ func DetectByCategory(ctx context.Context, category string) *DetectionResult {
 	engine.Register(NewBHODetector())
 	engine.Register(NewPrintMonitorDetector())
 	engine.Register(NewBootExecuteDetector())
+	engine.Register(NewETWDetector())
 
 	return engine.DetectCategory(ctx, category)
 }
@@ -244,6 +246,7 @@ func DetectByTechnique(ctx context.Context, technique Technique) *DetectionResul
 	engine.Register(NewBHODetector())
 	engine.Register(NewPrintMonitorDetector())
 	engine.Register(NewBootExecuteDetector())
+	engine.Register(NewETWDetector())
 
 	return engine.DetectTechnique(ctx, technique)
 }
