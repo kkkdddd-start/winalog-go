@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../locales/I18n'
+import { uebaAPI } from '../api'
 
 interface AnomalyResult {
   type: string
@@ -63,15 +64,10 @@ function UEBA() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/ueba/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hours }),
-      })
-      const data = await res.json()
-      setResult(data)
+      const res = await uebaAPI.analyze({ hours })
+      setResult(res.data)
     } catch (err: any) {
-      setError(err.message || 'Failed to run UEBA analysis')
+      setError(err.response?.data?.error || 'Failed to run UEBA analysis')
     } finally {
       setLoading(false)
     }
@@ -81,8 +77,8 @@ function UEBA() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/ueba/profiles')
-      const data = await res.json()
+      const res = await uebaAPI.profiles()
+      const data = res.data
       const profilesData = data.profiles || []
       const profilesWithRisk = profilesData.map((p: UserProfile) => ({
         ...p,

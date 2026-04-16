@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '../locales/I18n'
+import { suppressAPI } from '../api'
 
 interface SuppressRule {
   id: number
@@ -40,8 +41,8 @@ function Suppress() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/suppress')
-      const data = await res.json()
+      const res = await suppressAPI.list()
+      const data = res.data
       setRules(data.rules || [])
     } catch (err: any) {
       setError(err.message || 'Failed to load suppress rules')
@@ -54,22 +55,14 @@ function Suppress() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/suppress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          duration: formData.duration,
-          scope: formData.scope,
-          expires_at: formData.expires_at,
-          conditions: [],
-          enabled: true,
-        }),
+      await suppressAPI.create({
+        name: formData.name,
+        duration: formData.duration,
+        scope: formData.scope,
+        expires_at: formData.expires_at,
+        conditions: [],
+        enabled: true,
       })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to create rule')
-      }
       setShowModal(false)
       setFormData({ name: '', duration: 60, scope: 'global', expires_at: '' })
       loadRules()
@@ -86,11 +79,7 @@ function Suppress() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/suppress/${id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to delete rule')
-      }
+      await suppressAPI.delete(id)
       loadRules()
     } catch (err: any) {
       setError(err.message || 'Failed to delete rule')
@@ -103,15 +92,7 @@ function Suppress() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/suppress/${id}/toggle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: !enabled }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to toggle rule')
-      }
+      await suppressAPI.toggle(id, !enabled)
       loadRules()
     } catch (err: any) {
       setError(err.message || 'Failed to toggle rule')

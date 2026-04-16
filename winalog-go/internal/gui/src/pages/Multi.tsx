@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../locales/I18n'
+import { multiAPI } from '../api'
 
 interface MachineInfo {
   id: string
@@ -62,15 +63,10 @@ function Multi() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/multi/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      const data = await res.json()
-      setResult(data)
+      const res = await multiAPI.analyze()
+      setResult(res.data)
     } catch (err: any) {
-      setError(err.message || 'Failed to run multi-machine analysis')
+      setError(err.response?.data?.error || 'Failed to run multi-machine analysis')
     } finally {
       setLoading(false)
     }

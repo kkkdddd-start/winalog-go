@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useI18n } from '../locales/I18n'
+import { queryAPI } from '../api'
 
 interface QueryResponse {
   columns: string[]
@@ -40,24 +41,15 @@ function Query() {
     const startTime = performance.now()
 
     try {
-      const res = await fetch('/api/query/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sql, limit: 100 }),
-      })
-      const data = await res.json()
+      const res = await queryAPI.execute({ sql, limit: 100 })
       const duration = ((performance.now() - startTime) / 1000).toFixed(2)
       setExecutionTime(duration)
-      
-      if (!res.ok) {
-        setError(data.error || 'Query failed')
-        addToHistory(sql, false, 0, duration)
-      } else {
-        setResult(data)
-        addToHistory(sql, true, data.count, duration)
-      }
+      setResult(res.data)
+      addToHistory(sql, true, res.data.count, duration)
     } catch (err: any) {
-      setError(err.message || 'Failed to execute query')
+      const duration = ((performance.now() - startTime) / 1000).toFixed(2)
+      setError(err.response?.data?.error || 'Failed to execute query')
+      addToHistory(sql, false, 0, duration)
       addToHistory(sql, false, 0)
     } finally {
       setLoading(false)
