@@ -367,12 +367,12 @@
 
 ### 3.2 需要补充的功能
 
-| 模块 | 缺失项 | 建议 |
-|------|--------|------|
-| CLI | `export timeline` | CLI未实现时间线导出 |
-| API | `/api/ueba/baseline` | API缺少基线管理端点 |
-| API | `/api/alerts/export` | API缺少告警导出端点 |
-| API | `/api/persistence/detect/stream` | API存在但前端未实现 |
+| 模块 | 缺失项 | 状态 | 根因 | 修复方案 |
+|------|--------|------|------|----------|
+| ~~CLI~~ | ~~`export timeline`~~ | ❌ 文档错误 | 命令已存在于 `report.go:186` | 无需修复 |
+| API | `/api/ueba/baseline` | ✅ 确认缺失 | UEBA baseline 存储在内存中，API handler 未暴露管理接口 | 为 `UEBAHandler` 添加 GetBaseline/LearnBaseline/ClearBaseline 方法 |
+| API | `/api/alerts/export` | ✅ 确认缺失 | `AlertHandler` 只有 ListAlerts，缺少导出端点 | 为 `AlertHandler` 添加 ExportAlerts 方法 |
+| Frontend | Persistence SSE | ✅ 确认缺失 | 后端已实现 SSE 端点，前端未调用 | 在 `gui/src/api/index.ts` 添加 detectStream 方法 |
 
 ---
 
@@ -380,12 +380,12 @@
 
 ### 4.1 整体评估
 
-| 评估项 | 结果 |
-|--------|------|
-| 功能覆盖完整性 | 98% (2%为CLI专属功能) |
-| API与Frontend一致性 | 100% |
-| CLI与API一致性 | 95% |
-| 三端统一性 | ✅ 优秀 |
+| 评估项 | 当前状态 | 修复后预期 |
+|--------|----------|------------|
+| 功能覆盖完整性 | 98% (2%为CLI专属功能) | 100% |
+| API与Frontend一致性 | 100% | 100% |
+| CLI与API一致性 | 95% | 100% |
+| 三端统一性 | ✅ 良好 | ✅ 优秀 |
 
 ### 4.2 统计数据
 
@@ -397,11 +397,77 @@
 | 完全匹配的功能模块 | 21个 |
 | CLI专属功能 | 4个 |
 
-### 4.3 建议
+### 4.3 详细修复方案
 
-1. **API文档补充**: 建议为 `/api/ueba/baseline` 和 `/api/alerts/export` 添加端点
-2. **前端补充**: 考虑为 Persistence 页面添加 SSE 流式检测功能
-3. **CLI文档**: 可补充 `export timeline` 子命令
+#### 1. `/api/ueba/baseline` 端点修复
+
+**根因**：
+- Baseline 数据存储在内存中的 `BaselineManager` (`internal/ueba/baseline.go`)
+- CLI 命令 `ueba baseline` 操作的是即时创建的 engine 内存数据
+- API `UEBAHandler` 持有 `ueba.Engine` 但未暴露 baseline 管理接口
+
+**修复方案**：
+```
+文件: internal/api/handlers_ueba.go
+1. 添加方法:
+   - GetBaseline(c *gin.Context)      // GET /api/ueba/baseline
+   - LearnBaseline(c *gin.Context)     // POST /api/ueba/baseline/learn
+   - ClearBaseline(c *gin.Context)     // DELETE /api/ueba/baseline
+
+2. 修改 SetupUEBARoutes() 注册新路由:
+   ueba.GET("/baseline", GetBaseline)
+   ueba.POST("/baseline/learn", LearnBaseline)
+   ueba.DELETE("/baseline", ClearBaseline)
+```
+
+#### 2. `/api/alerts/export` 端点修复
+
+**根因**：
+- CLI `alert export` 命令（`cmd/winalog/commands/alert.go:294`）支持 JSON/CSV 导出
+- API `AlertHandler` 只有 `ListAlerts`，缺少导出专用端点
+- `AlertRepo` 的 `Query` 方法可用于获取大量 alerts 数据
+
+**修复方案**：
+```
+文件: internal/api/handlers.go
+1. 添加方法 ExportAlerts(c *gin.Context):
+   - 获取查询参数: format (json/csv), severity, resolved, start_time, end_time
+   - 使用 AlertRepo.Query() 获取 alerts
+   - 根据 format 调用不同的序列化方法
+
+2. 文件: internal/api/routes.go
+   添加路由: alerts.GET("/export", alertHandler.ExportAlerts)
+```
+
+#### 3. Persistence SSE 前端修复
+
+**根因**：
+- 后端 SSE 端点已实现: `internal/api/handlers_persistence_stream.go`
+- 前端 `gui/src/api/index.ts` 只定义了同步的 `detect()` 方法
+- 前端 `Persistence.tsx` 使用普通 HTTP 调用而非 EventSource
+
+**修复方案**：
+```
+文件: gui/src/api/index.ts
+1. 添加方法:
+   detectStream: () => api.get('/persistence/detect/stream')
+
+文件: gui/src/pages/Persistence.tsx
+1. 添加 SSE 处理函数，使用 EventSource 接收流式数据
+2. 添加状态管理显示进度和实时结果
+```
+
+### 4.4 建议优先级
+
+| 优先级 | 任务 | 工作量 |
+|--------|------|--------|
+| P1 | `/api/ueba/baseline` API 端点 | 中等 |
+| P1 | `/api/alerts/export` API 端点 | 小 |
+| P2 | Persistence SSE 前端实现 | 中等 |
+
+### 4.5 修复后预期
+
+修复完成后，功能覆盖将达 100%，三端（CLI/API/Frontend）完全统一。
 
 ---
 
