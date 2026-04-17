@@ -1,6 +1,6 @@
 # WinLogAnalyzer-Go API Documentation
 
-**Version**: v2.4.0  
+**Version**: v2.5.0  
 **Last Updated**: 2026-04-17
 
 ---
@@ -15,7 +15,22 @@
 6. [Live Events API](#6-live-events-api)
 7. [Reports API](#7-reports-api)
 8. [Dashboard API](#8-dashboard-api)
-9. [Error Codes](#9-error-codes)
+9. [Rules API](#9-rules-api)
+10. [System API](#10-system-api)
+11. [Suppress API](#11-suppress-api)
+12. [UEBA API](#12-ueba-api)
+13. [Correlation API](#13-correlation-api)
+14. [Multi API](#14-multi-api)
+15. [Query API](#15-query-api)
+16. [Policy API](#16-policy-api)
+17. [Settings API](#17-settings-api)
+18. [Persistence API](#18-persistence-api)
+19. [Forensics API](#19-forensics-api)
+20. [Analyze API](#20-analyze-api)
+21. [Collect API](#21-collect-api)
+22. [UI API](#22-ui-api)
+23. [Health Check](#23-health-check)
+24. [Error Codes](#24-error-codes)
 
 ---
 
@@ -1025,7 +1040,1590 @@ curl http://localhost:8080/api/dashboard/collection-stats
 
 ---
 
-## 9. Error Codes
+## 9. Rules API
+
+### GET /api/rules
+List all detection rules.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| page | int | 1 | Page number |
+| page_size | int | 100 | Items per page |
+| enabled | bool | null | Filter by enabled status |
+
+**Response (200):**
+```json
+{
+  "rules": [
+    {
+      "name": "BruteForceDetection",
+      "description": "Detects brute force login attempts",
+      "event_type": "single",
+      "enabled": true,
+      "severity": "high",
+      "mitre_attack": ["T1110"],
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "total": 60
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8080/api/rules
+```
+
+---
+
+### GET /api/rules/:name
+Get a single rule by name.
+
+**Response (200):**
+```json
+{
+  "name": "BruteForceDetection",
+  "description": "Detects brute force login attempts",
+  "event_type": "single",
+  "enabled": true,
+  "severity": "high",
+  "mitre_attack": ["T1110"],
+  "conditions": [...],
+  "created_at": "2026-01-01T00:00:00Z"
+}
+```
+
+---
+
+### POST /api/rules
+Create a new rule.
+
+**Request Body:**
+```json
+{
+  "name": "CustomRule",
+  "description": "Custom detection rule",
+  "event_type": "single",
+  "enabled": true,
+  "severity": "medium",
+  "mitre_attack": ["T1055"],
+  "conditions": [...]
+}
+```
+
+**Response (201):**
+```json
+{
+  "message": "Rule created successfully"
+}
+```
+
+---
+
+### PUT /api/rules/:name
+Update an existing rule.
+
+**Request Body:**
+```json
+{
+  "description": "Updated description",
+  "enabled": false,
+  "severity": "low",
+  "conditions": [...]
+}
+```
+
+---
+
+### DELETE /api/rules/:name
+Delete a rule.
+
+**Response (200):**
+```json
+{
+  "message": "Rule deleted successfully"
+}
+```
+
+---
+
+### POST /api/rules/:name/toggle
+Enable or disable a rule.
+
+**Response (200):**
+```json
+{
+  "message": "Rule toggled successfully",
+  "enabled": false
+}
+```
+
+---
+
+### POST /api/rules/validate
+Validate a rule definition.
+
+**Request Body:**
+```json
+{
+  "name": "TestRule",
+  "event_type": "correlation",
+  "conditions": [...]
+}
+```
+
+**Response (200):**
+```json
+{
+  "valid": true,
+  "errors": []
+}
+```
+
+---
+
+### POST /api/rules/import
+Import rules from a file.
+
+**Request Body:**
+```json
+{
+  "file_path": "/path/to/rules.json"
+}
+```
+
+---
+
+### GET /api/rules/export
+Export all rules to a file.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| format | string | "json" | Export format: json, yaml |
+
+**Response:**
+- Returns file download
+
+---
+
+### GET /api/rules/templates
+List available rule templates.
+
+**Response (200):**
+```json
+{
+  "templates": [
+    {
+      "name": "powershell_detection",
+      "description": "Detect PowerShell execution",
+      "category": "execution"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/rules/templates/:name
+Get a rule template by name.
+
+**Response (200):**
+```json
+{
+  "name": "powershell_detection",
+  "description": "Detect PowerShell execution",
+  "category": "execution",
+  "template": {...}
+}
+```
+
+---
+
+### POST /api/rules/templates/:name/instantiate
+Instantiate a rule from a template.
+
+**Request Body:**
+```json
+{
+  "name": "MyPowerShellRule",
+  "parameters": {
+    "event_id": 4103
+  }
+}
+```
+
+---
+
+## 10. System API
+
+### GET /api/system/info
+Get system information.
+
+**Response (200):**
+```json
+{
+  "hostname": "DESKTOP-XXX",
+  "os": "Windows 10 Pro",
+  "os_version": "22H2",
+  "architecture": "amd64",
+  "uptime": "7d15h30m"
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8080/api/system/info
+```
+
+---
+
+### GET /api/system/metrics
+Get system metrics.
+
+**Response (200):**
+```json
+{
+  "cpu_usage": 25.5,
+  "memory_usage": 60.2,
+  "disk_usage": 45.8,
+  "network_io": {
+    "bytes_sent": 1024000,
+    "bytes_recv": 2048000
+  }
+}
+```
+
+---
+
+### GET /api/system/processes
+List running processes.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| page | int | 1 | Page number |
+| page_size | int | 100 | Items per page |
+
+**Response (200):**
+```json
+{
+  "processes": [
+    {
+      "pid": 1234,
+      "name": "explorer.exe",
+      "user": "Administrator",
+      "cpu_percent": 2.5,
+      "memory_mb": 120
+    }
+  ],
+  "total": 150
+}
+```
+
+---
+
+### GET /api/system/network
+Get network connections.
+
+**Response (200):**
+```json
+{
+  "connections": [
+    {
+      "protocol": "TCP",
+      "local_addr": "192.168.1.100:8080",
+      "remote_addr": "192.168.1.200:443",
+      "state": "ESTABLISHED"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/system/env
+Get environment variables.
+
+**Response (200):**
+```json
+{
+  "variables": [
+    {"name": "PATH", "value": "C:\\Windows\\..."},
+    {"name": "TEMP", "value": "C:\\Users\\...\\AppData\\Local\\Temp"}
+  ]
+}
+```
+
+---
+
+### GET /api/system/dlls
+Get loaded DLLs.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| process_id | int | null | Filter by process ID |
+
+**Response (200):**
+```json
+{
+  "dlls": [
+    {
+      "name": "ntdll.dll",
+      "path": "C:\\Windows\\System32\\ntdll.dll",
+      "size": 1929472
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/system/drivers
+Get loaded kernel drivers.
+
+**Response (200):**
+```json
+{
+  "drivers": [
+    {
+      "name": "ntfs.sys",
+      "path": "C:\\Windows\\System32\\drivers\\ntfs.sys",
+      "size": 1824768
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/system/users
+Get local users.
+
+**Response (200):**
+```json
+{
+  "users": [
+    {
+      "username": "Administrator",
+      "enabled": true,
+      "last_logon": "2026-04-17T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/system/registry
+Get registry statistics.
+
+**Response (200):**
+```json
+{
+  "hives": [
+    {"name": "HKEY_LOCAL_MACHINE", "keys": 15230},
+    {"name": "HKEY_CURRENT_USER", "keys": 3420}
+  ]
+}
+```
+
+---
+
+### GET /api/system/tasks
+Get scheduled tasks.
+
+**Response (200):**
+```json
+{
+  "tasks": [
+    {
+      "name": "\\Microsoft\\Windows\\Something",
+      "state": "Ready",
+      "last_run": "2026-04-16T08:00:00Z",
+      "next_run": "2026-04-18T08:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/system/process/:pid/dlls
+Get DLLs for a specific process.
+
+**Path Parameters:**
+- `pid` - Process ID
+
+**Response (200):**
+```json
+{
+  "process_id": 1234,
+  "process_name": "explorer.exe",
+  "dlls": [
+    {
+      "name": "user32.dll",
+      "path": "C:\\Windows\\System32\\user32.dll",
+      "size": 834560
+    }
+  ]
+}
+```
+
+---
+
+## 11. Suppress API
+
+### GET /api/suppress
+List all suppression rules.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| page | int | 1 | Page number |
+| page_size | int | 100 | Items per page |
+
+**Response (200):**
+```json
+{
+  "suppressions": [
+    {
+      "id": 1,
+      "name": "SuppressKnownGood",
+      "description": "Suppress known good behavior",
+      "enabled": true,
+      "filter": {"event_ids": [4624]},
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "total": 5
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8080/api/suppress
+```
+
+---
+
+### POST /api/suppress
+Create a new suppression rule.
+
+**Request Body:**
+```json
+{
+  "name": "SuppressKnownGood",
+  "description": "Suppress known good behavior",
+  "enabled": true,
+  "filter": {
+    "event_ids": [4624],
+    "users": ["KnownUser"]
+  }
+}
+```
+
+**Response (201):**
+```json
+{
+  "message": "Suppression rule created",
+  "id": 1
+}
+```
+
+---
+
+### GET /api/suppress/:id
+Get a suppression rule by ID.
+
+**Response (200):**
+```json
+{
+  "id": 1,
+  "name": "SuppressKnownGood",
+  "description": "Suppress known good behavior",
+  "enabled": true,
+  "filter": {"event_ids": [4624]},
+  "created_at": "2026-01-01T00:00:00Z"
+}
+```
+
+---
+
+### PUT /api/suppress/:id
+Update a suppression rule.
+
+**Request Body:**
+```json
+{
+  "name": "UpdatedSuppression",
+  "enabled": false,
+  "filter": {"event_ids": [4624, 4625]}
+}
+```
+
+---
+
+### DELETE /api/suppress/:id
+Delete a suppression rule.
+
+**Response (200):**
+```json
+{
+  "message": "Suppression rule deleted"
+}
+```
+
+---
+
+### POST /api/suppress/:id/toggle
+Enable or disable a suppression rule.
+
+**Response (200):**
+```json
+{
+  "message": "Suppression rule toggled",
+  "enabled": false
+}
+```
+
+---
+
+## 12. UEBA API
+
+### POST /api/ueba/analyze
+Analyze user behavior.
+
+**Request Body:**
+```json
+{
+  "username": "Administrator",
+  "start_time": "2026-04-01T00:00:00Z",
+  "end_time": "2026-04-17T23:59:59Z"
+}
+```
+
+**Response (200):**
+```json
+{
+  "username": "Administrator",
+  "baseline": {
+    "typical_hours": ["9:00-18:00"],
+    "typical_locations": ["192.168.1.0/24"],
+    "typical_commands": ["explorer.exe", "cmd.exe"]
+  },
+  "anomalies": [
+    {
+      "type": "unusual_time",
+      "severity": "medium",
+      "description": "Activity outside typical hours"
+    }
+  ],
+  "risk_score": 45
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8080/api/ueba/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"username": "Administrator"}'
+```
+
+---
+
+### GET /api/ueba/profiles
+Get all user behavior profiles.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| page | int | 1 | Page number |
+| page_size | int | 100 | Items per page |
+
+**Response (200):**
+```json
+{
+  "profiles": [
+    {
+      "username": "Administrator",
+      "risk_score": 45,
+      "baseline_established": true,
+      "last_analyzed": "2026-04-17T10:00:00Z"
+    }
+  ],
+  "total": 10
+}
+```
+
+---
+
+### GET /api/ueba/anomaly/:type
+Get anomalies of a specific type.
+
+**Path Parameters:**
+- `type` - Anomaly type (unusual_time, unusual_location, unusual_command, unusual_process)
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| start_time | string | "" | Start time (RFC3339) |
+| end_time | string | "" | End time (RFC3339) |
+| severity | string | "" | Filter by severity |
+
+**Response (200):**
+```json
+{
+  "anomalies": [
+    {
+      "id": 1,
+      "username": "Administrator",
+      "type": "unusual_time",
+      "severity": "medium",
+      "timestamp": "2026-04-17T02:00:00Z",
+      "description": "Activity at 2:00 AM"
+    }
+  ]
+}
+```
+
+---
+
+## 13. Correlation API
+
+### POST /api/correlation/analyze
+Run correlation analysis.
+
+**Request Body:**
+```json
+{
+  "rules": ["BruteForceDetection", "SuspiciousProcessCreation"],
+  "start_time": "2026-04-01T00:00:00Z",
+  "end_time": "2026-04-17T23:59:59Z",
+  "window": "5m"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| rules | []string | No | Specific rules to analyze |
+| start_time | string | No | Start time (RFC3339) |
+| end_time | string | No | End time (RFC3339) |
+| window | string | No | Correlation window (default: 5m) |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "correlations_found": 3,
+  "chains": [
+    {
+      "id": "chain_1",
+      "name": "Credential Access Chain",
+      "events": [4624, 4625, 4672],
+      "severity": "high"
+    }
+  ],
+  "duration": "1.2s"
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8080/api/correlation/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"window": "10m"}'
+```
+
+---
+
+## 14. Multi API
+
+### POST /api/multi/analyze
+Analyze multiple event sources simultaneously.
+
+**Request Body:**
+```json
+{
+  "sources": ["security", "system", "sysmon"],
+  "query": "event_id:4624 OR event_id:4625",
+  "start_time": "2026-04-01T00:00:00Z",
+  "end_time": "2026-04-17T23:59:59Z"
+}
+```
+
+**Response (200):**
+```json
+{
+  "results": {
+    "security": {"count": 100, "events": [...]},
+    "system": {"count": 50, "events": [...]},
+    "sysmon": {"count": 25, "events": [...]}
+  },
+  "total": 175
+}
+```
+
+---
+
+### GET /api/multi/lateral
+Detect lateral movement across multiple sources.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| start_time | string | "" | Start time (RFC3339) |
+| end_time | string | "" | End time (RFC3339) |
+
+**Response (200):**
+```json
+{
+  "movements": [
+    {
+      "source_host": "WORKSTATION1",
+      "dest_host": "DC01",
+      "username": "Administrator",
+      "timestamp": "2026-04-17T10:30:00Z",
+      "method": "WMI"
+    }
+  ]
+}
+```
+
+---
+
+## 15. Query API
+
+### POST /api/query/execute
+Execute a raw query.
+
+**Request Body:**
+```json
+{
+  "query": "SELECT * FROM events WHERE event_id = 4624 LIMIT 100",
+  "params": []
+}
+```
+
+**Response (200):**
+```json
+{
+  "columns": ["id", "timestamp", "event_id", "level", "message"],
+  "rows": [
+    [1, "2026-04-17T10:00:00Z", 4624, "Info", "An account was successfully logged on"]
+  ],
+  "total": 1,
+  "query_time": 15
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8080/api/query/execute \
+  -H "Content-Type: application/json" \
+  -d '{"query": "SELECT COUNT(*) FROM events"}'
+```
+
+---
+
+## 16. Policy API
+
+### GET /api/policy-templates
+List available policy templates.
+
+**Response (200):**
+```json
+{
+  "templates": [
+    {
+      "name": "baseline_policy",
+      "description": "Baseline security policy",
+      "rules": ["rule1", "rule2"]
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/policy-templates/:name
+Get a policy template by name.
+
+**Response (200):**
+```json
+{
+  "name": "baseline_policy",
+  "description": "Baseline security policy",
+  "rules": ["rule1", "rule2"],
+  "settings": {...}
+}
+```
+
+---
+
+### POST /api/policy-templates
+Create a policy template.
+
+**Request Body:**
+```json
+{
+  "name": "custom_policy",
+  "description": "Custom security policy",
+  "rules": ["rule1", "rule2"],
+  "settings": {...}
+}
+```
+
+**Response (201):**
+```json
+{
+  "message": "Policy template created"
+}
+```
+
+---
+
+### POST /api/policy-templates/apply
+Apply a policy template to current configuration.
+
+**Request Body:**
+```json
+{
+  "template_name": "baseline_policy",
+  "targets": ["host1", "host2"]
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "applied_to": 2,
+  "results": [...]
+}
+```
+
+---
+
+### DELETE /api/policy-templates/:name
+Delete a policy template.
+
+**Response (200):**
+```json
+{
+  "message": "Policy template deleted"
+}
+```
+
+---
+
+### GET /api/policy-instances
+List applied policy instances.
+
+**Response (200):**
+```json
+{
+  "instances": [
+    {
+      "key": "host1_baseline",
+      "template": "baseline_policy",
+      "target": "host1",
+      "applied_at": "2026-04-01T00:00:00Z",
+      "status": "active"
+    }
+  ]
+}
+```
+
+---
+
+### DELETE /api/policy-instances/:key
+Remove a policy instance.
+
+**Path Parameters:**
+- `key` - Instance key (format: target_template)
+
+**Response (200):**
+```json
+{
+  "message": "Policy instance removed"
+}
+```
+
+---
+
+### POST /api/policies
+Create or update a policy.
+
+**Request Body:**
+```json
+{
+  "name": "my_policy",
+  "rules": [...],
+  "settings": {...}
+}
+```
+
+---
+
+### DELETE /api/policies/:name
+Delete a policy.
+
+**Response (200):**
+```json
+{
+  "message": "Policy deleted"
+}
+```
+
+---
+
+## 17. Settings API
+
+### GET /api/settings
+Get current application settings.
+
+**Response (200):**
+```json
+{
+  "settings": {
+    "alert_retention_days": 90,
+    "event_retention_days": 365,
+    "log_level": "info",
+    "enable_telemetry": false
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8080/api/settings
+```
+
+---
+
+### POST /api/settings
+Update application settings.
+
+**Request Body:**
+```json
+{
+  "alert_retention_days": 60,
+  "log_level": "debug"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Settings updated successfully"
+}
+```
+
+---
+
+### POST /api/settings/reset
+Reset settings to defaults.
+
+**Response (200):**
+```json
+{
+  "message": "Settings reset to defaults"
+}
+```
+
+---
+
+## 18. Persistence API
+
+### GET /api/persistence/detect
+Detect persistence mechanisms on the system.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| category | string | "" | Filter by category (runkey, service, scheduled_task, etc.) |
+
+**Response (200):**
+```json
+{
+  "persistence_mechanisms": [
+    {
+      "id": 1,
+      "type": "runkey",
+      "name": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+      "data": "C:\\malware.exe",
+      "detected_at": "2026-04-17T10:00:00Z"
+    }
+  ],
+  "total": 5
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8080/api/persistence/detect
+```
+
+---
+
+### GET /api/persistence/detect/stream
+Stream persistence detection results (SSE).
+
+**Response:**
+Server-Sent Events stream with persistence detection results.
+
+---
+
+### GET /api/persistence/categories
+Get all persistence categories.
+
+**Response (200):**
+```json
+{
+  "categories": [
+    "runkey",
+    "service",
+    "scheduled_task",
+    "wmi",
+    "registry",
+    "dll_hijacking"
+  ]
+}
+```
+
+---
+
+### GET /api/persistence/techniques
+Get MITRE ATT&CK persistence techniques.
+
+**Response (200):**
+```json
+{
+  "techniques": [
+    {
+      "id": "T1547",
+      "name": "Boot or Logon Autostart Execution",
+      "subtechniques": ["T1547.001", "T1547.002"]
+    }
+  ]
+}
+```
+
+---
+
+## 19. Forensics API
+
+### POST /api/forensics/hash
+Calculate file hashes.
+
+**Request Body:**
+```json
+{
+  "paths": ["C:\\Windows\\System32\\calc.exe"],
+  "algorithms": ["md5", "sha256"]
+}
+```
+
+**Response (200):**
+```json
+{
+  "results": [
+    {
+      "path": "C:\\Windows\\System32\\calc.exe",
+      "md5": "a1b2c3d4e5f6...",
+      "sha256": "1234567890abcdef..."
+    }
+  ]
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8080/api/forensics/hash \
+  -H "Content-Type: application/json" \
+  -d '{"paths": ["/path/to/file.exe"]}'
+```
+
+---
+
+### GET /api/forensics/verify-hash
+Verify a file against known malicious hashes.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| hash | string | Yes | File hash to verify |
+| algorithm | string | No | Hash algorithm (default: sha256) |
+
+**Response (200):**
+```json
+{
+  "hash": "a1b2c3d4e5f6...",
+  "known_malicious": false,
+  "sources": ["VirusTotal: 0/60", "HybridAnalysis: clean"]
+}
+```
+
+---
+
+### GET /api/forensics/signature
+Get digital signature information for a file.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| path | string | Yes | File path |
+
+**Response (200):**
+```json
+{
+  "path": "C:\\Windows\\System32\\calc.exe",
+  "signed": true,
+  "signature": {
+    "subject": "Microsoft Windows",
+    "issuer": "Microsoft Windows Production PCA",
+    "thumbprint": "a1b2c3d4e5f6..."
+  }
+}
+```
+
+---
+
+### GET /api/forensics/is-signed
+Check if a file is digitally signed.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| path | string | Yes | File path |
+
+**Response (200):**
+```json
+{
+  "path": "C:\\Windows\\System32\\calc.exe",
+  "signed": true,
+  "valid": true
+}
+```
+
+---
+
+### POST /api/forensics/collect
+Collect forensic data.
+
+**Request Body:**
+```json
+{
+  "targets": ["processes", "registry", "network"],
+  "options": {
+    "include_hidden": true,
+    "deep_scan": false
+  }
+}
+```
+
+**Response (200):**
+```json
+{
+  "collection_id": "coll_12345",
+  "status": "completed",
+  "data_size": 1024000,
+  "collected_at": "2026-04-17T10:00:00Z"
+}
+```
+
+---
+
+### GET /api/forensics/evidence
+List collected evidence.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| page | int | 1 | Page number |
+| page_size | int | 100 | Items per page |
+
+**Response (200):**
+```json
+{
+  "evidence": [
+    {
+      "id": "coll_12345",
+      "type": "process_dump",
+      "size": 1024000,
+      "collected_at": "2026-04-17T10:00:00Z",
+      "hash": "a1b2c3d4..."
+    }
+  ],
+  "total": 5
+}
+```
+
+---
+
+### GET /api/forensics/evidence/:id
+Get evidence details.
+
+**Response (200):**
+```json
+{
+  "id": "coll_12345",
+  "type": "process_dump",
+  "size": 1024000,
+  "collected_at": "2026-04-17T10:00:00Z",
+  "hash": "a1b2c3d4...",
+  "metadata": {...}
+}
+```
+
+---
+
+### POST /api/forensics/manifest
+Generate a forensic manifest.
+
+**Request Body:**
+```json
+{
+  "paths": ["C:\\Windows\\System32"],
+  "include_hashes": true
+}
+```
+
+**Response (200):**
+```json
+{
+  "manifest_id": "manifest_12345",
+  "files": [
+    {
+      "path": "C:\\Windows\\System32\\calc.exe",
+      "size": 18500,
+      "sha256": "a1b2c3d4..."
+    }
+  ],
+  "generated_at": "2026-04-17T10:00:00Z"
+}
+```
+
+---
+
+### GET /api/forensics/chain-of-custody
+Get chain of custody records.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| evidence_id | string | "" | Filter by evidence ID |
+
+**Response (200):**
+```json
+{
+  "records": [
+    {
+      "id": 1,
+      "evidence_id": "coll_12345",
+      "action": "collected",
+      "user": "admin",
+      "timestamp": "2026-04-17T10:00:00Z",
+      "details": "Initial collection"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/forensics/memory-dump
+Get memory dump information.
+
+**Response (200):**
+```json
+{
+  "dumps": [
+    {
+      "id": "mem_12345",
+      "pid": 1234,
+      "process_name": "explorer.exe",
+      "size": 524288000,
+      "created_at": "2026-04-17T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## 20. Analyze API
+
+### POST /api/analyze/:type
+Run specific analysis by type.
+
+**Path Parameters:**
+- `type` - Analysis type (hash, memory, network, file, registry)
+
+**Request Body:**
+```json
+{
+  "target": "C:\\Windows\\System32\\calc.exe",
+  "options": {
+    "deep_scan": true
+  }
+}
+```
+
+**Response (200):**
+```json
+{
+  "type": "hash",
+  "target": "C:\\Windows\\System32\\calc.exe",
+  "results": {
+    "sha256": "a1b2c3d4...",
+    "malicious": false
+  },
+  "duration": "1.5s"
+}
+```
+
+---
+
+### GET /api/analyzers
+List available analyzers.
+
+**Response (200):**
+```json
+{
+  "analyzers": [
+    {
+      "type": "hash",
+      "name": "Hash Analyzer",
+      "description": "Analyze file hashes",
+      "enabled": true
+    },
+    {
+      "type": "memory",
+      "name": "Memory Analyzer",
+      "description": "Analyze memory dumps",
+      "enabled": true
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/analyzers/:type
+Get analyzer details.
+
+**Response (200):**
+```json
+{
+  "type": "hash",
+  "name": "Hash Analyzer",
+  "description": "Analyze file hashes",
+  "enabled": true,
+  "capabilities": ["md5", "sha1", "sha256", "imphash"]
+}
+```
+
+---
+
+## 21. Collect API
+
+### POST /api/collect
+Start a new collection task.
+
+**Request Body:**
+```json
+{
+  "sources": ["security", "system", "sysmon"],
+  "start_time": "2026-04-01T00:00:00Z",
+  "end_time": "2026-04-17T23:59:59Z",
+  "filters": {
+    "event_ids": [4624, 4625]
+  }
+}
+```
+
+**Response (201):**
+```json
+{
+  "task_id": "coll_task_12345",
+  "status": "started",
+  "estimated_events": 5000
+}
+```
+
+---
+
+### POST /api/collect/import
+Import collected data.
+
+**Request Body:**
+```json
+{
+  "file_path": "/path/to/collection.zip",
+  "source_type": "evtx"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "events_imported": 5000,
+  "task_id": "import_12345"
+}
+```
+
+---
+
+### GET /api/collect/status
+Get collection task status.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| task_id | string | Yes | Collection task ID |
+
+**Response (200):**
+```json
+{
+  "task_id": "coll_task_12345",
+  "status": "running",
+  "progress": 45,
+  "events_collected": 2250,
+  "start_time": "2026-04-17T10:00:00Z"
+}
+```
+
+---
+
+## 22. UI API
+
+### GET /api/ui/dashboard
+Get dashboard data for UI.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| refresh | int | 30 | Auto-refresh interval (seconds) |
+
+**Response (200):**
+```json
+{
+  "stats": {
+    "total_events": 50000,
+    "total_alerts": 150,
+    "critical_alerts": 5
+  },
+  "recent_alerts": [...],
+  "top_events": [...],
+  "timeline": {...}
+}
+```
+
+---
+
+### GET /api/ui/alerts/groups
+Get grouped alerts for UI.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| group_by | string | "rule" | Grouping field (rule, severity, time) |
+| page | int | 1 | Page number |
+| page_size | int | 50 | Items per page |
+
+**Response (200):**
+```json
+{
+  "groups": [
+    {
+      "key": "BruteForceDetection",
+      "count": 25,
+      "alerts": [...]
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/ui/metrics
+Get metrics for UI.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| period | string | "24h" | Time period (1h, 24h, 7d, 30d) |
+
+**Response (200):**
+```json
+{
+  "events_over_time": [
+    {"timestamp": "2026-04-17T10:00:00Z", "count": 500}
+  ],
+  "alerts_over_time": [
+    {"timestamp": "2026-04-17T10:00:00Z", "count": 5}
+  ],
+  "top_event_ids": [
+    {"event_id": 4624, "count": 5000}
+  ]
+}
+```
+
+---
+
+### GET /api/ui/events/distribution
+Get event distribution for UI.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| field | string | "level" | Distribution field (level, source, log_name) |
+| limit | int | 10 | Max results |
+
+**Response (200):**
+```json
+{
+  "distribution": [
+    {"value": "Info", "count": 40000},
+    {"value": "Warning", "count": 5000},
+    {"value": "Error", "count": 1000}
+  ]
+}
+```
+
+---
+
+## 23. Health Check
+
+### GET /api/health
+Health check endpoint.
+
+**Response (200):**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-04-17T10:00:00Z",
+  "components": {
+    "database": "healthy",
+    "storage": "healthy",
+    "collectors": "healthy"
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8080/api/health
+```
+
+---
+
+## 24. Error Codes
 
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
@@ -1117,5 +2715,5 @@ curl -X POST http://localhost:8080/api/alerts/batch \
 
 ---
 
-**Document Version**: v2.4.0  
+**Document Version**: v2.5.0  
 **Last Updated**: 2026-04-17
