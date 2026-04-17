@@ -1,3 +1,5 @@
+//go:build windows
+
 package commands
 
 import (
@@ -5,6 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
@@ -40,6 +46,7 @@ var persistenceFlags struct {
 	technique string
 	output    string
 	format    string
+	progress  bool
 }
 
 func init() {
@@ -47,14 +54,22 @@ func init() {
 	persistenceCmd.Flags().StringVar(&persistenceFlags.technique, "technique", "", "Filter by MITRE technique (e.g., T1546.001)")
 	persistenceCmd.Flags().StringVarP(&persistenceFlags.output, "output", "o", "", "Output file path")
 	persistenceCmd.Flags().StringVarP(&persistenceFlags.format, "format", "f", "json", "Output format (json, csv, text)")
+	persistenceCmd.Flags().BoolVar(&persistenceFlags.progress, "progress", false, "Show real-time detection progress")
 }
 
 func runPersistence(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
+	if runtime.GOOS != "windows" {
+		fmt.Println("Persistence detection is only available on Windows")
+		return nil
+	}
+
 	var result *persistence.DetectionResult
 
-	if persistenceFlags.technique != "" {
+	if persistenceFlags.progress && persistenceFlags.technique == "" && persistenceFlags.category == "" {
+		result = runDetectorsWithProgress(ctx)
+	} else if persistenceFlags.technique != "" {
 		result = persistence.DetectByTechnique(ctx, persistence.Technique(persistenceFlags.technique))
 	} else if persistenceFlags.category != "" {
 		result = persistence.DetectByCategory(ctx, persistenceFlags.category)
@@ -74,6 +89,69 @@ func runPersistence(cmd *cobra.Command, args []string) error {
 
 	printResult(result)
 	return nil
+}
+
+func runDetectorsWithProgress(ctx context.Context) *persistence.DetectionResult {
+	progressChan := make(chan string, 10)
+	doneChan := make(chan *persistence.DetectionResult, 1)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		doneChan <- persistence.RunAllDetectorsWithProgress(ctx, progressChan)
+	}()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	detectorNames := getDetectorNames()
+	currentDetector := ""
+	completedCount := 0
+	totalDetectors := len(detectorNames)
+
+	go func() {
+		for progress := range progressChan {
+			if strings.HasPrefix(progress, "Running ") {
+				parts := strings.Split(progress, " ")
+				if len(parts) >= 2 {
+					currentDetector = parts[1]
+				}
+				if strings.Contains(progress, "/") {
+					idxStr := strings.Split(strings.Split(progress, "(")[1], "/")[0]
+					fmt.Sscanf(idxStr, "%d", &completedCount)
+				}
+				fmt.Printf("\r[%s] Running %s (%d/%d)...", getSpinner(), currentDetector, completedCount, totalDetectors)
+			} else if progress == "complete" {
+				fmt.Println()
+			}
+		}
+	}()
+
+	select {
+	case result := <-doneChan:
+		return result
+	case <-ctx.Done():
+		return &persistence.DetectionResult{Detections: []*persistence.Detection{}}
+	}
+}
+
+func getDetectorNames() []string {
+	return []string{
+		"RunKeyDetector", "UserInitDetector", "StartupFolderDetector",
+		"AccessibilityDetector", "COMHijackDetector", "IFEODetector",
+		"AppInitDetector", "WMIPersistenceDetector", "ServicePersistenceDetector",
+		"LSAPersistenceDetector", "WinsockDetector", "BHODetector",
+		"PrintMonitorDetector", "BootExecuteDetector", "ETWDetector",
+	}
+}
+
+var spinnerIndex = 0
+var spinnerChars = []string{"|", "/", "-", "\\"}
+
+func getSpinner() string {
+	spinnerIndex = (spinnerIndex + 1) % len(spinnerChars)
+	return spinnerChars[spinnerIndex]
 }
 
 func printResult(result *persistence.DetectionResult) {

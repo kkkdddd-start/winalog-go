@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build windows
 
 package commands
 
@@ -29,6 +29,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(serveCmd)
 	root.AddCommand(analyzeCmd)
 	root.AddCommand(forensicsCmd)
+	root.AddCommand(persistenceCmd)
 	root.AddCommand(dashboardCmd)
 	root.AddCommand(whitelistCmd)
 	root.AddCommand(uebaCmd)

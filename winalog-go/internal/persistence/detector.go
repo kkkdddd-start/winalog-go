@@ -228,3 +228,60 @@ func registerAllDetectors(engine *DetectionEngine) {
 		engine.Register(d)
 	}
 }
+
+func RunAllDetectorsWithProgress(ctx context.Context, progressChan chan<- string) *DetectionResult {
+	engine := NewDetectionEngine()
+	registerAllDetectors(engine)
+
+	detectors := engine.ListDetectors()
+	total := len(detectors)
+
+	result := NewDetectionResult()
+	var wg sync.WaitGroup
+	resultChan := make(chan *Detection, 100)
+	errorChan := make(chan string, 10)
+
+	for i, info := range detectors {
+		wg.Add(1)
+		detectorName := info.Name
+		go func(idx int, name string, d Detector) {
+			defer wg.Done()
+
+			progressChan <- fmt.Sprintf("Running %s (%d/%d)", name, idx+1, total)
+
+			detections, err := d.Detect(ctx)
+			if err != nil {
+				errorChan <- fmt.Sprintf("%s: %v", name, err)
+				return
+			}
+
+			for _, det := range detections {
+				if det.ID == "" {
+					det.ID = uuid.New().String()
+				}
+				if det.Time.IsZero() {
+					det.Time = time.Now()
+				}
+				resultChan <- det
+			}
+		}(i, detectorName, engine.detectors[detectorName])
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultChan)
+		close(errorChan)
+	}()
+
+	for det := range resultChan {
+		result.Add(det)
+	}
+
+	for errMsg := range errorChan {
+		result.Errors = append(result.Errors, errMsg)
+		result.ErrorCount++
+	}
+
+	progressChan <- "complete"
+	return result
+}

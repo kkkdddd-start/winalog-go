@@ -14,6 +14,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xuri/excelize/v2 v2.10.1
+	github.com/yusufpapurcu/wmi v1.2.4
 	go.uber.org/zap v1.27.1
 	golang.org/x/sys v0.42.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -37,6 +38,7 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect

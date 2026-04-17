@@ -4,11 +4,10 @@ package persistence
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"time"
 
-	"github.com/kkkdddd-start/winalog-go/internal/utils"
+	"github.com/yusufpapurcu/wmi"
 )
 
 type WMIPersistenceDetector struct{}
@@ -29,23 +28,31 @@ func (d *WMIPersistenceDetector) RequiresAdmin() bool {
 	return true
 }
 
-type WMIEventConsumer struct {
+type CommandLineEventConsumer struct {
 	Name        string
-	Type        string
 	CommandLine string
-	ScriptFile  string
 }
 
-type WMIEventFilter struct {
-	Name      string
-	Query     string
-	Namespace string
+type ActiveScriptEventConsumer struct {
+	Name           string
+	ScriptFileName string
+	ScriptText     string
 }
 
-type WMIBinding struct {
-	FilterName   string
-	ConsumerName string
-	Namespace    string
+type NTEventLogEventConsumer struct {
+	Name     string
+	Sources  []string
+	Category string
+}
+
+type EventFilter struct {
+	Name  string
+	Query string
+}
+
+type FilterToConsumerBinding struct {
+	FilterReference   string
+	ConsumerReference string
 }
 
 func (d *WMIPersistenceDetector) Detect(ctx context.Context) ([]*Detection, error) {
@@ -87,90 +94,38 @@ func (d *WMIPersistenceDetector) Detect(ctx context.Context) ([]*Detection, erro
 func (d *WMIPersistenceDetector) enumerateConsumers() ([]WMIEventConsumer, error) {
 	consumers := make([]WMIEventConsumer, 0)
 
-	cmd := `Get-WMIObject -Namespace 'Root\Subscription' -Class CommandLineEventConsumer -ErrorAction SilentlyContinue | ForEach-Object { $_.PSBase | Select-Object -Property Name,__CLASS,CommandLine | ConvertTo-Json -Compress }`
-
-	result := utils.RunPowerShell(cmd)
-	if !result.Success() {
-		return consumers, result.Error
+	var cmdConsumers []CommandLineEventConsumer
+	err := wmi.QueryNamespace("SELECT Name, CommandLine FROM CommandLineEventConsumer", &cmdConsumers, "root\\subscription")
+	if err == nil {
+		for _, c := range cmdConsumers {
+			consumers = append(consumers, WMIEventConsumer{
+				Name:        c.Name,
+				Type:        "CommandLineEventConsumer",
+				CommandLine: c.CommandLine,
+			})
+		}
 	}
 
-	output := strings.TrimSpace(result.Output)
-	if output == "" {
-		return consumers, nil
-	}
-
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
-			continue
-		}
-
-		var consumer map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &consumer); err != nil {
-			continue
-		}
-
-		wmic := WMIEventConsumer{
-			Name: getStringValue(consumer, "Name"),
-			Type: getStringValue(consumer, "__CLASS"),
-		}
-
-		if cmdLine := getStringValue(consumer, "CommandLine"); cmdLine != "" {
-			wmic.CommandLine = cmdLine
-		}
-
-		consumers = append(consumers, wmic)
-	}
-
-	cmd = `Get-WMIObject -Namespace 'Root\Subscription' -Class ActiveScriptEventConsumer -ErrorAction SilentlyContinue | ForEach-Object { $_.PSBase | Select-Object -Property Name,ScriptFileName,ScriptText | ConvertTo-Json -Compress }`
-
-	result = utils.RunPowerShell(cmd)
-	if result.Success() && result.Output != "" {
-		lines = strings.Split(strings.TrimSpace(result.Output), "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" || line == "null" {
-				continue
-			}
-
-			var consumer map[string]interface{}
-			if err := json.Unmarshal([]byte(line), &consumer); err != nil {
-				continue
-			}
-
-			wmic := WMIEventConsumer{
-				Name:       getStringValue(consumer, "Name"),
+	var scriptConsumers []ActiveScriptEventConsumer
+	err = wmi.QueryNamespace("SELECT Name, ScriptFileName, ScriptText FROM ActiveScriptEventConsumer", &scriptConsumers, "root\\subscription")
+	if err == nil {
+		for _, c := range scriptConsumers {
+			consumers = append(consumers, WMIEventConsumer{
+				Name:       c.Name,
 				Type:       "ActiveScriptEventConsumer",
-				ScriptFile: getStringValue(consumer, "ScriptFileName"),
-			}
-
-			consumers = append(consumers, wmic)
+				ScriptFile: c.ScriptFileName,
+			})
 		}
 	}
 
-	cmd = `Get-WMIObject -Namespace 'Root\Subscription' -Class NTEventLogEventConsumer -ErrorAction SilentlyContinue | ForEach-Object { $_.PSBase | Select-Object -Property Name,Sources,Category | ConvertTo-Json -Compress }`
-
-	result = utils.RunPowerShell(cmd)
-	if result.Success() && result.Output != "" {
-		lines = strings.Split(strings.TrimSpace(result.Output), "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" || line == "null" {
-				continue
-			}
-
-			var consumer map[string]interface{}
-			if err := json.Unmarshal([]byte(line), &consumer); err != nil {
-				continue
-			}
-
-			wmic := WMIEventConsumer{
-				Name: getStringValue(consumer, "Name"),
+	var logConsumers []NTEventLogEventConsumer
+	err = wmi.QueryNamespace("SELECT Name, Sources, Category FROM NTEventLogEventConsumer", &logConsumers, "root\\subscription")
+	if err == nil {
+		for _, c := range logConsumers {
+			consumers = append(consumers, WMIEventConsumer{
+				Name: c.Name,
 				Type: "NTEventLogEventConsumer",
-			}
-
-			consumers = append(consumers, wmic)
+			})
 		}
 	}
 
@@ -180,37 +135,18 @@ func (d *WMIPersistenceDetector) enumerateConsumers() ([]WMIEventConsumer, error
 func (d *WMIPersistenceDetector) enumerateFilters() ([]WMIEventFilter, error) {
 	filters := make([]WMIEventFilter, 0)
 
-	cmd := `Get-WMIObject -Namespace 'Root\Subscription' -Class __EventFilter -ErrorAction SilentlyContinue | ForEach-Object { $_.PSBase | Select-Object -Property Name,Query | ConvertTo-Json -Compress }`
-
-	result := utils.RunPowerShell(cmd)
-	if !result.Success() {
-		return filters, result.Error
+	var wmiFilters []EventFilter
+	err := wmi.QueryNamespace("SELECT Name, Query FROM __EventFilter", &wmiFilters, "root\\subscription")
+	if err != nil {
+		return filters, err
 	}
 
-	output := strings.TrimSpace(result.Output)
-	if output == "" {
-		return filters, nil
-	}
-
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
-			continue
-		}
-
-		var filter map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &filter); err != nil {
-			continue
-		}
-
-		wf := WMIEventFilter{
-			Name:      getStringValue(filter, "Name"),
-			Query:     getStringValue(filter, "Query"),
+	for _, f := range wmiFilters {
+		filters = append(filters, WMIEventFilter{
+			Name:      f.Name,
+			Query:     f.Query,
 			Namespace: "Root\\Subscription",
-		}
-
-		filters = append(filters, wf)
+		})
 	}
 
 	return filters, nil
@@ -219,43 +155,21 @@ func (d *WMIPersistenceDetector) enumerateFilters() ([]WMIEventFilter, error) {
 func (d *WMIPersistenceDetector) enumerateBindings() ([]WMIBinding, error) {
 	bindings := make([]WMIBinding, 0)
 
-	cmd := `Get-WMIObject -Namespace 'Root\Subscription' -Class __FilterToConsumerBinding -ErrorAction SilentlyContinue | ForEach-Object { $_.PSBase | Select-Object -Property FilterReference,ConsumerReference | ConvertTo-Json -Compress }`
-
-	result := utils.RunPowerShell(cmd)
-	if !result.Success() {
-		return bindings, result.Error
+	var wmiBindings []FilterToConsumerBinding
+	err := wmi.QueryNamespace("SELECT FilterReference, ConsumerReference FROM __FilterToConsumerBinding", &wmiBindings, "root\\subscription")
+	if err != nil {
+		return bindings, err
 	}
 
-	output := strings.TrimSpace(result.Output)
-	if output == "" {
-		return bindings, nil
-	}
+	for _, b := range wmiBindings {
+		filterName := extractWMIPart(b.FilterReference)
+		consumerName := extractWMIPart(b.ConsumerReference)
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
-			continue
-		}
-
-		var binding map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &binding); err != nil {
-			continue
-		}
-
-		filterRef := getStringValue(binding, "FilterReference")
-		consumerRef := getStringValue(binding, "ConsumerReference")
-
-		filterName := extractWMIPart(filterRef)
-		consumerName := extractWMIPart(consumerRef)
-
-		wb := WMIBinding{
+		bindings = append(bindings, WMIBinding{
 			FilterName:   filterName,
 			ConsumerName: consumerName,
 			Namespace:    "Root\\Subscription",
-		}
-
-		bindings = append(bindings, wb)
+		})
 	}
 
 	return bindings, nil
@@ -392,15 +306,6 @@ func CheckWMIPersistence() []*Detection {
 	detections = append(detections, results...)
 
 	return detections
-}
-
-func getStringValue(m map[string]interface{}, key string) string {
-	if v, ok := m[key]; ok {
-		if s, ok := v.(string); ok {
-			return s
-		}
-	}
-	return ""
 }
 
 func extractWMIPart(ref string) string {

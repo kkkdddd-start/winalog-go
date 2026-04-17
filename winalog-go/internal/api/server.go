@@ -136,6 +136,8 @@ func (s *Server) setupRoutes() {
 	SetupPolicyRoutes(s.engine, s.policyEng)
 	SetupUIRoutes(s.engine, s.uiEng)
 
+	setupPersistenceStreamRoutes(s.engine, s.persistenceEng)
+
 	staticDir := filepath.Join("internal", "gui", "dist")
 	staticFs := http.Dir(staticDir)
 
