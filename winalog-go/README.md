@@ -1,7 +1,7 @@
 # WinLogAnalyzer-Go
 
 **版本**: v2.4.0  
-**日期**: 2026-04-13
+**日期**: 2026-04-17
 
 Windows 安全取证与日志分析工具，使用 Go 语言重写。
 
@@ -13,6 +13,8 @@ Windows 安全取证与日志分析工具，使用 Go 语言重写。
 | 单二进制 | 编译为单个可执行文件，无依赖 |
 | 内存安全 | Go 天然内存安全 |
 | 取证合规 | 内置证据完整性校验 |
+| 实时监控 | Windows Event Log 实时采集 |
+| 持久化检测 | 15+ Windows 持久化技术检测 |
 
 ## 性能目标
 
@@ -58,6 +60,9 @@ winalog search --event-id 4624
 # 一键采集
 winalog collect --output evidence.zip
 
+# 告警管理
+winalog alert list
+
 # 启动 TUI
 winalog tui
 
@@ -73,24 +78,17 @@ winalog serve --port 8080
 | `search` | 全文搜索事件 |
 | `collect` | 一键采集所有日志源 |
 | `alert` | 告警管理 |
-| `correlate` | 关联分析 |
-| `analyze` | 专用分析器 |
-| `report` | 报告生成 |
-| `export` | 数据导出 |
-| `timeline` | 时间线分析 |
-| `multi` | 多机分析 |
-| `live` | 实时监控 |
-| `forensics` | 取证功能 |
-| `status` | 系统状态 |
-| `info` | 系统信息 |
-| `verify` | 完整性验证 |
-| `rules` | 规则管理 |
-| `db` | 数据库管理 |
+| `analyze` | 专用分析器 (暴力破解/登录/Kerberos等) |
+| `report` | 报告生成 (HTML/JSON/PDF) |
+| `dashboard` | 仪表板统计 |
 | `config` | 配置管理 |
-| `metrics` | Prometheus 指标 |
-| `query` | SQL 查询 |
-| `tui` | 终端界面 |
-| `serve` | HTTP API 服务器 |
+| `persistence` | Windows 持久化技术检测 |
+| `system` | 系统信息 (进程/网络/用户/注册表) |
+| `ueba` | 用户行为异常分析 |
+| `whitelist` | 白名单规则管理 |
+| `db` | 数据库管理 |
+| `tui` | 终端界面 (Bubble Tea) |
+| `serve` | HTTP API 服务器 + Web UI | |
 
 ## 开发
 
@@ -120,27 +118,31 @@ make lint
 ```
 winalog-go/
 ├── cmd/winalog/           # CLI 命令
-│   └── commands/         # 子命令
+│   └── commands/         # 子命令 (15个)
 ├── internal/              # 内部包
 │   ├── engine/           # 核心引擎
-│   ├── parsers/          # 日志解析器
-│   ├── storage/           # 数据存储
-│   ├── alerts/            # 告警引擎
-│   ├── correlation/       # 关联引擎
-│   ├── rules/             # 规则系统
-│   ├── analyzers/         # 分析器
-│   ├── collectors/        # 采集器
+│   ├── parsers/          # 日志解析器 (evtx/etl/csv/iis/sysmon)
+│   ├── storage/           # 数据存储 (SQLite WAL)
+│   ├── alerts/            # 告警引擎 (7模块)
+│   ├── rules/             # 规则系统 (90+规则)
+│   ├── analyzers/         # 分析器 (8个)
+│   ├── collectors/        # 采集器 (live/persistence)
 │   ├── forensics/         # 取证
-│   ├── reports/           # 报告
-│   ├── exporters/         # 导出器
-│   ├── api/               # HTTP API
-│   ├── tui/               # 终端界面
+│   ├── reports/           # 报告生成
+│   ├── exporters/         # 导出器 (csv/excel/json/evtx)
+│   ├── timeline/          # 时间线
+│   ├── multi/             # 多机分析
+│   ├── ueba/             # 用户行为分析
+│   ├── persistence/       # 持久化检测 (15检测器)
+│   ├── api/               # HTTP API (20+ handlers)
+│   ├── tui/               # 终端界面 (12视图)
+│   ├── observability/     # 可观测性
 │   ├── types/             # 类型定义
-│   ├── config/            # 配置
-│   └── utils/             # 工具函数
+│   └── version/           # 版本信息
+├── internal/gui/          # React Web UI (21页面)
 └── pkg/                   # 公共包
     ├── evtx/              # EVTX 解析库
-    └── mitre/             # MITRE ATT&CK
+    └── mitre/             # MITRE ATT&CK 映射
 ```
 
 ## 依赖
@@ -150,19 +152,25 @@ winalog-go/
 | cobra | v1.7+ | CLI 框架 |
 | viper | v1.18+ | 配置管理 |
 | gin | v1.9+ | HTTP 框架 |
-| modernc.org/sqlite | v1.23+ | SQLite 驱动 (Pure Go) |
+| modernc.org/sqlite | v1.23+ | SQLite 驱动 (Pure Go, 无 CGO) |
 | zap | v1.26+ | 日志 |
 | bubbletea | v1.12+ | TUI 框架 |
+| excelize | v2+ | Excel 导出 |
 
 ## 文档
 
-详细设计文档位于 `dev-pkg/` 目录：
+详细设计文档位于 `dev-pkg/` 和 `.monkeycode/docs/` 目录：
 
-- `design.md` - 核心架构设计
-- `FEATURES.md` - 功能详细清单 (~450+)
+**设计文档** (`dev-pkg/`):
+- `design.md` - 核心架构设计 (~100KB)
+- `FEATURES.md` - 功能详细清单 (~500+)
 - `MODULES_COMPARISON.md` - Python→Go 模块对比
 - `requirements.md` - 需求文档
-- `ISSUES_FIX.md` - 问题修复清单
+
+**用户文档** (`.monkeycode/docs/`):
+- `USER_MANUAL.md` - 完整用户手册
+- `API.md` - API 文档 (~30+ 端点)
+- `ARCHITECTURE.md` - 架构文档
 
 ## License
 
