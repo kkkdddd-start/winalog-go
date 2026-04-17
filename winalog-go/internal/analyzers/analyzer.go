@@ -1,8 +1,32 @@
 package analyzers
 
 import (
+	"fmt"
+
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
+
+type AnalyzerError struct {
+	AnalyzerName string
+	Err          error
+}
+
+type AnalyzerErrors struct {
+	Errors []AnalyzerError
+}
+
+func (e *AnalyzerErrors) Error() string {
+	if len(e.Errors) == 1 {
+		return fmt.Sprintf("analyzer %s failed: %v", e.Errors[0].AnalyzerName, e.Errors[0].Err)
+	}
+	return fmt.Sprintf("%d analyzers failed", len(e.Errors))
+}
+
+type AnalyzerResult struct {
+	AnalyzerName string
+	Result       *Result
+	Error        error
+}
 
 type Analyzer interface {
 	Name() string
@@ -58,16 +82,35 @@ func (r *Result) AddFinding(finding Finding) {
 	r.Findings = append(r.Findings, finding)
 }
 
+var severityWeights = map[string]float64{
+	"critical": 1.5,
+	"high":     1.2,
+	"medium":   1.0,
+	"low":      0.8,
+	"info":     0.5,
+}
+
 func (r *Result) CalculateOverallScore() float64 {
 	if len(r.Findings) == 0 {
 		return 0
 	}
 
-	var total float64
+	var totalScore float64
+	var totalWeight float64
+
 	for _, f := range r.Findings {
-		total += f.Score
+		weight := severityWeights[f.Severity]
+		if weight == 0 {
+			weight = 1.0
+		}
+		totalScore += f.Score * weight
+		totalWeight += weight
 	}
-	return total / float64(len(r.Findings))
+
+	if totalWeight == 0 {
+		return 0
+	}
+	return totalScore / totalWeight
 }
 
 type AnalyzerManager struct {
@@ -99,14 +142,22 @@ func (m *AnalyzerManager) List() []string {
 
 func (m *AnalyzerManager) AnalyzeAll(events []*types.Event) ([]*Result, error) {
 	results := make([]*Result, 0, len(m.analyzers))
+	var errors []AnalyzerError
 
-	for _, analyzer := range m.analyzers {
+	for name, analyzer := range m.analyzers {
 		result, err := analyzer.Analyze(events)
 		if err != nil {
+			errors = append(errors, AnalyzerError{
+				AnalyzerName: name,
+				Err:          err,
+			})
 			continue
 		}
 		results = append(results, result)
 	}
 
+	if len(errors) > 0 {
+		return results, &AnalyzerErrors{Errors: errors}
+	}
 	return results, nil
 }

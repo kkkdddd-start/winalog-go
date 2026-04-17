@@ -139,11 +139,23 @@ func extractCN(distinguishedName string) string {
 }
 
 func runPowerShellCommand(script string) (string, error) {
-	tmpFile := fmt.Sprintf("%s/winalog_ps_%d.ps1", os.TempDir(), time.Now().UnixNano())
+	f, err := os.CreateTemp(os.TempDir(), "winalog_ps_*.ps1")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpFile := f.Name()
+
 	defer os.Remove(tmpFile)
 
-	if err := os.WriteFile(tmpFile, []byte(script), 0644); err != nil {
-		return "", err
+	if err := os.Chmod(tmpFile, 0600); err != nil {
+		return "", fmt.Errorf("failed to set permissions: %w", err)
+	}
+
+	if _, err := f.WriteString(script); err != nil {
+		return "", fmt.Errorf("failed to write script: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return "", fmt.Errorf("failed to close file: %w", err)
 	}
 
 	output, err := execPowerShell(tmpFile)

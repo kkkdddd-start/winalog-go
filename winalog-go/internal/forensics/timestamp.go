@@ -30,10 +30,17 @@ type TimestampRequest struct {
 	TSAServer     string
 }
 
+const (
+	maxRetries     = 3
+	retryDelay     = 2 * time.Second
+	requestTimeout = 30 * time.Second
+)
+
 var defaultTSAServers = []string{
 	"http://timestamp.digicert.com",
 	"http://timestamp.sectigo.com",
 	"http://timestamp.globalsign.com",
+	"http://tsa.isigntrust.com",
 }
 
 func RequestTimestamp(req *TimestampRequest) (*TimestampResult, error) {
@@ -52,28 +59,38 @@ func RequestTimestamp(req *TimestampRequest) (*TimestampResult, error) {
 	result.HashValue = hash
 	result.HashAlgorithm = req.HashAlgorithm
 
-	tsaURL := req.TSAServer
-	if tsaURL == "" {
-		tsaURL = defaultTSAServers[0]
-	}
-	result.TSAURL = tsaURL
-
-	resp, err := requestTimestampFromTSA(tsaURL, hash, req.HashAlgorithm)
-	if err != nil {
-		result.Status = "Error"
-		result.Error = err.Error()
-		return result, nil
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		result.Status = "Trusted"
-		result.Timestamp = time.Now()
-	} else {
-		result.Status = "Failed"
-		result.Error = fmt.Sprintf("TSA returned status: %d", resp.StatusCode)
+	servers := defaultTSAServers
+	if req.TSAServer != "" {
+		servers = []string{req.TSAServer}
 	}
 
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		for _, tsaURL := range servers {
+			resp, err := requestTimestampFromTSA(tsaURL, hash, req.HashAlgorithm)
+			if err != nil {
+				lastErr = err
+				continue
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode == http.StatusOK {
+				result.Status = "Trusted"
+				result.Timestamp = time.Now()
+				result.TSAURL = tsaURL
+				return result, nil
+			}
+
+			lastErr = fmt.Errorf("TSA returned status: %d", resp.StatusCode)
+		}
+
+		if attempt < maxRetries-1 {
+			time.Sleep(retryDelay * time.Duration(1<<uint(attempt)))
+		}
+	}
+
+	result.Status = "Error"
+	result.Error = fmt.Sprintf("all TSA servers failed after %d attempts: %v", maxRetries, lastErr)
 	return result, nil
 }
 
@@ -88,7 +105,7 @@ func requestTimestampFromTSA(tsaURL, hash, algorithm string) (*http.Response, er
 	req.Header.Set("Content-Type", "application/timestamp-query")
 	req.Header.Set("Accept", "application/timestamp-response")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: requestTimeout}
 	return client.Do(req)
 }
 

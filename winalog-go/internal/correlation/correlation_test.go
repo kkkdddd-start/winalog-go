@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewEngine(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 	if engine == nil {
 		t.Fatal("NewEngine returned nil")
 	}
@@ -30,7 +30,7 @@ func TestNewEngine(t *testing.T) {
 }
 
 func TestNewEventIndex(t *testing.T) {
-	idx := NewEventIndex()
+	idx := NewEventIndex(0)
 	if idx == nil {
 		t.Fatal("NewEventIndex returned nil")
 	}
@@ -44,7 +44,7 @@ func TestNewEventIndex(t *testing.T) {
 }
 
 func TestEventIndexAdd(t *testing.T) {
-	idx := NewEventIndex()
+	idx := NewEventIndex(0)
 
 	event := &types.Event{
 		ID:        1,
@@ -63,7 +63,7 @@ func TestEventIndexAdd(t *testing.T) {
 }
 
 func TestEventIndexGetByID(t *testing.T) {
-	idx := NewEventIndex()
+	idx := NewEventIndex(0)
 
 	event := &types.Event{
 		ID:        1,
@@ -88,7 +88,7 @@ func TestEventIndexGetByID(t *testing.T) {
 }
 
 func TestEventIndexGetByEventID(t *testing.T) {
-	idx := NewEventIndex()
+	idx := NewEventIndex(0)
 
 	for i := int64(1); i <= 3; i++ {
 		idx.Add(&types.Event{
@@ -110,7 +110,7 @@ func TestEventIndexGetByEventID(t *testing.T) {
 }
 
 func TestEventIndexGetByTimeRange(t *testing.T) {
-	idx := NewEventIndex()
+	idx := NewEventIndex(0)
 
 	now := time.Now()
 	idx.Add(&types.Event{
@@ -139,7 +139,7 @@ func TestEventIndexGetByTimeRange(t *testing.T) {
 }
 
 func TestEngineLoadEvents(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Timestamp: time.Now()},
@@ -154,7 +154,7 @@ func TestEngineLoadEvents(t *testing.T) {
 }
 
 func TestEngineAnalyzeNoRules(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	ctx := context.Background()
 	results, err := engine.Analyze(ctx, nil)
@@ -168,7 +168,7 @@ func TestEngineAnalyzeNoRules(t *testing.T) {
 }
 
 func TestEngineAnalyzeDisabledRule(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Timestamp: time.Now()},
@@ -194,7 +194,7 @@ func TestEngineAnalyzeDisabledRule(t *testing.T) {
 }
 
 func TestEngineAnalyzeWithMatchingRule(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Timestamp: time.Now(), Computer: "WORKSTATION1"},
@@ -221,7 +221,7 @@ func TestEngineAnalyzeWithMatchingRule(t *testing.T) {
 }
 
 func TestEngineAnalyzeWithSinglePattern(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Timestamp: time.Now()},
@@ -246,7 +246,7 @@ func TestEngineAnalyzeWithSinglePattern(t *testing.T) {
 }
 
 func TestEngineFindChains(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Timestamp: time.Now()},
@@ -265,7 +265,7 @@ func TestEngineFindChains(t *testing.T) {
 }
 
 func TestEngineFindChainsNonExistent(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	ctx := context.Background()
 	chains, err := engine.FindChains(ctx, 999, 5)
@@ -279,7 +279,7 @@ func TestEngineFindChainsNonExistent(t *testing.T) {
 }
 
 func TestEngineGetEvents(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Timestamp: time.Now()},
@@ -294,7 +294,7 @@ func TestEngineGetEvents(t *testing.T) {
 }
 
 func TestEngineClear(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Timestamp: time.Now()},
@@ -309,7 +309,7 @@ func TestEngineClear(t *testing.T) {
 }
 
 func TestEngineFindRelatedEventsByUser(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	user1 := "user1"
 	user2 := "user2"
@@ -334,7 +334,7 @@ func TestEngineFindRelatedEventsByUser(t *testing.T) {
 }
 
 func TestEngineFindRelatedEventsByComputer(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Computer: "WORKSTATION1", Timestamp: time.Now()},
@@ -356,7 +356,7 @@ func TestEngineFindRelatedEventsByComputer(t *testing.T) {
 }
 
 func TestEngineFindRelatedEventsByIP(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	ip1 := "192.168.1.100"
 	ip2 := "192.168.1.101"
@@ -381,7 +381,7 @@ func TestEngineFindRelatedEventsByIP(t *testing.T) {
 }
 
 func TestEngineFindRelatedEventsDefault(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(0)
 
 	events := []*types.Event{
 		{ID: 1, EventID: 4624, Computer: "WORKSTATION1", Timestamp: time.Now()},
