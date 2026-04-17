@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -26,46 +27,60 @@ type QueryResponse struct {
 	Total   int                      `json:"total"`
 }
 
+var sqlForbiddenPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)\b(DROP|DELETE|TRUNCATE|ALTER)\s+(TABLE|DATABASE)`),
+	regexp.MustCompile(`(?i)\b(INSERT\s+INTO|REPLACE\s+INTO)\s+\w+\s+\(SELECT`),
+	regexp.MustCompile(`(?i)\b(EXEC|EXECUTE)\s*\(`),
+	regexp.MustCompile(`(?i)\b(PRAGMA|SHELL)\s*\(`),
+	regexp.MustCompile(`(?i)--`),
+	regexp.MustCompile(`(?i)/\*.*\*/`),
+	regexp.MustCompile(`(?i)\b(GRANT|REVOKE|DENY)\s`),
+	regexp.MustCompile(`(?i)\b(CREATE\s+INDEX|DROP\s+INDEX)\s`),
+}
+
+var sqlAllowedPrefixes = map[string]bool{
+	"SELECT":  true,
+	"PRAGMA":  true,
+	"EXPLAIN": true,
+	"WITH":    true,
+}
+
 func NewQueryHandler(db *storage.DB) *QueryHandler {
 	return &QueryHandler{db: db}
 }
 
 func validateSQL(sql string) error {
 	sql = strings.TrimSpace(sql)
-	sqlUpper := strings.ToUpper(sql)
 
-	if sqlUpper == "" {
+	if sql == "" {
 		return types.NewValidationError("sql", "sql query is required", nil)
 	}
 
-	allowedPrefixes := []string{
-		"SELECT",
-		"PRAGMA",
-		"EXPLAIN",
-		"WITH",
+	if len(sql) > 10000 {
+		return types.NewValidationError("sql", "sql statement too long (max 10000 chars)", nil)
 	}
 
-	isAllowed := false
-	for _, prefix := range allowedPrefixes {
-		if strings.HasPrefix(sqlUpper, prefix) {
-			isAllowed = true
+	normalizedSQL := strings.ToUpper(sql)
+	hasValidPrefix := false
+	for prefix := range sqlAllowedPrefixes {
+		if strings.HasPrefix(normalizedSQL, prefix) {
+			hasValidPrefix = true
 			break
 		}
 	}
 
-	if !isAllowed {
-		return types.NewValidationError("sql", "only SELECT queries are allowed", nil)
+	if !hasValidPrefix {
+		return types.NewValidationError("sql", "only SELECT, PRAGMA, EXPLAIN, WITH queries are allowed", nil)
 	}
 
-	forbidden := []string{
-		";", "--", "/*", "*/",
-		"INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE",
-		"EXEC", "EXECUTE", "CALL", "GRANT", "REVOKE", "DENY",
-	}
-	for _, f := range forbidden {
-		if strings.Contains(sqlUpper, f) {
-			return types.NewValidationError("sql", "forbidden keyword in query", f)
+	for _, pattern := range sqlForbiddenPatterns {
+		if pattern.MatchString(sql) {
+			return types.NewValidationError("sql", "forbidden SQL pattern detected", nil)
 		}
+	}
+
+	if strings.Count(sql, "'")%2 != 0 || strings.Count(sql, "\"")%2 != 0 {
+		return types.NewValidationError("sql", "unclosed string literal", nil)
 	}
 
 	return nil

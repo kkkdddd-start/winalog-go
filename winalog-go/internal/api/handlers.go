@@ -717,6 +717,8 @@ type TimelineResponse struct {
 	TotalCount int              `json:"total_count"`
 	EventCount int              `json:"event_count"`
 	AlertCount int              `json:"alert_count"`
+	HasMore    bool             `json:"has_more"`
+	NextOffset int              `json:"next_offset,omitempty"`
 }
 
 func (h *TimelineHandler) GetTimeline(c *gin.Context) {
@@ -724,6 +726,12 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	limit, _ := strconv.Atoi(limitStr)
 	if limit <= 0 || limit > 1000 {
 		limit = 200
+	}
+
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, _ := strconv.Atoi(offsetStr)
+	if offset < 0 {
+		offset = 0
 	}
 
 	startTime := c.Query("start_time")
@@ -744,7 +752,8 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	entries := make([]*TimelineEntry, 0)
 
 	eventFilter := &storage.EventFilter{
-		Limit: limit,
+		Limit:  limit,
+		Offset: offset,
 	}
 	if start != nil {
 		eventFilter.StartTime = start
@@ -752,7 +761,7 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	if end != nil {
 		eventFilter.EndTime = end
 	}
-	events, _, err := h.db.ListEvents(eventFilter)
+	events, eventTotal, err := h.db.ListEvents(eventFilter)
 	if err != nil {
 		log.Printf("failed to fetch events for timeline: %v", err)
 	}
@@ -769,7 +778,8 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	}
 
 	alertFilter := &storage.AlertFilter{
-		Limit: limit,
+		Limit:  limit,
+		Offset: offset,
 	}
 	if start != nil {
 		alertFilter.StartTime = start
@@ -798,16 +808,20 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 
 	eventCount := len(events)
 	alertCount := len(alerts)
-	totalCount := len(entries)
-	if totalCount > limit {
-		entries = entries[:limit]
+
+	hasMore := (offset + eventCount + alertCount) < int(eventTotal)
+	nextOffset := 0
+	if hasMore {
+		nextOffset = offset + limit
 	}
 
 	c.JSON(200, TimelineResponse{
 		Entries:    entries,
-		TotalCount: totalCount,
+		TotalCount: int(eventTotal),
 		EventCount: eventCount,
 		AlertCount: alertCount,
+		HasMore:    hasMore,
+		NextOffset: nextOffset,
 	})
 }
 

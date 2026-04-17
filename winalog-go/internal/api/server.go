@@ -51,7 +51,7 @@ func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Ser
 
 	engine.Use(recoveryMiddleware())
 	engine.Use(requestLogger())
-	engine.Use(corsMiddleware())
+	engine.Use(corsMiddleware(&cfg.API.CORS))
 
 	server := &Server{
 		engine:     engine,

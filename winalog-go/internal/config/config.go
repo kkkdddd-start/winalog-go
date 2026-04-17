@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -144,6 +145,80 @@ type TUIConfig struct {
 	Theme      string `yaml:"theme"`
 	KeyMode    string `yaml:"key_mode"`
 	AutoUpdate bool   `yaml:"auto_update"`
+}
+
+type ValidationResult struct {
+	Field   string
+	Value   interface{}
+	Message string
+	Fixed   bool
+}
+
+func (c *Config) Validate() ([]*ValidationResult, error) {
+	results := make([]*ValidationResult, 0)
+
+	if c.Database.Path == "" {
+		results = append(results, &ValidationResult{
+			Field:   "database.path",
+			Value:   c.Database.Path,
+			Message: "database.path is required",
+			Fixed:   false,
+		})
+	}
+
+	if c.Import.Workers <= 0 {
+		results = append(results, &ValidationResult{
+			Field:   "import.workers",
+			Value:   c.Import.Workers,
+			Message: "import.workers must be positive, auto-corrected to 1",
+			Fixed:   true,
+		})
+		c.Import.Workers = 1
+	}
+	if c.Import.Workers > 32 {
+		results = append(results, &ValidationResult{
+			Field:   "import.workers",
+			Value:   c.Import.Workers,
+			Message: "import.workers exceeds max (32), auto-corrected to 32",
+			Fixed:   true,
+		})
+		c.Import.Workers = 32
+	}
+
+	if c.API.Port <= 0 || c.API.Port > 65535 {
+		results = append(results, &ValidationResult{
+			Field:   "api.port",
+			Value:   c.API.Port,
+			Message: "invalid api.port, must be 1-65535",
+			Fixed:   false,
+		})
+	}
+
+	for _, origin := range c.API.CORS.AllowedOrigins {
+		if origin == "*" {
+			results = append(results, &ValidationResult{
+				Field:   "api.cors.allowed_origins",
+				Value:   origin,
+				Message: "WARNING: CORS allows all origins (*), not suitable for production",
+				Fixed:   false,
+			})
+			break
+		}
+	}
+
+	hasErrors := false
+	for _, r := range results {
+		if !r.Fixed {
+			hasErrors = true
+			break
+		}
+	}
+
+	if hasErrors {
+		return results, fmt.Errorf("configuration validation failed")
+	}
+
+	return results, nil
 }
 
 func DefaultConfig() *Config {
