@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -76,10 +77,17 @@ func formatBytes(bytes int64) string {
 	if bytes < unit {
 		return "< 1 KB"
 	}
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
+
+	exp := 0
+	size := float64(bytes)
+	for size >= unit {
+		size /= unit
 		exp++
 	}
-	return string([]byte{"KMGTPE"[exp], 'B'})
+
+	if exp >= len("KMGTPE") {
+		return "> 1 PB"
+	}
+
+	return fmt.Sprintf("%.1f%cB", size, "KMGTPE"[exp-1])
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -307,7 +308,7 @@ func generateMultiSummary(machineCount, suspiciousCount, lateralCount int) strin
 }
 
 func itoa(i int) string {
-	return string(rune('0'+i/10000%10)) + string(rune('0'+i/1000%10)) + string(rune('0'+i/100%10)) + string(rune('0'+i/10%10)) + string(rune('0'+i%10))
+	return strconv.Itoa(i)
 }
 
 func SetupMultiRoutes(r *gin.Engine, h *MultiHandler) {

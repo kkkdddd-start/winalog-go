@@ -413,7 +413,8 @@ type ProgressCallback func(processed, total int)
 
 func (e *Engine) EvaluateBatchWithProgress(ctx context.Context, events []*types.Event, callback ProgressCallback) ([]*types.Alert, error) {
 	total := len(events)
-	processed := 0
+	var processed int64
+	var mu sync.Mutex
 
 	alertChan := make(chan *types.Alert, len(events))
 	var wg sync.WaitGroup
@@ -461,8 +462,11 @@ func (e *Engine) EvaluateBatchWithProgress(ctx context.Context, events []*types.
 			}
 
 			if callback != nil {
+				mu.Lock()
 				processed++
-				callback(processed, total)
+				currentProcessed := processed
+				mu.Unlock()
+				callback(int(currentProcessed), total)
 			}
 		}(evt)
 	}

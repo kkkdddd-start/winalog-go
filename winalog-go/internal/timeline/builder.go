@@ -214,91 +214,102 @@ func (b *TimelineBuilder) categorizeEvent(event *types.Event) string {
 	}
 }
 
+var authEventsMap = map[int32]bool{
+	4624: true, 4625: true, 4634: true, 4647: true,
+	4648: true, 4670: true, 4768: true, 4769: true,
+	4776: true,
+}
+
+var authzEventsMap = map[int32]bool{
+	4672: true, 4673: true, 4674: true, 4702: true,
+}
+
+var processEventsMap = map[int32]bool{
+	4688: true, 4689: true, 4696: true, 4697: true,
+	4698: true, 4699: true, 4700: true, 4701: true,
+}
+
+var networkEventsMap = map[int32]bool{
+	3: true, 4000: true, 4001: true, 4002: true,
+	5156: true, 5157: true, 5158: true, 5159: true,
+}
+
+var fileEventsMap = map[int32]bool{
+	4656: true, 4657: true, 4658: true, 4660: true,
+	4663: true, 4664: true, 4670: true,
+}
+
+var registryEventsMap = map[int32]bool{
+	4657: true, 4660: true,
+}
+
+var scheduledTaskEventsMap = map[int32]bool{
+	4698: true, 4699: true, 4700: true, 4701: true,
+	4702: true,
+}
+
+var serviceEventsMap = map[int32]bool{
+	4697: true, 4698: true, 4699: true,
+	7000: true, 7001: true, 7002: true, 7009: true,
+}
+
+var powershellEventsMap = map[int32]bool{
+	400: true, 600: true, 800: true,
+	4100: true, 4103: true, 4104: true,
+}
+
+var remoteAccessEventsMap = map[int32]bool{
+	4624: true, 4625: true, 4648: true, 4672: true,
+}
+
+var accountEventsMap = map[int32]bool{
+	4720: true, 4721: true, 4722: true, 4723: true,
+	4724: true, 4725: true, 4726: true, 4738: true,
+	4740: true, 4767: true, 4768: true, 4769: true,
+}
+
 func isAuthEvent(eventID int32) bool {
-	authEvents := map[int32]bool{
-		4624: true, 4625: true, 4634: true, 4647: true,
-		4648: true, 4670: true, 4768: true, 4769: true,
-		4776: true,
-	}
-	return authEvents[eventID]
+	return authEventsMap[eventID]
 }
 
 func isAuthzEvent(eventID int32) bool {
-	authzEvents := map[int32]bool{
-		4672: true, 4673: true, 4674: true, 4702: true,
-	}
-	return authzEvents[eventID]
+	return authzEventsMap[eventID]
 }
 
 func isProcessEvent(eventID int32) bool {
-	processEvents := map[int32]bool{
-		4688: true, 4689: true, 4696: true, 4697: true,
-		4698: true, 4699: true, 4700: true, 4701: true,
-	}
-	return processEvents[eventID]
+	return processEventsMap[eventID]
 }
 
 func isNetworkEvent(eventID int32) bool {
-	networkEvents := map[int32]bool{
-		3: true, 4000: true, 4001: true, 4002: true,
-		5156: true, 5157: true, 5158: true, 5159: true,
-	}
-	return networkEvents[eventID]
+	return networkEventsMap[eventID]
 }
 
 func isFileEvent(eventID int32) bool {
-	fileEvents := map[int32]bool{
-		4656: true, 4657: true, 4658: true, 4660: true,
-		4663: true, 4664: true, 4670: true,
-	}
-	return fileEvents[eventID]
+	return fileEventsMap[eventID]
 }
 
 func isRegistryEvent(eventID int32) bool {
-	registryEvents := map[int32]bool{
-		4657: true, 4660: true,
-	}
-	return registryEvents[eventID]
+	return registryEventsMap[eventID]
 }
 
 func isScheduledTaskEvent(eventID int32) bool {
-	taskEvents := map[int32]bool{
-		4698: true, 4699: true, 4700: true, 4701: true,
-		4702: true,
-	}
-	return taskEvents[eventID]
+	return scheduledTaskEventsMap[eventID]
 }
 
 func isServiceEvent(eventID int32) bool {
-	serviceEvents := map[int32]bool{
-		4697: true, 4698: true, 4699: true,
-		7000: true, 7001: true, 7002: true, 7009: true,
-	}
-	return serviceEvents[eventID]
+	return serviceEventsMap[eventID]
 }
 
 func isPowerShellEvent(eventID int32) bool {
-	powershellEvents := map[int32]bool{
-		400: true, 600: true, 800: true,
-		4100: true, 4103: true, 4104: true,
-	}
-	return powershellEvents[eventID]
+	return powershellEventsMap[eventID]
 }
 
 func isRemoteAccessEvent(eventID int32) bool {
-	remoteEvents := map[int32]bool{
-		4624: true, 4625: true, 4648: true, 4672: true,
-	}
-	return remoteEvents[eventID]
+	return remoteAccessEventsMap[eventID]
 }
 
 func isAccountEvent(eventID int32) bool {
-	accountEvents := map[int32]bool{
-		4720: true, 4721: true, 4722: true, 4723: true,
-		4724: true, 4725: true, 4726: true, 4738: true,
-		4740: true, 4767: true, 4768: true, 4769: true,
-	}
-	return accountEvents[eventID]
+	return accountEventsMap[eventID]
 }
 
 func (b *TimelineBuilder) linkAttackChains(timeline *Timeline) {
@@ -339,8 +350,32 @@ func (b *TimelineBuilder) detectAttackChains(events []*types.Event) []*AttackCha
 	return chains
 }
 
+type AttackChainConfig struct {
+	BruteForceThreshold      int
+	LateralMovementThreshold int
+	PersistenceThreshold     int
+	TimeWindow               time.Duration
+}
+
+func DefaultAttackChainConfig() *AttackChainConfig {
+	return &AttackChainConfig{
+		BruteForceThreshold:      10,
+		LateralMovementThreshold: 3,
+		PersistenceThreshold:     1,
+		TimeWindow:               24 * time.Hour,
+	}
+}
+
 func (b *TimelineBuilder) detectBruteForce(events []*types.Event) []*AttackChain {
+	return b.detectBruteForceWithConfig(events, nil)
+}
+
+func (b *TimelineBuilder) detectBruteForceWithConfig(events []*types.Event, cfg *AttackChainConfig) []*AttackChain {
 	chains := make([]*AttackChain, 0)
+
+	if cfg == nil {
+		cfg = DefaultAttackChainConfig()
+	}
 
 	var failedLogins []*types.Event
 	var successfulLogins []*types.Event
@@ -353,7 +388,7 @@ func (b *TimelineBuilder) detectBruteForce(events []*types.Event) []*AttackChain
 		}
 	}
 
-	if len(failedLogins) >= 10 {
+	if len(failedLogins) >= cfg.BruteForceThreshold {
 		chains = append(chains, &AttackChain{
 			ID:          "brute-force-detected",
 			Name:        "Brute Force Attack Detected",
@@ -371,7 +406,15 @@ func (b *TimelineBuilder) detectBruteForce(events []*types.Event) []*AttackChain
 }
 
 func (b *TimelineBuilder) detectLateralMovement(events []*types.Event) []*AttackChain {
+	return b.detectLateralMovementWithConfig(events, nil)
+}
+
+func (b *TimelineBuilder) detectLateralMovementWithConfig(events []*types.Event, cfg *AttackChainConfig) []*AttackChain {
 	chains := make([]*AttackChain, 0)
+
+	if cfg == nil {
+		cfg = DefaultAttackChainConfig()
+	}
 
 	var remoteLogins []*types.Event
 
@@ -383,7 +426,7 @@ func (b *TimelineBuilder) detectLateralMovement(events []*types.Event) []*Attack
 		}
 	}
 
-	if len(remoteLogins) >= 3 {
+	if len(remoteLogins) >= cfg.LateralMovementThreshold {
 		chains = append(chains, &AttackChain{
 			ID:          "lateral-movement-detected",
 			Name:        "Lateral Movement Detected",
@@ -401,7 +444,15 @@ func (b *TimelineBuilder) detectLateralMovement(events []*types.Event) []*Attack
 }
 
 func (b *TimelineBuilder) detectPersistence(events []*types.Event) []*AttackChain {
+	return b.detectPersistenceWithConfig(events, nil)
+}
+
+func (b *TimelineBuilder) detectPersistenceWithConfig(events []*types.Event, cfg *AttackChainConfig) []*AttackChain {
 	chains := make([]*AttackChain, 0)
+
+	if cfg == nil {
+		cfg = DefaultAttackChainConfig()
+	}
 
 	var persistenceEvents []*types.Event
 
@@ -411,7 +462,7 @@ func (b *TimelineBuilder) detectPersistence(events []*types.Event) []*AttackChai
 		}
 	}
 
-	if len(persistenceEvents) > 0 {
+	if len(persistenceEvents) >= cfg.PersistenceThreshold {
 		chains = append(chains, &AttackChain{
 			ID:          "persistence-detected",
 			Name:        "Persistence Mechanism Detected",
@@ -431,6 +482,8 @@ func (b *TimelineBuilder) detectPersistence(events []*types.Event) []*AttackChai
 func (b *TimelineBuilder) GroupByComputer() map[string]*Timeline {
 	result := make(map[string]*Timeline)
 
+	computerEvents := make(map[string][]*types.Event)
+
 	for _, event := range b.events {
 		if !b.matchesFilter(event) {
 			continue
@@ -441,13 +494,10 @@ func (b *TimelineBuilder) GroupByComputer() map[string]*Timeline {
 			computer = "Unknown"
 		}
 
-		if _, exists := b.categories[computer]; !exists {
-			b.categories[computer] = make([]*types.Event, 0)
-		}
-		b.categories[computer] = append(b.categories[computer], event)
+		computerEvents[computer] = append(computerEvents[computer], event)
 	}
 
-	for computer, events := range b.categories {
+	for computer, events := range computerEvents {
 		builder := NewTimelineBuilder()
 		builder.SetEvents(events)
 		builder.SetFilter(b.filter)
@@ -461,6 +511,8 @@ func (b *TimelineBuilder) GroupByComputer() map[string]*Timeline {
 func (b *TimelineBuilder) GroupByCategory() map[string]*Timeline {
 	result := make(map[string]*Timeline)
 
+	categoryEvents := make(map[string][]*types.Event)
+
 	for _, event := range b.events {
 		if !b.matchesFilter(event) {
 			continue
@@ -468,13 +520,10 @@ func (b *TimelineBuilder) GroupByCategory() map[string]*Timeline {
 
 		category := b.categorizeEvent(event)
 
-		if _, exists := b.categories[category]; !exists {
-			b.categories[category] = make([]*types.Event, 0)
-		}
-		b.categories[category] = append(b.categories[category], event)
+		categoryEvents[category] = append(categoryEvents[category], event)
 	}
 
-	for category, events := range b.categories {
+	for category, events := range categoryEvents {
 		builder := NewTimelineBuilder()
 		builder.SetEvents(events)
 		builder.SetFilter(b.filter)

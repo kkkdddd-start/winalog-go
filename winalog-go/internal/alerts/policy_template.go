@@ -3,6 +3,7 @@ package alerts
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -63,16 +64,19 @@ type PolicyInstance struct {
 	Enabled      bool
 }
 
-var defaultPolicyManager *PolicyManager
+var (
+	defaultPolicyManager *PolicyManager
+	once                 sync.Once
+)
 
 func GetPolicyManager() *PolicyManager {
-	if defaultPolicyManager == nil {
+	once.Do(func() {
 		defaultPolicyManager = &PolicyManager{
 			templates: make(map[string]*PolicyTemplate),
 			instances: make(map[string]*PolicyInstance),
 		}
 		defaultPolicyManager.registerBuiltInTemplates()
-	}
+	})
 	return defaultPolicyManager
 }
 

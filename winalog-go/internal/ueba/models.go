@@ -1,6 +1,7 @@
 package ueba
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -125,9 +126,9 @@ func formatValue(v interface{}) string {
 	case string:
 		return val
 	case int:
-		return string(rune(val))
+		return strconv.Itoa(val)
 	case float64:
-		return string(rune(int(val)))
+		return strconv.FormatFloat(val, 'f', -1, 64)
 	case []int:
 		return fmtIntSlice(val)
 	default:
@@ -141,7 +142,7 @@ func fmtIntSlice(s []int) string {
 		if i > 0 {
 			result += ", "
 		}
-		result += string(rune(v))
+		result += strconv.Itoa(v)
 	}
 	result += "]"
 	return result

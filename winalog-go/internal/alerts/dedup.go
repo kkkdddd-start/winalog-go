@@ -13,6 +13,7 @@ type DedupCache struct {
 	window  time.Duration
 	entries map[string]*dedupEntry
 	done    chan struct{}
+	wg      sync.WaitGroup
 }
 
 type dedupEntry struct {
@@ -29,6 +30,7 @@ func NewDedupCache(window time.Duration) *DedupCache {
 		done:    make(chan struct{}),
 	}
 
+	c.wg.Add(1)
 	go c.cleanupLoop()
 	return c
 }
@@ -96,6 +98,7 @@ func (c *DedupCache) Clear() {
 }
 
 func (c *DedupCache) cleanupLoop() {
+	defer c.wg.Done()
 	ticker := time.NewTicker(c.window / 2)
 	defer ticker.Stop()
 
@@ -111,6 +114,7 @@ func (c *DedupCache) cleanupLoop() {
 
 func (c *DedupCache) Close() {
 	close(c.done)
+	c.wg.Wait()
 }
 
 func (c *DedupCache) cleanup() {

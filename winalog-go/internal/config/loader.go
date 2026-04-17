@@ -123,22 +123,3 @@ func expandPaths(cfg *Config) {
 		cfg.Database.Path = filepath.Join(home, strings.TrimPrefix(cfg.Database.Path, "~"))
 	}
 }
-
-func (c *Config) Validate() error {
-	if c.Database.Path == "" {
-		return fmt.Errorf("database.path is required")
-	}
-	if c.Import.Workers <= 0 {
-		c.Import.Workers = 1
-	}
-	if c.Import.Workers > 32 {
-		c.Import.Workers = 32
-	}
-	if c.Import.BatchSize <= 0 {
-		c.Import.BatchSize = 1000
-	}
-	if c.API.Port <= 0 || c.API.Port > 65535 {
-		return fmt.Errorf("invalid api.port: %d", c.API.Port)
-	}
-	return nil
-}
