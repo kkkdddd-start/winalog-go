@@ -43,11 +43,6 @@ var SuspiciousBHOIndicators = []string{
 	"hook", "inject", "spy",
 }
 
-var KnownBenignBHOs = map[string]bool{
-	"{1L97M0-S-1-0-19-10000000--100000000000-}":             true,
-	"{1L97M0-S-1-0-19-10000000--100000000000-100000000000}": true,
-}
-
 var KnownBenignBHONames = []string{
 	"Google Toolbar",
 	"Microsoft Bing Bar",
@@ -153,7 +148,7 @@ func (d *BHODetector) isSuspicious(entry BHOEntry) bool {
 		return false
 	}
 
-	if KnownBenignBHOs[entry.Name] {
+	if GlobalWhitelist.IsAllowed(entry.Name) {
 		return false
 	}
 

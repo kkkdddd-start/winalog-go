@@ -2,18 +2,40 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type PersistenceHandler struct{}
+const (
+	defaultDetectTimeout = 5 * time.Minute
+	defaultCacheTTL      = 30 * time.Second
+)
+
+type PersistenceHandler struct {
+	cache      *DetectionCache
+	cacheMutex sync.RWMutex
+}
+
+type DetectionCache struct {
+	result    *persistence.DetectionResult
+	timestamp time.Time
+	params    string
+	ttl       time.Duration
+}
 
 func NewPersistenceHandler() *PersistenceHandler {
-	return &PersistenceHandler{}
+	return &PersistenceHandler{
+		cache: &DetectionCache{
+			ttl: defaultCacheTTL,
+		},
+	}
 }
 
 type DetectRequest struct {
@@ -26,6 +48,7 @@ type DetectResponse struct {
 	Summary    map[string]interface{}   `json:"summary"`
 	Duration   string                   `json:"duration"`
 	TotalCount int                      `json:"total_count"`
+	Cached     bool                     `json:"cached,omitempty"`
 }
 
 func (h *PersistenceHandler) Detect(c *gin.Context) {
@@ -47,7 +70,39 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 
 	format := c.DefaultQuery("format", "json")
 
-	ctx := context.Background()
+	timeoutStr := c.DefaultQuery("timeout", "5m")
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil || timeout <= 0 {
+		timeout = defaultDetectTimeout
+	}
+	if timeout > 10*time.Minute {
+		timeout = 10 * time.Minute
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cacheParams := fmt.Sprintf("%s|%s", req.Category, req.Technique)
+
+	if req.Category == "" && req.Technique == "" {
+		h.cacheMutex.RLock()
+		if h.cache.result != nil &&
+			time.Since(h.cache.timestamp) < h.cache.ttl &&
+			h.cache.params == cacheParams {
+			response := DetectResponse{
+				Detections: h.cache.result.Detections,
+				Summary:    h.cache.result.Summary(),
+				Duration:   h.cache.result.Duration.String(),
+				TotalCount: h.cache.result.TotalCount,
+				Cached:     true,
+			}
+			h.cacheMutex.RUnlock()
+			c.JSON(http.StatusOK, response)
+			return
+		}
+		h.cacheMutex.RUnlock()
+	}
+
 	var result *persistence.DetectionResult
 
 	if req.Technique != "" {
@@ -62,6 +117,14 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 		result = &persistence.DetectionResult{
 			Detections: []*persistence.Detection{},
 		}
+	}
+
+	if req.Category == "" && req.Technique == "" {
+		h.cacheMutex.Lock()
+		h.cache.result = result
+		h.cache.timestamp = time.Now()
+		h.cache.params = cacheParams
+		h.cacheMutex.Unlock()
 	}
 
 	if format == "csv" {

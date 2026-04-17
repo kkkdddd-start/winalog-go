@@ -47,11 +47,6 @@ var SuspiciousBootExecuteIndicators = []string{
 	"sethc", "utilman", "osk", "magnify", "narrator", "displayswitch",
 }
 
-var KnownBenignBootExecute = map[string]bool{
-	"autocheck autochk *": true,
-	"sysiex.exe":          true,
-}
-
 func (d *BootExecuteDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	detections := make([]*Detection, 0)
 
@@ -109,7 +104,7 @@ func (d *BootExecuteDetector) enumerateBootExecuteKey(keyPath string) ([]BootExe
 	multiValues, err := utils.GetRegistryMultiStringValue(keyPath, "")
 	if err == nil && len(multiValues) > 0 {
 		for i, v := range multiValues {
-			if v != "" && !KnownBenignBootExecute[v] {
+			if v != "" && !GlobalWhitelist.IsAllowed(v) {
 				entries = append(entries, BootExecuteEntry{
 					Name:  "(Value " + string(rune('0'+i)) + ")",
 					Value: v,
@@ -144,7 +139,7 @@ func (d *BootExecuteDetector) isSuspicious(entry BootExecuteEntry) bool {
 		return false
 	}
 
-	if KnownBenignBootExecute[entry.Value] {
+	if GlobalWhitelist.IsAllowed(entry.Value) {
 		return false
 	}
 

@@ -54,11 +54,6 @@ var SuspiciousRunKeyIndicators = []string{
 	"mimikatz", "pwdump", "net user",
 }
 
-var KnownBenignRunKeys = map[string]bool{
-	`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\DiagTrack`:      true,
-	`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\SecurityHealth`: true,
-}
-
 func (d *RunKeyDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	detections := make([]*Detection, 0)
 
@@ -191,8 +186,9 @@ func (d *RunKeyDetector) calculateSeverity(value string) Severity {
 }
 
 func (d *RunKeyDetector) calculateFPRisk(keyPath, name, value string) string {
-	if KnownBenignRunKeys[keyPath+"\\"+name] {
-		return "Low (Known Microsoft binary)"
+	fullKey := keyPath + "\\" + name
+	if GlobalWhitelist.IsAllowed(fullKey) {
+		return "Low (Whitelisted)"
 	}
 
 	if strings.Contains(strings.ToLower(value), "microsoft") {

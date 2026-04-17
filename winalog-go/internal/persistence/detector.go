@@ -187,66 +187,44 @@ func (e *DetectionEngine) GetResult() *DetectionResult {
 
 func RunAllDetectors(ctx context.Context) *DetectionResult {
 	engine := NewDetectionEngine()
-
-	engine.Register(NewRunKeyDetector())
-	engine.Register(NewUserInitDetector())
-	engine.Register(NewStartupFolderDetector())
-	engine.Register(NewAccessibilityDetector())
-	engine.Register(NewCOMHijackDetector())
-	engine.Register(NewIFEODetector())
-	engine.Register(NewAppInitDetector())
-	engine.Register(NewWMIPersistenceDetector())
-	engine.Register(NewServicePersistenceDetector())
-	engine.Register(NewLSAPersistenceDetector())
-	engine.Register(NewWinsockDetector())
-	engine.Register(NewBHODetector())
-	engine.Register(NewPrintMonitorDetector())
-	engine.Register(NewBootExecuteDetector())
-	engine.Register(NewETWDetector())
-
+	registerAllDetectors(engine)
 	return engine.Detect(ctx)
 }
 
 func DetectByCategory(ctx context.Context, category string) *DetectionResult {
 	engine := NewDetectionEngine()
-
-	engine.Register(NewRunKeyDetector())
-	engine.Register(NewUserInitDetector())
-	engine.Register(NewStartupFolderDetector())
-	engine.Register(NewAccessibilityDetector())
-	engine.Register(NewCOMHijackDetector())
-	engine.Register(NewIFEODetector())
-	engine.Register(NewAppInitDetector())
-	engine.Register(NewWMIPersistenceDetector())
-	engine.Register(NewServicePersistenceDetector())
-	engine.Register(NewLSAPersistenceDetector())
-	engine.Register(NewWinsockDetector())
-	engine.Register(NewBHODetector())
-	engine.Register(NewPrintMonitorDetector())
-	engine.Register(NewBootExecuteDetector())
-	engine.Register(NewETWDetector())
-
+	registerAllDetectors(engine)
 	return engine.DetectCategory(ctx, category)
 }
 
 func DetectByTechnique(ctx context.Context, technique Technique) *DetectionResult {
 	engine := NewDetectionEngine()
-
-	engine.Register(NewRunKeyDetector())
-	engine.Register(NewUserInitDetector())
-	engine.Register(NewStartupFolderDetector())
-	engine.Register(NewAccessibilityDetector())
-	engine.Register(NewCOMHijackDetector())
-	engine.Register(NewIFEODetector())
-	engine.Register(NewAppInitDetector())
-	engine.Register(NewWMIPersistenceDetector())
-	engine.Register(NewServicePersistenceDetector())
-	engine.Register(NewLSAPersistenceDetector())
-	engine.Register(NewWinsockDetector())
-	engine.Register(NewBHODetector())
-	engine.Register(NewPrintMonitorDetector())
-	engine.Register(NewBootExecuteDetector())
-	engine.Register(NewETWDetector())
-
+	registerAllDetectors(engine)
 	return engine.DetectTechnique(ctx, technique)
+}
+
+func AllDetectors() []Detector {
+	return []Detector{
+		NewRunKeyDetector(),
+		NewUserInitDetector(),
+		NewStartupFolderDetector(),
+		NewAccessibilityDetector(),
+		NewCOMHijackDetector(),
+		NewIFEODetector(),
+		NewAppInitDetector(),
+		NewWMIPersistenceDetector(),
+		NewServicePersistenceDetector(),
+		NewLSAPersistenceDetector(),
+		NewWinsockDetector(),
+		NewBHODetector(),
+		NewPrintMonitorDetector(),
+		NewBootExecuteDetector(),
+		NewETWDetector(),
+	}
+}
+
+func registerAllDetectors(engine *DetectionEngine) {
+	for _, d := range AllDetectors() {
+		engine.Register(d)
+	}
 }

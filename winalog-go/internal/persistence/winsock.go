@@ -44,13 +44,6 @@ var SuspiciousWinsockIndicators = []string{
 	"revshell", "bindshell", "netcat",
 }
 
-var KnownBenignWinsockPaths = map[string]bool{
-	`HKLM\SYSTEM\CurrentControlSet\Services\WinSock2\Parameters\Name_Space_Catalog\Catalog_Entries\00000000001`:   true,
-	`HKLM\SYSTEM\CurrentControlSet\Services\WinSock2\Parameters\Name_Space_Catalog\Catalog_Entries\00000000002`:   true,
-	`HKLM\SYSTEM\CurrentControlSet\Services\WinSock2\Parameters\Name_Space_Catalog\Catalog_Entries64\00000000001`: true,
-	`HKLM\SYSTEM\CurrentControlSet\Services\WinSock2\Parameters\Name_Space_Catalog\Catalog_Entries64\00000000002`: true,
-}
-
 func (d *WinsockDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	detections := make([]*Detection, 0)
 

@@ -54,13 +54,6 @@ var SuspiciousServiceNames = []string{
 	"microsoft", "google", "adobe",
 }
 
-var KnownBenignServices = map[string]bool{
-	"SecurityHealthService": true,
-	"WinDefend":             true,
-	"wscsvc":                true,
-	"mpssvc":                true,
-}
-
 func (d *ServicePersistenceDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	detections := make([]*Detection, 0)
 
@@ -239,7 +232,7 @@ func (d *ServicePersistenceDetector) isSuspiciousService(name, path string) bool
 	nameLower := strings.ToLower(name)
 	pathLower := strings.ToLower(path)
 
-	if KnownBenignServices[name] {
+	if GlobalWhitelist.IsAllowed(name) {
 		return false
 	}
 
@@ -298,8 +291,8 @@ func (d *ServicePersistenceDetector) calculateServiceSeverity(name, path string)
 func (d *ServicePersistenceDetector) calculateServiceFPRisk(name, path string) string {
 	nameLower := strings.ToLower(name)
 
-	if KnownBenignServices[name] {
-		return "Low (Known Microsoft service)"
+	if GlobalWhitelist.IsAllowed(name) {
+		return "Low (Whitelisted service)"
 	}
 
 	if strings.Contains(nameLower, "microsoft") || strings.Contains(nameLower, "windows") {

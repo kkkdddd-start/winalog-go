@@ -45,11 +45,6 @@ var SuspiciousLSAIndicators = []string{
 	"metasploit", "cobaltstrike",
 }
 
-var KnownBenignLSAPaths = map[string]bool{
-	`HKLM\SYSTEM\CurrentControlSet\Control\Lsa\Security Packages\msv1_0`:       true,
-	`HKLM\SYSTEM\CurrentControlSet\Control\Lsa\Authentication Packages\msv1_0`: true,
-}
-
 func (d *LSAPersistenceDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	detections := make([]*Detection, 0)
 
@@ -161,7 +156,7 @@ func (d *LSAPersistenceDetector) isSuspicious(entry LSAEntry) bool {
 
 	valueUpper := strings.ToUpper(entry.Value)
 
-	if KnownBenignLSAPaths[entry.Name] {
+	if GlobalWhitelist.IsAllowed(entry.Name) {
 		return false
 	}
 

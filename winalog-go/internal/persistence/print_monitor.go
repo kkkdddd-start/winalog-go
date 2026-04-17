@@ -42,14 +42,6 @@ var SuspiciousPrintMonitorIndicators = []string{
 	"hook", "inject", "keylog",
 }
 
-var KnownBenignPrintMonitors = map[string]bool{
-	"Microsoft Document Imaging Writer Port": true,
-	"Standard TCP/IP Port":                   true,
-	"USB001":                                 true,
-	"Microsoft Shared Console":               true,
-	"Local Port":                             true,
-}
-
 func (d *PrintMonitorDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	detections := make([]*Detection, 0)
 
@@ -132,7 +124,7 @@ func (d *PrintMonitorDetector) isSuspicious(entry PrintMonitorEntry) bool {
 		return false
 	}
 
-	if KnownBenignPrintMonitors[entry.Name] {
+	if GlobalWhitelist.IsAllowed(entry.Name) {
 		return false
 	}
 
