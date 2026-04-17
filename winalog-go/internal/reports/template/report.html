@@ -129,7 +129,7 @@
                                     <tr>
                                         <td>{{.EventID}}</td>
                                         <td>{{.Count}}</td>
-                                        <td>{{printf "%.1f" (div (float64 .Count) (float64 $.Stats.TotalEvents))}}%</td>
+                                        <td>{{printf "%.1f" (percentage .Count $.Stats.TotalEvents)}}%</td>
                                     </tr>
                                     {{end}}
                                 </tbody>

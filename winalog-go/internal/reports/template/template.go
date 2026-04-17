@@ -22,6 +22,12 @@ func GetReportTemplate() (*template.Template, error) {
 			}
 			return a / b
 		},
+		"percentage": func(part, total int64) float64 {
+			if total == 0 {
+				return 0
+			}
+			return float64(part) / float64(total) * 100
+		},
 	}
 
 	tmpl, err := template.New("report.html").Funcs(funcMap).ParseFS(templateFS, "report.html")

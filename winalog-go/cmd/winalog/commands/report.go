@@ -116,19 +116,19 @@ func init() {
 	exportCmd.AddCommand(&cobra.Command{
 		Use:   "json [file]",
 		Short: "Export to JSON",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.RangeArgs(0, 1),
 		RunE:  runExportJSON,
 	})
 	exportCmd.AddCommand(&cobra.Command{
 		Use:   "csv [file]",
 		Short: "Export to CSV",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.RangeArgs(0, 1),
 		RunE:  runExportCSV,
 	})
 	exportCmd.AddCommand(&cobra.Command{
 		Use:   "timeline [file]",
 		Short: "Export timeline",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.RangeArgs(0, 1),
 		RunE:  runExportTimeline,
 	})
 }
