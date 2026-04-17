@@ -1,9 +1,42 @@
 # WinLogAnalyzer-Go 项目文档
 
 **版本**: v2.4.0  
-**更新日期**: 2026-04-14
+**更新日期**: 2026-04-17
+
+---
+
+## 用户手册章节预览
+
+### 快速开始
+- [安装与配置](./USER_MANUAL.md#2-安装与配置)
+- [日志导入](./USER_MANUAL.md#4-日志导入)
+- [事件搜索](./USER_MANUAL.md#5-事件搜索)
+- [告警管理](./USER_MANUAL.md#6-告警管理)
+
+### 高级功能
+- [威胁分析](./USER_MANUAL.md#7-威胁分析)
+- [实时监控](./USER_MANUAL.md#8-实时监控)
+- [取证功能](./USER_MANUAL.md#9-取证功能)
+- [持久化检测](./USER_MANUAL.md#10-持久化检测)
+- [UEBA 用户行为分析](./USER_MANUAL.md#14-ueba用户行为分析)
+
+### API 使用
+- [事件 API](./API.md#2-events-api)
+- [告警 API](./API.md#3-alerts-api)
+- [时间线 API](./API.md#4-timeline-api)
+- [报告 API](./API.md#7-reports-api)
+
+---
+
+
 
 ## 文档索引
+
+### 用户手册
+| 文档 | 说明 |
+|------|------|
+| [USER_MANUAL](./USER_MANUAL.md) | 完整用户使用手册，包含所有 CLI 命令和实际案例 |
+| [API_DOCUMENTATION](./API.md) | 完整 API 文档，包含所有端点和请求/响应示例 |
 
 ### [架构文档](./ARCHITECTURE.md)
 - 系统架构概述
