@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -570,21 +572,35 @@ func (h *AlertHandler) BatchAlertAction(c *gin.Context) {
 		return
 	}
 
+	var errors []string
+	successCount := 0
+
 	for _, id := range req.IDs {
+		var err error
 		switch req.Action {
 		case "resolve":
-			h.db.AlertRepo().Resolve(id, req.Notes)
+			err = h.db.AlertRepo().Resolve(id, req.Notes)
 		case "false-positive":
-			h.db.AlertRepo().MarkFalsePositive(id, req.Reason)
+			err = h.db.AlertRepo().MarkFalsePositive(id, req.Reason)
 		case "delete":
-			h.db.AlertRepo().Delete(id)
+			err = h.db.AlertRepo().Delete(id)
+		default:
+			errors = append(errors, fmt.Sprintf("unknown action: %s", req.Action))
+			continue
+		}
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("failed to %s alert %d: %v", req.Action, id, err))
+		} else {
+			successCount++
 		}
 	}
 
 	c.JSON(200, SuccessResponse{
 		Message: "Batch action completed",
 		Data: gin.H{
-			"affected": len(req.IDs),
+			"affected": successCount,
+			"failed":   len(errors),
+			"errors":   errors,
 		},
 	})
 }
@@ -598,10 +614,6 @@ func parseTime(s string) (*time.Time, error) {
 		return nil, err
 	}
 	return &t, nil
-}
-
-func exportEventsToCSV(events []*types.Event) string {
-	return "id,timestamp,event_id,level,source,log_name,computer,user,message\n"
 }
 
 type ImportRequest struct {
@@ -719,7 +731,10 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	if end != nil {
 		eventFilter.EndTime = end
 	}
-	events, _, _ := h.db.ListEvents(eventFilter)
+	events, _, err := h.db.ListEvents(eventFilter)
+	if err != nil {
+		log.Printf("failed to fetch events for timeline: %v", err)
+	}
 	for _, e := range events {
 		entries = append(entries, &TimelineEntry{
 			ID:        e.ID,
@@ -741,7 +756,10 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	if end != nil {
 		alertFilter.EndTime = end
 	}
-	alerts, _ := h.db.AlertRepo().Query(alertFilter)
+	alerts, err := h.db.AlertRepo().Query(alertFilter)
+	if err != nil {
+		log.Printf("failed to fetch alerts for timeline: %v", err)
+	}
 	for _, a := range alerts {
 		entries = append(entries, &TimelineEntry{
 			ID:        a.ID,
@@ -789,13 +807,9 @@ func (h *TimelineHandler) DeleteAlert(c *gin.Context) {
 }
 
 func sortTimeline(entries []*TimelineEntry) {
-	for i := 0; i < len(entries)-1; i++ {
-		for j := i + 1; j < len(entries); j++ {
-			if entries[j].Timestamp.Before(entries[i].Timestamp) {
-				entries[i], entries[j] = entries[j], entries[i]
-			}
-		}
-	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Timestamp.After(entries[j].Timestamp)
+	})
 }
 
 type TimelineStats struct {
@@ -844,7 +858,10 @@ func (h *TimelineHandler) GetTimelineStats(c *gin.Context) {
 		eventFilter.EndTime = end
 	}
 
-	events, _, _ := h.db.ListEvents(eventFilter)
+	events, _, err := h.db.ListEvents(eventFilter)
+	if err != nil {
+		log.Printf("failed to fetch events for timeline stats: %v", err)
+	}
 
 	stats := &TimelineStats{
 		ByLevel:     make(map[string]int64),
@@ -869,7 +886,10 @@ func (h *TimelineHandler) GetTimelineStats(c *gin.Context) {
 	if end != nil {
 		alertFilter.EndTime = end
 	}
-	alerts, _ := h.db.AlertRepo().Query(alertFilter)
+	alerts, err := h.db.AlertRepo().Query(alertFilter)
+	if err != nil {
+		log.Printf("failed to fetch alerts for timeline stats: %v", err)
+	}
 	stats.TotalAlerts = int64(len(alerts))
 
 	if len(events) > 0 {
@@ -926,7 +946,10 @@ func (h *TimelineHandler) GetAttackChains(c *gin.Context) {
 		eventFilter.EndTime = end
 	}
 
-	events, _, _ := h.db.ListEvents(eventFilter)
+	events, _, err := h.db.ListEvents(eventFilter)
+	if err != nil {
+		log.Printf("failed to fetch events for attack chains: %v", err)
+	}
 
 	chains := detectAttackChains(events)
 
@@ -1022,7 +1045,10 @@ func (h *TimelineHandler) ExportTimeline(c *gin.Context) {
 		eventFilter.EndTime = end
 	}
 
-	events, _, _ := h.db.ListEvents(eventFilter)
+	events, _, err := h.db.ListEvents(eventFilter)
+	if err != nil {
+		log.Printf("failed to fetch events for timeline export: %v", err)
+	}
 
 	switch format {
 	case "csv":

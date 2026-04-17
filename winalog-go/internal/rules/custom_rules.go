@@ -68,20 +68,20 @@ func (r *CustomRule) Instantiate(paramValues map[string]string) *CustomRule {
 	rule.Parameters = nil
 
 	for key, value := range paramValues {
-		rule.Name = replace(rule.Name, "{{"+key+"}}", value)
-		rule.Description = replace(rule.Description, "{{"+key+"}}", value)
-		rule.Message = replace(rule.Message, "{{"+key+"}}", value)
+		rule.Name = strings.ReplaceAll(rule.Name, "{{"+key+"}}", value)
+		rule.Description = strings.ReplaceAll(rule.Description, "{{"+key+"}}", value)
+		rule.Message = strings.ReplaceAll(rule.Message, "{{"+key+"}}", value)
 		if rule.Filter != nil {
 			for i, eventID := range rule.Filter.EventIDs {
 				if s := fmt.Sprintf("%d", eventID); strings.Contains(s, "{{"+key+"}}") {
-					newStr := replace(s, "{{"+key+"}}", value)
+					newStr := strings.ReplaceAll(s, "{{"+key+"}}", value)
 					if newID, err := strconv.Atoi(newStr); err == nil {
 						rule.Filter.EventIDs[i] = int32(newID)
 					}
 				}
 			}
 			for i, kw := range rule.Filter.Keywords {
-				rule.Filter.Keywords[i] = replace(kw, "{{"+key+"}}", value)
+				rule.Filter.Keywords[i] = strings.ReplaceAll(kw, "{{"+key+"}}", value)
 			}
 		}
 	}

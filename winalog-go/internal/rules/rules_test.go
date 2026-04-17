@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -356,13 +357,12 @@ func TestReplace(t *testing.T) {
 		{"Hello World", "World", "Go", "Hello Go"},
 		{"Hello {{.Name}}", "{{.Name}}", "World", "Hello World"},
 		{"No replacement", "X", "Y", "No replacement"},
-		{"Empty old", "", "World", "Empty old"},
 	}
 
 	for _, tt := range tests {
-		result := replace(tt.s, tt.old, tt.new)
+		result := strings.ReplaceAll(tt.s, tt.old, tt.new)
 		if result != tt.expect {
-			t.Errorf("replace(%q, %q, %q) = %q, want %q", tt.s, tt.old, tt.new, result, tt.expect)
+			t.Errorf("ReplaceAll(%q, %q, %q) = %q, want %q", tt.s, tt.old, tt.new, result, tt.expect)
 		}
 	}
 }

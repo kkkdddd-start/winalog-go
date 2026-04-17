@@ -60,18 +60,11 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 		return nil
 	}
 
-	tx, err := r.db.Begin()
+	tx, unlock, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
-
-	committed := false
-	defer func() {
-		if !committed {
-			tx.Rollback()
-		}
-		r.db.Unlock()
-	}()
+	defer unlock()
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO events (timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id)
@@ -107,7 +100,6 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 	if err != nil {
 		return err
 	}
-	committed = true
 	return nil
 }
 

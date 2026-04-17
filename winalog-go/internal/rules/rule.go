@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -42,17 +43,17 @@ func (r *AlertRule) BuildMessage(event *types.Event) string {
 	}
 
 	msg := r.Message
-	msg = replace(msg, "{{.EventID}}", fmt.Sprintf("%d", event.EventID))
-	msg = replace(msg, "{{.Source}}", event.Source)
-	msg = replace(msg, "{{.Computer}}", event.Computer)
+	msg = strings.ReplaceAll(msg, "{{.EventID}}", fmt.Sprintf("%d", event.EventID))
+	msg = strings.ReplaceAll(msg, "{{.Source}}", event.Source)
+	msg = strings.ReplaceAll(msg, "{{.Computer}}", event.Computer)
 	var userStr string
 	if event.User != nil {
 		userStr = *event.User
 	} else if event.UserSID != nil {
 		userStr = *event.UserSID
 	}
-	msg = replace(msg, "{{.User}}", userStr)
-	msg = replace(msg, "{{.Message}}", event.Message)
+	msg = strings.ReplaceAll(msg, "{{.User}}", userStr)
+	msg = strings.ReplaceAll(msg, "{{.Message}}", event.Message)
 
 	return msg
 }
@@ -151,30 +152,6 @@ func (r *CorrelationRule) Validate() error {
 		}
 	}
 	return nil
-}
-
-func replace(s, old, new string) string {
-	if old == "" {
-		return s
-	}
-	result := ""
-	i := 0
-	for {
-		idx := -1
-		for j := i; j <= len(s)-len(old); j++ {
-			if s[j:j+len(old)] == old {
-				idx = j
-				break
-			}
-		}
-		if idx == -1 {
-			result += s[i:]
-			break
-		}
-		result += s[i:idx] + new
-		i = idx + len(old)
-	}
-	return result
 }
 
 func ParseSeverity(s string) (types.Severity, error) {

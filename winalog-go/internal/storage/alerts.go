@@ -178,11 +178,11 @@ func (r *AlertRepo) InsertBatch(alerts []*types.Alert) error {
 		return nil
 	}
 
-	tx, err := r.db.Begin()
+	tx, unlock, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer unlock()
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO alerts (rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score)

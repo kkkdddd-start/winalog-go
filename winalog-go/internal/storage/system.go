@@ -96,18 +96,11 @@ func (r *SystemRepo) SaveProcesses(processes []*ProcessInfo) error {
 		return nil
 	}
 
-	tx, err := r.db.Begin()
+	tx, unlock, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
-
-	committed := false
-	defer func() {
-		if !committed {
-			tx.Rollback()
-		}
-		r.db.Unlock()
-	}()
+	defer unlock()
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO processes (pid, name, exe, command_line, username, parent_pid, started_at, memory_mb, cpu_percent, collected_at)
@@ -133,7 +126,6 @@ func (r *SystemRepo) SaveProcesses(processes []*ProcessInfo) error {
 		}
 	}
 
-	committed = true
 	return tx.Commit()
 }
 
@@ -142,18 +134,11 @@ func (r *SystemRepo) SaveNetworkConnections(connections []*NetworkConnection) er
 		return nil
 	}
 
-	tx, err := r.db.Begin()
+	tx, unlock, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
-
-	committed := false
-	defer func() {
-		if !committed {
-			tx.Rollback()
-		}
-		r.db.Unlock()
-	}()
+	defer unlock()
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO network_connections (pid, process_name, protocol, local_addr, local_port, remote_addr, remote_port, state, collected_at)
@@ -170,7 +155,6 @@ func (r *SystemRepo) SaveNetworkConnections(connections []*NetworkConnection) er
 		}
 	}
 
-	committed = true
 	return tx.Commit()
 }
 

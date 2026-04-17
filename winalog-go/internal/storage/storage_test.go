@@ -490,11 +490,12 @@ func TestDBBegin(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	tx, err := db.Begin()
+	tx, unlock, err := db.Begin()
 	if err != nil {
 		t.Fatalf("Begin failed: %v", err)
 	}
 	tx.Rollback()
+	unlock()
 }
 
 func TestEventFilterStruct(t *testing.T) {

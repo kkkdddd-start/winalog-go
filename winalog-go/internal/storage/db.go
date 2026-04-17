@@ -80,14 +80,17 @@ func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 	return d.conn.QueryRow(query, args...)
 }
 
-func (d *DB) Begin() (*sql.Tx, error) {
+func (d *DB) Begin() (*sql.Tx, func(), error) {
 	d.writeMu.Lock()
 	tx, err := d.conn.Begin()
 	if err != nil {
 		d.writeMu.Unlock()
-		return nil, err
+		return nil, nil, err
 	}
-	return tx, nil
+	return tx, func() {
+		tx.Rollback()
+		d.writeMu.Unlock()
+	}, nil
 }
 
 func (d *DB) Unlock() {
@@ -179,11 +182,14 @@ func (d *DB) UpdateImportLog(id int64, eventsCount int, duration int, status, er
 }
 
 func (d *DB) BeginTx() (*sql.Tx, func(), error) {
-	tx, err := d.Begin()
+	tx, unlock, err := d.Begin()
 	if err != nil {
 		return nil, nil, err
 	}
-	return tx, func() { tx.Rollback() }, nil
+	return tx, func() {
+		tx.Rollback()
+		unlock()
+	}, nil
 }
 
 func (d *DB) GetLastImportTime(filePath string) *time.Time {
