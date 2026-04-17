@@ -1661,5 +1661,205 @@ SELECT * FROM alerts WHERE severity IN ('critical', 'high') ORDER BY created_at 
 
 ---
 
-*文档版本：1.0*
-*最后更新：2026-04-16*
+*文档版本：1.1*
+*最后更新：2026-04-17*
+
+---
+
+## 附录 D：代码改进测试指南（v1.1 新增）
+
+本文档记录了 PENDING_ISSUES_DETAILED_ANALYSIS.md 中实施的 5 个关键改进及其测试方法。
+
+---
+
+### D.1 FTS5 全文索引（S1）
+
+**改进内容**：
+- schema.go 添加 FTS5 虚拟表 `events_fts`
+- EventRepo.Insert 同步更新 FTS 索引
+- EventRepo.Search 使用 FTS MATCH 查询替代 LIKE
+- 添加 escapeFTSQuery 辅助函数处理特殊字符
+
+**测试方法**：
+
+```bash
+# 1. 验证 FTS 表创建
+./winalog query "SELECT name FROM sqlite_master WHERE type='table' AND name='events_fts'"
+
+# 2. 验证索引同步（导入新事件后）
+./winalog import security.evtx
+./winalog query "SELECT COUNT(*) FROM events_fts"
+
+# 3. 验证 FTS 搜索（关键词搜索应使用 FTS）
+./winalog search "failed login"
+./winalog query "SELECT COUNT(*) FROM events WHERE message LIKE '%failed login%'"
+
+# 4. 验证特殊字符转义
+./winalog search "user@domain.com"
+./winalog search "path\\to\\file"
+```
+
+**预期结果**：
+- FTS 表存在且记录数与 events 表一致
+- 关键词搜索使用 FTS MATCH，查询速度更快
+- 特殊字符（@、\、.）不会导致搜索错误
+
+---
+
+### D.2 ChainBuilder EventRepo 注入（L3）
+
+**改进内容**：
+- ChainBuilder 注入 EventRepo 实现 `findNextEvents` 数据库实时查询
+- 添加 `findNextEventsFallback` 兼容测试场景
+- Engine 新增 `NewEngineWithEventRepo` 和 `SetEventRepo` 方法
+
+**测试方法**：
+
+```bash
+# 1. 基本关联分析
+./winalog correlate --window "1h"
+
+# 2. 验证攻击链生成
+./winalog query "SELECT COUNT(*) FROM chains"
+
+# 3. 验证链节点关联
+./winalog query "SELECT * FROM chain_nodes LIMIT 10"
+
+# 4. 运行关联分析器测试
+go test ./internal/correlation/... -v
+```
+
+**预期结果**：
+- 关联分析正常执行，无错误
+- chains 和 chain_nodes 表有数据
+- 测试通过：`go test ./internal/correlation/...`
+
+---
+
+### D.3 EventIndex 分层存储（S4）
+
+**改进内容**：
+- 内存只存储 indexEntry 元数据（ID + Timestamp）
+- 添加 eventsCache 支持无 EventRepo 场景
+- GetByID/GetByEventID/GetByTimeRange 支持从缓存或数据库获取
+
+**测试方法**：
+
+```bash
+# 1. 验证索引正常工作
+./winalog query "SELECT COUNT(*) FROM event_index"
+
+# 2. 验证事件获取（通过索引）
+./winalog search --event-id 4625 --limit 10
+
+# 3. 验证时间范围查询
+./winalog search --start "2024-01-01" --end "2024-01-31"
+
+# 4. 运行存储测试
+go test ./internal/storage/... -v
+```
+
+**预期结果**：
+- event_index 表有数据
+- 时间范围查询返回正确结果
+- 存储测试通过
+
+---
+
+### D.4 matchCondition 扩展字段支持（R4）
+
+**改进内容**：
+- 扩展 matchCondition 支持更多字段：ip_address, destination_port, logon_type, process_name, command_line, service_name, workstation, domain, target_username, task_name
+- 添加 compareString 和 compareInt 辅助方法
+
+**测试方法**：
+
+```bash
+# 1. 验证规则支持新字段
+./winalog rules list --verbose
+
+# 2. 验证 sysmon-network-suspicious-port 规则（使用 destination_port）
+./winalog analyze brute-force
+
+# 3. 验证 admin-login-unusual 规则（使用 logon_type, workstation）
+./winalog analyze login
+
+# 4. 运行 alerts 模块测试
+go test ./internal/alerts/... -v
+```
+
+**预期结果**：
+- 内置规则支持新字段
+- 分析器正常工作
+- 测试通过
+
+---
+
+### D.5 高误报规则添加 Conditions（R4）
+
+**改进内容**：
+- admin-login-unusual：添加 Any/None 条件过滤管理员账户和本地登录
+- sysmon-network-suspicious-port：添加 All/None 条件过滤端口
+
+**测试方法**：
+
+```bash
+# 1. 验证规则定义更新
+./winalog query "SELECT name, conditions FROM rules WHERE name LIKE '%admin%' OR name LIKE '%suspicious%'"
+
+# 2. 验证误报减少（导入正常登录事件后）
+./winalog import normal_logins.evtx
+./winalog analyze login
+
+# 3. 验证告警数量
+./winalog alert list --rule admin-login-unusual
+./winalog alert list --rule sysmon-network-suspicious-port
+
+# 4. 检查告警详情
+./winalog query "SELECT * FROM alerts WHERE rule_name = 'admin-login-unusual' LIMIT 5"
+```
+
+**预期结果**：
+- 规则包含 conditions 字段
+- 管理员账户和本地登录不再触发 admin-login-unusual 告警
+- 常用端口（80, 443, 445）不再触发 sysmon-network-suspicious-port 告警
+
+---
+
+### D.6 完整改进验证测试
+
+```bash
+#!/bin/bash
+# verify_improvements.sh
+
+echo "=== WinLogAnalyzer-Go 改进验证测试 ==="
+
+cd /workspace/winalog-go/winalog-go
+
+# 1. 编译检查
+echo "[1/6] 编译检查..."
+make build 2>&1 | grep -q "winalog" && echo "  PASS" || echo "  FAIL"
+
+# 2. FTS5 索引检查
+echo "[2/6] FTS5 索引检查..."
+./winalog query "SELECT name FROM sqlite_master WHERE type='table' AND name='events_fts'" | grep -q "events_fts" && echo "  PASS" || echo "  FAIL"
+
+# 3. 关联分析检查
+echo "[3/6] 关联分析检查..."
+./winalog correlate --window "1h" 2>&1 | head -5
+
+# 4. 规则检查
+echo "[4/6] 规则检查..."
+./winalog rules list | grep -c "admin-login-unusual\|sysmon-network-suspicious-port" | xargs -I {} [ {} -ge 2 ] && echo "  PASS" || echo "  FAIL"
+
+# 5. 单元测试
+echo "[5/6] 运行单元测试..."
+go test ./internal/correlation/... ./internal/alerts/... -count=1 2>&1 | tail -3
+
+# 6. API 端点检查
+echo "[6/6] API 端点检查..."
+curl -s http://localhost:8080/api/health | grep -q "ok" && echo "  PASS" || echo "  SKIP (服务未启动)"
+
+echo ""
+echo "=== 改进验证完成 ==="
+```
