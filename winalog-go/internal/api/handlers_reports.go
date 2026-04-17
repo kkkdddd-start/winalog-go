@@ -127,12 +127,12 @@ func (h *ReportsHandler) ListReports(c *gin.Context) {
 	reports := make([]ReportInfo, 0)
 	for rows.Next() {
 		var r ReportInfo
-		var generatedAt, completedAt sql.NullTime
+		var generatedAtStr, completedAtStr sql.NullString
 		var filePath sql.NullString
 		var fileSize sql.NullInt64
 		var title, description sql.NullString
 
-		if err := rows.Scan(&r.ID, &r.Type, &r.Format, &title, &description, &r.Status, &generatedAt, &completedAt, &filePath, &fileSize); err != nil {
+		if err := rows.Scan(&r.ID, &r.Type, &r.Format, &title, &description, &r.Status, &generatedAtStr, &completedAtStr, &filePath, &fileSize); err != nil {
 			continue
 		}
 
@@ -142,11 +142,15 @@ func (h *ReportsHandler) ListReports(c *gin.Context) {
 		if description.Valid {
 			r.Description = description.String
 		}
-		if generatedAt.Valid {
-			r.GeneratedAt = generatedAt.Time
+		if generatedAtStr.Valid {
+			if t, err := time.Parse(time.RFC3339, generatedAtStr.String); err == nil {
+				r.GeneratedAt = t
+			}
 		}
-		if completedAt.Valid {
-			r.CompletedAt = completedAt.Time
+		if completedAtStr.Valid {
+			if t, err := time.Parse(time.RFC3339, completedAtStr.String); err == nil {
+				r.CompletedAt = t
+			}
 		}
 		if filePath.Valid {
 			r.FilePath = filePath.String
