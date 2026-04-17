@@ -161,6 +161,12 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 	}
 
 	startTime := time.Now()
+
+	importID, err := e.db.InsertImportLog(path, "", 0, 0, "pending", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create import log: %w", err)
+	}
+
 	events := parser.Parse(path)
 
 	var batch []*types.Event
@@ -171,10 +177,12 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 	for event := range events {
 		select {
 		case <-ctx.Done():
+			e.db.UpdateImportLog(importID, int(totalEvents), int(time.Since(startTime).Milliseconds()), "cancelled", ctx.Err().Error())
 			return &ImportResult{EventsImported: totalEvents}, ctx.Err()
 		default:
 		}
 
+		event.ImportID = importID
 		batch = append(batch, event)
 		if len(batch) >= e.importCfg.BatchSize {
 			batchNum++
@@ -199,14 +207,14 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 
 	duration := time.Since(startTime)
 	if importErr != nil {
-		e.db.InsertImportLog(path, "", int(totalEvents), int(duration.Milliseconds()), "failed", importErr.Error())
+		e.db.UpdateImportLog(importID, int(totalEvents), int(duration.Milliseconds()), "failed", importErr.Error())
 		return &ImportResult{
 			EventsImported: totalEvents,
 			Duration:       duration,
 		}, importErr
 	}
 
-	e.db.InsertImportLog(path, "", int(totalEvents), int(duration.Milliseconds()), "success", "")
+	e.db.UpdateImportLog(importID, int(totalEvents), int(duration.Milliseconds()), "success", "")
 
 	return &ImportResult{
 		EventsImported: totalEvents,

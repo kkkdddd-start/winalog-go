@@ -42,6 +42,8 @@ func (l *Loader) Load(configPath string) (*Config, error) {
 	l.viper.AutomaticEnv()
 
 	if configPath == "" {
+		l.viper.SetConfigName("config")
+		l.viper.SetConfigType("yaml")
 		l.viper.AddConfigPath(".")
 		l.viper.AddConfigPath("$HOME/.winalog")
 		l.viper.AddConfigPath("/etc/winalog")

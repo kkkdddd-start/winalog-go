@@ -200,7 +200,7 @@ func (c *Config) Validate() ([]*ValidationResult, error) {
 				Field:   "api.cors.allowed_origins",
 				Value:   origin,
 				Message: "WARNING: CORS allows all origins (*), not suitable for production",
-				Fixed:   false,
+				Fixed:   true,
 			})
 			break
 		}

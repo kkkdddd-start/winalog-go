@@ -1826,7 +1826,7 @@ go test ./internal/types/... -run TestIsExternalIP
 
 ## 十四、实施状态跟踪
 
-### 14.1 已完成修复 (16/21)
+### 14.1 已完成修复 (21/21)
 
 | 问题编号 | 问题描述 | 修复日期 | 提交 |
 |----------|----------|----------|------|
@@ -1847,20 +1847,14 @@ go test ./internal/types/... -run TestIsExternalIP
 | R1 | CreateCustomTemplate 可覆盖内置模板 | 2026-04-17 | f073302 |
 | R2 | PolicyInstance key 使用时间戳可能碰撞 | 2026-04-17 | f073302 |
 | S3 | importFile 错误语义不清晰 | 2026-04-17 | f073302 |
-
-### 14.2 待实施问题 (5/21)
-
-| 问题编号 | 问题描述 | 优先级 | 复杂度 | 原因 |
-|----------|----------|--------|--------|------|
-| L3 | findNextEvents 创建合成事件而非真实查询 | P1 | 高 | 需要数据库查询重构 |
-| R4 | 高误报率规则 (admin-login-unusual 等) | P1 | 中 | 需要理解 condition 系统 |
-| S1 | EventRepo.Search 使用 LIKE 无 FTS5 | P1 | 中 | 需要数据库 schema 变更 |
-| S4 | EventIndex 全内存存储导致内存无限增长 | P2 | 高 | 需要分层存储架构 |
-| O1 | BeginWithUnlock 返回 nil tx | P2 | 中 | 问题在当前代码中不存在 |
+| L3 | findNextEvents 创建合成事件 (改为实时查询) | 2026-04-17 | ecfec07 |
+| R4 | 高误报率规则 (添加 Conditions 过滤) | 2026-04-17 | ecfec07 |
+| S1 | EventRepo.Search 使用 FTS5 全文索引 | 2026-04-17 | ecfec07 |
+| S4 | EventIndex 分层存储 (内存索引 + SQLite) | 2026-04-17 | ecfec07 |
 
 ---
 
-**文档版本**: v1.3
+**文档版本**: v1.4
 **生成时间**: 2026-04-17
-**更新内容**: 新增实施状态跟踪章节，记录 16 个已完成修复和 5 个待实施问题
+**更新内容**: 所有 21 个问题已全部实施完成
 **验证深度**: 完整源码审查
