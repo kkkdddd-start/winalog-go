@@ -3,6 +3,7 @@ package alerts
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -64,6 +65,16 @@ func (e *Engine) LoadRules(ruleList []*rules.AlertRule) {
 	}
 }
 
+func (e *Engine) GetDB() *storage.DB {
+	return e.db
+}
+
+func (e *Engine) Close() {
+	if e.dedup != nil {
+		e.dedup.Close()
+	}
+}
+
 func (e *Engine) AddRule(rule *rules.AlertRule) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -110,6 +121,7 @@ func (e *Engine) Evaluate(ctx context.Context, event *types.Event) ([]*types.Ale
 
 		matched, err := e.evaluator.Evaluate(rule, event)
 		if err != nil {
+			log.Printf("evaluator error for rule %s: %v", rule.Name, err)
 			continue
 		}
 
@@ -158,7 +170,11 @@ func (e *Engine) EvaluateBatch(ctx context.Context, events []*types.Event) ([]*t
 				}
 
 				matched, err := e.evaluator.Evaluate(rule, evt)
-				if err != nil || !matched {
+				if err != nil {
+					log.Printf("evaluator error for rule %s: %v", rule.Name, err)
+					continue
+				}
+				if !matched {
 					continue
 				}
 
@@ -388,6 +404,77 @@ func (e *Engine) EvaluateWithPolicies(ctx context.Context, event *types.Event) (
 		if shouldUpgrade && upgradeRule != nil {
 			alert.Severity = upgradeRule.NewSeverity
 		}
+	}
+
+	return alerts, nil
+}
+
+type ProgressCallback func(processed, total int)
+
+func (e *Engine) EvaluateBatchWithProgress(ctx context.Context, events []*types.Event, callback ProgressCallback) ([]*types.Alert, error) {
+	total := len(events)
+	processed := 0
+
+	alertChan := make(chan *types.Alert, len(events))
+	var wg sync.WaitGroup
+
+	e.mu.RLock()
+	rules := make([]*rules.AlertRule, 0, len(e.rules))
+	for _, rule := range e.rules {
+		rules = append(rules, rule)
+	}
+	e.mu.RUnlock()
+
+	for _, evt := range events {
+		wg.Add(1)
+		go func(event *types.Event) {
+			defer wg.Done()
+
+			for _, rule := range rules {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				if e.suppressCache.IsSuppressed(rule, event) {
+					continue
+				}
+
+				matched, err := e.evaluator.Evaluate(rule, event)
+				if err != nil {
+					log.Printf("evaluator error for rule %s: %v", rule.Name, err)
+					continue
+				}
+				if !matched {
+					continue
+				}
+
+				if e.dedup.IsDuplicate(rule.Name, event) {
+					continue
+				}
+
+				alert := e.createAlert(rule, event)
+				alertChan <- alert
+				e.dedup.Mark(rule.Name, event)
+				e.trend.Record(alert)
+			}
+
+			if callback != nil {
+				processed++
+				callback(processed, total)
+			}
+		}(evt)
+	}
+
+	go func() {
+		wg.Wait()
+		close(alertChan)
+	}()
+
+	var alerts []*types.Alert
+	for alert := range alertChan {
+		alerts = append(alerts, alert)
 	}
 
 	return alerts, nil

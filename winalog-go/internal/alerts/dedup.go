@@ -1,9 +1,7 @@
 package alerts
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,6 +12,7 @@ type DedupCache struct {
 	mu      sync.RWMutex
 	window  time.Duration
 	entries map[string]*dedupEntry
+	done    chan struct{}
 }
 
 type dedupEntry struct {
@@ -27,6 +26,7 @@ func NewDedupCache(window time.Duration) *DedupCache {
 	c := &DedupCache{
 		window:  window,
 		entries: make(map[string]*dedupEntry),
+		done:    make(chan struct{}),
 	}
 
 	go c.cleanupLoop()
@@ -99,9 +99,18 @@ func (c *DedupCache) cleanupLoop() {
 	ticker := time.NewTicker(c.window / 2)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		c.cleanup()
+	for {
+		select {
+		case <-ticker.C:
+			c.cleanup()
+		case <-c.done:
+			return
+		}
 	}
+}
+
+func (c *DedupCache) Close() {
+	close(c.done)
 }
 
 func (c *DedupCache) cleanup() {
@@ -117,8 +126,6 @@ func (c *DedupCache) cleanup() {
 }
 
 func (c *DedupCache) generateKey(ruleName string, event *types.Event) string {
-	var keyData string
-
 	userStr := ""
 	if event.UserSID != nil && *event.UserSID != "" {
 		userStr = *event.UserSID
@@ -131,11 +138,12 @@ func (c *DedupCache) generateKey(ruleName string, event *types.Event) string {
 		ipStr = *event.IPAddress
 	}
 
-	keyData = fmt.Sprintf("%s|%d|%s|%s|%s|%s",
-		ruleName, event.EventID, event.Computer, event.Source, userStr, ipStr)
-
-	hash := sha256.Sum256([]byte(keyData))
-	return hex.EncodeToString(hash[:])
+	return ruleName + "|" +
+		strconv.FormatInt(int64(event.EventID), 10) + "|" +
+		event.Computer + "|" +
+		event.Source + "|" +
+		userStr + "|" +
+		ipStr
 }
 
 func (c *DedupCache) Size() int {

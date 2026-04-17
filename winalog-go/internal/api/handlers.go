@@ -26,7 +26,8 @@ type AlertHandler struct {
 }
 
 type ImportHandler struct {
-	db *storage.DB
+	db          *storage.DB
+	alertEngine *alerts.Engine
 }
 
 type ErrorResponse struct {
@@ -617,7 +618,8 @@ func parseTime(s string) (*time.Time, error) {
 }
 
 type ImportRequest struct {
-	Files []string `json:"files" binding:"required"`
+	Files         []string `json:"files" binding:"required"`
+	AlertOnImport bool     `json:"alert_on_import"`
 }
 
 func (h *ImportHandler) ImportLogs(c *gin.Context) {
@@ -646,12 +648,30 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 		return
 	}
 
+	if req.AlertOnImport && h.alertEngine != nil {
+		go func() {
+			startTime := result.StartTime
+			events, _, _ := h.db.ListEvents(&storage.EventFilter{
+				Limit:     10000,
+				StartTime: &startTime,
+			})
+
+			if len(events) > 0 {
+				alerts, _ := h.alertEngine.EvaluateBatch(context.Background(), events)
+				if len(alerts) > 0 {
+					h.alertEngine.SaveAlerts(alerts)
+				}
+			}
+		}()
+	}
+
 	c.JSON(200, gin.H{
 		"success":         result.TotalFiles > 0 && result.FilesFailed == 0,
 		"total_files":     result.TotalFiles,
 		"files_imported":  result.FilesImported,
 		"files_failed":    result.FilesFailed,
 		"events_imported": result.EventsImported,
+		"alert_on_import": req.AlertOnImport,
 		"duration":        fmt.Sprintf("%v", result.Duration),
 		"errors":          result.Errors,
 	})

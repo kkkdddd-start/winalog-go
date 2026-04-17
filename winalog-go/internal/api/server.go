@@ -77,7 +77,8 @@ func (s *Server) setupHandlers() {
 		alertEngine: s.alertEngine,
 	}
 	s.importEng = &ImportHandler{
-		db: s.db,
+		db:          s.db,
+		alertEngine: s.alertEngine,
 	}
 	s.liveEng = NewLiveHandler(s.db)
 	s.persistenceEng = NewPersistenceHandler()

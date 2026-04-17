@@ -1,12 +1,16 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/alerts"
+	"github.com/kkkdddd-start/winalog-go/internal/rules"
+	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/spf13/cobra"
@@ -57,6 +61,20 @@ var alertStatsCmd = &cobra.Command{
 	RunE:  runAlertStats,
 }
 
+var alertRunCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Run alert analysis on stored events",
+	Long:  `Evaluate alert rules against stored events and generate alerts`,
+	RunE:  runAlertRun,
+}
+
+var alertMonitorCmd = &cobra.Command{
+	Use:   "monitor",
+	Short: "Run in continuous alert monitoring mode",
+	Long:  `Continuously monitor events and generate alerts in real-time`,
+	RunE:  runAlertMonitor,
+}
+
 var alertListFlags struct {
 	severity string
 	resolved bool
@@ -70,6 +88,17 @@ var alertExportFlags struct {
 	format string
 }
 
+var alertRunFlags struct {
+	batchSize  int
+	rules      string
+	clearDedup bool
+}
+
+var alertMonitorFlags struct {
+	interval  time.Duration
+	batchSize int
+}
+
 func init() {
 	alertCmd.AddCommand(alertListCmd)
 	alertCmd.AddCommand(alertShowCmd)
@@ -77,6 +106,8 @@ func init() {
 	alertCmd.AddCommand(alertDeleteCmd)
 	alertCmd.AddCommand(alertExportCmd)
 	alertCmd.AddCommand(alertStatsCmd)
+	alertCmd.AddCommand(alertRunCmd)
+	alertCmd.AddCommand(alertMonitorCmd)
 
 	alertListCmd.Flags().StringVar(&alertListFlags.severity, "severity", "", "Filter by severity (critical, high, medium, low, info)")
 	alertListCmd.Flags().BoolVar(&alertListFlags.resolved, "resolved", false, "Show only resolved alerts")
@@ -86,6 +117,13 @@ func init() {
 	alertListCmd.Flags().StringVar(&alertListFlags.format, "format", "table", "Output format: table, json, csv")
 
 	alertExportCmd.Flags().StringVar(&alertExportFlags.format, "format", "json", "Export format: json, csv")
+
+	alertRunCmd.Flags().IntVar(&alertRunFlags.batchSize, "batch-size", 1000, "Batch size for processing events")
+	alertRunCmd.Flags().StringVar(&alertRunFlags.rules, "rules", "", "Comma-separated rule names to run (empty for all enabled)")
+	alertRunCmd.Flags().BoolVar(&alertRunFlags.clearDedup, "clear-dedup", false, "Clear dedup cache before running")
+
+	alertMonitorCmd.Flags().DurationVar(&alertMonitorFlags.interval, "interval", 30*time.Second, "Check interval for monitoring")
+	alertMonitorCmd.Flags().IntVar(&alertMonitorFlags.batchSize, "batch-size", 100, "Batch size per check")
 }
 
 func getAlertEngine() *alerts.Engine {
@@ -340,4 +378,143 @@ func runAlertStats(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func runAlertRun(cmd *cobra.Command, args []string) error {
+	engine := getAlertEngine()
+	if engine == nil {
+		return fmt.Errorf("failed to initialize alert engine")
+	}
+
+	builtinRules := builtin.GetAlertRules()
+	enabledRules := make([]*rules.AlertRule, 0)
+	for _, r := range builtinRules {
+		if r.Enabled {
+			if alertRunFlags.rules == "" {
+				enabledRules = append(enabledRules, r)
+			} else {
+				for _, name := range strings.Split(alertRunFlags.rules, ",") {
+					if r.Name == strings.TrimSpace(name) {
+						enabledRules = append(enabledRules, r)
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if len(enabledRules) == 0 {
+		fmt.Println("No rules to execute")
+		return nil
+	}
+
+	engine.LoadRules(enabledRules)
+
+	if alertRunFlags.clearDedup {
+		engine.ClearDedup()
+	}
+
+	ctx := context.Background()
+	batchSize := alertRunFlags.batchSize
+	var totalEvents, totalAlerts int
+
+	offset := 0
+	for {
+		events, _, err := engine.GetDB().ListEvents(&storage.EventFilter{
+			Limit:  batchSize,
+			Offset: offset,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to fetch events: %w", err)
+		}
+
+		if len(events) == 0 {
+			break
+		}
+
+		alerts, err := engine.EvaluateBatch(ctx, events)
+		if err != nil {
+			fmt.Printf("Warning: evaluation error: %v\n", err)
+		}
+
+		if len(alerts) > 0 {
+			if err := engine.SaveAlerts(alerts); err != nil {
+				fmt.Printf("Warning: failed to save alerts: %v\n", err)
+			} else {
+				totalAlerts += len(alerts)
+			}
+		}
+
+		totalEvents += len(events)
+		offset += batchSize
+		fmt.Printf("\rProcessed %d events, generated %d alerts...", totalEvents, totalAlerts)
+
+		if len(events) < batchSize {
+			break
+		}
+	}
+
+	fmt.Printf("\nAnalysis complete: %d events analyzed, %d alerts generated\n", totalEvents, totalAlerts)
+	return nil
+}
+
+func runAlertMonitor(cmd *cobra.Command, args []string) error {
+	engine := getAlertEngine()
+	if engine == nil {
+		return fmt.Errorf("failed to initialize alert engine")
+	}
+
+	builtinRules := builtin.GetAlertRules()
+	enabledRules := make([]*rules.AlertRule, 0)
+	for _, r := range builtinRules {
+		if r.Enabled {
+			enabledRules = append(enabledRules, r)
+		}
+	}
+	engine.LoadRules(enabledRules)
+
+	ctx := context.Background()
+	ticker := time.NewTicker(alertMonitorFlags.interval)
+	defer ticker.Stop()
+
+	lastCheckTime := time.Now().Add(-alertMonitorFlags.interval)
+
+	fmt.Printf("Started monitoring (interval: %s, batch: %d)\n",
+		alertMonitorFlags.interval, alertMonitorFlags.batchSize)
+
+	for {
+		select {
+		case <-ticker.C:
+			events, _, err := engine.GetDB().ListEvents(&storage.EventFilter{
+				Limit:     alertMonitorFlags.batchSize,
+				StartTime: &lastCheckTime,
+			})
+			if err != nil {
+				fmt.Printf("Error fetching events: %v\n", err)
+				continue
+			}
+
+			if len(events) == 0 {
+				continue
+			}
+
+			alerts, err := engine.EvaluateBatch(ctx, events)
+			if err != nil {
+				fmt.Printf("Error evaluating: %v\n", err)
+				continue
+			}
+
+			if len(alerts) > 0 {
+				if err := engine.SaveAlerts(alerts); err != nil {
+					fmt.Printf("Error saving alerts: %v\n", err)
+				}
+				fmt.Printf("[%s] Generated %d new alerts\n", time.Now().Format("15:04:05"), len(alerts))
+			}
+
+			lastCheckTime = time.Now()
+		case <-cmd.Context().Done():
+			fmt.Println("\nMonitoring stopped")
+			return nil
+		}
+	}
 }

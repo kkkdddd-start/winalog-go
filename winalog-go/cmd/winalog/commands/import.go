@@ -6,8 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/kkkdddd-start/winalog-go/internal/alerts"
 	"github.com/kkkdddd-start/winalog-go/internal/engine"
+	"github.com/kkkdddd-start/winalog-go/internal/rules"
+	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -33,11 +37,12 @@ Examples:
 }
 
 var importFlags struct {
-	logName      string
-	incremental  bool
-	workers      int
-	batchSize    int
-	skipPatterns string
+	logName       string
+	incremental   bool
+	workers       int
+	batchSize     int
+	skipPatterns  string
+	alertOnImport bool
 }
 
 func init() {
@@ -46,6 +51,7 @@ func init() {
 	importCmd.Flags().IntVar(&importFlags.workers, "workers", 4, "Number of parallel workers")
 	importCmd.Flags().IntVar(&importFlags.batchSize, "batch-size", 10000, "Batch size for insertion")
 	importCmd.Flags().StringVar(&importFlags.skipPatterns, "skip-patterns", "", "Patterns to skip (comma-separated)")
+	importCmd.Flags().BoolVar(&importFlags.alertOnImport, "alert-on-import", false, "Trigger alert analysis after import")
 }
 
 func runImport(cmd *cobra.Command, args []string) error {
@@ -120,6 +126,45 @@ func runImport(cmd *cobra.Command, args []string) error {
 		fmt.Printf("\nErrors:\n")
 		for _, e := range result.Errors {
 			fmt.Printf("  - %s: %s\n", e.FilePath, e.Error)
+		}
+	}
+
+	if importFlags.alertOnImport {
+		fmt.Printf("\nRunning alert analysis...\n")
+		alertEngine := alerts.NewEngine(db, alerts.EngineConfig{
+			DedupWindow: 5 * time.Minute,
+			StatsWindow: 24 * time.Hour,
+		})
+
+		builtinRules := builtin.GetAlertRules()
+		enabledRules := make([]*rules.AlertRule, 0)
+		for _, r := range builtinRules {
+			if r.Enabled {
+				enabledRules = append(enabledRules, r)
+			}
+		}
+		alertEngine.LoadRules(enabledRules)
+
+		startTime := result.StartTime
+		events, _, _ := db.ListEvents(&storage.EventFilter{
+			Limit:     10000,
+			StartTime: &startTime,
+		})
+
+		if len(events) > 0 {
+			alertResult, err := alertEngine.EvaluateBatch(context.Background(), events)
+			if err != nil {
+				fmt.Printf("Warning: alert analysis error: %v\n", err)
+			} else if len(alertResult) > 0 {
+				if err := alertEngine.SaveAlerts(alertResult); err != nil {
+					fmt.Printf("Warning: failed to save alerts: %v\n", err)
+				}
+				fmt.Printf("  Alerts generated: %d\n", len(alertResult))
+			} else {
+				fmt.Printf("  No alerts generated\n")
+			}
+		} else {
+			fmt.Printf("  No new events to analyze\n")
 		}
 	}
 

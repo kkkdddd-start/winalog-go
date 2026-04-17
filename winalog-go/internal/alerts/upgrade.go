@@ -1,24 +1,32 @@
 package alerts
 
 import (
+	"sync"
+
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type AlertUpgradeCache struct {
-	rules []*types.AlertUpgradeRule
+	mu    sync.RWMutex
+	rules map[string]*types.AlertUpgradeRule
 }
 
 func NewAlertUpgradeCache() *AlertUpgradeCache {
 	return &AlertUpgradeCache{
-		rules: make([]*types.AlertUpgradeRule, 0),
+		rules: make(map[string]*types.AlertUpgradeRule),
 	}
 }
 
 func (c *AlertUpgradeCache) Add(rule *types.AlertUpgradeRule) {
-	c.rules = append(c.rules, rule)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.rules[rule.Name] = rule
 }
 
 func (c *AlertUpgradeCache) Check(alert *types.Alert) (bool, *types.AlertUpgradeRule) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	for _, rule := range c.rules {
 		if c.matches(rule, alert) {
 			return true, rule
@@ -44,29 +52,29 @@ func (c *AlertUpgradeCache) matches(rule *types.AlertUpgradeRule, alert *types.A
 }
 
 func (c *AlertUpgradeCache) Remove(ruleName string) {
-	newRules := make([]*types.AlertUpgradeRule, 0)
-	for _, rule := range c.rules {
-		if rule.Name != ruleName {
-			newRules = append(newRules, rule)
-		}
-	}
-	c.rules = newRules
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.rules, ruleName)
 }
 
 func (c *AlertUpgradeCache) Clear() {
-	c.rules = make([]*types.AlertUpgradeRule, 0)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.rules = make(map[string]*types.AlertUpgradeRule)
 }
 
 func (c *AlertUpgradeCache) List() []*types.AlertUpgradeRule {
-	return c.rules
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	result := make([]*types.AlertUpgradeRule, 0, len(c.rules))
+	for _, rule := range c.rules {
+		result = append(result, rule)
+	}
+	return result
 }
 
 func (c *AlertUpgradeCache) Update(rule *types.AlertUpgradeRule) {
-	for i, r := range c.rules {
-		if r.Name == rule.Name {
-			c.rules[i] = rule
-			return
-		}
-	}
-	c.Add(rule)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.rules[rule.Name] = rule
 }

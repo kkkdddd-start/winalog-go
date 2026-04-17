@@ -1,6 +1,7 @@
 package alerts
 
 import (
+	"sort"
 	"sync"
 	"time"
 
@@ -85,13 +86,9 @@ func (s *AlertStats) GetTopRules(n int) []*RuleStat {
 		})
 	}
 
-	for i := 0; i < len(topRules)-1; i++ {
-		for j := i + 1; j < len(topRules); j++ {
-			if topRules[j].Count > topRules[i].Count {
-				topRules[i], topRules[j] = topRules[j], topRules[i]
-			}
-		}
-	}
+	sort.Slice(topRules, func(i, j int) bool {
+		return topRules[i].Count > topRules[j].Count
+	})
 
 	if n > 0 && len(topRules) > n {
 		topRules = topRules[:n]
