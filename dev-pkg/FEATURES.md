@@ -2,7 +2,7 @@
 
 **项目**: WinLogAnalyzer  
 **版本**: Go v2.4.0  
-**日期**: 2026-04-16  
+**日期**: 2026-04-17  
 **状态**: 已完成实现
 
 ---
@@ -15,22 +15,17 @@
 | `search` | 全文搜索事件 | 关键字/正则/事件ID/时间范围/级别/用户/计算机过滤 |
 | `collect` | 一键采集 | 自动发现日志源、并行采集、ZIP 打包、SHA256 校验 |
 | `alert` | 告警管理 | 列表、详情、解决、删除、导出、备注、误报标记 |
-| `correlate` | 关联分析 | 执行关联规则，返回攻击链 |
-| `report` | 报告生成 | HTML/JSON 格式综合报告 |
-| `export` | 事件导出 | JSON/CSV/HTML 格式导出 |
-| `timeline` | 时间线 | 全局时间线构建和查询 |
-| `multi` | 多机分析 | 跨机器关联、横向移动检测 |
-| `live` | 实时监控 | 事件流监控、状态显示 |
-| `status` | 系统状态 | 统计、事件数量、告警统计 |
-| `info` | 系统信息 | 进程、网络、用户、注册表等 |
-| `verify` | 完整性验证 | 文件哈希校验 |
-| `rules` | 规则管理 | 列表、验证、启用/禁用 |
-| `db` | 数据库管理 | 状态、优化、清理 |
+| `analyze` | 分析器执行 | 运行各种安全分析器 |
+| `report` | 报告生成 | HTML/JSON/PDF 格式综合报告 |
+| `dashboard` | 仪表板统计 | 采集统计、事件概览 |
 | `config` | 配置管理 | 查看/设置配置 |
-| `metrics` | 指标端点 | Prometheus 格式指标 |
-| `query` | SQL 查询 | 直接查询接口 |
-| `tui` | 终端界面 | Bubble Tea TUI |
-| `serve` | Web UI | React + Vite + HTTP API |
+| `persistence` | 持久化检测 | Windows 持久化技术检测 |
+| `system` | 系统信息 | 进程、网络、用户、注册表等 |
+| `ueba` | UEBA 分析 | 用户行为异常检测 |
+| `whitelist` | 白名单管理 | 告警抑制规则管理 |
+| `db` | 数据库管理 | 状态、优化、清理 |
+| `tui` | 终端界面 | Bubble Tea TUI (11 个视图) |
+| `serve` | Web UI + API | React + Gin HTTP API |
 
 ---
 
@@ -1157,20 +1152,30 @@ func (l *Loader) ValidateRule(rule interface{}) error {
 
 ### 7.3 规则定义 (`builtin/definitions.go`)
 
-**内置规则 (60+)**:
+**内置规则 (90+)**:
 
 | 类别 | 规则数 | 示例 |
 |------|--------|------|
-| 凭据访问 | 5+ | Weak Password, Cached Credentials |
-| 暴力破解 | 3+ | RDP Brute Force, SMB Brute Force |
-| 横向移动 | 5+ | Pass-the-Hash, WMI Remote Exec |
-| 权限维持 | 8+ | Scheduled Task Persistence, Registry Run |
-| Kerberos | 4+ | Golden Ticket, Silver Ticket |
-| PowerShell | 5+ | Encoded Command, Suspicious Profile |
-| WinRM | 10+ | WinRM Remote Exec, PS Remote Session |
-| UEBA | 3+ | Abnormal User Behavior, Impossible Travel |
-| 防御规避 | 6+ | Disable Security Tools, Clear Logs |
-| 其他攻击 | 5+ | Malware Execution, DLL Search Order |
+| 凭据访问 | 10+ | Weak Password, Cached Credentials, DCSync |
+| 暴力破解 | 5+ | RDP Brute Force, SMB Brute Force, WinRM Brute Force |
+| 横向移动 | 15+ | Pass-the-Hash, WMI Remote Exec, SMB Lateral |
+| 权限维持 | 12+ | Scheduled Task Persistence, Registry Run, COM Hijack |
+| Kerberos | 5+ | Golden Ticket, Silver Ticket, Kerberoasting |
+| PowerShell | 10+ | Encoded Command, Suspicious Profile, Download |
+| WinRM | 15+ | WinRM Remote Exec, PS Remote Session, Brute Force |
+| UEBA | 3+ | Off-hours Login, Massive File Access, Privilege Escalation |
+| 防御规避 | 12+ | Disable Security Tools, Clear Logs, AMSI Bypass |
+| 勒索软件 | 3+ | Shadow Copy Deletion, File Encryption |
+| 威胁检测 | 10+ | Cobalt Strike, Mimikatz, DNS Tunneling, LOLBAS |
+| 其他攻击 | 5+ | Malware Execution, DLL Search Order, BloodHound |
+
+**关联规则 (6)**:
+- brute-force-attack: 暴力破解攻击模式
+- lateral-movement: 横向移动攻击模式
+- privilege-escalation-chain: 权限提升攻击链
+- persistence-chain: 持久化攻击链
+- credential-dump-chain: 凭据窃取攻击链
+- ransomware-preparation: 勒索软件准备阶段
 
 ### 7.4 MITRE ATT&CK (`builtin/mitre.go`)
 
@@ -1380,15 +1385,22 @@ func NewDB(path string) (*DB, error) {
 
 | 表名 | 说明 |
 |------|------|
-| `events` | 事件表 |
+| `events` | 事件表 (含 FTS5 全文搜索) |
+| `events_fts` | 事件全文搜索虚拟表 |
 | `alerts` | 告警表 |
 | `import_log` | 导入日志 |
 | `machine_context` | 机器上下文 |
 | `multi_machine_analysis` | 多机分析 |
 | `global_timeline` | 全局时间线 |
 | `sessions` | 会话表 |
-| `evidence_chain` | 证据链 |
+| `evidence_chain` | 证据链 (区块链式结构) |
 | `evidence_file` | 证据文件 |
+| `processes` | 系统进程快照 |
+| `network_connections` | 网络连接 |
+| `system_info` | 系统信息快照 |
+| `reports` | 报告表 |
+| `suppress_rules` | 告警抑制规则 |
+| `rule_states` | 规则启用/禁用状态 |
 
 ### 9.3 Repository (`repository.go`)
 
@@ -1865,6 +1877,7 @@ type LoggerConfig struct {
 | Live Monitor | 实时监控 | `l` |
 | Help | 帮助信息 | `?` |
 | Settings | 配置管理 | `,` |
+| Persistence | 持久化检测 | `p` |
 
 ### 16.2 键位映射
 
@@ -1914,6 +1927,15 @@ var keyMap = KeyMap{
 | Rules | `/rules` | 规则管理、编辑器 |
 | Settings | `/settings` | 配置管理 |
 | Metrics | `/metrics` | Prometheus 指标 |
+| Collect | `/collect` | 一键采集 |
+| Live | `/live` | 实时监控 |
+| Multi | `/multi` | 多机分析 |
+| Query | `/query` | SQL 查询 |
+| Persistence | `/persistence` | 持久化检测 |
+| Suppress | `/suppress` | 白名单管理 |
+| Correlation | `/correlation` | 关联分析 |
+| UEBA | `/ueba` | 用户行为分析 |
+| Analyze | `/analyze` | 分析器执行 |
 
 ### 17.2 组件列表
 
@@ -1940,37 +1962,37 @@ var keyMap = KeyMap{
 
 | 类别 | 模块数 | 功能数 |
 |------|--------|--------|
-| CLI 命令 | 19 | 19 |
+| CLI 命令 | 15 | 15 |
 | 核心引擎 | 3 | 5+ |
 | 解析器 | 6 | 10+ |
-| 系统信息采集 | 10 | 40+ |
-| 持久化检测 | 5 | 15+ |
-| 实时采集 | 4 | 15+ |
+| 系统信息采集 | 12 | 40+ |
+| 持久化检测 | 15 | 50+ |
+| 实时采集 | 4+ | 15+ |
 | 告警引擎 | 7 | 25+ |
 | 关联引擎 | 3 | 10+ |
-| 规则系统 | 7 | 60+ |
-| 分析器 | 4 | 15+ |
-| 存储 | 5 | 15+ |
-| 报告 | 4 | 10+ |
-| 导出器 | 4 | 5+ |
+| 规则系统 | 7 | 90+ |
+| 分析器 | 8 | 15+ |
+| 存储 | 15 | 50+ |
+| 报告 | 6+ | 15+ |
+| 导出器 | 6 | 10+ |
 | 时间线 | 2 | 10+ |
 | 多机分析 | 1 | 5+ |
-| 取证 | 5 | 10+ |
+| 取证 | 6 | 15+ |
 | 可观测性 | 3 | 10+ |
-| API | 4 | 15+ |
-| TUI | 11 | 30+ |
-| Web UI | 12 | 40+ |
-| **总计** | ~130 | **~450+** |
+| API Handlers | 20+ | 80+ |
+| TUI | 12 | 35+ |
+| Web UI | 21 | 60+ |
+| **总计** | ~170 | **~500+** |
 
 ---
 
-## 十八、实现状态跟踪 (2026-04-16 更新)
+## 十八、实现状态跟踪 (2026-04-17 更新)
 
 ### 18.1 已完成模块 ✅
 
 | 模块 | 状态 | 文件数 | 说明 |
 |------|------|--------|------|
-| **CLI 命令** | ✅ 完成 | 13 | import, search, collect, alert, correlate, report, export, timeline, live, status, info, verify, rules, db, config, metrics, query, tui, serve |
+| **CLI 命令** | ✅ 完成 | 15 | import, search, collect, alert, analyze, report, dashboard, config, persistence, system, ueba, whitelist, db, tui, serve |
 | **核心引擎** | ✅ 完成 | 3 | engine.go, importer.go, pipeline.go |
 | **解析器** | ✅ 完成 | 6 | evtx, etl, csv, iis, sysmon, parser.go |
 | **系统信息采集** | ✅ 完成 | 10+ | process, network, registry, driver, dll, task, user, env, system_info, one_click |
@@ -1979,7 +2001,7 @@ var keyMap = KeyMap{
 | **告警引擎** | ✅ 完成 | 7 | engine, dedup, evaluator, stats, trend, upgrade, suppress |
 | **关联引擎** | ✅ 完成 | 3 | engine, matcher, chain |
 | **规则系统** | ✅ 完成 | 4+ | rule, loader, validator, custom_rules, builtin |
-| **分析器** | ✅ 完成 | 6 | brute_force, login, kerberos, powershell, data_exfiltration, lateral_movement |
+| **分析器** | ✅ 完成 | 8 | brute_force, login, kerberos, powershell, data_exfiltration, lateral_movement, privilege_escalation, persistence |
 | **存储** | ✅ 完成 | 5+ | db, events, alerts, system, schema |
 | **报告** | ✅ 完成 | 4+ | generator, html, json, security_stats, template |
 | **导出器** | ✅ 完成 | 5 | csv, evtx, excel, json, timeline |
@@ -1994,22 +2016,28 @@ var keyMap = KeyMap{
 
 | 路由组 | 端点数 | 说明 |
 |--------|--------|------|
+| `/api/health` | 1 | 健康检查 |
 | `/api/events` | 4 | 列表、详情、搜索、导出 |
-| `/api/alerts` | 8 | 列表、详情、解决、误报、趋势、运行分析 |
-| `/api/timeline` | 4 | 时间线、统计、攻击链、导出 |
+| `/api/alerts` | 12 | 列表、详情、解决、误报、趋势、运行分析、批量操作 |
+| `/api/timeline` | 5 | 时间线、统计、攻击链、导出、删除 |
 | `/api/import` | 2 | 导入日志、状态查询 |
-| `/api/live` | 2 | 实时事件流、统计 |
+| `/api/live` | 2 | 实时事件流(SSE)、统计 |
 | `/api/dashboard` | 1 | 采集统计 |
-| `/api/persistence` | 4 | 检测、详情、导出 |
-| `/api/system` | 4 | 信息、指标、驱动器、进程 |
-| `/api/rules` | 8 | CRUD、切换、验证、导入导出 |
-| `/api/reports` | 5+ | 列表、生成、详情、模板管理 |
-| `/api/forensics` | 4 | 证据、哈希、时间戳、链式取证 |
-| `/api/settings` | 4 | 配置管理 |
-| `/api/analyze` | 2+ | 分析器执行 |
-| `/api/collect` | 3 | 一键采集 |
-| `/api/suppress` | 6 | 白名单规则管理 |
-| `/api/ueba` | 3 | UEBA分析 |
+| `/api/persistence` | 5 | 检测、分类、技术列表、实时检测流 |
+| `/api/system` | 11 | 信息、指标、进程、网络、驱动、用户、注册表、任务 |
+| `/api/rules` | 14 | CRUD、切换、验证、导入导出、模板 |
+| `/api/reports` | 9 | 列表、生成、详情、模板管理、导出 |
+| `/api/forensics` | 10 | 哈希、签名、证据、清单、链式取证、内存 dump |
+| `/api/settings` | 3 | 获取、保存、重置 |
+| `/api/analyze` | 4 | 运行分析、列出分析器、获取分析器信息 |
+| `/api/collect` | 3 | 开始采集、导入日志、状态查询 |
+| `/api/suppress` | 6 | 白名单规则 CRUD、切换 |
+| `/api/ueba` | 3 | 分析、用户画像、异常详情 |
+| `/api/correlation` | 1 | 关联分析 |
+| `/api/multi` | 2 | 多机分析、横向移动 |
+| `/api/query` | 1 | SQL 查询执行 |
+| `/api/ui` | 4 | Dashboard概览、告警分组、指标、事件分布 |
+| `/api/policy` | 4 | 策略模板管理 |
 
 ### 18.3 分析器清单
 
@@ -2021,6 +2049,8 @@ var keyMap = KeyMap{
 | PowerShellAnalyzer | PowerShell命令分析 | T1059.001 |
 | DataExfiltrationAnalyzer | 数据外泄检测 | T1041 |
 | LateralMovementAnalyzer | 横向移动检测 | T1021 |
+| PrivilegeEscalationAnalyzer | 权限提升分析 | T1068 |
+| PersistenceAnalyzer | 持久化行为分析 | T1543 |
 
 ### 18.4 持久化检测器清单 (15个)
 
@@ -2044,4 +2074,4 @@ var keyMap = KeyMap{
 
 ---
 
-*文档版本: v2.0 | 更新日期: 2026-04-16 | 状态: 实现完成*
+*文档版本: v2.4.0 | 更新日期: 2026-04-17 | 状态: 实现完成*
