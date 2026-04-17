@@ -10,6 +10,11 @@
 2. [CLI 模式测试](#2-cli-模式测试)
 3. [Web UI 模式测试](#3-web-ui-模式测试)
 4. [API 端点测试](#4-api-端点测试)
+   - [4.19 收集 API](#419-收集-api)
+   - [4.20 UI API](#420-ui-api)
+   - [4.21 策略 API](#421-策略-api)
+   - [4.22 取证 API（补充）](#422-取证-api补充)
+   - [4.23 设置 API](#423-设置-api)
 5. [TUI 模式测试](#5-tui-模式测试)
 6. [测试数据准备](#6-测试数据准备)
 7. [快速验证测试集](#7-快速验证测试集)
@@ -105,6 +110,9 @@ curl http://localhost:8080/api/health
 # 收集多种日志
 ./winalog collect --logs security,system,application
 
+# 收集所有日志
+./winalog collect --logs all
+
 # 查看收集状态
 ./winalog status
 ```
@@ -121,7 +129,29 @@ curl http://localhost:8080/api/health
 ./winalog collect --forensics --type schedule
 ```
 
-#### 测试 2.1.7：实时日志监控
+#### 测试 2.1.7：完整收集命令
+
+```bash
+# 基本收集（Windows 事件日志）
+./winalog collect --logs security,system
+
+# 收集并压缩
+./winalog collect --logs all --compress
+
+# 收集并计算哈希
+./winalog collect --logs security --hash
+
+# 输出到指定目录
+./winalog collect --logs security --output /path/to/output
+
+# 查看收集状态
+./winalog status
+
+# 收集进度
+./winalog collect --status <task_id>
+```
+
+#### 测试 2.1.8：实时日志监控
 
 ```bash
 # 启动实时监控（Ctrl+C 停止）
@@ -737,11 +767,20 @@ curl http://localhost:8080/api/health
 # 验证规则语法
 ./winalog rules validate --name custom-rule
 
-# 导入规则
+# 从文件导入规则
 ./winalog rules import rules.json
 
-# 导出规则
+# 导出规则到文件
 ./winalog rules export --format json --output rules.json
+
+# 导出规则到 YAML
+./winalog rules export --format yaml --output rules.yaml
+
+# 查看规则模板
+./winalog rules templates
+
+# 从模板实例化规则
+./winalog rules instantiate --template powershell_detection --name my-powershell-rule
 ```
 
 ---
@@ -1203,6 +1242,9 @@ curl -X POST http://localhost:8080/api/query/execute \
 # 执行持久化检测
 curl http://localhost:8080/api/persistence/detect
 
+# 执行持久化检测（流式）
+curl http://localhost:8080/api/persistence/detect/stream
+
 # 获取持久化类别
 curl http://localhost:8080/api/persistence/categories
 
@@ -1313,12 +1355,15 @@ curl -X POST "http://localhost:8080/api/rules/brute-force-suspect/toggle?enabled
 curl http://localhost:8080/api/reports
 
 # 生成报告
-curl -X POST http://localhost:8080/api/reports/generate \
+curl -X POST http://localhost:8080/api/reports \
   -H "Content-Type: application/json" \
   -d '{"type":"security","format":"html","start_time":"2024-01-01","end_time":"2024-01-31"}'
 
 # 获取报告详情
 curl http://localhost:8080/api/reports/report-123
+
+# 导出报告数据
+curl "http://localhost:8080/api/reports/export?format=json" -o export.json
 ```
 
 ### 4.16 时间线 API
@@ -1354,7 +1399,95 @@ curl http://localhost:8080/api/live/stats
 curl http://localhost:8080/api/import/status
 ```
 
-### 4.19 设置 API
+### 4.19 收集 API
+
+```bash
+# 开始收集任务
+curl -X POST http://localhost:8080/api/collect \
+  -H "Content-Type: application/json" \
+  -d '{"sources":["security","system"],"options":{"compress":true}}'
+
+# 导入收集的日志
+curl -X POST http://localhost:8080/api/collect/import \
+  -H "Content-Type: application/json" \
+  -d '{"file_paths":["/path/to/collected.evtx"]}'
+
+# 获取收集状态
+curl "http://localhost:8080/api/collect/status?task_id=<task_id>"
+```
+
+### 4.20 UI API
+
+```bash
+# 获取仪表板概览
+curl http://localhost:8080/api/ui/dashboard
+
+# 获取告警分组
+curl "http://localhost:8080/api/ui/alerts/groups?group_by=rule"
+
+# 获取指标
+curl "http://localhost:8080/api/ui/metrics?period=24h"
+
+# 获取事件分布
+curl "http://localhost:8080/api/ui/events/distribution?field=level&limit=10"
+```
+
+### 4.21 策略 API
+
+```bash
+# 获取策略模板列表
+curl http://localhost:8080/api/policy-templates
+
+# 获取策略模板详情
+curl http://localhost:8080/api/policy-templates/baseline_policy
+
+# 创建策略模板
+curl -X POST http://localhost:8080/api/policy-templates \
+  -H "Content-Type: application/json" \
+  -d '{"name":"custom_policy","description":"Custom policy","rules":["rule1","rule2"]}'
+
+# 应用策略模板
+curl -X POST http://localhost:8080/api/policy-templates/apply \
+  -H "Content-Type: application/json" \
+  -d '{"template_name":"baseline_policy","targets":["host1"]}'
+
+# 删除策略模板
+curl -X DELETE http://localhost:8080/api/policy-templates/custom_policy
+
+# 获取策略实例列表
+curl http://localhost:8080/api/policy-instances
+
+# 删除策略实例
+curl -X DELETE http://localhost:8080/api/policy-instances/host1_baseline
+
+# 创建自定义策略
+curl -X POST http://localhost:8080/api/policies \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my_policy","rules":["rule1"]}'
+
+# 删除自定义策略
+curl -X DELETE http://localhost:8080/api/policies/my_policy
+```
+
+### 4.22 取证 API（补充）
+
+```bash
+# 验证文件哈希
+curl "http://localhost:8080/api/forensics/verify-hash?hash=<sha256>&algorithm=sha256"
+
+# 获取证据详情
+curl http://localhost:8080/api/forensics/evidence/<evidence_id>
+
+# 生成取证清单
+curl -X POST http://localhost:8080/api/forensics/manifest \
+  -H "Content-Type: application/json" \
+  -d '{"paths":["C:\\\\Windows\\\\System32"],"include_hashes":true}'
+
+# 获取内存转储信息
+curl http://localhost:8080/api/forensics/memory-dump
+```
+
+### 4.23 设置 API
 
 ```bash
 # 获取设置
