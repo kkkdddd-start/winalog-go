@@ -295,7 +295,7 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 	reportID := c.Param("id")
 
 	var report ReportInfo
-	var generatedAt, completedAt sql.NullTime
+	var generatedAtStr, completedAtStr sql.NullString
 	var title, description, queryParams sql.NullString
 	var filePath sql.NullString
 	var fileSize sql.NullInt64
@@ -304,10 +304,10 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 		SELECT id, report_type, format, title, description, status, generated_at, completed_at, file_path, file_size, query_params
 		FROM reports WHERE id = ?
 	`, reportID).Scan(&report.ID, &report.Type, &report.Format, &title, &description, &report.Status,
-		&generatedAt, &completedAt, &filePath, &fileSize, &queryParams)
+		&generatedAtStr, &completedAtStr, &filePath, &fileSize, &queryParams)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Report not found"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "GetReport query/scan error: " + err.Error()})
 		return
 	}
 
@@ -317,11 +317,15 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 	if description.Valid {
 		report.Description = description.String
 	}
-	if generatedAt.Valid {
-		report.GeneratedAt = generatedAt.Time
+	if generatedAtStr.Valid {
+		if t, err := time.Parse(time.RFC3339, generatedAtStr.String); err == nil {
+			report.GeneratedAt = t
+		}
 	}
-	if completedAt.Valid {
-		report.CompletedAt = completedAt.Time
+	if completedAtStr.Valid {
+		if t, err := time.Parse(time.RFC3339, completedAtStr.String); err == nil {
+			report.CompletedAt = t
+		}
 	}
 	if filePath.Valid {
 		report.FilePath = filePath.String
@@ -364,7 +368,7 @@ func (h *ReportsHandler) DownloadReport(c *gin.Context) {
 
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Invalid file path"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "GetReport query/scan error: " + err.Error()})
 		return
 	}
 	absReportDir, _ := filepath.Abs(filepath.Join(os.TempDir(), "winalog_reports"))
@@ -502,8 +506,8 @@ func SetupReportsRoutes(r *gin.Engine, reportsHandler *ReportsHandler) {
 	{
 		reportsGroup.GET("", reportsHandler.ListReports)
 		reportsGroup.POST("", reportsHandler.GenerateReport)
-		reportsGroup.GET("/:id", reportsHandler.GetReport)
 		reportsGroup.GET("/:id/download", reportsHandler.DownloadReport)
+		reportsGroup.GET("/:id", reportsHandler.GetReport)
 		reportsGroup.GET("/export", reportsHandler.ExportData)
 	}
 
