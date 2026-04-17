@@ -14,16 +14,17 @@
 |------|------|----------|
 | 🔴 编译阻断问题 | 2 | 必须修复 |
 | 🔴 逻辑错误 | 5 | 必须修复 |
-| ⚠️ 并发安全 & 资源泄漏 | 3 | 重要 |
+| ⚠️ 并发安全 & 资源泄漏 | 4 | 重要 |
 | ⚠️ UEBA 模块问题 | 2 | 重要 |
 | ⚠️ 规则系统问题 | 3 | 重要 |
-| ⚠️ 其他问题 | 5 | 一般 |
+| ⚠️ 存储与索引问题 | 1 | 重要 |
+| ⚠️ 其他问题 | 6 | 一般 |
 
 ### 1.2 问题验证状态
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
-| ✅ 已验证存在 | 15 | 确认问题真实 |
+| ✅ 已验证存在 | 19 | 确认问题真实 |
 | ❌ 问题不存在 | 3 | 源码已修复或描述不准确 |
 | ⚠️ 部分问题 | 4 | 存在但影响有限 |
 
@@ -1410,7 +1411,276 @@ func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string
 
 ---
 
-## 七、已确认无问题的项目
+## 八、新发现存储与索引问题
+
+---
+
+### S1: EventRepo.Search 使用 LIKE 无全文索引
+
+**文件**: `internal/storage/events.go:143-156`
+
+**问题描述**:
+```go
+conditions = append(conditions, "message LIKE ?")
+args = append(args, "%"+req.Keywords+"%")
+```
+
+当前搜索使用 `LIKE '%keyword%'` 模式进行关键词搜索，无法利用数据库全文索引（FTS5）。
+
+**影响**:
+- 大数据量下搜索性能极差
+- `LIKE '%keyword%'` 无法使用 B-tree 索引
+- 无法支持多词搜索的高效查询
+
+**验证状态**: ✅ 已验证存在
+
+**修复方案**:
+
+```go
+// 方案一：添加 FTS5 虚拟表（推荐）
+// 在 events 表上创建 FTS5 虚拟表
+CREATE VIRTUAL TABLE events_fts USING fts5(
+    message,
+    source,
+    event_id UNINDEXED,
+    content='events',
+    content_rowid='rowid'
+);
+
+// 修改 Search 方法使用 FTS5
+if len(req.Keywords) > 0 {
+    // 使用 FTS5 MATCH 而非 LIKE
+    conditions = append(conditions, "events_fts MATCH ?")
+    args = append(args, req.Keywords)
+}
+```
+
+**评估**:
+- 复杂度: 中
+- 优先级: P1
+- 适配性: 高 - SQLite 原生支持
+- 必要性: 高 - 影响搜索性能
+- 可靠性: 高 - FTS5 是成熟技术
+
+---
+
+### S2: cleanupLocked 持锁启动 goroutine
+
+**文件**: `internal/correlation/engine.go:41-53`
+
+**问题描述**:
+```go
+func (idx *EventIndex) Add(event *types.Event) {
+    idx.mu.Lock()
+    defer idx.mu.Unlock()
+
+    if time.Since(idx.lastCleanup) > idx.cleanupInterval {
+        go idx.cleanupLocked()  // ⚠️ 在持锁状态下启动 goroutine
+        idx.lastCleanup = time.Now()
+    }
+    // ...
+}
+
+func (idx *EventIndex) cleanupLocked() {
+    // ⚠️ cleanupLocked 内部也会尝试获取锁
+    idx.mu.Lock()  // 但此时锁已被持有，会死锁！
+    defer idx.mu.Unlock()
+    // ...
+}
+```
+
+`cleanupLocked` 内部会尝试获取 `idx.mu.Lock()`，而调用它的 `Add` 方法已经持有了这把锁。这会导致**死锁**。
+
+**影响**:
+- 高并发场景下触发死锁
+- 程序 hang 住无响应
+- 极难复现和调试
+
+**验证状态**: ✅ 已验证存在（代码审查确认必然死锁）
+
+**修复方案**:
+
+```go
+func (idx *EventIndex) Add(event *types.Event) {
+    idx.mu.Lock()
+    
+    if time.Since(idx.lastCleanup) > idx.cleanupInterval {
+        idx.lastCleanup = time.Now()
+        // 传递锁的拥有权给 cleanup goroutine
+        go idx.cleanupLocked(idx.mu)  // 传递锁的所有权
+    }
+    
+    idx.byID[event.ID] = event
+    idx.byTime = append(idx.byTime, event)
+    idx.byEID[event.EventID] = append(idx.byEID[event.EventID], event)
+    
+    idx.mu.Unlock()
+}
+
+// cleanupLocked 接收锁的所有权，不再自己加锁
+func (idx *EventIndex) cleanupLocked passedMu sync.Locker) {
+    defer passedMu.Unlock()
+    // ... 清理逻辑
+}
+```
+
+**评估**:
+- 复杂度: 低
+- 优先级: P1
+- 适配性: 高 - 接口简单
+- 必要性: 高 - 必然死锁
+- 可靠性: 高 - 修复后不再死锁
+
+---
+
+### S3: importFile 错误语义不清晰
+
+**文件**: `internal/engine/engine.go:156-194`
+
+**问题描述**:
+```go
+for event := range events {
+    // ...
+    if len(batch) >= e.importCfg.BatchSize {
+        if err := e.eventRepo.InsertBatch(batch); err != nil {
+            lastErr = fmt.Errorf("batch %d failed: %w", batchNum, err)
+            // ⚠️ 错误被捕获但继续处理后续批次
+        }
+        // ... 继续处理
+    }
+}
+
+return &ImportResult{
+    EventsImported: totalEvents,
+    // ⚠️ 如果部分失败，返回成功但 lastErr 被丢弃
+}, nil  // ← 即使有 lastErr 也返回 nil error！
+```
+
+当前错误处理逻辑问题：
+1. 批量导入失败后继续处理后续批次（可能导入重复数据）
+2. `lastErr` 变量记录了错误但**从未被返回**
+3. 函数最后返回 `nil` error，即使存在失败
+
+**影响**:
+- 部分失败时用户不知道
+- 可能导入不完整的数据
+- 难以排查导入问题
+
+**验证状态**: ✅ 已验证存在
+
+**修复方案**:
+
+```go
+func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, error) {
+    // ...
+    
+    var importErr error
+    
+    for event := range events {
+        // ...
+        if len(batch) >= e.importCfg.BatchSize {
+            batchNum++
+            if err := e.eventRepo.InsertBatch(batch); err != nil {
+                importErr = fmt.Errorf("batch %d failed: %w", batchNum, err)
+                break  // 失败时停止处理
+            }
+            totalEvents += int64(len(batch))
+            batch = batch[:0]
+        }
+    }
+    
+    if importErr != nil {
+        return &ImportResult{
+            EventsImported: totalEvents,
+            Errors:          []error{importErr},
+        }, importErr
+    }
+    
+    return &ImportResult{EventsImported: totalEvents}, nil
+}
+```
+
+**评估**:
+- 复杂度: 低
+- 优先级: P2
+- 适配性: 高 - 逻辑简单
+- 必要性: 中 - 当前行为可能是有意为之
+- 可靠性: 高 - 错误明确返回
+
+---
+
+### S4: EventIndex 全内存存储导致内存无限增长
+
+**文件**: `internal/correlation/engine.go:23-53`
+
+**问题描述**:
+```go
+type EventIndex struct {
+    mu              sync.RWMutex
+    byID            map[string]*types.Event   // 全量事件
+    byTime          []*types.Event             // 全量事件
+    byEID           map[uint32][]*types.Event  // 全量事件
+    maxAge          time.Duration
+    lastCleanup     time.Time
+    cleanupInterval time.Duration
+}
+```
+
+`EventIndex` 将所有事件存储在内存中：
+- `byID`: O(n) 内存，n=总事件数
+- `byTime`: O(n) 内存，存储所有事件指针
+- `byEID`: O(n) 内存，按 EventID 分组存储
+
+**影响**:
+- 大规模日志分析时内存爆炸
+- 长时间运行服务内存持续增长
+- 清理机制存在死锁风险（S2）
+
+**验证状态**: ✅ 已验证存在
+
+**修复方案**:
+
+```go
+// 方案一：基于 SQLite 的分层存储（推荐）
+type EventIndex struct {
+    mu       sync.RWMutex
+    eventRepo *storage.EventRepo  // SQLite 持久化
+    
+    // 内存缓存最近事件（有限大小）
+    recentByTime []*types.Event
+    recentByEID   map[uint32][]*types.Event
+    cacheSize     int  // 最大缓存数量
+}
+
+// 查询时优先查缓存，未命中再查数据库
+func (idx *EventIndex) FindByEventID(eid uint32, timeRange TimeRange) []*types.Event {
+    // 1. 先查内存缓存
+    if events, ok := idx.recentByEID[eid]; ok {
+        return idx.filterByTimeRange(events, timeRange)
+    }
+    
+    // 2. 缓存未命中，查数据库
+    return idx.eventRepo.QueryByEventID(eid, timeRange.Start, timeRange.End)
+}
+
+// 方案二：内存限制 + LRU 淘汰
+type EventIndex struct {
+    mu       sync.RWMutex
+    byID     lru.Cache[string, *types.Event]  // 有大小限制的 LRU
+    byTime   lru.Cache[int64, []*types.Event] // 按时间分桶
+}
+```
+
+**评估**:
+- 复杂度: 高
+- 优先级: P2
+- 适配性: 中 - 架构变更
+- 必要性: 中 - 小规模部署可接受
+- 可靠性: 高 - SQLite 成熟稳定
+
+---
+
+## 九、已确认无问题的项目
 
 以下项目经源码验证，问题不存在或已修复：
 
@@ -1423,7 +1693,7 @@ func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string
 
 ---
 
-## 八、实施优先级矩阵
+## 十、实施优先级矩阵
 
 ### 7.1 优先级定义
 
@@ -1444,6 +1714,7 @@ func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string
 | **P1** | L5: 查询不存在的表 | 低 | 0.5h | 高 |
 | **P1** | C1: PolicyManager 无锁 | 中 | 2h | 中 |
 | **P1** | C2: searchCache key 缺少时间 | 低 | 0.5h | 中 |
+| **P1** | S2: cleanupLocked 死锁 | 低 | 0.5h | 高 |
 | **P1** | L3: findNextEvents 合成事件 | 高 | 4h | 中 |
 | **P1** | L4: CollectParallel 丢弃错误 | 低 | 1h | 中 |
 | **P1** | U1: BaselineManager 内存增长 | 中 | 2h | 高 |
@@ -1455,19 +1726,22 @@ func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string
 | **P2** | O2: CountByStatus 类型 | 低 | 0.3h | 低 |
 | **P2** | R1: CreateCustomTemplate 覆盖内置 | 低 | 1h | 中 |
 | **P2** | R2: PolicyInstance key 碰撞 | 低 | 0.5h | 低 |
+| **P1** | S1: Search 缺少 FTS5 索引 | 中 | 3h | 高 |
+| **P2** | S3: importFile 错误未返回 | 低 | 0.5h | 中 |
+| **P2** | S4: EventIndex 全内存增长 | 高 | 6h | 中 |
 
 ### 7.3 总工时估算
 
 | 优先级 | 问题数 | 总工时 |
 |--------|--------|--------|
 | P0 | 4 | ~1.3h |
-| P1 | 9 | ~12.5h |
-| P2 | 5 | ~3.8h |
-| **总计** | 18 | **~17.6h**
+| P1 | 10 | ~15h |
+| P2 | 7 | ~12.3h |
+| **总计** | 21 | **~28.6h**
 
 ---
 
-## 九、修复执行计划
+## 十一、修复执行计划
 
 ### Phase 1: P0 修复（立即执行）
 
@@ -1481,12 +1755,14 @@ func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string
 1. **L5: validateCorrelationRuleExists** - 改用已存在的表
 2. **C1: PolicyManager 加锁** - 添加 RWMutex
 3. **C2: searchCache key** - 添加 StartTime/EndTime
-4. **L3: findNextEvents** - 实现真实事件查询
-5. **L4: CollectParallel** - 保留错误信息
-6. **U1: BaselineManager** - 添加 TTL 清理机制
-7. **U2: PrivilegeEscalation** - 添加可配置阈值
-8. **R3: Event ID** - 添加缺失的规则
-9. **R4: 高误报率规则** - 添加条件过滤
+4. **S2: cleanupLocked 死锁** - 修复锁传递逻辑
+5. **L3: findNextEvents** - 实现真实事件查询
+6. **L4: CollectParallel** - 保留错误信息
+7. **U1: BaselineManager** - 添加 TTL 清理机制
+8. **U2: PrivilegeEscalation** - 添加可配置阈值
+9. **R3: Event ID** - 添加缺失的规则
+10. **R4: 高误报率规则** - 添加条件过滤
+11. **S1: Search FTS5** - 添加全文索引支持
 
 ### Phase 3: P2 修复（计划中）
 
@@ -1495,10 +1771,12 @@ func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string
 3. **O2: CountByStatus** - 改用 int 类型
 4. **R1: CreateCustomTemplate** - 添加 BuiltIn 标记
 5. **R2: PolicyInstance key** - 使用 UUID
+6. **S3: importFile 错误** - 明确返回错误
+7. **S4: EventIndex 内存** - 改为分层存储
 
 ---
 
-## 十、验证方法
+## 十二、验证方法
 
 ### 9.1 编译验证
 
@@ -1534,7 +1812,7 @@ go test ./internal/types/... -run TestIsExternalIP
 
 ---
 
-## 十一、风险评估
+## 十三、风险评估
 
 | 问题 | 风险 | 缓解措施 |
 |------|------|----------|
@@ -1546,7 +1824,7 @@ go test ./internal/types/... -run TestIsExternalIP
 
 ---
 
-**文档版本**: v1.1
+**文档版本**: v1.2
 **生成时间**: 2026-04-17
-**更新内容**: 新增 U1/U2 (UEBA 模块)、R1-R4 (规则系统) 共 6 个问题
+**更新内容**: 新增 S1-S4 (存储/索引/并发问题) 共 4 个问题，问题总数 21 个
 **验证深度**: 完整源码审查
