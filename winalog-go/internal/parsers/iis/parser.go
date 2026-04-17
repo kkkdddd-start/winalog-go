@@ -10,8 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kkkdddd-start/winalog-go/internal/parsers"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
+
+func init() {
+	parsers.GetGlobalRegistry().Register(NewIISParser())
+}
 
 type IISParser struct {
 	Format string
@@ -21,6 +26,10 @@ func NewIISParser() *IISParser {
 	return &IISParser{
 		Format: "w3c",
 	}
+}
+
+func (p *IISParser) Priority() int {
+	return 60
 }
 
 func (p *IISParser) CanParse(path string) bool {

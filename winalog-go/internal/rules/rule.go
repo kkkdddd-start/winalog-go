@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -126,6 +127,32 @@ type BaseRule struct {
 	Tags        []string `yaml:"tags,omitempty"`
 }
 
+var validConditionFields = map[string]bool{
+	"event_id":   true,
+	"level":      true,
+	"source":     true,
+	"log_name":   true,
+	"computer":   true,
+	"user":       true,
+	"message":    true,
+	"ip_address": true,
+}
+
+var validOperators = map[string]bool{
+	"==":         true,
+	"=":          true,
+	"!=":         true,
+	">":          true,
+	">=":         true,
+	"<":          true,
+	"<=":         true,
+	"contains":   true,
+	"startswith": true,
+	"endswith":   true,
+	"not":        true,
+	"regex":      true,
+}
+
 func (r *AlertRule) Validate() error {
 	if r.Name == "" {
 		return fmt.Errorf("rule name is required")
@@ -136,6 +163,102 @@ func (r *AlertRule) Validate() error {
 	if r.Filter == nil && r.Conditions == nil {
 		return fmt.Errorf("either filter or conditions is required")
 	}
+
+	if r.Threshold > 0 && r.TimeWindow == 0 {
+		return fmt.Errorf("threshold requires time_window to be set")
+	}
+
+	validSeverities := map[types.Severity]bool{
+		types.SeverityCritical: true,
+		types.SeverityHigh:     true,
+		types.SeverityMedium:   true,
+		types.SeverityLow:      true,
+		types.SeverityInfo:     true,
+	}
+	if !validSeverities[r.Severity] {
+		return fmt.Errorf("invalid severity: %s", r.Severity)
+	}
+
+	if r.Filter != nil {
+		if err := r.validateFilter(r.Filter); err != nil {
+			return fmt.Errorf("filter validation failed: %w", err)
+		}
+	}
+
+	if r.Conditions != nil {
+		if err := r.validateConditions(r.Conditions); err != nil {
+			return fmt.Errorf("conditions validation failed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *AlertRule) validateFilter(f *Filter) error {
+	for _, eid := range f.EventIDs {
+		if eid < 0 || eid > 65535 {
+			return fmt.Errorf("invalid event_id: %d (must be 0-65535)", eid)
+		}
+	}
+
+	for _, lvl := range f.Levels {
+		if lvl < 1 || lvl > 5 {
+			return fmt.Errorf("invalid level: %d (must be 1-5)", lvl)
+		}
+	}
+
+	if f.Keywords != "" && f.KeywordMode == "" {
+		return fmt.Errorf("keywords requires keyword_mode to be set")
+	}
+
+	if f.TimeRange != nil {
+		if f.TimeRange.End.Before(f.TimeRange.Start) {
+			return fmt.Errorf("time_range end must be after start")
+		}
+	}
+
+	return nil
+}
+
+func (r *AlertRule) validateConditions(c *Conditions) error {
+	var validateCondition func(cond *Condition) error
+	validateCondition = func(cond *Condition) error {
+		if cond.Field == "" {
+			return fmt.Errorf("condition field is required")
+		}
+		if !validConditionFields[cond.Field] {
+			return fmt.Errorf("invalid condition field: %s", cond.Field)
+		}
+
+		if !validOperators[cond.Operator] {
+			return fmt.Errorf("invalid operator: %s", cond.Operator)
+		}
+
+		if cond.Regex {
+			if _, err := regexp.Compile(cond.Value); err != nil {
+				return fmt.Errorf("invalid regex pattern: %w", err)
+			}
+		}
+
+		return nil
+	}
+
+	for _, anyCond := range c.Any {
+		if err := validateCondition(anyCond); err != nil {
+			return err
+		}
+	}
+	for _, allCond := range c.All {
+		if err := validateCondition(allCond); err != nil {
+			return err
+		}
+	}
+	for _, noneCond := range c.None {
+		if err := validateCondition(noneCond); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

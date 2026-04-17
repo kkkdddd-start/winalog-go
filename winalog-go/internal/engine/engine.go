@@ -9,11 +9,6 @@ import (
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/parsers"
-	"github.com/kkkdddd-start/winalog-go/internal/parsers/csv"
-	"github.com/kkkdddd-start/winalog-go/internal/parsers/etl"
-	"github.com/kkkdddd-start/winalog-go/internal/parsers/evtx"
-	"github.com/kkkdddd-start/winalog-go/internal/parsers/iis"
-	"github.com/kkkdddd-start/winalog-go/internal/parsers/sysmon"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
@@ -46,7 +41,7 @@ type ImportProgress struct {
 func NewEngine(db *storage.DB) *Engine {
 	e := &Engine{
 		db:        db,
-		parsers:   parsers.NewParserRegistry(),
+		parsers:   parsers.GetGlobalRegistry(),
 		eventRepo: storage.NewEventRepo(db),
 		alertRepo: storage.NewAlertRepo(db),
 		importCfg: ImportConfig{
@@ -59,16 +54,7 @@ func NewEngine(db *storage.DB) *Engine {
 		},
 	}
 
-	e.registerParsers()
 	return e
-}
-
-func (e *Engine) registerParsers() {
-	e.parsers.Register(evtx.NewEvtxParser())
-	e.parsers.Register(etl.NewEtlParser())
-	e.parsers.Register(csv.NewCsvParser())
-	e.parsers.Register(iis.NewIISParser())
-	e.parsers.Register(sysmon.NewSysmonParser())
 }
 
 func (e *Engine) SetImportConfig(cfg ImportConfig) {

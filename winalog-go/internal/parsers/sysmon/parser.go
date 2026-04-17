@@ -8,13 +8,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kkkdddd-start/winalog-go/internal/parsers"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
+
+func init() {
+	parsers.GetGlobalRegistry().Register(NewSysmonParser())
+}
 
 type SysmonParser struct{}
 
 func NewSysmonParser() *SysmonParser {
 	return &SysmonParser{}
+}
+
+func (p *SysmonParser) Priority() int {
+	return 70
 }
 
 func (p *SysmonParser) CanParse(path string) bool {

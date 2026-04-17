@@ -1,6 +1,7 @@
 package alerts
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -24,28 +25,39 @@ type eventCountEntry struct {
 type Evaluator struct {
 	mu         sync.RWMutex
 	eventCount map[eventCountKey]*eventCountEntry
+	stopCh     chan struct{}
 }
 
 func NewEvaluator() *Evaluator {
 	e := &Evaluator{
 		eventCount: make(map[eventCountKey]*eventCountEntry),
+		stopCh:     make(chan struct{}),
 	}
 	go e.cleanupExpiredEntries()
 	return e
 }
 
+func (e *Evaluator) Close() {
+	close(e.stopCh)
+}
+
 func (e *Evaluator) cleanupExpiredEntries() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
-	for range ticker.C {
-		e.mu.Lock()
-		now := time.Now()
-		for key, entry := range e.eventCount {
-			if now.Sub(entry.lastTime) > 2*time.Hour {
-				delete(e.eventCount, key)
+	for {
+		select {
+		case <-ticker.C:
+			e.mu.Lock()
+			now := time.Now()
+			for key, entry := range e.eventCount {
+				if now.Sub(entry.lastTime) > 2*time.Hour {
+					delete(e.eventCount, key)
+				}
 			}
+			e.mu.Unlock()
+		case <-e.stopCh:
+			return
 		}
-		e.mu.Unlock()
 	}
 }
 
@@ -290,7 +302,11 @@ func (e *Evaluator) compareInt(a int, op string, b int) bool {
 
 func (e *Evaluator) compareString(a, op, b string, regex bool) bool {
 	if regex {
-		matched, _ := regexp.MatchString(b, a)
+		re, err := getCompiledRegex(b)
+		if err != nil {
+			return false
+		}
+		matched := re.MatchString(a)
 		switch op {
 		case "==", "=", "contains":
 			return matched
@@ -301,6 +317,10 @@ func (e *Evaluator) compareString(a, op, b string, regex bool) bool {
 		}
 	}
 
+	return e.compareStringBasic(a, op, b)
+}
+
+func (e *Evaluator) compareStringBasic(a, op, b string) bool {
 	switch op {
 	case "==", "=", "contains":
 		return strings.Contains(strings.ToLower(a), strings.ToLower(b))
@@ -313,6 +333,27 @@ func (e *Evaluator) compareString(a, op, b string, regex bool) bool {
 	default:
 		return false
 	}
+}
+
+var regexCache sync.Map
+
+func getCompiledRegex(pattern string) (*regexp.Regexp, error) {
+	if v, ok := regexCache.Load(pattern); ok {
+		return v.(*regexp.Regexp), nil
+	}
+
+	start := time.Now()
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	if time.Since(start) > 200*time.Millisecond {
+		return nil, fmt.Errorf("regex pattern too complex: %s", pattern)
+	}
+
+	regexCache.Store(pattern, re)
+	return re, nil
 }
 
 func (e *Evaluator) matchKeywords(keywords string, event *types.Event, mode rules.LogicalOp) bool {

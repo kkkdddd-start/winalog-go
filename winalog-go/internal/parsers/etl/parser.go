@@ -9,14 +9,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kkkdddd-start/winalog-go/internal/parsers"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
+
+func init() {
+	parsers.GetGlobalRegistry().Register(NewEtlParser())
+}
 
 type EtlParser struct{}
 
 func NewEtlParser() *EtlParser {
 	return &EtlParser{}
+}
+
+func (p *EtlParser) Priority() int {
+	return 80
 }
 
 func (p *EtlParser) CanParse(path string) bool {

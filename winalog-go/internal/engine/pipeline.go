@@ -70,6 +70,11 @@ func (p *Pipeline) worker(id int, handler func([]*types.Event) error) {
 
 	batch := make([]*types.Event, 0, p.batchSize)
 	ticker := newPacer()
+	defer func() {
+		if ticker.stopCh != nil {
+			close(ticker.stopCh)
+		}
+	}()
 
 	for {
 		select {
@@ -125,11 +130,13 @@ func (p *Pipeline) worker(id int, handler func([]*types.Event) error) {
 }
 
 type pacer struct {
-	C <-chan struct{}
+	C      <-chan struct{}
+	stopCh chan struct{}
 }
 
 func newPacer() *pacer {
 	c := make(chan struct{}, 1)
+	stopCh := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
@@ -140,10 +147,12 @@ func newPacer() *pacer {
 				case c <- struct{}{}:
 				default:
 				}
+			case <-stopCh:
+				return
 			}
 		}
 	}()
-	return &pacer{C: c}
+	return &pacer{C: c, stopCh: stopCh}
 }
 
 func (p *Pipeline) Submit(event *types.Event) bool {

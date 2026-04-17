@@ -123,12 +123,13 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 		}
 
 		if req.Regex {
+			pattern := req.Keywords
 			if keywordMode == "OR" {
-				conditions = append(conditions, fmt.Sprintf("message GLOB '%s'", req.Keywords))
+				conditions, args = appendGlobCondition(conditions, args, "message", pattern)
 			} else {
 				words := strings.Fields(req.Keywords)
 				for _, word := range words {
-					conditions = append(conditions, fmt.Sprintf("message GLOB '%s'", word))
+					conditions, args = appendGlobCondition(conditions, args, "message", word)
 				}
 			}
 		} else {
@@ -372,63 +373,35 @@ func scanEvent(row interface{ Scan(...interface{}) error }) (*types.Event, error
 	return &e, nil
 }
 
+func appendGlobCondition(conditions []string, args []interface{}, field, pattern string) ([]string, []interface{}) {
+	safePattern := sanitizeGlobPattern(pattern)
+	if safePattern == "" {
+		return conditions, args
+	}
+	conditions = append(conditions, fmt.Sprintf("message GLOB ?"))
+	args = append(args, safePattern)
+	return conditions, args
+}
+
+func sanitizeGlobPattern(pattern string) string {
+	var result []byte
+	for i := 0; i < len(pattern); i++ {
+		c := pattern[i]
+		switch c {
+		case '*', '?', '[', ']':
+			result = append(result, c)
+		case '\\':
+			if i+1 < len(pattern) {
+				result = append(result, '\\', pattern[i+1])
+				i++
+			}
+		default:
+			result = append(result, c)
+		}
+	}
+	return string(result)
+}
+
 func scanEventFromRows(rows *sql.Rows) (*types.Event, error) {
-	var e types.Event
-	var timestampStr, importTimeStr string
-	var user, userSID, rawXML, sessionID, ipAddress sql.NullString
-	var importID sql.NullInt64
-
-	err := rows.Scan(
-		&e.ID,
-		&timestampStr,
-		&e.EventID,
-		&e.Level,
-		&e.Source,
-		&e.LogName,
-		&e.Computer,
-		&user,
-		&userSID,
-		&e.Message,
-		&rawXML,
-		&sessionID,
-		&ipAddress,
-		&importTimeStr,
-		&importID,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	if timestampStr != "" {
-		if t, err := time.Parse(time.RFC3339Nano, timestampStr); err == nil {
-			e.Timestamp = t
-		}
-	}
-
-	if importTimeStr != "" {
-		if t, err := time.Parse(time.RFC3339Nano, importTimeStr); err == nil {
-			e.ImportTime = t
-		}
-	}
-
-	if user.Valid {
-		e.User = &user.String
-	}
-	if userSID.Valid {
-		e.UserSID = &userSID.String
-	}
-	if rawXML.Valid {
-		e.RawXML = &rawXML.String
-	}
-	if sessionID.Valid {
-		e.SessionID = &sessionID.String
-	}
-	if ipAddress.Valid {
-		e.IPAddress = &ipAddress.String
-	}
-	if importID.Valid {
-		e.ImportID = importID.Int64
-	}
-
-	return &e, nil
+	return scanEvent(rows)
 }

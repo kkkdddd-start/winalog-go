@@ -8,13 +8,22 @@ import (
 	"time"
 
 	evtxlib "github.com/0xrawsec/golang-evtx/evtx"
+	"github.com/kkkdddd-start/winalog-go/internal/parsers"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
+
+func init() {
+	parsers.GetGlobalRegistry().Register(NewEvtxParser())
+}
 
 type EvtxParser struct{}
 
 func NewEvtxParser() *EvtxParser {
 	return &EvtxParser{}
+}
+
+func (p *EvtxParser) Priority() int {
+	return 90
 }
 
 func (p *EvtxParser) CanParse(path string) bool {

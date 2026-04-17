@@ -9,8 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kkkdddd-start/winalog-go/internal/parsers"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
+
+func init() {
+	parsers.GetGlobalRegistry().Register(NewCsvParser())
+}
 
 type CsvParser struct {
 	Delimiter string
@@ -23,6 +28,10 @@ func NewCsvParser() *CsvParser {
 		Delimiter: ",",
 		HasHeader: true,
 	}
+}
+
+func (p *CsvParser) Priority() int {
+	return 50
 }
 
 func (p *CsvParser) CanParse(path string) bool {
