@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,6 +13,41 @@ import (
 
 type AlertRepo struct {
 	db *DB
+}
+
+var goTimeRegex = regexp.MustCompile(`^(.+?) ([0-9]+\.[0-9]+) ([A-Z]+)? ?(m=[+-][0-9.]+)?$`)
+
+func parseGoTimeString(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, fmt.Errorf("empty time string")
+	}
+
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+
+	monotonicIdx := strings.Index(s, " m=")
+	if monotonicIdx > 0 {
+		s = s[:monotonicIdx]
+	}
+
+	t, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 UTC", s)
+	if err == nil {
+		return t, nil
+	}
+
+	t, err = time.Parse("2006-01-02 15:04:05.999999999 -0700", s)
+	if err == nil {
+		return t, nil
+	}
+
+	t, err = time.Parse("2006-01-02 15:04:05 -0700", s)
+	if err == nil {
+		return t, nil
+	}
+
+	return time.Time{}, fmt.Errorf("unable to parse time: %s", s)
 }
 
 func NewAlertRepo(db *DB) *AlertRepo {
@@ -611,7 +647,7 @@ func (r *AlertRepo) CountByRule() ([]*types.RuleCount, error) {
 func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error) {
 	var a types.Alert
 	var eventIDsJSON, mitreJSON sql.NullString
-	var resolvedTime sql.NullString
+	var resolvedTime, firstSeenStr, lastSeenStr sql.NullString
 	var notes sql.NullString
 
 	err := row.Scan(
@@ -620,8 +656,8 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 		&a.Severity,
 		&a.Message,
 		&eventIDsJSON,
-		&a.FirstSeen,
-		&a.LastSeen,
+		&firstSeenStr,
+		&lastSeenStr,
 		&a.Count,
 		&mitreJSON,
 		&a.Resolved,
@@ -635,6 +671,17 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 		return nil, err
 	}
 
+	if firstSeenStr.Valid {
+		if t, err := parseGoTimeString(firstSeenStr.String); err == nil {
+			a.FirstSeen = t
+		}
+	}
+	if lastSeenStr.Valid {
+		if t, err := parseGoTimeString(lastSeenStr.String); err == nil {
+			a.LastSeen = t
+		}
+	}
+
 	if eventIDsJSON.Valid {
 		if err := json.Unmarshal([]byte(eventIDsJSON.String), &a.EventIDs); err != nil {
 			return nil, fmt.Errorf("failed to parse event_ids: %w", err)
@@ -646,7 +693,7 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 		}
 	}
 	if resolvedTime.Valid {
-		t, err := time.Parse(time.RFC3339, resolvedTime.String)
+		t, err := parseGoTimeString(resolvedTime.String)
 		if err == nil {
 			a.ResolvedTime = &t
 		}
@@ -661,7 +708,7 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 	var a types.Alert
 	var eventIDsJSON, mitreJSON sql.NullString
-	var resolvedTime sql.NullString
+	var resolvedTime, firstSeenStr, lastSeenStr sql.NullString
 	var notes sql.NullString
 
 	err := rows.Scan(
@@ -670,8 +717,8 @@ func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 		&a.Severity,
 		&a.Message,
 		&eventIDsJSON,
-		&a.FirstSeen,
-		&a.LastSeen,
+		&firstSeenStr,
+		&lastSeenStr,
 		&a.Count,
 		&mitreJSON,
 		&a.Resolved,
@@ -685,6 +732,17 @@ func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 		return nil, err
 	}
 
+	if firstSeenStr.Valid {
+		if t, err := parseGoTimeString(firstSeenStr.String); err == nil {
+			a.FirstSeen = t
+		}
+	}
+	if lastSeenStr.Valid {
+		if t, err := parseGoTimeString(lastSeenStr.String); err == nil {
+			a.LastSeen = t
+		}
+	}
+
 	if eventIDsJSON.Valid {
 		if err := json.Unmarshal([]byte(eventIDsJSON.String), &a.EventIDs); err != nil {
 			return nil, fmt.Errorf("failed to parse event_ids: %w", err)
@@ -696,7 +754,7 @@ func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 		}
 	}
 	if resolvedTime.Valid {
-		t, err := time.Parse(time.RFC3339, resolvedTime.String)
+		t, err := parseGoTimeString(resolvedTime.String)
 		if err == nil {
 			a.ResolvedTime = &t
 		}
