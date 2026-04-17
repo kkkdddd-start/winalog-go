@@ -636,10 +636,14 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 	}
 
 	if eventIDsJSON.Valid {
-		json.Unmarshal([]byte(eventIDsJSON.String), &a.EventIDs)
+		if err := json.Unmarshal([]byte(eventIDsJSON.String), &a.EventIDs); err != nil {
+			return nil, fmt.Errorf("failed to parse event_ids: %w", err)
+		}
 	}
 	if mitreJSON.Valid {
-		json.Unmarshal([]byte(mitreJSON.String), &a.MITREAttack)
+		if err := json.Unmarshal([]byte(mitreJSON.String), &a.MITREAttack); err != nil {
+			return nil, fmt.Errorf("failed to parse mitre_attack: %w", err)
+		}
 	}
 	if resolvedTime.Valid {
 		t, err := time.Parse(time.RFC3339, resolvedTime.String)
@@ -682,10 +686,14 @@ func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 	}
 
 	if eventIDsJSON.Valid {
-		json.Unmarshal([]byte(eventIDsJSON.String), &a.EventIDs)
+		if err := json.Unmarshal([]byte(eventIDsJSON.String), &a.EventIDs); err != nil {
+			return nil, fmt.Errorf("failed to parse event_ids: %w", err)
+		}
 	}
 	if mitreJSON.Valid {
-		json.Unmarshal([]byte(mitreJSON.String), &a.MITREAttack)
+		if err := json.Unmarshal([]byte(mitreJSON.String), &a.MITREAttack); err != nil {
+			return nil, fmt.Errorf("failed to parse mitre_attack: %w", err)
+		}
 	}
 	if resolvedTime.Valid {
 		t, err := time.Parse(time.RFC3339, resolvedTime.String)

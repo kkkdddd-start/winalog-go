@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/kkkdddd-start/winalog-go/cmd/winalog/commands"
+	"github.com/kkkdddd-start/winalog-go/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +27,7 @@ Examples:
   winalog import security.evtx
   winalog search --event-id 4624
   winalog collect --output ./evidence.zip`,
-	Version: "2.4.0",
+	Version: version.Version,
 }
 
 func main() {

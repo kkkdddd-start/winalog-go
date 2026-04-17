@@ -97,11 +97,6 @@ func (d *DB) Unlock() {
 	d.writeMu.Unlock()
 }
 
-func (d *DB) BeginWithUnlock() (*sql.Tx, func()) {
-	d.writeMu.Lock()
-	return nil, func() { d.writeMu.Unlock() }
-}
-
 func (d *DB) CreateTables() error {
 	return d.createTables()
 }
@@ -138,9 +133,15 @@ func (d *DB) Analyze() error {
 func (d *DB) GetStats() (*DBStats, error) {
 	var eventCount, alertCount, importCount int64
 
-	d.conn.QueryRow("SELECT COUNT(*) FROM events").Scan(&eventCount)
-	d.conn.QueryRow("SELECT COUNT(*) FROM alerts").Scan(&alertCount)
-	d.conn.QueryRow("SELECT COUNT(*) FROM import_log").Scan(&importCount)
+	if err := d.conn.QueryRow("SELECT COUNT(*) FROM events").Scan(&eventCount); err != nil {
+		return nil, fmt.Errorf("failed to count events: %w", err)
+	}
+	if err := d.conn.QueryRow("SELECT COUNT(*) FROM alerts").Scan(&alertCount); err != nil {
+		return nil, fmt.Errorf("failed to count alerts: %w", err)
+	}
+	if err := d.conn.QueryRow("SELECT COUNT(*) FROM import_log").Scan(&importCount); err != nil {
+		return nil, fmt.Errorf("failed to count imports: %w", err)
+	}
 
 	var dbSize int64
 	if fi, err := os.Stat(d.path); err == nil {
