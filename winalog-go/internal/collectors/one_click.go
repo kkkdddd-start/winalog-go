@@ -3,10 +3,19 @@
 package collectors
 
 import (
+	"archive/zip"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/kkkdddd-start/winalog-go/internal/forensics"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
+	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
 type OneClickCollector struct {
@@ -15,27 +24,40 @@ type OneClickCollector struct {
 }
 
 type CollectConfig struct {
-	Workers           int
-	IncludePrefetch   bool
-	IncludeRegistry   bool
-	IncludeSystemInfo bool
-	OutputPath        string
+	Workers            int
+	IncludePrefetch    bool
+	IncludeRegistry    bool
+	IncludeSystemInfo  bool
+	IncludeProcessSig  bool
+	IncludeProcessDLLs bool
+	DLLCollectionMode  string
+	SelectedPIDs       []int
+	OutputPath         string
+	Compress           bool
+	CalculateHash      bool
 }
 
 type CollectOptions struct {
-	Workers           int
-	IncludePrefetch   bool
-	IncludeRegistry   bool
-	IncludeSystemInfo bool
-	OutputPath        string
-	Compress          bool
-	CalculateHash     bool
+	Workers            int
+	IncludePrefetch    bool
+	IncludeRegistry    bool
+	IncludeSystemInfo  bool
+	IncludeProcessSig  bool
+	IncludeProcessDLLs bool
+	DLLCollectionMode  string
+	SelectedPIDs       []int
+	OutputPath         string
+	Compress           bool
+	CalculateHash      bool
 }
 
 type OneClickResult struct {
-	OutputPath string
-	Duration   time.Duration
-	Success    bool
+	OutputPath     string            `json:"output_path"`
+	Duration       time.Duration     `json:"duration"`
+	Success        bool              `json:"success"`
+	CollectedItems map[string]int    `json:"collected_items"`
+	Hashes         map[string]string `json:"hashes,omitempty"`
+	Errors         []string          `json:"errors,omitempty"`
 }
 
 func NewOneClickCollector() *OneClickCollector {
@@ -49,7 +71,10 @@ func NewOneClickCollector() *OneClickCollector {
 			},
 		},
 		cfg: CollectConfig{
-			Workers: 4,
+			Workers:            4,
+			IncludeProcessSig:  true,
+			IncludeProcessDLLs: false,
+			DLLCollectionMode:  "none",
 		},
 	}
 }
@@ -67,22 +92,360 @@ func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, 
 			c.cfg.IncludePrefetch = collectOpts.IncludePrefetch
 			c.cfg.IncludeRegistry = collectOpts.IncludeRegistry
 			c.cfg.IncludeSystemInfo = collectOpts.IncludeSystemInfo
+			c.cfg.IncludeProcessSig = collectOpts.IncludeProcessSig
+			c.cfg.IncludeProcessDLLs = collectOpts.IncludeProcessDLLs
+			c.cfg.DLLCollectionMode = collectOpts.DLLCollectionMode
+			c.cfg.SelectedPIDs = collectOpts.SelectedPIDs
 			if collectOpts.OutputPath != "" {
 				c.cfg.OutputPath = collectOpts.OutputPath
 			}
+			c.cfg.Compress = collectOpts.Compress
+			c.cfg.CalculateHash = collectOpts.CalculateHash
 		}
 	}
 
 	startTime := time.Now()
-	outputPath, err := c.FullCollect(ctx)
+	result, err := c.FullCollect(ctx)
 	if err != nil {
-		return nil, err
+		return &OneClickResult{
+			Success: false,
+			Errors:  []string{err.Error()},
+		}, err
 	}
-	return &OneClickResult{
-		OutputPath: outputPath,
-		Duration:   time.Since(startTime),
-		Success:    true,
-	}, nil
+	return result, nil
+}
+
+func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, error) {
+	startTime := time.Now()
+	result := &OneClickResult{
+		Success:        true,
+		CollectedItems: make(map[string]int),
+		Errors:         make([]string, 0),
+	}
+
+	if c.cfg.OutputPath == "" {
+		timestamp := time.Now().Format("20060102_150405")
+		c.cfg.OutputPath = filepath.Join(os.TempDir(), fmt.Sprintf("winalog_collect_%s", timestamp))
+	}
+
+	tempDir := c.cfg.OutputPath + "_temp"
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		result.Success = false
+		result.Errors = append(result.Errors, fmt.Sprintf("failed to create temp dir: %v", err))
+		return result, err
+	}
+	defer os.RemoveAll(tempDir)
+
+	var allErrors []string
+
+	if c.cfg.IncludeSystemInfo {
+		if err := c.collectSystemInfoTo(tempDir); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
+	if c.cfg.IncludeRegistry {
+		if err := c.CollectRegistry(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
+	if c.cfg.IncludePrefetch {
+		if err := c.CollectPrefetch(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
+	c.CollectEvtxLogs(ctx, tempDir)
+
+	if err := c.CollectEventLogs(ctx, tempDir); err != nil {
+		allErrors = append(allErrors, err.Error())
+	}
+
+	if c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs {
+		if err := c.collectProcessInfoWithSignaturesAndDLLs(tempDir); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
+	if c.cfg.CalculateHash {
+		hashes, err := c.CalculateFileHashes(tempDir)
+		if err == nil {
+			result.Hashes = hashes
+		}
+	}
+
+	if c.cfg.Compress {
+		zipPath := c.cfg.OutputPath + ".zip"
+		if err := c.CreateZipFromDir(tempDir, zipPath); err != nil {
+			allErrors = append(allErrors, err.Error())
+		} else {
+			c.cfg.OutputPath = zipPath
+		}
+	} else {
+		if err := os.Rename(tempDir, c.cfg.OutputPath); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
+	result.OutputPath = c.cfg.OutputPath
+	result.Duration = time.Since(startTime)
+	result.Errors = allErrors
+	if len(allErrors) > 0 {
+		result.Success = false
+	}
+
+	return result, nil
+}
+
+func (c *OneClickCollector) collectProcessInfoWithSignaturesAndDLLs(tempDir string) error {
+	processDir := filepath.Join(tempDir, "processes")
+	if err := os.MkdirAll(processDir, 0755); err != nil {
+		return err
+	}
+
+	collector := NewProcessInfoCollector()
+	processes, err := collector.collectProcessInfo()
+	if err != nil {
+		return err
+	}
+
+	processList := make([]map[string]interface{}, 0)
+	dllList := make([]map[string]interface{}, 0)
+
+	for _, proc := range processes {
+		procData := map[string]interface{}{
+			"pid":       proc.PID,
+			"name":      proc.Name,
+			"ppid":      proc.PPID,
+			"path":      proc.Path,
+			"user":      proc.User,
+			"is_signed": proc.IsSigned,
+		}
+		if proc.Signature != nil {
+			procData["signature"] = proc.Signature
+		}
+		processList = append(processList, procData)
+
+		if c.cfg.IncludeProcessDLLs {
+			switch c.cfg.DLLCollectionMode {
+			case "all":
+				dlls, _ := GetProcessDLLs(int(proc.PID))
+				for _, dll := range dlls {
+					dllData := map[string]interface{}{
+						"pid":     dll.ProcessID,
+						"name":    dll.ProcessName,
+						"module":  dll.Name,
+						"path":    dll.Path,
+						"size":    dll.Size,
+						"version": dll.Version,
+					}
+					dllList = append(dllList, dllData)
+				}
+			case "selected":
+				for _, selectedPID := range c.cfg.SelectedPIDs {
+					if int(proc.PID) == selectedPID {
+						dlls, _ := GetProcessDLLs(int(proc.PID))
+						for _, dll := range dlls {
+							dllData := map[string]interface{}{
+								"pid":     dll.ProcessID,
+								"name":    dll.ProcessName,
+								"module":  dll.Name,
+								"path":    dll.Path,
+								"size":    dll.Size,
+								"version": dll.Version,
+							}
+							dllList = append(dllList, dllData)
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
+	processData, _ := json.MarshalIndent(processList, "", "  ")
+	if err := os.WriteFile(filepath.Join(processDir, "processes.json"), processData, 0644); err != nil {
+		return err
+	}
+
+	if len(dllList) > 0 {
+		dllData, _ := json.MarshalIndent(dllList, "", "  ")
+		if err := os.WriteFile(filepath.Join(processDir, "process_dlls.json"), dllData, 0644); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *OneClickCollector) collectSystemInfoTo(tempDir string) error {
+	infoDir := filepath.Join(tempDir, "system_info")
+	if err := os.MkdirAll(infoDir, 0755); err != nil {
+		return err
+	}
+
+	info, err := CollectSystemInfo(context.Background())
+	if err != nil {
+		return err
+	}
+
+	data, _ := json.MarshalIndent(info, "", "  ")
+	return os.WriteFile(filepath.Join(infoDir, "system_info.json"), data, 0644)
+}
+
+func (c *OneClickCollector) CollectEvtxLogs(ctx context.Context, outputDir string) error {
+	evtxDir := filepath.Join(outputDir, "winevt_logs")
+	if err := os.MkdirAll(evtxDir, 0755); err != nil {
+		return err
+	}
+
+	logPaths := []string{
+		`C:\Windows\System32\winevt\Logs\Security.evtx`,
+		`C:\Windows\System32\winevt\Logs\System.evtx`,
+		`C:\Windows\System32\winevt\Logs\Application.evtx`,
+	}
+
+	for _, logPath := range logPaths {
+		if _, err := os.Stat(logPath); err == nil {
+			dst := filepath.Join(evtxDir, filepath.Base(logPath))
+			c.CopyFileWithRetry(logPath, dst, 3)
+		}
+	}
+
+	return nil
+}
+
+func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir string) error {
+	eventLogDir := filepath.Join(outputDir, "event_logs")
+	if err := os.MkdirAll(eventLogDir, 0755); err != nil {
+		return err
+	}
+
+	cmd := `Get-WinEvent -ListLog * -ErrorAction SilentlyContinue | Where-Object { $_.RecordCount -gt 0 } | Select-Object -First 20 -ExpandProperty LogName | ForEach-Object { $_ }`
+
+	result := utils.RunPowerShell(cmd)
+	if !result.Success() {
+		return result.Error
+	}
+
+	logNames := strings.Split(strings.TrimSpace(result.Output), "\n")
+	for _, logName := range logNames {
+		logName = strings.TrimSpace(logName)
+		if logName == "" {
+			continue
+		}
+
+		exportPath := filepath.Join(eventLogDir, logName+".evtx")
+		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]`,
+			logName, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
+
+		utils.RunPowerShell(exportCmd)
+	}
+
+	return nil
+}
+
+func (c *OneClickCollector) CollectPrefetch(ctx context.Context, outputDir string) error {
+	prefetchDir := filepath.Join(outputDir, "prefetch")
+	if err := os.MkdirAll(prefetchDir, 0755); err != nil {
+		return err
+	}
+
+	prefetchPath := `C:\Windows\Prefetch`
+	entries, err := os.ReadDir(prefetchPath)
+	if err != nil {
+		return nil
+	}
+
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".pf") {
+			src := filepath.Join(prefetchPath, entry.Name())
+			dst := filepath.Join(prefetchDir, entry.Name())
+			c.CopyFileWithRetry(src, dst, 3)
+		}
+	}
+
+	return nil
+}
+
+func (c *OneClickCollector) CollectRegistry(ctx context.Context, outputDir string) error {
+	regDir := filepath.Join(outputDir, "registry")
+	if err := os.MkdirAll(regDir, 0755); err != nil {
+		return err
+	}
+
+	runKeys := []string{
+		`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
+		`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`,
+		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
+		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`,
+	}
+
+	for _, keyPath := range runKeys {
+		keyName := strings.ReplaceAll(keyPath, "\\", "_")
+		keyName = strings.ReplaceAll(keyName, ":", "")
+		outputPath := filepath.Join(regDir, keyName+".txt")
+
+		cmd := fmt.Sprintf(`Get-ItemProperty -Path '%s' -ErrorAction SilentlyContinue | ConvertTo-Json -Compress`, keyPath)
+		result := utils.RunPowerShell(cmd)
+		if result.Success() && result.Output != "" {
+			os.WriteFile(outputPath, []byte(result.Output), 0644)
+		}
+	}
+
+	return nil
+}
+
+func (c *OneClickCollector) CreateZipFromDir(sourceDir, zipPath string) error {
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		return err
+	}
+	defer zipFile.Close()
+
+	writer := zip.NewWriter(zipFile)
+	defer writer.Close()
+
+	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		header, _ := zip.FileInfoHeader(info)
+		header.Name = strings.TrimPrefix(path, sourceDir)
+
+		if info.IsDir() {
+			header.Name += "/"
+		}
+
+		headerWriter, _ := writer.Create(header.Name)
+		if info.IsDir() {
+			return nil
+		}
+
+		file, _ := os.Open(path)
+		defer file.Close()
+		_, err = io.Copy(headerWriter, file)
+		return err
+	})
+}
+
+func (c *OneClickCollector) CalculateFileHashes(dir string) (map[string]string, error) {
+	hashes := make(map[string]string)
+
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+
+		if hash, err := forensics.CalculateFileHash(path); err == nil {
+			hashes[path] = hash.SHA256
+		}
+		return nil
+	})
+
+	return hashes, nil
 }
 
 func (c *OneClickCollector) DiscoverLogSources() ([]string, error) {
@@ -164,55 +527,8 @@ func getDir(path string) string {
 	return "."
 }
 
-func (c *OneClickCollector) CollectEvtxLogs(ctx context.Context, outputDir string) error {
-	return nil
-}
-
-func (c *OneClickCollector) CollectPrefetch(ctx context.Context, outputDir string) error {
-	return nil
-}
-
-func (c *OneClickCollector) CollectRegistry(ctx context.Context, outputDir string) error {
-	return nil
-}
-
-func (c *OneClickCollector) CollectSystemInfo(ctx context.Context, outputDir string) error {
-	return nil
-}
-
-func (c *OneClickCollector) CalculateFileHashes(dir string) (map[string]string, error) {
-	return make(map[string]string), nil
-}
-
 func (c *OneClickCollector) GenerateCollectReport(success bool, outputDir string) error {
 	return nil
-}
-
-func (c *OneClickCollector) FullCollect(ctx context.Context) (string, error) {
-	startTime := time.Now()
-
-	if c.cfg.OutputPath == "" {
-		c.cfg.OutputPath = fmt.Sprintf("winalog_collect_%s.zip", time.Now().Format("20060102_150405"))
-	}
-
-	if err := c.CollectEvtxLogs(ctx, os.TempDir()); err != nil {
-		return "", err
-	}
-
-	if err := c.CollectPrefetch(ctx, os.TempDir()); err != nil {
-		return "", err
-	}
-
-	if err := c.CollectRegistry(ctx, os.TempDir()); err != nil {
-		return "", err
-	}
-
-	if err := c.CollectSystemInfo(ctx, os.TempDir()); err != nil {
-		return "", err
-	}
-
-	_ = startTime
-	return c.cfg.OutputPath, nil
 }
 
 func CreateZipFromDir(sourceDir, zipPath string) error {

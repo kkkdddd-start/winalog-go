@@ -14,21 +14,37 @@ type SystemInfo struct {
 	TimeZone     string        `json:"timezone"`
 	LocalTime    time.Time     `json:"local_time"`
 	Uptime       time.Duration `json:"uptime"`
+	CPUCores     int           `json:"cpu_cores"`
+	CPUModel     string        `json:"cpu_model"`
+	MemoryTotal  uint64        `json:"memory_total"`
+	MemoryFree   uint64        `json:"memory_free"`
+	BootTime     time.Time     `json:"boot_time"`
+}
+
+type SignatureInfo struct {
+	Status     string `json:"status"`
+	Issuer     string `json:"issuer"`
+	Subject    string `json:"subject"`
+	ValidFrom  string `json:"valid_from"`
+	ValidTo    string `json:"valid_to"`
+	Thumbprint string `json:"thumbprint"`
+	SerialNum  string `json:"serial_number"`
 }
 
 type ProcessInfo struct {
-	PID         int32     `json:"pid"`
-	Name        string    `json:"name"`
-	PPID        int32     `json:"ppid"`
-	Path        string    `json:"path"`
-	CommandLine string    `json:"command_line"`
-	User        string    `json:"user"`
-	CPUPercent  float64   `json:"cpu_percent"`
-	MemoryMB    float64   `json:"memory_mb"`
-	StartTime   time.Time `json:"start_time"`
-	Signature   string    `json:"signature"`
-	HashSHA256  string    `json:"hash_sha256"`
-	IsElevated  bool      `json:"is_elevated"`
+	PID         int32          `json:"pid"`
+	Name        string         `json:"name"`
+	PPID        int32          `json:"ppid"`
+	Path        string         `json:"path"`
+	CommandLine string         `json:"command_line"`
+	User        string         `json:"user"`
+	CPUPercent  float64        `json:"cpu_percent"`
+	MemoryMB    float64        `json:"memory_mb"`
+	StartTime   time.Time      `json:"start_time"`
+	Signature   *SignatureInfo `json:"signature,omitempty"`
+	IsSigned    bool           `json:"is_signed"`
+	HashSHA256  string         `json:"hash_sha256"`
+	IsElevated  bool           `json:"is_elevated"`
 }
 
 type NetworkConnection struct {
@@ -115,12 +131,15 @@ type EnvInfo struct {
 }
 
 type DLLModule struct {
-	ProcessID   int32  `json:"process_id"`
-	ProcessName string `json:"process_name"`
-	BaseAddress string `json:"base_address"`
-	Size        uint32 `json:"size"`
-	Path        string `json:"path"`
-	HashSHA256  string `json:"hash_sha256"`
+	ProcessID   int32          `json:"process_id"`
+	ProcessName string         `json:"process_name"`
+	BaseAddress string         `json:"base_address"`
+	Size        uint32         `json:"size"`
+	Path        string         `json:"path"`
+	HashSHA256  string         `json:"hash_sha256"`
+	Version     string         `json:"version"`
+	Signature   *SignatureInfo `json:"signature,omitempty"`
+	IsSigned    bool           `json:"is_signed"`
 }
 
 type WMIProvider struct {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
+	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
@@ -99,6 +101,14 @@ type DLLInfo struct {
 	Path        string `json:"path"`
 	Size        uint32 `json:"size"`
 	Version     string `json:"version"`
+	IsSigned    bool   `json:"is_signed"`
+}
+
+type ProcessDLLResponse struct {
+	ProcessID   int32      `json:"process_id"`
+	ProcessName string     `json:"process_name"`
+	DLLs        []*DLLInfo `json:"dlls"`
+	Total       int        `json:"total"`
 }
 
 type DriverResponse struct {
@@ -112,7 +122,42 @@ type DriverInfo struct {
 	Description string `json:"description"`
 	Path        string `json:"path"`
 	Status      string `json:"status"`
-	StartMode   string `json:"start_mode"`
+}
+
+type UserResponse struct {
+	Users []*UserInfo `json:"users"`
+	Total int         `json:"total"`
+}
+
+type UserInfo struct {
+	Name     string `json:"name"`
+	SID      string `json:"sid"`
+	Enabled  bool   `json:"enabled"`
+	FullName string `json:"full_name"`
+	Type     string `json:"type"`
+}
+
+type RegistryPersistenceResponse struct {
+	RunKeys []*RegistryKeyInfo `json:"run_keys"`
+	Total   int                `json:"total"`
+}
+
+type RegistryKeyInfo struct {
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	Type  string `json:"type"`
+}
+
+type TaskResponse struct {
+	Tasks []*TaskInfo `json:"tasks"`
+	Total int         `json:"total"`
+}
+
+type TaskInfo struct {
+	Name  string `json:"name"`
+	Path  string `json:"path"`
+	State string `json:"state"`
 }
 
 var startTime = time.Now()
@@ -189,10 +234,14 @@ func (h *SystemHandler) GetProcesses(c *gin.Context) {
 		return
 	}
 
-	limitStr := c.DefaultQuery("limit", "100")
+	cfg := config.DefaultConfig()
+	defaultLimit := cfg.Search.DefaultProcessLimit
+	maxLimit := cfg.Search.MaxProcessLimit
+
+	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
 	limit, _ := strconv.Atoi(limitStr)
-	if limit <= 0 || limit > 500 {
-		limit = 100
+	if limit <= 0 || limit > maxLimit {
+		limit = defaultLimit
 	}
 
 	processes, err := collectors.ListProcesses()
@@ -227,10 +276,14 @@ func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
 		return
 	}
 
-	limitStr := c.DefaultQuery("limit", "100")
+	cfg := config.DefaultConfig()
+	defaultLimit := cfg.Search.DefaultQueryLimit
+	maxLimit := cfg.Search.MaxQueryLimit
+
+	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
 	limit, _ := strconv.Atoi(limitStr)
-	if limit <= 0 || limit > 500 {
-		limit = 100
+	if limit <= 0 || limit > maxLimit {
+		limit = defaultLimit
 	}
 
 	protocol := c.Query("protocol")
@@ -322,6 +375,10 @@ func SetupSystemRoutes(r *gin.Engine, systemHandler *SystemHandler) {
 		system.GET("/env", systemHandler.GetEnvironmentVariables)
 		system.GET("/dlls", systemHandler.GetLoadedDLLs)
 		system.GET("/drivers", systemHandler.GetDrivers)
+		system.GET("/users", systemHandler.GetUsers)
+		system.GET("/registry", systemHandler.GetRegistryPersistence)
+		system.GET("/tasks", systemHandler.GetScheduledTasks)
+		system.GET("/process/:pid/dlls", systemHandler.GetProcessDLLs)
 	}
 }
 
@@ -372,10 +429,14 @@ func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
 		return
 	}
 
-	limitStr := c.DefaultQuery("limit", "100")
+	cfg := config.DefaultConfig()
+	defaultLimit := cfg.Search.DefaultQueryLimit
+	maxLimit := cfg.Search.MaxQueryLimit
+
+	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
 	limit, _ := strconv.Atoi(limitStr)
-	if limit <= 0 || limit > 500 {
-		limit = 100
+	if limit <= 0 || limit > maxLimit {
+		limit = defaultLimit
 	}
 
 	dlls, err := collectors.ListLoadedDLLs()
@@ -434,5 +495,165 @@ func (h *SystemHandler) GetDrivers(c *gin.Context) {
 	c.JSON(http.StatusOK, DriverResponse{
 		Drivers: result,
 		Total:   len(result),
+	})
+}
+
+func (h *SystemHandler) GetUsers(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, UserResponse{
+			Users: []*UserInfo{},
+			Total: 0,
+		})
+		return
+	}
+
+	users, err := collectors.ListLocalUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := make([]*UserInfo, 0, len(users))
+	for _, u := range users {
+		result = append(result, &UserInfo{
+			Name:     u.Name,
+			SID:      u.SID,
+			Enabled:  u.Enabled,
+			FullName: u.FullName,
+			Type:     u.Type,
+		})
+	}
+
+	c.JSON(http.StatusOK, UserResponse{
+		Users: result,
+		Total: len(result),
+	})
+}
+
+func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, RegistryPersistenceResponse{
+			RunKeys: []*RegistryKeyInfo{},
+			Total:   0,
+		})
+		return
+	}
+
+	persistence, err := collectors.CollectRegistryPersistence(context.Background())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(persistence) == 0 {
+		c.JSON(http.StatusOK, RegistryPersistenceResponse{
+			RunKeys: []*RegistryKeyInfo{},
+			Total:   0,
+		})
+		return
+	}
+
+	p := persistence[0]
+	keys := make([]*RegistryKeyInfo, 0)
+
+	for _, k := range p.RunKeys {
+		keys = append(keys, &RegistryKeyInfo{
+			Path:  k.Path,
+			Name:  k.Name,
+			Value: k.Value,
+			Type:  k.Type,
+		})
+	}
+	for _, k := range p.UserInit {
+		keys = append(keys, &RegistryKeyInfo{
+			Path:  k.Path,
+			Name:  k.Name,
+			Value: k.Value,
+			Type:  k.Type,
+		})
+	}
+
+	c.JSON(http.StatusOK, RegistryPersistenceResponse{
+		RunKeys: keys,
+		Total:   len(keys),
+	})
+}
+
+func (h *SystemHandler) GetScheduledTasks(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, TaskResponse{
+			Tasks: []*TaskInfo{},
+			Total: 0,
+		})
+		return
+	}
+
+	tasks, err := collectors.ListScheduledTasks()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := make([]*TaskInfo, 0, len(tasks))
+	for _, t := range tasks {
+		result = append(result, &TaskInfo{
+			Name:  t.TaskName,
+			Path:  t.TaskPath,
+			State: t.State,
+		})
+	}
+
+	c.JSON(http.StatusOK, TaskResponse{
+		Tasks: result,
+		Total: len(result),
+	})
+}
+
+func (h *SystemHandler) GetProcessDLLs(c *gin.Context) {
+	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, ProcessDLLResponse{
+			ProcessID:   0,
+			ProcessName: "",
+			DLLs:        []*DLLInfo{},
+			Total:       0,
+		})
+		return
+	}
+
+	pidStr := c.Param("pid")
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid pid"})
+		return
+	}
+
+	dlls, err := collectors.GetProcessDLLs(pid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	processName := fmt.Sprintf("Process_%d", pid)
+
+	result := make([]*DLLInfo, 0, len(dlls))
+	for _, dll := range dlls {
+		result = append(result, &DLLInfo{
+			ProcessID:   dll.ProcessID,
+			ProcessName: dll.ProcessName,
+			Name:        dll.Name,
+			Path:        dll.Path,
+			Size:        dll.Size,
+			Version:     dll.Version,
+		})
+		if dll.ProcessName != "" {
+			processName = dll.ProcessName
+		}
+	}
+
+	c.JSON(http.StatusOK, ProcessDLLResponse{
+		ProcessID:   int32(pid),
+		ProcessName: processName,
+		DLLs:        result,
+		Total:       len(result),
 	})
 }

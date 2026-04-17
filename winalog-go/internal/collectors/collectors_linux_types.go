@@ -7,15 +7,15 @@ type Process struct {
 	Name string
 }
 
-type NetworkConnection struct {
+type NetConnection struct {
 	PID         int
-	ProcessName string
 	Protocol    string
 	LocalAddr   string
-	LocalPort   uint16
+	LocalPort   int
 	RemoteAddr  string
-	RemotePort  uint16
+	RemotePort  int
 	State       string
+	ProcessName string
 }
 
 type SignatureResult struct {
@@ -51,4 +51,30 @@ type Driver struct {
 	Description string
 	Path        string
 	Status      string
+}
+
+type UserAccount struct {
+	SID         string
+	Name        string
+	Domain      string
+	FullName    string
+	Type        string
+	Enabled     bool
+	HomeDir     string
+	ProfilePath string
+}
+
+type RegistryPersistence struct {
+	RunKeys       []*RegistryInfo
+	UserInit      []*RegistryInfo
+	TaskScheduler []*RegistryInfo
+}
+
+type RegistryInfo struct {
+	Path    string
+	Name    string
+	Value   string
+	Type    string
+	Source  string
+	Enabled bool
 }

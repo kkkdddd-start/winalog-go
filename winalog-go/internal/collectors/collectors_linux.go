@@ -13,7 +13,7 @@ func ListProcesses() ([]Process, error) {
 	return nil, ErrNotSupported
 }
 
-func ListNetworkConnections() ([]NetworkConnection, error) {
+func ListNetworkConnections() ([]NetConnection, error) {
 	return nil, ErrNotSupported
 }
 
@@ -27,4 +27,16 @@ func VerifySignature(path string) (*SignatureResult, error) {
 
 func RunPersistenceCollection(ctx context.Context) (string, error) {
 	return "", ErrNotSupported
+}
+
+func ListLocalUsers() ([]*UserAccount, error) {
+	return nil, ErrNotSupported
+}
+
+func CollectRegistryPersistence(ctx context.Context) ([]*RegistryPersistence, error) {
+	return nil, ErrNotSupported
+}
+
+func GetProcessDLLs(pid int) ([]DLLModuleInfo, error) {
+	return nil, ErrNotSupported
 }

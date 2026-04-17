@@ -42,10 +42,14 @@ type ParserConfig struct {
 }
 
 type SearchConfig struct {
-	MaxResults         int           `yaml:"max_results"`
-	Timeout            time.Duration `yaml:"timeout"`
-	HighlightMaxLength int           `yaml:"highlight_max_length"`
-	DefaultPageSize    int           `yaml:"default_page_size"`
+	MaxResults          int           `yaml:"max_results"`
+	Timeout             time.Duration `yaml:"timeout"`
+	HighlightMaxLength  int           `yaml:"highlight_max_length"`
+	DefaultPageSize     int           `yaml:"default_page_size"`
+	DefaultQueryLimit   int           `yaml:"default_query_limit"`
+	MaxQueryLimit       int           `yaml:"max_query_limit"`
+	DefaultProcessLimit int           `yaml:"default_process_limit"`
+	MaxProcessLimit     int           `yaml:"max_process_limit"`
 }
 
 type AlertsConfig struct {
@@ -163,10 +167,14 @@ func DefaultConfig() *Config {
 			MemoryLimit: 2048,
 		},
 		Search: SearchConfig{
-			MaxResults:         100000,
-			Timeout:            30 * time.Second,
-			HighlightMaxLength: 200,
-			DefaultPageSize:    100,
+			MaxResults:          100000,
+			Timeout:             30 * time.Second,
+			HighlightMaxLength:  200,
+			DefaultPageSize:     100,
+			DefaultQueryLimit:   100,
+			MaxQueryLimit:       1000,
+			DefaultProcessLimit: 500,
+			MaxProcessLimit:     2000,
 		},
 		Alerts: AlertsConfig{
 			Enabled:        true,

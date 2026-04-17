@@ -4,10 +4,12 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"unsafe"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
+	"github.com/kkkdddd-start/winalog-go/internal/utils"
 	"golang.org/x/sys/windows"
 )
 
@@ -155,7 +157,15 @@ func GetProcessDLLs(pid int) ([]DLLModuleInfo, error) {
 }
 
 func GetDLLVersion(dllPath string) string {
-	_, _ = windows.GetFileVersionInfoSize(dllPath, nil)
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+
+	cmd := fmt.Sprintf(`(Get-Item '%s' -ErrorAction SilentlyContinue).VersionInfo | Select-Object -ExpandProperty FileVersion`, strings.ReplaceAll(dllPath, "'", "''"))
+	result := utils.RunPowerShell(cmd)
+	if result.Success() && result.Output != "" {
+		return strings.TrimSpace(result.Output)
+	}
 	return ""
 }
 

@@ -4,9 +4,11 @@ package collectors
 
 import (
 	"context"
+	"strings"
 	"time"
 	"unsafe"
 
+	"github.com/kkkdddd-start/winalog-go/internal/forensics"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"golang.org/x/sys/windows"
 )
@@ -67,14 +69,33 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 
 	for {
 		exeName := windows.UTF16ToString(entry.ExeFile[:])
+		exePath := getProcessPath(entry.ProcessID)
 
 		proc := &types.ProcessInfo{
 			PID:         int32(entry.ProcessID),
 			PPID:        int32(entry.ParentProcessID),
 			Name:        exeName,
+			Path:        exePath,
 			CommandLine: getCommandLine(entry.ProcessID),
 			User:        getProcessUser(entry.ProcessID),
 			StartTime:   getProcessStartTime(entry.ProcessID),
+		}
+
+		if exePath != "" && !strings.HasSuffix(strings.ToLower(exePath), ".tmp") {
+			sigInfo := forensics.VerifySignature(exePath)
+			if sigInfo != nil {
+				proc.IsSigned = sigInfo.Status == "Valid"
+				if sigInfo.Status != "Error" && sigInfo.Status != "Unsupported" {
+					proc.Signature = &types.SignatureInfo{
+						Status:     sigInfo.Status,
+						Issuer:     sigInfo.Issuer,
+						Subject:    sigInfo.Signer,
+						ValidFrom:  formatTime(sigInfo.NotBefore),
+						ValidTo:    formatTime(sigInfo.NotAfter),
+						Thumbprint: sigInfo.Thumbprint,
+					}
+				}
+			}
 		}
 
 		processes = append(processes, proc)
@@ -86,6 +107,28 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 	}
 
 	return processes, nil
+}
+
+func getProcessPath(pid uint32) string {
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION, false, pid)
+	if err != nil {
+		return ""
+	}
+	defer windows.CloseHandle(hProcess)
+
+	var pathBuf [windows.MAX_PATH]uint16
+	size := uint32(len(pathBuf))
+	if err := windows.QueryFullProcessImageName(hProcess, 0, &pathBuf[0], &size); err != nil {
+		return ""
+	}
+	return windows.UTF16ToString(pathBuf[:size])
+}
+
+func formatTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format(time.RFC3339)
 }
 
 func getCommandLine(pid uint32) string {

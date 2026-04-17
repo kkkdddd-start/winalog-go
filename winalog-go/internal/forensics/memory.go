@@ -9,8 +9,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"time"
+	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 type MemoryDumpResult struct {
@@ -72,21 +76,23 @@ func (c *MemoryCollector) SetIncludeStacks(include bool) {
 
 func (c *MemoryCollector) CollectProcessMemory(pid uint32) (*MemoryDumpResult, error) {
 	result := &MemoryDumpResult{
-		ProcessID: pid,
-		DumpTime:  time.Now(),
+		ProcessID:   pid,
+		ProcessName: fmt.Sprintf("Process_%d", pid),
+		DumpTime:    time.Now(),
 	}
 
 	info, err := getProcessInfo(pid)
+	if err == nil {
+		result.ProcessName = info.Name
+	}
+
+	dumpPath := filepath.Join(c.outputDir, fmt.Sprintf("memory_%d_%s.raw", pid, time.Now().Format("20060102_150405")))
+
+	dumpData, err := readProcessMemory(pid)
 	if err != nil {
 		result.Error = err.Error()
 		return result, err
 	}
-	result.ProcessName = info.Name
-
-	dumpPath := fmt.Sprintf("%s/memory_%d_%s.raw",
-		c.outputDir,
-		pid,
-		time.Now().Format("20060102_150405"))
 
 	file, err := os.Create(dumpPath)
 	if err != nil {
@@ -94,12 +100,6 @@ func (c *MemoryCollector) CollectProcessMemory(pid uint32) (*MemoryDumpResult, e
 		return result, err
 	}
 	defer file.Close()
-
-	dumpData, err := readProcessMemory(pid)
-	if err != nil {
-		result.Error = err.Error()
-		return result, err
-	}
 
 	written, err := file.Write(dumpData)
 	if err != nil {
@@ -110,15 +110,11 @@ func (c *MemoryCollector) CollectProcessMemory(pid uint32) (*MemoryDumpResult, e
 	result.DumpSize = int64(written)
 	result.DumpPath = dumpPath
 	result.Hash = calculateMemoryHash(dumpData)
-	result.Permissions = MemoryPermissions{
-		Readable: true,
-	}
+	result.Permissions = MemoryPermissions{Readable: true}
 
 	if c.includeModules {
-		modules, err := c.collectModules(pid)
-		if err == nil {
-			result.Modules = modules
-		}
+		modules, _ := c.collectModules(pid)
+		result.Modules = modules
 	}
 
 	return result, nil
@@ -131,9 +127,13 @@ func (c *MemoryCollector) CollectSystemMemory() (*MemoryDumpResult, error) {
 		DumpTime:    time.Now(),
 	}
 
-	dumpPath := fmt.Sprintf("%s/system_memory_%s.raw",
-		c.outputDir,
-		time.Now().Format("20060102_150405"))
+	dumpPath := filepath.Join(c.outputDir, fmt.Sprintf("system_memory_%s.raw", time.Now().Format("20060102_150405")))
+
+	dumpData, err := readSystemMemory()
+	if err != nil {
+		result.Error = err.Error()
+		return result, err
+	}
 
 	file, err := os.Create(dumpPath)
 	if err != nil {
@@ -141,12 +141,6 @@ func (c *MemoryCollector) CollectSystemMemory() (*MemoryDumpResult, error) {
 		return result, err
 	}
 	defer file.Close()
-
-	dumpData, err := readSystemMemory()
-	if err != nil {
-		result.Error = err.Error()
-		return result, err
-	}
 
 	written, err := file.Write(dumpData)
 	if err != nil {
@@ -162,23 +156,121 @@ func (c *MemoryCollector) CollectSystemMemory() (*MemoryDumpResult, error) {
 }
 
 func (c *MemoryCollector) collectModules(pid uint32) ([]MemoryModule, error) {
-	return []MemoryModule{}, nil
+	modules := make([]MemoryModule, 0)
+
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_VM_READ, false, pid)
+	if err != nil {
+		return modules, err
+	}
+	defer windows.CloseHandle(hProcess)
+
+	var moduleCount uint32
+	err = windows.EnumProcessModules(hProcess, nil, 0, &moduleCount)
+	if err != nil {
+		return modules, err
+	}
+
+	handleSize := unsafe.Sizeof(windows.Handle(0))
+	moduleHandles := make([]windows.Handle, moduleCount/uint32(handleSize))
+	err = windows.EnumProcessModules(hProcess, &moduleHandles[0], moduleCount, &moduleCount)
+	if err != nil {
+		return modules, err
+	}
+
+	for _, hModule := range moduleHandles {
+		var modName [windows.MAX_PATH]uint16
+		windows.GetModuleBaseName(hProcess, hModule, &modName[0], uint32(len(modName)))
+
+		var modSize uint64
+		var modInfo windows.ModuleInfo
+		if windows.GetModuleInformation(hProcess, hModule, &modInfo, uint32(unsafe.Sizeof(modInfo))) {
+			modSize = modInfo.SizeOfImage
+		}
+
+		modules = append(modules, MemoryModule{
+			BaseAddress: uint64(modInfo.BaseAddress),
+			Size:        modSize,
+			Name:        windows.UTF16ToString(modName[:]),
+		})
+	}
+
+	return modules, nil
 }
 
 var (
-	ErrProcessMemoryNotImplemented = fmt.Errorf("process memory dump not implemented: requires windows API calls (OpenProcess, ReadProcessMemory)")
-	ErrSystemMemoryNotImplemented  = fmt.Errorf("system memory dump not implemented: requires windows API calls (NtQuerySystemInformation)")
+	ErrProcessMemoryNotImplemented = fmt.Errorf("process memory dump not implemented")
+	ErrSystemMemoryNotImplemented  = fmt.Errorf("system memory dump not implemented")
 )
 
-func getProcessInfo(pid uint32) (struct{ Name string }, error) {
+type processInfo struct {
+	Name string
+}
+
+func getProcessInfo(pid uint32) (processInfo, error) {
 	if runtime.GOOS != "windows" {
-		return struct{ Name string }{Name: fmt.Sprintf("Process_%d", pid)}, nil
+		return processInfo{Name: fmt.Sprintf("Process_%d", pid)}, nil
 	}
-	return struct{ Name string }{Name: fmt.Sprintf("Process_%d", pid)}, nil
+
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION, false, pid)
+	if err != nil {
+		return processInfo{Name: fmt.Sprintf("Process_%d", pid)}, err
+	}
+	defer windows.CloseHandle(hProcess)
+
+	var name [windows.MAX_PATH]uint16
+	size := uint32(len(name))
+	if err := windows.QueryFullProcessImageName(hProcess, 0, &name[0], &size); err != nil {
+		return processInfo{Name: fmt.Sprintf("Process_%d", pid)}, err
+	}
+
+	return processInfo{Name: windows.UTF16ToString(name[:])}, nil
 }
 
 func readProcessMemory(pid uint32) ([]byte, error) {
-	return nil, ErrProcessMemoryNotImplemented
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_VM_READ, false, pid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open process: %w", err)
+	}
+	defer windows.CloseHandle(hProcess)
+
+	var memInfo windows.MemoryBasicInformation
+	var bytesRead uint64
+	var buffer bytes.Buffer
+
+	for {
+		err := windows.VirtualQueryEx(hProcess, windows.Pointer(memInfo.BaseAddress), &memInfo, uint32(unsafe.Sizeof(memInfo)))
+		if err != nil || memInfo.BaseAddress == nil {
+			break
+		}
+
+		if memInfo.State == windows.MEM_COMMIT && memInfo.Protect&windows.PAGE_READABLE != 0 {
+			size := uint64(memInfo.RegionSize)
+
+			if size > 100*1024*1024 {
+				size = 100 * 1024 * 1024
+			}
+
+			data := make([]byte, size)
+			var nr uint64
+
+			success, _, _ := windows.ReadProcessMemory(
+				hProcess,
+				memInfo.BaseAddress,
+				&data[0],
+				uint64(len(data)),
+				&nr,
+			)
+
+			if success && nr > 0 {
+				buffer.Write(data[:nr])
+				bytesRead += nr
+			}
+		}
+
+		memInfo.BaseAddress = windows.Pointer(uintptr(memInfo.BaseAddress) + uintptr(memInfo.RegionSize))
+	}
+
+	return buffer.Bytes(), nil
 }
 
 func readSystemMemory() ([]byte, error) {
@@ -186,6 +278,9 @@ func readSystemMemory() ([]byte, error) {
 }
 
 func calculateMemoryHash(data []byte) string {
+	if len(data) == 0 {
+		return ""
+	}
 	hash := sha256.Sum256(data)
 	return hex.EncodeToString(hash[:])
 }
@@ -331,7 +426,7 @@ func CollectMemoryForProcess(req *MemoryCollectionRequest) (*MemoryCollectionRes
 	}
 
 	if req.OutputDir == "" {
-		req.OutputDir = "/tmp"
+		req.OutputDir = os.TempDir()
 	}
 
 	collector := NewMemoryCollector(req.OutputDir)
@@ -364,9 +459,36 @@ type MemoryRegions struct {
 }
 
 func QueryMemoryRegions(pid uint32) (*MemoryRegions, error) {
-	return &MemoryRegions{
-		Regions: []MemoryRegion{},
-	}, nil
+	regions := make([]MemoryRegion, 0)
+
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_VM_READ, false, pid)
+	if err != nil {
+		return &MemoryRegions{Regions: regions}, err
+	}
+	defer windows.CloseHandle(hProcess)
+
+	var memInfo windows.MemoryBasicInformation
+	var address uintptr = 0
+
+	for {
+		err := windows.VirtualQueryEx(hProcess, windows.Pointer(address), &memInfo, uint32(unsafe.Sizeof(memInfo)))
+		if err != nil || memInfo.BaseAddress == nil {
+			break
+		}
+
+		regions = append(regions, MemoryRegion{
+			BaseAddress:    uint64(memInfo.BaseAddress),
+			AllocationBase: uint64(memInfo.AllocationBase),
+			RegionSize:     uint64(memInfo.RegionSize),
+			State:          uint32(memInfo.State),
+			Protect:        uint32(memInfo.Protect),
+			Type:           uint32(memInfo.Type),
+		})
+
+		address = uintptr(memInfo.BaseAddress) + uintptr(memInfo.RegionSize)
+	}
+
+	return &MemoryRegions{Regions: regions}, nil
 }
 
 func FormatMemoryDumpResult(result *MemoryDumpResult) string {
