@@ -32,11 +32,7 @@ func (c *SuppressCache) IsSuppressed(rule *rules.AlertRule, event *types.Event) 
 			continue
 		}
 
-		if c.matchesConditions(suppress.Conditions, event) {
-			return true
-		}
-
-		if c.matchesTimeWindow(suppress, event) {
+		if c.matchesConditions(suppress.Conditions, event) && c.matchesTimeWindow(suppress, event) {
 			return true
 		}
 	}

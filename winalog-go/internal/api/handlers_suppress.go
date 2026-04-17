@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -267,6 +268,27 @@ func parseConditions(jsonStr string, conditions *[]types.SuppressCondition) {
 	if jsonStr == "" || jsonStr == "[]" {
 		*conditions = []types.SuppressCondition{}
 		return
+	}
+
+	type rawCondition struct {
+		Field    string      `json:"field"`
+		Operator string      `json:"operator"`
+		Value    interface{} `json:"value"`
+	}
+
+	var raw []rawCondition
+	if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
+		*conditions = []types.SuppressCondition{}
+		return
+	}
+
+	*conditions = make([]types.SuppressCondition, len(raw))
+	for i, r := range raw {
+		(*conditions)[i] = types.SuppressCondition{
+			Field:    r.Field,
+			Operator: r.Operator,
+			Value:    r.Value,
+		}
 	}
 }
 
