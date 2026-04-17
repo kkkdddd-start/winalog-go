@@ -19,6 +19,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var currentServer *api.Server
+var currentConfig *config.Config
+
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show system status",
@@ -843,12 +846,24 @@ func runServe(cmd *cobra.Command, args []string) error {
 	defer db.Close()
 
 	addr := fmt.Sprintf("%s:%d", serveFlags.host, serveFlags.port)
-	server := api.NewServer(db, cfg, globalConfigPath, addr)
+	currentServer = api.NewServer(db, cfg, globalConfigPath, addr)
+	currentConfig = cfg
+
+	if serveFlags.configPath != "" {
+		if err := globalConfigLoader.Watch(func(newCfg *config.Config) {
+			if currentServer != nil {
+				currentServer.ReloadConfig(newCfg)
+				currentConfig = newCfg
+			}
+		}); err != nil {
+			fmt.Printf("Warning: failed to enable config watch: %v\n", err)
+		}
+	}
 
 	fmt.Printf("Starting HTTP API server on %s\n", addr)
 	fmt.Printf("API documentation available at http://%s/api/health\n", addr)
 
-	return server.Start()
+	return currentServer.Start()
 }
 
 var forensicsCmd = &cobra.Command{

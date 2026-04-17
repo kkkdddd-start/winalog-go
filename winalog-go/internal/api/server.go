@@ -176,3 +176,9 @@ func (s *Server) Stop() error {
 	log.Println("HTTP server gracefully stopped")
 	return nil
 }
+
+func (s *Server) ReloadConfig(cfg *config.Config) {
+	s.cfg = cfg
+	s.settingsEng.UpdateConfig(cfg)
+	log.Println("Configuration reloaded successfully")
+}

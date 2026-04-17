@@ -15,6 +15,13 @@ type Manager struct {
 	templates       map[string]*template.Template
 	customTemplates map[string]string
 	defaultCSS      string
+	templateInfo    map[string]templateCacheInfo
+	ttl             time.Duration
+}
+
+type templateCacheInfo struct {
+	loadedAt time.Time
+	ttl      time.Duration
 }
 
 var defaultManager *Manager
@@ -25,6 +32,8 @@ func GetManager() *Manager {
 		defaultManager = &Manager{
 			templates:       make(map[string]*template.Template),
 			customTemplates: make(map[string]string),
+			templateInfo:    make(map[string]templateCacheInfo),
+			ttl:             5 * time.Minute,
 		}
 	})
 	return defaultManager
@@ -132,16 +141,31 @@ func (m *Manager) SetCustomTemplate(name string, content string) error {
 
 	m.customTemplates[name] = content
 	m.templates[name] = tmpl
+	m.templateInfo[name] = templateCacheInfo{
+		loadedAt: time.Now(),
+		ttl:      m.ttl,
+	}
 	return nil
 }
 
 func (m *Manager) GetTemplate(name string) (*template.Template, bool) {
 	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	if tmpl, ok := m.templates[name]; ok {
+	tmpl, ok := m.templates[name]
+	if ok {
+		info, infoOk := m.templateInfo[name]
+		if infoOk && time.Since(info.loadedAt) > info.ttl {
+			m.mu.RUnlock()
+			m.mu.Lock()
+			delete(m.templates, name)
+			delete(m.customTemplates, name)
+			delete(m.templateInfo, name)
+			m.mu.Unlock()
+			return nil, false
+		}
+		m.mu.RUnlock()
 		return tmpl, true
 	}
+	m.mu.RUnlock()
 
 	if content, ok := m.customTemplates[name]; ok {
 		funcMap := template.FuncMap{
@@ -248,6 +272,26 @@ func (m *Manager) ListTemplates() []string {
 	return names
 }
 
+func (m *Manager) SetTTL(ttl time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ttl = ttl
+}
+
+func (m *Manager) GetTTL() time.Duration {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.ttl
+}
+
+func (m *Manager) ClearCache() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.templates = make(map[string]*template.Template)
+	m.customTemplates = make(map[string]string)
+	m.templateInfo = make(map[string]templateCacheInfo)
+}
+
 func (m *Manager) DeleteCustomTemplate(name string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -255,6 +299,7 @@ func (m *Manager) DeleteCustomTemplate(name string) bool {
 	if _, ok := m.customTemplates[name]; ok {
 		delete(m.customTemplates, name)
 		delete(m.templates, name)
+		delete(m.templateInfo, name)
 		return true
 	}
 	return false

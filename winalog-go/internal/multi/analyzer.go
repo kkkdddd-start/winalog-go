@@ -10,11 +10,11 @@ import (
 
 type MultiMachineAnalyzer struct {
 	db       *storage.DB
-	machines map[string]*MachineContext
+	machines map[string]*MultiMachineContext
 	mu       sync.RWMutex
 }
 
-type MachineContext struct {
+type MultiMachineContext struct {
 	ID        string         `json:"id"`
 	Name      string         `json:"name"`
 	IP        string         `json:"ip"`
@@ -41,9 +41,9 @@ type UserLogin struct {
 }
 
 type CrossMachineResult struct {
-	Machine         *MachineContext    `json:"machine"`
-	LateralMovement []*LateralMovement `json:"lateral_movement"`
-	Statistics      *MachineStats      `json:"statistics"`
+	Machine         *MultiMachineContext `json:"machine"`
+	LateralMovement []*LateralMovement   `json:"lateral_movement"`
+	Statistics      *MachineStats        `json:"statistics"`
 }
 
 type MachineStats struct {
@@ -58,28 +58,28 @@ type MachineStats struct {
 func NewMultiMachineAnalyzer(db *storage.DB) *MultiMachineAnalyzer {
 	return &MultiMachineAnalyzer{
 		db:       db,
-		machines: make(map[string]*MachineContext),
+		machines: make(map[string]*MultiMachineContext),
 	}
 }
 
-func (a *MultiMachineAnalyzer) AddMachine(ctx *MachineContext) {
+func (a *MultiMachineAnalyzer) AddMachine(ctx *MultiMachineContext) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.machines[ctx.ID] = ctx
 }
 
-func (a *MultiMachineAnalyzer) GetMachine(id string) (*MachineContext, bool) {
+func (a *MultiMachineAnalyzer) GetMachine(id string) (*MultiMachineContext, bool) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	ctx, ok := a.machines[id]
 	return ctx, ok
 }
 
-func (a *MultiMachineAnalyzer) ListMachines() []*MachineContext {
+func (a *MultiMachineAnalyzer) ListMachines() []*MultiMachineContext {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	result := make([]*MachineContext, 0, len(a.machines))
+	result := make([]*MultiMachineContext, 0, len(a.machines))
 	for _, ctx := range a.machines {
 		result = append(result, ctx)
 	}
@@ -168,7 +168,7 @@ func (a *MultiMachineAnalyzer) detectCrossMachineLateralMovement() []*LateralMov
 	return movements
 }
 
-func (a *MultiMachineAnalyzer) detectLateralMovement(machine *MachineContext) []*LateralMovement {
+func (a *MultiMachineAnalyzer) detectLateralMovement(machine *MultiMachineContext) []*LateralMovement {
 	movements := make([]*LateralMovement, 0)
 
 	var prevEvent *types.Event
@@ -223,11 +223,11 @@ func extractUser(event *types.Event) string {
 	return "Unknown"
 }
 
-func (a *MultiMachineAnalyzer) DetectDC() []*MachineContext {
+func (a *MultiMachineAnalyzer) DetectDC() []*MultiMachineContext {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	var dcs []*MachineContext
+	var dcs []*MultiMachineContext
 	for _, machine := range a.machines {
 		if machine.Role == "DC" {
 			dcs = append(dcs, machine)
@@ -236,11 +236,11 @@ func (a *MultiMachineAnalyzer) DetectDC() []*MachineContext {
 	return dcs
 }
 
-func (a *MultiMachineAnalyzer) DetectServers() []*MachineContext {
+func (a *MultiMachineAnalyzer) DetectServers() []*MultiMachineContext {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	var servers []*MachineContext
+	var servers []*MultiMachineContext
 	for _, machine := range a.machines {
 		if machine.Role == "Server" {
 			servers = append(servers, machine)
@@ -249,11 +249,11 @@ func (a *MultiMachineAnalyzer) DetectServers() []*MachineContext {
 	return servers
 }
 
-func (a *MultiMachineAnalyzer) DetectWorkstations() []*MachineContext {
+func (a *MultiMachineAnalyzer) DetectWorkstations() []*MultiMachineContext {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	var workstations []*MachineContext
+	var workstations []*MultiMachineContext
 	for _, machine := range a.machines {
 		if machine.Role == "Workstation" {
 			workstations = append(workstations, machine)

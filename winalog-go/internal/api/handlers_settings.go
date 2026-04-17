@@ -115,6 +115,10 @@ func (h *SettingsHandler) ResetSettings(c *gin.Context) {
 	})
 }
 
+func (h *SettingsHandler) UpdateConfig(cfg *config.Config) {
+	h.cfg = cfg
+}
+
 func SetupSettingsRoutes(r *gin.Engine, settingsHandler *SettingsHandler) {
 	settings := r.Group("/api/settings")
 	{

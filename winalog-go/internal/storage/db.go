@@ -46,6 +46,11 @@ func NewDB(path string) (*DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	if _, err := conn.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
 	if err := db.createTables(); err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("failed to create tables: %w", err)
