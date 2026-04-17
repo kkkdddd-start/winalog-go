@@ -1007,6 +1007,18 @@ curl http://localhost:8080/api/health
 
 ---
 
+### 3.15.1 Report Templates（报告模板）
+
+| 测试 ID | 测试项 | 操作步骤 | 预期结果 |
+|---------|--------|----------|----------|
+| WEB-195 | 模板列表 | 访问模板管理 | 显示可用模板列表 |
+| WEB-196 | 创建模板 | 点击新建模板 | 显示创建表单 |
+| WEB-197 | 编辑模板 | 修改现有模板 | 模板更新成功 |
+| WEB-198 | 删除模板 | 删除自定义模板 | 模板删除成功 |
+| WEB-199 | 模板预览 | 预览模板效果 | 显示模板预览 |
+
+---
+
 ### 3.16 Rules（规则管理）
 
 | 测试 ID | 测试项 | 操作步骤 | 预期结果 |
@@ -1018,6 +1030,13 @@ curl http://localhost:8080/api/health
 | WEB-204 | 搜索规则 | 输入规则名称搜索 | 显示匹配规则 |
 | WEB-205 | 按类型过滤 | 选择规则类型过滤 | 显示匹配类型规则 |
 | WEB-206 | 验证规则 | 点击验证按钮 | 显示验证结果 |
+| WEB-207 | 创建规则 | 点击新建规则按钮 | 显示规则编辑器 |
+| WEB-208 | 编辑规则 | 修改现有规则 | 规则更新成功 |
+| WEB-209 | 删除规则 | 删除自定义规则 | 规则删除成功 |
+| WEB-210 | 规则模板 | 查看可用模板 | 显示规则模板列表 |
+| WEB-211 | 从模板实例化 | 从模板创建规则 | 新规则创建成功 |
+| WEB-212 | 导入规则 | 导入规则文件 | 规则导入成功 |
+| WEB-213 | 导出规则 | 导出规则到文件 | 文件下载成功 |
 
 ---
 
@@ -1144,6 +1163,11 @@ curl http://localhost:8080/api/alerts/stats
 
 # 获取告警趋势
 curl "http://localhost:8080/api/alerts/trend?days=7"
+
+# 运行告警分析
+curl -X POST http://localhost:8080/api/alerts/run-analysis \
+  -H "Content-Type: application/json" \
+  -d '{"rules":["brute-force-detection"],"hours":24}'
 
 # 获取单个告警
 curl http://localhost:8080/api/alerts/1
@@ -1333,6 +1357,18 @@ curl "http://localhost:8080/api/system/dlls?limit=100"
 
 # 获取驱动列表
 curl http://localhost:8080/api/system/drivers
+
+# 获取用户列表
+curl http://localhost:8080/api/system/users
+
+# 获取注册表持久化信息
+curl http://localhost:8080/api/system/registry
+
+# 获取计划任务
+curl http://localhost:8080/api/system/tasks
+
+# 获取特定进程的 DLL
+curl "http://localhost:8080/api/system/process/1234/dlls"
 ```
 
 ### 4.14 规则 API
@@ -1344,8 +1380,45 @@ curl http://localhost:8080/api/rules
 # 获取规则详情
 curl http://localhost:8080/api/rules/brute-force-suspect
 
+# 创建规则
+curl -X POST http://localhost:8080/api/rules \
+  -H "Content-Type: application/json" \
+  -d '{"name":"custom-rule","event_type":"single","severity":"medium","conditions":[...]}'
+
+# 更新规则
+curl -X PUT http://localhost:8080/api/rules/custom-rule \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Updated description","enabled":false}'
+
+# 删除规则
+curl -X DELETE http://localhost:8080/api/rules/custom-rule
+
 # 切换规则启用状态
-curl -X POST "http://localhost:8080/api/rules/brute-force-suspect/toggle?enabled=false"
+curl -X POST "http://localhost:8080/api/rules/brute-force-suspect/toggle"
+
+# 验证规则
+curl -X POST http://localhost:8080/api/rules/validate \
+  -H "Content-Type: application/json" \
+  -d '{"name":"test-rule","event_type":"single","conditions":[...]}'
+
+# 导入规则
+curl -X POST http://localhost:8080/api/rules/import \
+  -H "Content-Type: application/json" \
+  -d '{"file_path":"/path/to/rules.json"}'
+
+# 导出规则
+curl http://localhost:8080/api/rules/export?format=json -o rules.json
+
+# 获取规则模板列表
+curl http://localhost:8080/api/rules/templates
+
+# 获取规则模板详情
+curl http://localhost:8080/api/rules/templates/powershell_detection
+
+# 从模板实例化规则
+curl -X POST http://localhost:8080/api/rules/templates/powershell_detection/instantiate \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-powershell-rule","params":{"event_id":"4103"}}'
 ```
 
 ### 4.15 报告 API
@@ -1364,6 +1437,29 @@ curl http://localhost:8080/api/reports/report-123
 
 # 导出报告数据
 curl "http://localhost:8080/api/reports/export?format=json" -o export.json
+```
+
+### 4.15.1 报告模板 API
+
+```bash
+# 获取报告模板列表
+curl http://localhost:8080/api/report-templates
+
+# 获取报告模板详情
+curl http://localhost:8080/api/report-templates/security_summary
+
+# 创建自定义模板
+curl -X POST http://localhost:8080/api/report-templates \
+  -H "Content-Type: application/json" \
+  -d '{"name":"custom_template","content":"<!DOCTYPE html>...","description":"Custom report"}'
+
+# 更新自定义模板
+curl -X PUT http://localhost:8080/api/report-templates/custom_template \
+  -H "Content-Type: application/json" \
+  -d '{"content":"<!DOCTYPE html>...","description":"Updated template"}'
+
+# 删除自定义模板
+curl -X DELETE http://localhost:8080/api/report-templates/custom_template
 ```
 
 ### 4.16 时间线 API
@@ -1395,8 +1491,13 @@ curl http://localhost:8080/api/live/stats
 ### 4.18 导入 API
 
 ```bash
+# 导入日志文件
+curl -X POST http://localhost:8080/api/import/logs \
+  -H "Content-Type: application/json" \
+  -d '{"files":["/path/to/security.evtx"],"alert_on_import":true}'
+
 # 获取导入状态
-curl http://localhost:8080/api/import/status
+curl http://localhost:8080/api/import/status?path=/path/to/security.evtx
 ```
 
 ### 4.19 收集 API
@@ -1622,44 +1723,64 @@ echo "=== WinLogAnalyzer-Go 快速验证测试 ==="
 BASE_URL="http://localhost:8080/api"
 
 # 1. 健康检查
-echo "[1/10] 测试健康检查..."
+echo "[1/15] 测试健康检查..."
 curl -s "$BASE_URL/health" | grep -q "ok" && echo "  PASS" || echo "  FAIL"
 
 # 2. 事件搜索
-echo "[2/10] 测试事件搜索..."
+echo "[2/15] 测试事件搜索..."
 curl -s -X POST "$BASE_URL/events/search" -H "Content-Type: application/json" -d '{"limit":10}' > /dev/null && echo "  PASS" || echo "  FAIL"
 
 # 3. 告警列表
-echo "[3/10] 测试告警列表..."
+echo "[3/15] 测试告警列表..."
 curl -s "$BASE_URL/alerts" > /dev/null && echo "  PASS" || echo "  FAIL"
 
 # 4. 告警统计
-echo "[4/10] 测试告警统计..."
+echo "[4/15] 测试告警统计..."
 curl -s "$BASE_URL/alerts/stats" > /dev/null && echo "  PASS" || echo "  FAIL"
 
-# 5. 分析器列表
-echo "[5/10] 测试分析器列表..."
+# 5. 运行分析
+echo "[5/15] 测试运行分析..."
+curl -s -X POST "$BASE_URL/alerts/run-analysis" -H "Content-Type: application/json" -d '{}' > /dev/null && echo "  PASS" || echo "  FAIL"
+
+# 6. 分析器列表
+echo "[6/15] 测试分析器列表..."
 curl -s "$BASE_URL/analyzers" > /dev/null && echo "  PASS" || echo "  FAIL"
 
-# 6. SQL 查询
-echo "[6/10] 测试 SQL 查询..."
+# 7. SQL 查询
+echo "[7/15] 测试 SQL 查询..."
 curl -s -X POST "$BASE_URL/query/execute" -H "Content-Type: application/json" -d '{"sql":"SELECT 1 as test"}' > /dev/null && echo "  PASS" || echo "  FAIL"
 
-# 7. 仪表板统计
-echo "[7/10] 测试仪表板统计..."
+# 8. 仪表板统计
+echo "[8/15] 测试仪表板统计..."
 curl -s "$BASE_URL/dashboard/collection-stats" > /dev/null && echo "  PASS" || echo "  FAIL"
 
-# 8. 系统信息
-echo "[8/10] 测试系统信息..."
+# 9. 系统信息
+echo "[9/15] 测试系统信息..."
 curl -s "$BASE_URL/system/info" > /dev/null && echo "  PASS" || echo "  FAIL"
 
-# 9. 持久化检测
-echo "[9/10] 测试持久化检测..."
+# 10. 持久化检测
+echo "[10/15] 测试持久化检测..."
 curl -s "$BASE_URL/persistence/detect" > /dev/null && echo "  PASS" || echo "  FAIL"
 
-# 10. 规则列表
-echo "[10/10] 测试规则列表..."
+# 11. 规则列表
+echo "[11/15] 测试规则列表..."
 curl -s "$BASE_URL/rules" > /dev/null && echo "  PASS" || echo "  FAIL"
+
+# 12. 规则模板
+echo "[12/15] 测试规则模板..."
+curl -s "$BASE_URL/rules/templates" > /dev/null && echo "  PASS" || echo "  FAIL"
+
+# 13. 抑制规则
+echo "[13/15] 测试抑制规则..."
+curl -s "$BASE_URL/suppress" > /dev/null && echo "  PASS" || echo "  FAIL"
+
+# 14. UEBA
+echo "[14/15] 测试 UEBA..."
+curl -s "$BASE_URL/ueba/profiles" > /dev/null && echo "  PASS" || echo "  FAIL"
+
+# 15. 报告
+echo "[15/15] 测试报告..."
+curl -s "$BASE_URL/reports" > /dev/null && echo "  PASS" || echo "  FAIL"
 
 echo ""
 echo "=== 验证完成 ==="
@@ -1696,19 +1817,41 @@ endpoints=(
   "/events"
   "/alerts"
   "/alerts/stats"
+  "/alerts/trend"
   "/analyzers"
   "/dashboard/collection-stats"
   "/system/info"
   "/system/metrics"
+  "/system/processes"
+  "/system/network"
+  "/system/users"
+  "/system/registry"
+  "/system/tasks"
   "/persistence/detect"
+  "/persistence/categories"
+  "/persistence/techniques"
   "/rules"
+  "/rules/templates"
   "/reports"
+  "/report-templates"
   "/timeline"
+  "/timeline/stats"
+  "/timeline/chains"
   "/suppress"
   "/ueba/profiles"
   "/collect/status"
   "/import/status"
   "/settings"
+  "/ui/dashboard"
+  "/ui/alerts/groups"
+  "/ui/metrics"
+  "/ui/events/distribution"
+  "/policy-templates"
+  "/policy-instances"
+  "/policies"
+  "/forensics/evidence"
+  "/forensics/chain-of-custody"
+  "/forensics/memory-dump"
 )
 
 for endpoint in "${endpoints[@]}"; do
