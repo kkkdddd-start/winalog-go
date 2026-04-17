@@ -339,6 +339,12 @@ func (g *Generator) generateAlertReport(req *ReportRequest, report *Report) erro
 	}
 	report.Summary = summary
 
+	stats, err := g.calculateSecurityStats(req)
+	if err != nil {
+		return fmt.Errorf("failed to calculate security stats: %w", err)
+	}
+	report.Stats = stats
+
 	alerts, err := g.getTopAlerts(req)
 	if err != nil {
 		return fmt.Errorf("failed to get top alerts: %w", err)
@@ -350,6 +356,18 @@ func (g *Generator) generateAlertReport(req *ReportRequest, report *Report) erro
 		if err == nil {
 			report.MITREDist = mitre
 		}
+	}
+
+	if execSummary, err := g.generateExecutiveSummary(req); err == nil {
+		report.ExecutiveSummary = execSummary
+	}
+
+	if threat, err := g.generateThreatLandscape(req); err == nil {
+		report.ThreatLandscape = threat
+	}
+
+	if recs, err := g.generateRecommendations(req); err == nil {
+		report.Recommendations = recs
 	}
 
 	return nil
@@ -377,6 +395,14 @@ func (g *Generator) generateEventReport(req *ReportRequest, report *Report) erro
 		report.RawEvents = events
 	}
 
+	if iocs, err := g.extractIOCs(req); err == nil {
+		report.IOCs = iocs
+	}
+
+	if mitre, err := g.calculateMITREDistribution(req); err == nil {
+		report.MITREDist = mitre
+	}
+
 	return nil
 }
 
@@ -402,6 +428,11 @@ func (g *Generator) generateTimelineReport(req *ReportRequest, report *Report) e
 	timelineAnalysis, err := g.generateTimelineAnalysis(req)
 	if err == nil {
 		report.TimelineAnalysis = timelineAnalysis
+	}
+
+	events, err := g.getTopEvents(req)
+	if err == nil {
+		report.TopEvents = events
 	}
 
 	return nil
@@ -440,9 +471,13 @@ func (g *Generator) calculateSecurityStats(req *ReportRequest) (*SecurityStats, 
 	stats.GeneratedAt = time.Now()
 
 	eventFilter := &storage.EventFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     100000,
+		Limit: 100000,
+	}
+	if !req.StartTime.IsZero() {
+		eventFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		eventFilter.EndTime = &req.EndTime
 	}
 
 	events, _, err := g.db.ListEvents(eventFilter)
@@ -464,9 +499,13 @@ func (g *Generator) calculateSecurityStats(req *ReportRequest) (*SecurityStats, 
 	}
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     1000,
+		Limit: 1000,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err == nil {
@@ -540,9 +579,13 @@ func (g *Generator) extractIOCs(req *ReportRequest) (*IOCSummary, error) {
 	iocs := &IOCSummary{}
 
 	eventFilter := &storage.EventFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     100000,
+		Limit: 100000,
+	}
+	if !req.StartTime.IsZero() {
+		eventFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		eventFilter.EndTime = &req.EndTime
 	}
 
 	events, _, err := g.db.ListEvents(eventFilter)
@@ -592,9 +635,13 @@ func (g *Generator) calculateMITREDistribution(req *ReportRequest) (*MITREDist, 
 	}
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     1000,
+		Limit: 1000,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err != nil {
@@ -724,9 +771,13 @@ func extractTactic(mitreID string) string {
 
 func (g *Generator) getTopAlerts(req *ReportRequest) ([]*types.Alert, error) {
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     50,
+		Limit: 50,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err != nil {
@@ -737,9 +788,13 @@ func (g *Generator) getTopAlerts(req *ReportRequest) ([]*types.Alert, error) {
 
 func (g *Generator) getTopEvents(req *ReportRequest) ([]*types.Event, error) {
 	eventFilter := &storage.EventFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     1000,
+		Limit: 1000,
+	}
+	if !req.StartTime.IsZero() {
+		eventFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		eventFilter.EndTime = &req.EndTime
 	}
 	events, _, err := g.db.ListEvents(eventFilter)
 	if err != nil {
@@ -774,9 +829,13 @@ func (g *Generator) generateExecutiveSummary(req *ReportRequest) (*ExecutiveSumm
 	summary := &ExecutiveSummary{}
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     10000,
+		Limit: 10000,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err != nil {
@@ -831,9 +890,13 @@ func (g *Generator) generateTimelineAnalysis(req *ReportRequest) (*TimelineAnaly
 	}
 
 	eventFilter := &storage.EventFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     100000,
+		Limit: 100000,
+	}
+	if !req.StartTime.IsZero() {
+		eventFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		eventFilter.EndTime = &req.EndTime
 	}
 	events, _, err := g.db.ListEvents(eventFilter)
 	if err != nil {
@@ -859,9 +922,13 @@ func (g *Generator) generateTimelineAnalysis(req *ReportRequest) (*TimelineAnaly
 	analysis.PeakActivityHour = peakHour
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     10000,
+		Limit: 10000,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err == nil {
@@ -891,9 +958,13 @@ func (g *Generator) generateThreatLandscape(req *ReportRequest) (*ThreatLandscap
 	}
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     10000,
+		Limit: 10000,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err != nil {
@@ -966,9 +1037,13 @@ func (g *Generator) generateRecommendations(req *ReportRequest) ([]Recommendatio
 	recommendations := make([]Recommendation, 0)
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     10000,
+		Limit: 10000,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err != nil {
@@ -1034,9 +1109,13 @@ func (g *Generator) generateAttackPatterns(req *ReportRequest) ([]*AttackPattern
 	patterns := make([]*AttackPattern, 0)
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     10000,
+		Limit: 10000,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err != nil {
@@ -1100,9 +1179,13 @@ func (g *Generator) generateComplianceStatus(req *ReportRequest) (*ComplianceSta
 	}
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     10000,
+		Limit: 10000,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, _ := g.db.AlertRepo().Query(alertFilter)
 
@@ -1144,9 +1227,13 @@ func (g *Generator) buildTimeline(req *ReportRequest) ([]TimelineEntry, error) {
 	}
 
 	eventFilter := &storage.EventFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     limit / 2,
+		Limit: limit / 2,
+	}
+	if !req.StartTime.IsZero() {
+		eventFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		eventFilter.EndTime = &req.EndTime
 	}
 	events, _, err := g.db.ListEvents(eventFilter)
 	if err != nil {
@@ -1163,9 +1250,13 @@ func (g *Generator) buildTimeline(req *ReportRequest) ([]TimelineEntry, error) {
 	}
 
 	alertFilter := &storage.AlertFilter{
-		StartTime: &req.StartTime,
-		EndTime:   &req.EndTime,
-		Limit:     limit / 2,
+		Limit: limit / 2,
+	}
+	if !req.StartTime.IsZero() {
+		alertFilter.StartTime = &req.StartTime
+	}
+	if !req.EndTime.IsZero() {
+		alertFilter.EndTime = &req.EndTime
 	}
 	alerts, err := g.db.AlertRepo().Query(alertFilter)
 	if err != nil {
