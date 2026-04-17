@@ -214,13 +214,13 @@ func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
 	var genErr error
 
 	switch req.Type {
-	case "alert_report":
+	case "alert", "alert_report":
 		genErr = g.generateAlertReport(req, report)
-	case "event_report":
+	case "event", "event_report":
 		genErr = g.generateEventReport(req, report)
-	case "timeline_report":
+	case "timeline", "timeline_report":
 		genErr = g.generateTimelineReport(req, report)
-	case "security_summary", "":
+	case "security", "security_summary", "":
 		genErr = g.generateSecuritySummaryReport(req, report)
 	default:
 		genErr = g.generateSecuritySummaryReport(req, report)

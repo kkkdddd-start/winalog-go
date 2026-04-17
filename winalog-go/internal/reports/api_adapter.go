@@ -53,11 +53,21 @@ type APIReportTimeline struct {
 }
 
 type APIReportContent struct {
-	Summary   *APIReportSummary    `json:"summary,omitempty"`
-	Alerts    []*APIReportAlert    `json:"alerts,omitempty"`
-	Events    []*APIReportEvent    `json:"events,omitempty"`
-	Timeline  []*APIReportTimeline `json:"timeline,omitempty"`
-	RawEvents []*types.Event       `json:"raw_events,omitempty"`
+	Summary    *APIReportSummary    `json:"summary,omitempty"`
+	Alerts     []*APIReportAlert    `json:"alerts,omitempty"`
+	Events     []*APIReportEvent    `json:"events,omitempty"`
+	Timeline   []*APIReportTimeline `json:"timeline,omitempty"`
+	RawEvents  []*types.Event       `json:"raw_events,omitempty"`
+	Statistics *APIReportStatistics `json:"statistics,omitempty"`
+}
+
+type APIReportStatistics struct {
+	TotalEvents     int64                      `json:"total_events,omitempty"`
+	TotalAlerts     int64                      `json:"total_alerts,omitempty"`
+	LevelBreakdown  []*types.LevelDistribution `json:"level_breakdown,omitempty"`
+	HourlyBreakdown []HourlyCount              `json:"hourly_breakdown,omitempty"`
+	TopEventIDs     []EventIDCount             `json:"top_event_ids,omitempty"`
+	LoginStats      *LoginStats                `json:"login_stats,omitempty"`
 }
 
 func AdaptReportToAPI(report *Report) *APIReportContent {
@@ -130,6 +140,17 @@ func AdaptReportToAPI(report *Report) *APIReportContent {
 				Message:   entry.Message,
 				Severity:  entry.Severity,
 			})
+		}
+	}
+
+	if report.Stats != nil {
+		content.Statistics = &APIReportStatistics{
+			TotalEvents:     report.Stats.TotalEvents,
+			TotalAlerts:     report.Stats.TotalAlerts,
+			LevelBreakdown:  report.Stats.LevelDistribution,
+			HourlyBreakdown: report.Stats.GetHourlyDistribution(),
+			TopEventIDs:     report.Stats.TopEventIDs,
+			LoginStats:      report.Stats.LoginStats,
 		}
 	}
 

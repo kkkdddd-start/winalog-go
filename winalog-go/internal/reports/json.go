@@ -150,25 +150,18 @@ func (e *JSONExporter) ExportStructured(req *ReportRequest) (*JSONReportTemplate
 	}
 
 	template := &JSONReportTemplate{
-		Version:       version.Version,
-		GeneratedAt:   report.GeneratedAt,
-		ReportTitle:   report.Title,
-		Summary:       SummarySection{},
-		Statistics:    StatsSection{},
-		TopEventIDs:   report.Stats.TopEventIDs,
-		LoginAnalysis: report.Stats.LoginStats,
-		IOCs:          report.IOCs,
-		MITRE:         report.MITREDist,
+		Version:     version.Version,
+		GeneratedAt: report.GeneratedAt,
+		ReportTitle: report.Title,
+		Summary:     SummarySection{},
+		Statistics:  StatsSection{},
+		IOCs:        report.IOCs,
+		MITRE:       report.MITREDist,
 	}
 
-	template.Summary.TotalEvents = report.Summary.TotalEvents
-	template.Summary.TotalAlerts = report.Summary.TotalAlerts
-	template.Summary.CriticalEvents = report.Summary.CriticalEvents
-	template.Summary.HighAlerts = report.Summary.HighAlerts
-	template.Summary.TimeRangeDays = report.Summary.TimeRangeDays
-	template.Summary.Computers = report.Summary.Computers
-
 	if report.Stats != nil {
+		template.TopEventIDs = report.Stats.TopEventIDs
+		template.LoginAnalysis = report.Stats.LoginStats
 		template.Statistics.EventDistribution = report.Stats.EventDistribution
 		template.Statistics.AlertDistribution = report.Stats.AlertDistribution
 
@@ -181,6 +174,13 @@ func (e *JSONExporter) ExportStructured(req *ReportRequest) (*JSONReportTemplate
 
 		template.Statistics.HourlyBreakdown = report.Stats.GetHourlyDistribution()
 	}
+
+	template.Summary.TotalEvents = report.Summary.TotalEvents
+	template.Summary.TotalAlerts = report.Summary.TotalAlerts
+	template.Summary.CriticalEvents = report.Summary.CriticalEvents
+	template.Summary.HighAlerts = report.Summary.HighAlerts
+	template.Summary.TimeRangeDays = report.Summary.TimeRangeDays
+	template.Summary.Computers = report.Summary.Computers
 
 	for _, alert := range report.TopAlerts {
 		alertSection := AlertSection{
