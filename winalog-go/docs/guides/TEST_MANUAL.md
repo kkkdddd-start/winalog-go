@@ -101,68 +101,47 @@ curl http://localhost:8080/api/health
 ./winalog import --type application application.evtx
 ```
 
-#### 测试 2.1.5：收集 Windows 事件日志
+#### 测试 2.1.5：收集取证数据
 
 ```bash
-# 收集安全日志
-./winalog collect --logs security
+# 基本收集
+./winalog collect
 
-# 收集多种日志
-./winalog collect --logs security,system,application
+# 指定输出文件
+./winalog collect -o forensic_data.zip
 
-# 收集所有日志
-./winalog collect --logs all
-
-# 查看收集状态
-./winalog status
-```
-
-#### 测试 2.1.6：收集取证数据
-
-```bash
 # 收集所有取证数据
-./winalog collect --forensics
+./winalog collect --include-prefetch --include-shimcache --include-amcache --include-registry --include-tasks
 
-# 收集特定类型
-./winalog collect --forensics --type prefetch
-./winalog collect --forensics --type registry
-./winalog collect --forensics --type schedule
+# 收集指定类型
+./winalog collect --include-logs --include-registry
+
+# 高压缩比收集
+./winalog collect --compress-level 9
+
+# 使用多个工作线程
+./winalog collect --workers 8
 ```
 
-#### 测试 2.1.7：完整收集命令
-
-```bash
-# 基本收集（Windows 事件日志）
-./winalog collect --logs security,system
-
-# 收集并压缩
-./winalog collect --logs all --compress
-
-# 收集并计算哈希
-./winalog collect --logs security --hash
-
-# 输出到指定目录
-./winalog collect --logs security --output /path/to/output
-
-# 查看收集状态
-./winalog status
-
-# 收集进度
-./winalog collect --status <task_id>
-```
-
-#### 测试 2.1.8：实时日志监控
+#### 测试 2.1.6：实时日志监控
 
 ```bash
 # 启动实时监控（Ctrl+C 停止）
 ./winalog live collect
 
+# 监控特定日志
+./winalog live collect --log-name Security
+
+# 监控特定事件
+./winalog live collect --event-id 4625 --event-id 4672
+
+# 指定触发告警的规则
+./winalog live collect --rules BruteForce,SuspiciousPowerShell
+
 # 预期：SSE 流输出实时事件
 ```
 
 ---
-
-### 2.2 搜索与查询
 
 #### 测试 2.2.1：关键词搜索
 
@@ -284,7 +263,23 @@ curl http://localhost:8080/api/health
 
 ### 2.3 分析与检测
 
-#### 测试 2.3.1：暴力破解检测
+#### 测试 2.3.1：列出可用分析器
+
+```bash
+./winalog analyze list
+
+# 输出包括：
+# - brute_force: 暴力破解攻击
+# - login: 登录行为分析
+# - kerberos: Kerberos 协议异常
+# - powershell: PowerShell 恶意使用
+# - data_exfiltration: 数据外泄
+# - lateral_movement: 横向移动
+# - privilege_escalation: 权限提升
+# - persistence: 持久化机制
+```
+
+#### 测试 2.3.2：暴力破解检测
 
 ```bash
 # 执行暴力破解分析
@@ -293,11 +288,17 @@ curl http://localhost:8080/api/health
 # 指定时间窗口
 ./winalog analyze brute-force --hours 24
 
+# JSON 格式输出
+./winalog analyze brute-force --format json
+
+# 输出到文件
+./winalog analyze brute-force -o brute_force_results.json
+
 # 验证结果
 ./winalog query "SELECT * FROM alerts WHERE rule_name LIKE '%brute%'"
 ```
 
-#### 测试 2.3.2：登录活动分析
+#### 测试 2.3.3：登录活动分析
 
 ```bash
 ./winalog analyze login
@@ -309,7 +310,7 @@ curl http://localhost:8080/api/health
 # - 异地登录检测
 ```
 
-#### 测试 2.3.3：Kerberos 分析
+#### 测试 2.3.4：Kerberos 分析
 
 ```bash
 ./winalog analyze kerberos
@@ -321,7 +322,7 @@ curl http://localhost:8080/api/health
 # - Kerberoasting 攻击
 ```
 
-#### 测试 2.3.4：PowerShell 分析
+#### 测试 2.3.5：PowerShell 分析
 
 ```bash
 ./winalog analyze powershell
@@ -333,14 +334,23 @@ curl http://localhost:8080/api/health
 # - 恶意脚本执行
 ```
 
-#### 测试 2.3.5：关联分析
+#### 测试 2.3.6：关联分析
 
 ```bash
 ./winalog correlate
 
 # 指定时间窗口
-./winalog correlate --window "1h"
-./winalog correlate --window "24h"
+./winalog correlate --time-window 1h
+./winalog correlate --time-window 48h
+
+# 指定特定规则
+./winalog correlate --rules "LateralMovement,BruteForce"
+
+# JSON 格式输出
+./winalog correlate --format json
+
+# 保存结果
+./winalog correlate -o correlation_results.json
 
 # 输出攻击链
 # - 攻击阶段识别
@@ -348,7 +358,7 @@ curl http://localhost:8080/api/health
 # - MITRE ATT&CK 映射
 ```
 
-#### 测试 2.3.6：UEBA 用户行为分析
+#### 测试 2.3.7：UEBA 用户行为分析
 
 ```bash
 # 执行分析
@@ -357,25 +367,52 @@ curl http://localhost:8080/api/health
 # 指定分析时间范围
 ./winalog ueba analyze --hours 168
 
+# 保存异常为告警
+./winalog ueba analyze --save-alerts
+
 # 查看用户画像
 ./winalog ueba profiles
 
 # 查看特定用户画像
 ./winalog ueba profiles --user administrator
+
+# 学习用户基线
+./winalog ueba baseline --action learn
+
+# 显示当前基线
+./winalog ueba baseline --action show
+
+# 清除基线
+./winalog ueba baseline --action clear
 ```
 
-#### 测试 2.3.7：持久化检测
+#### 测试 2.3.8：持久化检测
 
 ```bash
 ./winalog persistence detect
 
 # 按类别检测
-./winalog persistence detect --category registry
-./winalog persistence detect --category service
-./winalog persistence detect --category scheduled
+./winalog persistence detect --category Registry
+./winalog persistence detect --category WMI
+./winalog persistence detect --category COM
+./winalog persistence detect --category Service
+./winalog persistence detect --category ScheduledTask
 
-# 按 MITRE 技术检测
+# 按 MITRE ATT&CK 技术检测
+./winalog persistence detect --technique T1546.003
 ./winalog persistence detect --technique T1547.001
+
+# JSON 格式输出
+./winalog persistence detect --format json
+
+# 文本格式输出
+./winalog persistence detect --format text
+
+# 保存结果
+./winalog persistence detect -o persistence_results.json
+
+# 显示检测进度
+./winalog persistence detect --progress
 ```
 
 ---
@@ -388,7 +425,8 @@ curl http://localhost:8080/api/health
 ./winalog multi analyze
 
 # 指定时间窗口
-./winalog multi analyze --window "24h"
+./winalog multi analyze --time-window 24h
+./winalog multi analyze --time-window 48h
 
 # 输出：
 # - 机器列表及角色
@@ -512,6 +550,29 @@ curl http://localhost:8080/api/health
 # - 时间趋势
 ```
 
+#### 测试 2.5.8：运行告警分析
+
+```bash
+# 运行所有规则的告警分析
+./winalog alert run
+
+# 指定规则运行
+./winalog alert run --rules brute-force-suspect,SuspiciousPowerShell
+
+# 指定时间窗口
+./winalog alert run --time-window 48h
+```
+
+#### 测试 2.5.9：持续监控模式
+
+```bash
+# 启动实时监控（Ctrl+C 停止）
+./winalog alert monitor
+
+# 设置检查间隔
+./winalog alert monitor --interval 10
+```
+
 ---
 
 ### 2.6 抑制规则（白名单）
@@ -571,216 +632,151 @@ curl http://localhost:8080/api/health
 #### 测试 2.7.2：导出事件数据
 
 ```bash
-# JSON 格式
-./winalog export json --output events.json
+# 导出为 CSV
+./winalog export csv export.csv
 
-# CSV 格式
-./winalog export csv --output events.csv
+# 导出为 JSON
+./winalog export json events.json
 
-# 指定过滤条件
-./winalog export json --event-ids 4625,4624 --output logins.json
+# 导出时间线
+./winalog export timeline timeline.csv
 
 # 限制导出数量
-./winalog export json --limit 1000 --output events.json
+./winalog export csv --limit 50000
 ```
 
 #### 测试 2.7.3：时间线操作
 
 ```bash
-# 构建时间线
+# 构建全局时间线
 ./winalog timeline build
 
 # 查询时间线
-./winalog timeline query --start "2024-01-01" --end "2024-01-31"
+./winalog timeline query --start "2024-01-01T00:00:00Z" --end "2024-01-31T23:59:59Z"
 
-# 导出时间线
-./winalog timeline export --format csv --output timeline.csv
+# 按计算机过滤
+./winalog timeline query --computer DC01
+
+# 按类别过滤
+./winalog timeline query --category Authentication
 ```
 
 ---
 
 ### 2.8 取证功能
 
-#### 测试 2.8.1：计算文件哈希
+#### 测试 2.8.1：收集取证数据
 
 ```bash
-# 基本用法（仅 Windows）
-./winalog forensics hash --path C:\\Windows\\notepad.exe
+# 收集取证数据
+./winalog forensics collect -o evidence.zip
 
-# 计算多个文件
-./winalog forensics hash --path C:\\Windows\\notepad.exe --path C:\\Windows\\System32\\cmd.exe
-
-# 输出格式
-./winalog forensics hash --path C:\\Windows\\notepad.exe --format json
+# 指定包含的数据类型
+./winalog forensics collect --include registry,prefetch,shimcache -o evidence.zip
 ```
 
-#### 测试 2.8.2：验证文件签名
+#### 测试 2.8.2：计算文件哈希
 
 ```bash
-./winalog forensics verify --path C:\\Windows\\notepad.exe
+# 计算文件哈希
+./winalog forensics hash suspicious.exe
 
-# 检查是否签名
-./winalog forensics is-signed --path C:\\Windows\\notepad.exe
-
-# 输出签名者信息
-./winalog forensics signature --path C:\\Windows\\notepad.exe
+# 批量计算
+./winalog forensics hash file1.dll file2.dll file3.dll
 ```
 
-#### 测试 2.8.3：收集取证数据
+#### 测试 2.8.3：验证文件签名
 
 ```bash
-# 收集注册表
-./winalog forensics collect --type registry
+# 验证文件签名
+./winalog forensics verify malware.dll
+```
 
-# 收集 Prefetch
-./winalog forensics collect --type prefetch
+#### 测试 2.8.4：文件验证（快速）
 
-# 收集 ShimCache
-./winalog forensics collect --type shimcache
+```bash
+# 验证文件哈希
+./winalog verify suspicious.exe
 
-# 收集 UserAssist
-./winalog forensics collect --type userassist
-
-# 收集计划任务
-./winalog forensics collect --type scheduledtasks
-
-# 收集所有
-./winalog forensics collect --type all
-
-# 指定输出路径
-./winalog forensics collect --type registry --output ./evidence/
+# 批量验证
+./winalog verify file1.dll file2.dll
 ```
 
 ---
 
 ### 2.9 系统与管理
 
-#### 测试 2.9.1：显示仪表板
+#### 测试 2.9.1：数据库状态
 
 ```bash
-./winalog dashboard
-
-# 输出包括：
-# - 总事件数
-# - 登录统计
-# - 事件级别分布
-# - Top 计算机
-# - Top 用户
-```
-
-#### 测试 2.9.2：显示系统状态
-
-```bash
-./winalog status
-
-# 输出包括：
-# - 数据库路径
-# - 数据库大小
-# - 事件总数
-# - 最后导入时间
-```
-
-#### 测试 2.9.3：显示系统信息
-
-```bash
-# 基本信息
-./winalog info
-
-# 仅进程
-./winalog info --type processes
-
-# 仅网络
-./winalog info --type network
-
-# 仅用户
-./winalog info --type users
-
-# 保存快照
-./winalog info --save
-```
-
-#### 测试 2.9.4：Prometheus 指标
-
-```bash
-./winalog metrics
-
-# 或启动指标服务器
-./winalog metrics --port 9090
-```
-
-#### 测试 2.9.5：文件完整性验证
-
-```bash
-./winalog verify --path C:\\Windows\\notepad.exe
-
-# 计算并比较哈希
-./winalog verify --path C:\\Windows\\notepad.exe --expected <sha256-hash>
-```
-
-#### 测试 2.9.6：数据库操作
-
-```bash
-# 查看状态
+# 查看数据库状态
 ./winalog db status
 
 # 优化数据库
 ./winalog db vacuum
 
-# 清理旧数据
-./winalog db clean --before "2024-01-01"
-
-# 清理孤立事件
-./winalog db clean --orphans
+# 清理旧数据（保留 30 天）
+./winalog db clean --days 30
 ```
 
-#### 测试 2.9.7：配置管理
+#### 测试 2.9.2：配置管理
 
 ```bash
-# 查看所有配置
+# 获取所有配置
 ./winalog config get
 
-# 查看特定配置
-./winalog config get --key log_level
+# 获取特定配置
+./winalog config get alert.retention_days
 
-# 修改配置
-./winalog config set --key log_level --value debug
-
-# 重置为默认值
-./winalog config reset
+# 设置配置值
+./winalog config set alert.retention_days 180
 ```
 
-#### 测试 2.9.8：规则管理
+#### 测试 2.9.3：仪表板
 
 ```bash
-# 列出所有规则
-./winalog rules list
+# 基本显示
+./winalog dashboard
 
-# 查看规则详情
-./winalog rules list --verbose
+# JSON 格式
+./winalog dashboard --format json
+```
 
+#### 测试 2.9.4：启动服务
+
+```bash
+# 默认启动
+./winalog serve
+
+# 指定端口
+./winalog serve --port 9000
+
+# 监听所有接口
+./winalog serve --host 0.0.0.0 --port 8080
+```
+
+---
+
+### 2.10 规则管理（补充）
+
+#### 测试 2.10.1：规则验证
+
+```bash
+# 验证自定义规则文件
+./winalog rules validate custom_rules.yaml
+```
+
+#### 测试 2.10.2：规则启用/禁用
+
+```bash
 # 启用规则
-./winalog rules enable brute-force-suspect
+./winalog rules enable BruteForce
 
 # 禁用规则
-./winalog rules disable brute-force-suspect
+./winalog rules disable SuspiciousPowerShell
 
-# 验证规则语法
-./winalog rules validate --name custom-rule
-
-# 从文件导入规则
-./winalog rules import rules.json
-
-# 导出规则到文件
-./winalog rules export --format json --output rules.json
-
-# 导出规则到 YAML
-./winalog rules export --format yaml --output rules.yaml
-
-# 查看规则模板
-./winalog rules templates
-
-# 从模板实例化规则
-./winalog rules instantiate --template powershell_detection --name my-powershell-rule
+# 查看规则状态
+./winalog rules status
 ```
 
 ---
