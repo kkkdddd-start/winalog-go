@@ -71,6 +71,7 @@ winalog import <file> [file2] [file3] ... [flags]
 | `--workers <n>` | 并行导入的工作线程数 | `4` |
 | `--batch-size <n>` | 每批次插入的事件数 | `10000` |
 | `--alert-on-import` | 导入后立即触发告警分析 | `false` |
+| `--skip-patterns <patterns>` | 跳过匹配模式的文件（逗号分隔） | - |
 
 ### 示例
 
@@ -125,8 +126,12 @@ winalog search [flags]
 | `--log-name <name>` | 按日志名称过滤 (Security, System, Application 等) |
 | `--user <username>` | 按用户名过滤 |
 | `--computer <name>` | 按计算机名过滤 |
+| `--source <name>` | 按事件源过滤 |
 | `--start-time <time>` | 开始时间 (RFC3339 格式) |
 | `--end-time <time>` | 结束时间 (RFC3339 格式) |
+| `--sort-by <field>` | 排序字段 (timestamp, event_id, level) |
+| `--sort-order <order>` | 排序顺序：`asc` 或 `desc` |
+| `--highlight` | 高亮显示匹配关键词 |
 | `--page <n>` | 页码 |
 | `--page-size <n>` | 每页事件数 |
 | `--output <file>` | 输出到文件 |
@@ -187,6 +192,9 @@ winalog collect [flags]
 | `--compress` | 压缩输出 | `true` |
 | `--compress-level <n>` | 压缩级别 (0-9) | `6` |
 | `--workers <n>` | 并行工作线程数 | `4` |
+| `--calculate-hash` | 计算 SHA256 哈希 | `false` |
+| `--password <pwd>` | ZIP 密码保护 | - |
+| `--exclude <patterns>` | 排除匹配模式的文件（逗号分隔） | - |
 
 ### 示例
 
@@ -235,6 +243,7 @@ winalog alert list [flags]
 | `--resolved` | 仅显示已解决的告警 |
 | `--rule <name>` | 按规则名称过滤 |
 | `--limit <n>` | 最大显示数量 |
+| `--page <n>` | 页码 |
 | `--format <type>` | 输出格式：`table`、`json`、`csv` |
 
 #### 4.2 alert show - 显示告警详情
@@ -304,7 +313,8 @@ winalog alert run [flags]
 | 选项 | 描述 |
 |------|------|
 | `--rules <names>` | 指定要运行的规则（逗号分隔） |
-| `--time-window <duration>` | 分析时间窗口 |
+| `--batch-size <n>` | 处理批次大小 |
+| `--clear-dedup` | 清除去重缓存后重新分析 |
 
 #### 4.8 alert monitor - 持续监控
 
@@ -317,6 +327,7 @@ winalog alert monitor [flags]
 | 选项 | 描述 |
 |------|------|
 | `--interval <seconds>` | 检查间隔（秒） |
+| `--batch-size <n>` | 每次检查的批次大小 |
 
 ### 示例
 
@@ -398,8 +409,14 @@ winalog correlate -o correlation_results.json
 ### 用法
 
 ```bash
-winalog analyze [flags]
+winalog analyze [type] [flags]
 ```
+
+### 参数
+
+| 参数 | 描述 |
+|------|------|
+| `[type]` | 分析器类型（可选，不指定时列出所有分析器） |
 
 ### 选项
 
@@ -410,15 +427,14 @@ winalog analyze [flags]
 | `--format <type>` | 输出格式：`table`、`json` | `table` |
 | `--output, -o <file>` | 输出到文件 | - |
 
-### 子命令
-
-#### analyze list - 列出可用分析器
+### 列出可用分析器
 
 ```bash
+winalog analyze
 winalog analyze list
 ```
 
-显示所有可用的威胁分析器及其描述。
+显示所有可用的威胁分析器及其描述（两种写法等价）。
 
 ### 内置分析器
 
@@ -625,12 +641,8 @@ winalog multi <subcommand> [flags]
 #### multi analyze - 跨机器关联分析
 
 ```bash
-winalog multi analyze [flags]
+winalog multi analyze
 ```
-
-| 选项 | 描述 |
-|------|------|
-| `--time-window <duration>` | 分析时间窗口 |
 
 #### multi lateral - 横向移动检测
 
@@ -675,7 +687,16 @@ winalog live <subcommand> [flags]
 #### live collect - 开始实时收集
 
 ```bash
-winalog live collect [flags]
+winalog live collect
+```
+
+启动实时监控模式，持续监控数据库中的新事件并通过 SSE 流输出。
+
+### 示例
+
+```bash
+# 开始实时收集
+./winalog live collect
 ```
 
 | 选项 | 描述 |
@@ -741,7 +762,6 @@ winalog info [flags]
 |------|------|
 | `--process` | 显示进程信息 |
 | `--network` | 显示网络连接 |
-| `--users` | 显示用户账户 |
 | `--registry` | 显示注册表持久化点 |
 | `--tasks` | 显示计划任务 |
 | `--save` | 保存到数据库 |
@@ -750,25 +770,22 @@ winalog info [flags]
 
 ```bash
 # 显示所有系统信息
-winalog info
+./winalog info
 
 # 仅显示进程
-winalog info --process
+./winalog info --process
 
 # 显示网络连接
-winalog info --network
-
-# 显示用户账户
-winalog info --users
+./winalog info --network
 
 # 显示注册表持久化点
-winalog info --registry
+./winalog info --registry
 
 # 显示计划任务
-winalog info --tasks
+./winalog info --tasks
 
 # 保存信息到数据库
-winalog info --save
+./winalog info --save
 ```
 
 ---
@@ -816,13 +833,8 @@ winalog rules <subcommand> [flags]
 #### rules list - 列出所有规则
 
 ```bash
-winalog rules list [flags]
+winalog rules list
 ```
-
-| 选项 | 描述 |
-|------|------|
-| `--enabled` | 仅显示已启用的规则 |
-| `--category <name>` | 按类别过滤 |
 
 #### rules validate - 验证规则文件
 
@@ -903,7 +915,22 @@ winalog db vacuum
 #### db clean - 清理旧数据
 
 ```bash
-winalog db clean [flags]
+winalog db clean
+```
+
+清理超过 90 天的旧事件数据。
+
+### 示例
+
+```bash
+# 查看数据库状态
+./winalog db status
+
+# 优化数据库
+./winalog db vacuum
+
+# 清理旧数据（保留最近 90 天）
+./winalog db clean
 ```
 
 | 选项 | 描述 | 默认值 |
@@ -1118,11 +1145,6 @@ winalog forensics <subcommand> [flags]
 ```bash
 winalog forensics collect [flags]
 ```
-
-| 选项 | 描述 |
-|------|------|
-| `--output, -o <file>` | 输出文件路径 |
-| `--include <types>` | 包含的数据类型 |
 
 #### forensics hash - 计算文件哈希
 
