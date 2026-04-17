@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -332,6 +333,72 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+func (h *ReportsHandler) DownloadReport(c *gin.Context) {
+	reportID := c.Param("id")
+
+	var filePath string
+	var format string
+	var status string
+
+	err := h.db.QueryRow(`
+		SELECT COALESCE(file_path, ''), COALESCE(format, ''), COALESCE(status, '')
+		FROM reports WHERE id = ?
+	`, reportID).Scan(&filePath, &format, &status)
+
+	if err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Report not found"})
+		return
+	}
+
+	if status != "completed" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: fmt.Sprintf("Report is not ready for download. Current status: %s", status),
+		})
+		return
+	}
+
+	if filePath == "" {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Report file path not found in database"})
+		return
+	}
+
+	absFilePath, err := filepath.Abs(filePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Invalid file path"})
+		return
+	}
+	absReportDir, _ := filepath.Abs(filepath.Join(os.TempDir(), "winalog_reports"))
+	if !strings.HasPrefix(absFilePath, absReportDir) {
+		c.JSON(http.StatusForbidden, ErrorResponse{Error: "Access denied"})
+		return
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Report file not found on disk"})
+		return
+	}
+
+	fileName := filepath.Base(filePath)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
+	c.Header("Content-Type", getContentType(format))
+	c.File(filePath)
+}
+
+func getContentType(format string) string {
+	switch strings.ToLower(format) {
+	case "pdf":
+		return "application/pdf"
+	case "html":
+		return "text/html"
+	case "json":
+		return "application/json"
+	case "csv":
+		return "text/csv"
+	default:
+		return "application/octet-stream"
+	}
+}
+
 type TemplateRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Content     string `json:"content" binding:"required"`
@@ -436,6 +503,7 @@ func SetupReportsRoutes(r *gin.Engine, reportsHandler *ReportsHandler) {
 		reportsGroup.GET("", reportsHandler.ListReports)
 		reportsGroup.POST("", reportsHandler.GenerateReport)
 		reportsGroup.GET("/:id", reportsHandler.GetReport)
+		reportsGroup.GET("/:id/download", reportsHandler.DownloadReport)
 		reportsGroup.GET("/export", reportsHandler.ExportData)
 	}
 
