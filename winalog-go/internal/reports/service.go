@@ -33,6 +33,10 @@ func (s *ReportService) ExportHTML(req *ReportRequest, w io.Writer) error {
 		return err
 	}
 
+	return s.ExportHTMLFromReport(report, w)
+}
+
+func (s *ReportService) ExportHTMLFromReport(report *Report, w io.Writer) error {
 	htmlReport := NewHTMLReport(report)
 	return htmlReport.Write(w)
 }
@@ -183,6 +187,7 @@ type APIReportRequest struct {
 
 func (s *ReportService) GenerateFromAPIRequest(apiReq *APIReportRequest) (*Report, error) {
 	req := &ReportRequest{
+		Type:         apiReq.Type,
 		Title:        apiReq.Title,
 		Format:       ReportFormat(apiReq.Format),
 		IncludeRaw:   apiReq.IncludeRaw,

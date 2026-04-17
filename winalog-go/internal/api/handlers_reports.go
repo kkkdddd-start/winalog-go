@@ -23,14 +23,16 @@ type ReportsHandler struct {
 }
 
 type ReportRequest struct {
-	Type        string `json:"type" binding:"required"`
-	Format      string `json:"format" binding:"required"`
-	StartTime   string `json:"start_time"`
-	EndTime     string `json:"end_time"`
-	IncludeRaw  bool   `json:"include_raw"`
-	Compression bool   `json:"compression"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	Type         string `json:"type" binding:"required"`
+	Format       string `json:"format" binding:"required"`
+	StartTime    string `json:"start_time"`
+	EndTime      string `json:"end_time"`
+	IncludeRaw   bool   `json:"include_raw"`
+	IncludeIOC   bool   `json:"include_ioc"`
+	IncludeMITRE bool   `json:"include_mitre"`
+	Compression  bool   `json:"compression"`
+	Title        string `json:"title"`
+	Description  string `json:"description"`
 }
 
 type ReportInfo struct {
@@ -202,13 +204,15 @@ func (h *ReportsHandler) GenerateReport(c *gin.Context) {
 
 func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest, generatedAt time.Time) {
 	report, err := h.svc.GenerateFromAPIRequest(&reports.APIReportRequest{
-		Type:        req.Type,
-		Format:      req.Format,
-		StartTime:   req.StartTime,
-		EndTime:     req.EndTime,
-		IncludeRaw:  req.IncludeRaw,
-		Title:       req.Title,
-		Description: req.Description,
+		Type:         req.Type,
+		Format:       req.Format,
+		StartTime:    req.StartTime,
+		EndTime:      req.EndTime,
+		IncludeRaw:   req.IncludeRaw,
+		IncludeIOC:   false,
+		IncludeMITRE: false,
+		Title:        req.Title,
+		Description:  req.Description,
 	})
 	if err != nil {
 		h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
@@ -221,9 +225,11 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 	fileName := fmt.Sprintf("%s.%s", reportID, req.Format)
 	filePath := filepath.Join(reportDir, fileName)
 
-	if req.Format == "pdf" {
+	switch req.Format {
+	case "pdf":
 		if f, err := os.Create(filePath); err == nil {
 			pdfReq := &reports.ReportRequest{
+				Type:       req.Type,
 				Title:      req.Title,
 				Format:     reports.ReportFormat(req.Format),
 				IncludeRaw: req.IncludeRaw,
@@ -250,7 +256,21 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 				err.Error(), time.Now(), reportID)
 			return
 		}
-	} else {
+	case "html":
+		if f, err := os.Create(filePath); err == nil {
+			err = h.svc.ExportHTMLFromReport(report, f)
+			f.Close()
+			if err != nil {
+				h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+					err.Error(), time.Now(), reportID)
+				return
+			}
+		} else {
+			h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+				err.Error(), time.Now(), reportID)
+			return
+		}
+	default:
 		apiContent := reports.AdaptReportToAPI(report)
 		data, _ := json.MarshalIndent(apiContent, "", "  ")
 		if err := os.WriteFile(filePath, data, 0644); err != nil {
