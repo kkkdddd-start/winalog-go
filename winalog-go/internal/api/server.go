@@ -92,7 +92,7 @@ func (s *Server) setupHandlers() {
 	s.dashboardEng = NewDashboardHandler(s.db)
 	s.settingsEng = NewSettingsHandler(s.cfg, s.configPath)
 
-	analyzerManager := s.createAnalyzerManager()
+	analyzerManager := analyzers.NewDefaultManager()
 	s.analyzeEng = NewAnalyzeHandler(s.db, analyzerManager)
 
 	s.collectEng = NewCollectHandler(s.db)
@@ -103,19 +103,6 @@ func (s *Server) setupHandlers() {
 	s.queryEng = NewQueryHandler(s.db)
 	s.policyEng = NewPolicyHandler(s.alertEngine)
 	s.uiEng = NewUIHandler(s.db)
-}
-
-func (s *Server) createAnalyzerManager() *analyzers.AnalyzerManager {
-	mgr := analyzers.NewAnalyzerManager()
-	mgr.Register(analyzers.NewBruteForceAnalyzer())
-	mgr.Register(analyzers.NewLoginAnalyzer())
-	mgr.Register(analyzers.NewKerberosAnalyzer())
-	mgr.Register(analyzers.NewPowerShellAnalyzer())
-	mgr.Register(analyzers.NewDataExfiltrationAnalyzer())
-	mgr.Register(analyzers.NewLateralMovementAnalyzer())
-	mgr.Register(analyzers.NewPersistenceAnalyzer())
-	mgr.Register(analyzers.NewPrivilegeEscalationAnalyzer())
-	return mgr
 }
 
 func (s *Server) setupRoutes() {

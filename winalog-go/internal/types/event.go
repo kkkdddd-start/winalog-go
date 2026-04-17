@@ -379,3 +379,37 @@ func (e *Event) ExtractKeyFields() map[string]string {
 
 	return fields
 }
+
+func IsExternalIP(ip string) bool {
+	if ip == "" || ip == "-" || ip == "127.0.0.1" || ip == "::1" || ip == "::" {
+		return false
+	}
+	parts := strings.Split(ip, ".")
+	if len(parts) != 4 {
+		return true
+	}
+	firstOctet := 0
+	for _, c := range parts[0] {
+		if c >= '0' && c <= '9' {
+			firstOctet = firstOctet*10 + int(c-'0')
+		}
+	}
+	if firstOctet >= 10 && firstOctet <= 11 {
+		return false
+	}
+	if firstOctet == 192 && parts[1] == "168" {
+		return false
+	}
+	if firstOctet == 172 {
+		secondOctet := 0
+		for _, c := range parts[1] {
+			if c >= '0' && c <= '9' {
+				secondOctet = secondOctet*10 + int(c-'0')
+			}
+		}
+		if secondOctet >= 16 && secondOctet <= 31 {
+			return false
+		}
+	}
+	return true
+}

@@ -1,6 +1,7 @@
 package analyzers
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -147,7 +148,7 @@ func (a *LateralMovementAnalyzer) performAnalysis(events []*types.Event) *Latera
 		case 3:
 			analysis.TotalEvents++
 			sourceIP := a.getSourceIPFromEvent(e)
-			if sourceIP != "" && a.isExternalIP(sourceIP) {
+			if sourceIP != "" && types.IsExternalIP(sourceIP) {
 				analysis.Findings = append(analysis.Findings, &LateralMovementFinding{
 					Type:        "External Network Connection",
 					Time:        e.Timestamp,
@@ -203,45 +204,11 @@ func (a *LateralMovementAnalyzer) isSuspiciousLogin(e *types.Event) bool {
 	if sourceIP == "" || sourceIP == "-" || sourceIP == "127.0.0.1" {
 		return false
 	}
-	return a.isExternalIP(sourceIP)
+	return types.IsExternalIP(sourceIP)
 }
 
 func (a *LateralMovementAnalyzer) isExplicitCredentials(e *types.Event) bool {
 	return strings.Contains(strings.ToLower(e.Message), "explicit")
-}
-
-func (a *LateralMovementAnalyzer) isExternalIP(ip string) bool {
-	if ip == "" || ip == "-" || ip == "127.0.0.1" || ip == "::1" || ip == "::" {
-		return false
-	}
-	parts := strings.Split(ip, ".")
-	if len(parts) != 4 {
-		return true
-	}
-	firstOctet := 0
-	for _, c := range parts[0] {
-		if c >= '0' && c <= '9' {
-			firstOctet = firstOctet*10 + int(c-'0')
-		}
-	}
-	if firstOctet >= 10 && firstOctet <= 11 {
-		return false
-	}
-	if firstOctet == 192 && parts[1] == "168" {
-		return false
-	}
-	if firstOctet == 172 {
-		secondOctet := 0
-		for _, c := range parts[1] {
-			if c >= '0' && c <= '9' {
-				secondOctet = secondOctet*10 + int(c-'0')
-			}
-		}
-		if secondOctet >= 16 && secondOctet <= 31 {
-			return false
-		}
-	}
-	return true
 }
 
 func (a *LateralMovementAnalyzer) extractTargetFromCommand(message string) string {
@@ -269,12 +236,8 @@ func (a *LateralMovementAnalyzer) calculateScore(severity string) float64 {
 
 func (a *LateralMovementAnalyzer) generateSummary(analysis *LateralMovementAnalysis) string {
 	return "Lateral Movement Analysis: " +
-		" RDP=" + itoa(analysis.RDPConnections) +
-		" PSExec=" + itoa(analysis.PSExecEvents) +
-		" WMI=" + itoa(analysis.WMIEvents) +
-		" Total=" + itoa(analysis.TotalEvents)
-}
-
-func itoa(i int) string {
-	return string(rune('0'+i/100000%10)) + string(rune('0'+i/10000%10)) + string(rune('0'+i/1000%10)) + string(rune('0'+i/100%10)) + string(rune('0'+i/10%10)) + string(rune('0'+i%10))
+		" RDP=" + strconv.Itoa(analysis.RDPConnections) +
+		" PSExec=" + strconv.Itoa(analysis.PSExecEvents) +
+		" WMI=" + strconv.Itoa(analysis.WMIEvents) +
+		" Total=" + strconv.Itoa(analysis.TotalEvents)
 }

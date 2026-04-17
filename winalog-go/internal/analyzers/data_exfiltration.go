@@ -2,6 +2,7 @@ package analyzers
 
 import (
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -150,7 +151,7 @@ func (a *DataExfiltrationAnalyzer) performAnalysis(events []*types.Event) *DataE
 		case 3:
 			analysis.TotalEvents++
 			destIP := a.getDestIP(e)
-			if destIP != "" && a.isExternalIP(destIP) {
+			if destIP != "" && types.IsExternalIP(destIP) {
 				analysis.LargeOutbound++
 				analysis.Findings = append(analysis.Findings, &ExfilFinding{
 					Type:        "External Network Traffic",
@@ -220,40 +221,6 @@ func (a *DataExfiltrationAnalyzer) getDestIP(e *types.Event) string {
 func (a *DataExfiltrationAnalyzer) isUnusualHours(t time.Time) bool {
 	hour := t.Hour()
 	return hour < 6 || hour > 22
-}
-
-func (a *DataExfiltrationAnalyzer) isExternalIP(ip string) bool {
-	if ip == "" || ip == "-" || ip == "127.0.0.1" || ip == "::1" || ip == "::" {
-		return false
-	}
-	parts := strings.Split(ip, ".")
-	if len(parts) != 4 {
-		return true
-	}
-	firstOctet := 0
-	for _, c := range parts[0] {
-		if c >= '0' && c <= '9' {
-			firstOctet = firstOctet*10 + int(c-'0')
-		}
-	}
-	if firstOctet >= 10 && firstOctet <= 11 {
-		return false
-	}
-	if firstOctet == 192 && parts[1] == "168" {
-		return false
-	}
-	if firstOctet == 172 {
-		secondOctet := 0
-		for _, c := range parts[1] {
-			if c >= '0' && c <= '9' {
-				secondOctet = secondOctet*10 + int(c-'0')
-			}
-		}
-		if secondOctet >= 16 && secondOctet <= 31 {
-			return false
-		}
-	}
-	return true
 }
 
 func (a *DataExfiltrationAnalyzer) isCloudService(ip string) bool {
@@ -329,8 +296,8 @@ func (a *DataExfiltrationAnalyzer) calculateScore(severity string) float64 {
 
 func (a *DataExfiltrationAnalyzer) generateSummary(analysis *DataExfiltrationAnalysis) string {
 	return "Data Exfiltration Analysis: " +
-		" LargeOutbound=" + itoa(analysis.LargeOutbound) +
-		" CloudUploads=" + itoa(analysis.CloudUploads) +
-		" USBTransfers=" + itoa(analysis.USBTransfers) +
-		" UnusualHours=" + itoa(analysis.UnusualHours)
+		" LargeOutbound=" + strconv.Itoa(analysis.LargeOutbound) +
+		" CloudUploads=" + strconv.Itoa(analysis.CloudUploads) +
+		" USBTransfers=" + strconv.Itoa(analysis.USBTransfers) +
+		" UnusualHours=" + strconv.Itoa(analysis.UnusualHours)
 }

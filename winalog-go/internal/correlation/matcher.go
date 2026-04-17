@@ -78,44 +78,6 @@ func (m *Matcher) matchCondition(cond *rules.Condition, event *types.Event) bool
 	}
 }
 
-func (m *Matcher) JoinEvents(events []*types.Event, joinField string) map[string][]*types.Event {
-	joined := make(map[string][]*types.Event)
-
-	for _, event := range events {
-		var key string
-		switch joinField {
-		case "user":
-			if event.UserSID != nil {
-				key = *event.UserSID
-			} else if event.User != nil {
-				key = *event.User
-			}
-		case "computer":
-			key = event.Computer
-		case "ip":
-			if event.IPAddress != nil {
-				key = *event.IPAddress
-			}
-		case "session":
-			if event.SessionID != nil {
-				key = *event.SessionID
-			}
-		default:
-			if event.User != nil {
-				key = *event.User
-			}
-		}
-
-		if key == "" {
-			continue
-		}
-
-		joined[key] = append(joined[key], event)
-	}
-
-	return joined
-}
-
 func (m *Matcher) FilterByTimeRange(events []*types.Event, start, end time.Time) []*types.Event {
 	filtered := make([]*types.Event, 0)
 

@@ -3,9 +3,12 @@ package api
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -27,8 +30,15 @@ type SignatureRequest struct {
 }
 
 type CollectRequest struct {
-	Type       string `json:"type" binding:"required"`
-	OutputPath string `json:"output_path"`
+	Type              string `json:"type" binding:"required"`
+	OutputPath        string `json:"output_path"`
+	CollectRegistry   bool   `json:"collect_registry"`
+	CollectPrefetch   bool   `json:"collect_prefetch"`
+	CollectShimcache  bool   `json:"collect_shimcache"`
+	CollectAmcache    bool   `json:"collect_amcache"`
+	CollectUserAssist bool   `json:"collect_userassist"`
+	CollectTasks      bool   `json:"collect_tasks"`
+	CollectLogs       bool   `json:"collect_logs"`
 }
 
 type HashResponse struct {
@@ -211,21 +221,62 @@ func (h *ForensicsHandler) CollectEvidence(c *gin.Context) {
 		return
 	}
 
-	collectID := fmt.Sprintf("collect_%d", time.Now().Unix())
+	evidenceID := fmt.Sprintf("ev_%d", time.Now().UnixNano())
 
 	outputPath := req.OutputPath
 	if outputPath == "" {
-		outputPath = fmt.Sprintf("/tmp/evidence_%d.zip", time.Now().Unix())
+		outputPath = filepath.Join(os.TempDir(), fmt.Sprintf("evidence_%s.zip", evidenceID))
+	}
+
+	collector := forensics.NewEvidenceCollector(evidenceID, outputPath)
+	collector.CollectRegistry = req.CollectRegistry
+	collector.CollectPrefetch = req.CollectPrefetch
+	collector.CollectShimcache = req.CollectShimcache
+	collector.CollectAmcache = req.CollectAmcache
+	collector.CollectUserAssist = req.CollectUserAssist
+	collector.CollectTasks = req.CollectTasks
+	collector.CollectLogs = req.CollectLogs
+
+	manifest, err := collector.Collect()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: fmt.Sprintf("collection failed: %v", err),
+		})
+		return
+	}
+
+	if err := h.saveEvidenceManifest(manifest); err != nil {
+		log.Printf("failed to save manifest: %v", err)
 	}
 
 	c.JSON(http.StatusOK, CollectResponse{
-		ID:          collectID,
+		ID:          evidenceID,
 		Type:        req.Type,
 		Status:      "completed",
 		OutputPath:  outputPath,
-		CollectedAt: time.Now(),
-		Message:     "Evidence collection complete",
+		CollectedAt: manifest.CreatedAt,
+		Message:     fmt.Sprintf("Collected %d files, total %d bytes", len(manifest.Files), manifest.TotalSize),
 	})
+}
+
+func (h *ForensicsHandler) saveEvidenceManifest(manifest *forensics.EvidenceManifest) error {
+	_, err := h.db.Exec(`
+		INSERT INTO evidence_chain (evidence_id, timestamp, operator, action, input_hash, output_hash, previous_hash)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, manifest.ID, manifest.CreatedAt.Format(time.RFC3339),
+		manifest.CollectedBy, "manifest_created", "", manifest.Hash, "")
+
+	for _, f := range manifest.Files {
+		_, err := h.db.Exec(`
+			INSERT INTO evidence_file (file_path, file_hash, evidence_id, collected_at, collector)
+			VALUES (?, ?, ?, ?, ?)
+		`, f.FilePath, f.FileHash, manifest.ID, f.CollectedAt.Format(time.RFC3339), f.Collector)
+		if err != nil {
+			log.Printf("failed to save evidence file: %v", err)
+		}
+	}
+
+	return err
 }
 
 func (h *ForensicsHandler) ListEvidence(c *gin.Context) {
@@ -237,9 +288,70 @@ func (h *ForensicsHandler) ListEvidence(c *gin.Context) {
 		return
 	}
 
+	limitStr := c.DefaultQuery("limit", "50")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 50
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
+	rows, err := h.db.Query(`
+		SELECT 
+			ec.evidence_id,
+			ec.timestamp,
+			ec.operator,
+			ec.action,
+			COUNT(ef.id) as file_count
+		FROM evidence_chain ec
+		LEFT JOIN evidence_file ef ON ec.evidence_id = ef.evidence_id
+		GROUP BY ec.evidence_id
+		ORDER BY ec.timestamp DESC
+		LIMIT ? OFFSET ?
+	`, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: fmt.Sprintf("query failed: %v", err),
+		})
+		return
+	}
+	defer rows.Close()
+
+	evidenceList := make([]map[string]interface{}, 0)
+	for rows.Next() {
+		var evidenceID, timestamp, operator, action sql.NullString
+		var fileCount int
+
+		if err := rows.Scan(&evidenceID, &timestamp, &operator, &action, &fileCount); err != nil {
+			continue
+		}
+
+		item := map[string]interface{}{
+			"evidence_id": evidenceID.String,
+			"timestamp":   timestamp.String,
+			"operator":    operator.String,
+			"action":      action.String,
+			"file_count":  fileCount,
+		}
+		evidenceList = append(evidenceList, item)
+	}
+
+	var total int
+	h.db.QueryRow("SELECT COUNT(DISTINCT evidence_id) FROM evidence_chain").Scan(&total)
+
 	c.JSON(http.StatusOK, gin.H{
-		"evidence": []interface{}{},
-		"total":    0,
+		"evidence": evidenceList,
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
 	})
 }
 
@@ -253,11 +365,106 @@ func (h *ForensicsHandler) GetEvidence(c *gin.Context) {
 	}
 
 	evidenceID := c.Param("id")
+	if evidenceID == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: "evidence ID is required",
+			Code:  types.ErrCodeInvalidRequest,
+		})
+		return
+	}
+
+	chainRows, err := h.db.Query(`
+		SELECT id, evidence_id, timestamp, operator, action, input_hash, output_hash, previous_hash
+		FROM evidence_chain
+		WHERE evidence_id = ?
+		ORDER BY timestamp ASC
+	`, evidenceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: fmt.Sprintf("query failed: %v", err),
+		})
+		return
+	}
+	defer chainRows.Close()
+
+	chain := make([]map[string]interface{}, 0)
+	for chainRows.Next() {
+		var id int64
+		var evID, timestamp, operator, action, inputHash, outputHash, previousHash sql.NullString
+
+		if err := chainRows.Scan(&id, &evID, &timestamp, &operator, &action, &inputHash, &outputHash, &previousHash); err != nil {
+			continue
+		}
+
+		entry := map[string]interface{}{
+			"id":          id,
+			"evidence_id": evID.String,
+			"timestamp":   timestamp.String,
+			"operator":    operator.String,
+			"action":      action.String,
+		}
+		if inputHash.Valid {
+			entry["input_hash"] = inputHash.String
+		}
+		if outputHash.Valid {
+			entry["output_hash"] = outputHash.String
+		}
+		if previousHash.Valid {
+			entry["previous_hash"] = previousHash.String
+		}
+		chain = append(chain, entry)
+	}
+
+	if len(chain) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"id":      evidenceID,
+			"status":  "not_found",
+			"message": "Evidence not found",
+		})
+		return
+	}
+
+	fileRows, err := h.db.Query(`
+		SELECT id, file_path, file_hash, collected_at, collector
+		FROM evidence_file
+		WHERE evidence_id = ?
+		ORDER BY collected_at ASC
+	`, evidenceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: fmt.Sprintf("query failed: %v", err),
+		})
+		return
+	}
+	defer fileRows.Close()
+
+	files := make([]map[string]interface{}, 0)
+	for fileRows.Next() {
+		var id int64
+		var filePath, fileHash, collectedAt, collector sql.NullString
+
+		if err := fileRows.Scan(&id, &filePath, &fileHash, &collectedAt, &collector); err != nil {
+			continue
+		}
+
+		files = append(files, map[string]interface{}{
+			"id":           id,
+			"file_path":    filePath.String,
+			"file_hash":    fileHash.String,
+			"collected_at": collectedAt.String,
+			"collector":    collector.String,
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":      evidenceID,
-		"status":  "not_found",
-		"message": "Evidence not found",
+		"id":     evidenceID,
+		"status": "found",
+		"chain":  chain,
+		"files":  files,
+		"summary": map[string]interface{}{
+			"chain_length": len(chain),
+			"file_count":   len(files),
+		},
 	})
 }
 
@@ -374,21 +581,53 @@ func (h *ForensicsHandler) MemoryDump(c *gin.Context) {
 	}
 
 	pidStr := c.Query("pid")
+	outputPath := c.Query("output")
+
+	if outputPath == "" {
+		outputPath = filepath.Join(os.TempDir(), "winalog_memory")
+		os.MkdirAll(outputPath, 0755)
+	}
+
+	collector := forensics.NewMemoryCollector(outputPath)
 
 	if pidStr != "" {
 		var pid uint32
-		fmt.Sscanf(pidStr, "%d", &pid)
+		if _, err := fmt.Sscanf(pidStr, "%d", &pid); err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error: "invalid PID format",
+			})
+			return
+		}
+
+		result, err := collector.CollectProcessMemory(pid)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  "error",
+				"message": err.Error(),
+				"pid":     pid,
+			})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"result": result,
+		})
+		return
+	}
+
+	result, err := collector.CollectSystemMemory()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Memory dump requires Windows environment",
-			"process": pid,
+			"message": err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  "error",
-		"message": "Memory dump requires Windows environment",
+		"status": "success",
+		"result": result,
 	})
 }
 

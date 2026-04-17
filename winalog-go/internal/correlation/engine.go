@@ -15,19 +15,26 @@ type Engine struct {
 	index   *EventIndex
 	matcher *Matcher
 	chain   *ChainBuilder
+	maxAge  time.Duration
 }
 
 type EventIndex struct {
-	mu     sync.RWMutex
-	byID   map[int64]*types.Event
-	byTime []*types.Event
-	byEID  map[int32][]*types.Event
+	mu              sync.RWMutex
+	byID            map[int64]*types.Event
+	byTime          []*types.Event
+	byEID           map[int32][]*types.Event
+	maxAge          time.Duration
+	lastCleanup     time.Time
+	cleanupInterval time.Duration
 }
 
-func NewEventIndex() *EventIndex {
+func NewEventIndex(maxAge time.Duration) *EventIndex {
 	return &EventIndex{
-		byID:  make(map[int64]*types.Event),
-		byEID: make(map[int32][]*types.Event),
+		byID:            make(map[int64]*types.Event),
+		byEID:           make(map[int32][]*types.Event),
+		maxAge:          maxAge,
+		lastCleanup:     time.Now(),
+		cleanupInterval: 5 * time.Minute,
 	}
 }
 
@@ -35,9 +42,82 @@ func (idx *EventIndex) Add(event *types.Event) {
 	idx.mu.Lock()
 	defer idx.mu.Unlock()
 
+	if time.Since(idx.lastCleanup) > idx.cleanupInterval {
+		go idx.cleanupLocked()
+		idx.lastCleanup = time.Now()
+	}
+
 	idx.byID[event.ID] = event
 	idx.byTime = append(idx.byTime, event)
 	idx.byEID[event.EventID] = append(idx.byEID[event.EventID], event)
+}
+
+func (idx *EventIndex) cleanupLocked() {
+	if idx.maxAge <= 0 {
+		return
+	}
+	cutoff := time.Now().Add(-idx.maxAge)
+
+	splitIdx := 0
+	for i, event := range idx.byTime {
+		if event.Timestamp.After(cutoff) {
+			break
+		}
+		splitIdx = i + 1
+	}
+
+	if splitIdx == 0 {
+		return
+	}
+
+	oldEvents := idx.byTime[:splitIdx]
+	idx.byTime = idx.byTime[splitIdx:]
+
+	for _, event := range oldEvents {
+		delete(idx.byID, event.ID)
+	}
+}
+
+func (idx *EventIndex) Cleanup() {
+	idx.mu.Lock()
+	defer idx.mu.Unlock()
+
+	if idx.maxAge <= 0 {
+		return
+	}
+
+	cutoff := time.Now().Add(-idx.maxAge)
+	if len(idx.byTime) == 0 || idx.byTime[0].Timestamp.After(cutoff) {
+		return
+	}
+
+	splitIdx := 0
+	for i, event := range idx.byTime {
+		if event.Timestamp.After(cutoff) {
+			break
+		}
+		splitIdx = i + 1
+	}
+
+	oldEvents := idx.byTime[:splitIdx]
+	idx.byTime = idx.byTime[splitIdx:]
+
+	for _, event := range oldEvents {
+		delete(idx.byID, event.ID)
+		if slice, ok := idx.byEID[event.EventID]; ok {
+			newSlice := make([]*types.Event, 0, len(slice))
+			for _, e := range slice {
+				if e.ID != event.ID {
+					newSlice = append(newSlice, e)
+				}
+			}
+			if len(newSlice) > 0 {
+				idx.byEID[event.EventID] = newSlice
+			} else {
+				delete(idx.byEID, event.EventID)
+			}
+		}
+	}
 }
 
 func (idx *EventIndex) GetByID(id int64) (*types.Event, bool) {
@@ -75,12 +155,13 @@ func (idx *EventIndex) GetByTimeRange(start, end time.Time) []*types.Event {
 	return result
 }
 
-func NewEngine() *Engine {
+func NewEngine(maxAge time.Duration) *Engine {
 	return &Engine{
 		events:  make(map[int64]*types.Event),
-		index:   NewEventIndex(),
+		index:   NewEventIndex(maxAge),
 		matcher: NewMatcher(),
 		chain:   NewChainBuilder(),
+		maxAge:  maxAge,
 	}
 }
 
@@ -280,5 +361,5 @@ func (e *Engine) Clear() {
 	defer e.mu.Unlock()
 
 	e.events = make(map[int64]*types.Event)
-	e.index = NewEventIndex()
+	e.index = NewEventIndex(e.maxAge)
 }

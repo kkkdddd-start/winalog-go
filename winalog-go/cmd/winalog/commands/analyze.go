@@ -45,7 +45,7 @@ func runCorrelate(cmd *cobra.Command, args []string) error {
 	}
 	defer db.Close()
 
-	engine := correlation.NewEngine()
+	engine := correlation.NewEngine(0)
 
 	timeWindow, err := parseDuration(correlateFlags.timeWindow)
 	if err != nil {
@@ -142,21 +142,8 @@ func init() {
 	analyzeCmd.Flags().StringVar(&analyzeFlags.timeWindow, "time-window", "", "Time window (overrides --hours, e.g., 24h, 7d)")
 }
 
-func createAnalyzerManager() *analyzers.AnalyzerManager {
-	mgr := analyzers.NewAnalyzerManager()
-	mgr.Register(analyzers.NewBruteForceAnalyzer())
-	mgr.Register(analyzers.NewLoginAnalyzer())
-	mgr.Register(analyzers.NewKerberosAnalyzer())
-	mgr.Register(analyzers.NewPowerShellAnalyzer())
-	mgr.Register(analyzers.NewDataExfiltrationAnalyzer())
-	mgr.Register(analyzers.NewLateralMovementAnalyzer())
-	mgr.Register(analyzers.NewPersistenceAnalyzer())
-	mgr.Register(analyzers.NewPrivilegeEscalationAnalyzer())
-	return mgr
-}
-
 func runAnalyzeDynamic(cmd *cobra.Command, args []string) error {
-	manager := createAnalyzerManager()
+	manager := analyzers.NewDefaultManager()
 
 	if len(args) == 0 {
 		fmt.Println("Available analyzers:")

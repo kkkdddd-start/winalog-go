@@ -7,10 +7,40 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
-type ChainBuilder struct{}
+type ChainConfig struct {
+	StartEventIDs map[int32]bool
+	Transitions   map[int32][]int32
+}
+
+var DefaultChainConfig = &ChainConfig{
+	StartEventIDs: map[int32]bool{
+		4624: true,
+		4625: true,
+		4634: true,
+		4648: true,
+		4672: true,
+		4688: true,
+		4698: true,
+		4697: true,
+	},
+	Transitions: map[int32][]int32{
+		4624: {4634, 4672, 4688},
+		4625: {4624},
+		4648: {4624, 4672},
+		4688: {4698, 4697},
+	},
+}
+
+type ChainBuilder struct {
+	config *ChainConfig
+}
 
 func NewChainBuilder() *ChainBuilder {
-	return &ChainBuilder{}
+	return &ChainBuilder{config: DefaultChainConfig}
+}
+
+func NewChainBuilderWithConfig(cfg *ChainConfig) *ChainBuilder {
+	return &ChainBuilder{config: cfg}
 }
 
 func (cb *ChainBuilder) Build(startEvent *types.Event, relatedEvents []*types.Event, rule *rules.CorrelationRule) *types.CorrelationResult {
@@ -37,18 +67,7 @@ func (cb *ChainBuilder) Build(startEvent *types.Event, relatedEvents []*types.Ev
 func (cb *ChainBuilder) FindChains(startEvent *types.Event, maxDepth int) ([]*types.CorrelationResult, error) {
 	chains := make([]*types.CorrelationResult, 0)
 
-	knownChains := map[int32]bool{
-		4624: true,
-		4625: true,
-		4634: true,
-		4648: true,
-		4672: true,
-		4688: true,
-		4698: true,
-		4697: true,
-	}
-
-	if !knownChains[startEvent.EventID] {
+	if !cb.config.StartEventIDs[startEvent.EventID] {
 		return chains, nil
 	}
 
@@ -82,15 +101,8 @@ func (cb *ChainBuilder) FindChains(startEvent *types.Event, maxDepth int) ([]*ty
 func (cb *ChainBuilder) findNextEvents(events []*types.Event) []*types.Event {
 	nextEvents := make([]*types.Event, 0)
 
-	transitionMap := map[int32][]int32{
-		4624: {4634, 4672, 4688},
-		4625: {4624},
-		4648: {4624, 4672},
-		4688: {4698, 4697},
-	}
-
 	for _, event := range events {
-		if nextIDs, ok := transitionMap[event.EventID]; ok {
+		if nextIDs, ok := cb.config.Transitions[event.EventID]; ok {
 			for _, nextID := range nextIDs {
 				nextEvents = append(nextEvents, &types.Event{
 					ID:        event.ID + 1,

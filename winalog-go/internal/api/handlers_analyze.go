@@ -20,6 +20,8 @@ type AnalyzeRequest struct {
 	StartTime string `json:"start_time"`
 	EndTime   string `json:"end_time"`
 	Hours     int    `json:"hours"`
+	Limit     int    `json:"limit"`
+	Offset    int    `json:"offset"`
 }
 
 type AnalyzeFinding struct {
@@ -31,13 +33,20 @@ type AnalyzeFinding struct {
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
+type Pagination struct {
+	Limit  int   `json:"limit"`
+	Offset int   `json:"offset"`
+	Total  int64 `json:"total"`
+}
+
 type AnalyzeResult struct {
-	Type      string           `json:"type"`
-	Severity  string           `json:"severity"`
-	Score     float64          `json:"score"`
-	Summary   string           `json:"summary"`
-	Findings  []AnalyzeFinding `json:"findings"`
-	Timestamp int64            `json:"timestamp"`
+	Type       string           `json:"type"`
+	Severity   string           `json:"severity"`
+	Score      float64          `json:"score"`
+	Summary    string           `json:"summary"`
+	Findings   []AnalyzeFinding `json:"findings"`
+	Timestamp  int64            `json:"timestamp"`
+	Pagination *Pagination      `json:"pagination,omitempty"`
 }
 
 func NewAnalyzeHandler(db *storage.DB, manager *analyzers.AnalyzerManager) *AnalyzeHandler {
@@ -80,8 +89,18 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 		hours = 24
 	}
 
+	limit := req.Limit
+	if limit <= 0 || limit > 100000 {
+		limit = 10000
+	}
+	offset := req.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
 	filter := &storage.EventFilter{
-		Limit: 10000,
+		Limit:  limit,
+		Offset: offset,
 	}
 
 	if hours > 0 {
@@ -91,7 +110,7 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 		filter.EndTime = &endTime
 	}
 
-	events, _, err := h.db.ListEvents(filter)
+	events, total, err := h.db.ListEvents(filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error: "failed to fetch events: " + err.Error(),
@@ -114,6 +133,11 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 		Summary:   result.Summary,
 		Findings:  make([]AnalyzeFinding, len(result.Findings)),
 		Timestamp: result.Timestamp,
+		Pagination: &Pagination{
+			Limit:  limit,
+			Offset: offset,
+			Total:  total,
+		},
 	}
 
 	for i, f := range result.Findings {

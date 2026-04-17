@@ -68,7 +68,7 @@ func (h *CorrelationHandler) Analyze(c *gin.Context) {
 		return
 	}
 
-	engine := correlation.NewEngine()
+	engine := correlation.NewEngine(0)
 	engine.LoadEvents(events)
 
 	correlationRules := builtin.GetCorrelationRules()

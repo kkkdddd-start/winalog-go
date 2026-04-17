@@ -2,25 +2,10 @@
 
 package collectors
 
-type PrefetchCollector struct {
-	BaseCollector
-}
-
-type PrefetchInfo struct {
-	Name             string
-	Path             string
-	LastRunTime      string
-	RunCount         int
-	LastModifiedTime string
-}
-
-func NewPrefetchCollector() *PrefetchCollector {
-	return &PrefetchCollector{}
-}
-
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,6 +15,22 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
+
+type PrefetchCollector struct {
+	BaseCollector
+}
+
+type PrefetchInfo struct {
+	Name             string
+	Path             string
+	LastRunTime      string
+	RunCount         int
+	LastModifiedTime time.Time
+}
+
+func NewPrefetchCollector() *PrefetchCollector {
+	return &PrefetchCollector{}
+}
 
 func (c *PrefetchCollector) collectPrefetch() ([]*types.PrefetchEntry, error) {
 	entries := make([]*types.PrefetchEntry, 0)
@@ -104,35 +105,45 @@ func extractPrefetchName(fileName string) string {
 }
 
 func getPrefetchRunCount(filePath string) int {
-	cmd := `(Get-Item '%s').VersionInfo.FileVersion`
+	cmd := fmt.Sprintf(`(Get-Item '%s').VersionInfo | ConvertTo-Json -Compress`, filePath)
 
 	result := utils.RunPowerShell(cmd)
 	if !result.Success() {
 		return 0
 	}
 
+	var versionInfo struct {
+		FileVersion string `json:"FileVersion"`
+	}
+
+	if err := json.Unmarshal([]byte(result.Output), &versionInfo); err == nil {
+		for _, c := range versionInfo.FileVersion {
+			if c >= '0' && c <= '9' {
+				return int(c - '0')
+			}
+		}
+	}
+
 	return 0
 }
 
-func getPrefetchLastRunTime(filePath string) time.Time {
-	cmd := `(Get-Item '%s').LastWriteTime`
+func getPrefetchLastRunTime(filePath string) string {
+	cmd := fmt.Sprintf(`(Get-Item '%s').LastWriteTime.ToString("o")`, filePath)
 
 	result := utils.RunPowerShell(cmd)
 	if result.Success() {
-		if t, err := time.Parse("2006-01-02 15:04:05", strings.TrimSpace(result.Output)); err == nil {
-			return t
-		}
-		if t, err := time.Parse(time.RFC3339, strings.TrimSpace(result.Output)); err == nil {
-			return t
+		trimmed := strings.TrimSpace(result.Output)
+		if t, err := time.Parse(time.RFC3339, trimmed); err == nil {
+			return t.Format("2006-01-02 15:04:05")
 		}
 	}
 
 	info, err := os.Stat(filePath)
 	if err == nil {
-		return info.ModTime()
+		return info.ModTime().Format("2006-01-02 15:04:05")
 	}
 
-	return time.Time{}
+	return ""
 }
 
 func GetPrefetchInfo(prefetchPath string) (*PrefetchInfo, error) {
@@ -159,7 +170,7 @@ func ParsePrefetch(prefetchPath string) (*types.PrefetchEntry, error) {
 		return nil, err
 	}
 
-	cmd := `(Get-Item '%s').VersionInfo | ConvertTo-Json -Compress`
+	cmd := fmt.Sprintf(`(Get-Item '%s').VersionInfo | ConvertTo-Json -Compress`, prefetchPath)
 
 	result := utils.RunPowerShell(cmd)
 	if result.Success() {
