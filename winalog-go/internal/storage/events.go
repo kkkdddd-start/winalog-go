@@ -60,6 +60,11 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 		return nil
 	}
 
+	uniqueEvents := r.deduplicate(events)
+	if len(uniqueEvents) == 0 {
+		return nil
+	}
+
 	tx, unlock, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -74,7 +79,7 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 	}
 	defer stmt.Close()
 
-	for _, event := range events {
+	for _, event := range uniqueEvents {
 		_, err := stmt.Exec(
 			event.Timestamp.Format(time.RFC3339Nano),
 			event.EventID,
@@ -178,6 +183,15 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 			args = append(args, name)
 		}
 		conditions = append(conditions, fmt.Sprintf("log_name IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if len(req.Sources) > 0 {
+		placeholders := make([]string, len(req.Sources))
+		for i, source := range req.Sources {
+			placeholders[i] = "?"
+			args = append(args, source)
+		}
+		conditions = append(conditions, fmt.Sprintf("source IN (%s)", strings.Join(placeholders, ",")))
 	}
 
 	if len(req.Computers) > 0 {
@@ -404,4 +418,38 @@ func sanitizeGlobPattern(pattern string) string {
 
 func scanEventFromRows(rows *sql.Rows) (*types.Event, error) {
 	return scanEvent(rows)
+}
+
+func (r *EventRepo) deduplicate(events []*types.Event) []*types.Event {
+	seen := make(map[string]bool)
+	unique := make([]*types.Event, 0, len(events))
+
+	for _, e := range events {
+		key := r.generateEventKey(e)
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, e)
+		}
+	}
+
+	return unique
+}
+
+func (r *EventRepo) generateEventKey(e *types.Event) string {
+	return fmt.Sprintf("%d|%s|%s|%s|%s",
+		e.EventID,
+		e.Timestamp.Format(time.RFC3339Nano),
+		e.Computer,
+		e.Message,
+		getUserKey(e))
+}
+
+func getUserKey(e *types.Event) string {
+	if e.UserSID != nil && *e.UserSID != "" {
+		return *e.UserSID
+	}
+	if e.User != nil && *e.User != "" {
+		return *e.User
+	}
+	return ""
 }

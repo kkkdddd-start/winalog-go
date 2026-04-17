@@ -40,6 +40,7 @@ type FileInfo struct {
 	IsLocked    bool
 	NeedsImport bool
 	LastImport  *time.Time
+	LastHash    string
 }
 
 const (
@@ -195,10 +196,25 @@ func (im *Importer) GetFileInfo(path string, calcHash bool) (*FileInfo, error) {
 		lastImport := im.db.GetLastImportTime(path)
 		if lastImport != nil {
 			info.LastImport = lastImport
-			if info.ModTime.Before(*lastImport) || info.ModTime.Equal(*lastImport) {
-				info.NeedsImport = false
+
+			currentHash := info.Hash
+			lastLog, err := im.db.GetImportLog(path)
+
+			if err == nil && lastLog != nil && lastLog.FileHash != "" {
+				info.LastHash = lastLog.FileHash
+
+				if currentHash == lastLog.FileHash &&
+					(info.ModTime.Before(*lastImport) || info.ModTime.Equal(*lastImport)) {
+					info.NeedsImport = false
+				} else {
+					info.NeedsImport = true
+				}
 			} else {
-				info.NeedsImport = true
+				if info.ModTime.Before(*lastImport) || info.ModTime.Equal(*lastImport) {
+					info.NeedsImport = false
+				} else {
+					info.NeedsImport = true
+				}
 			}
 		} else {
 			info.NeedsImport = true

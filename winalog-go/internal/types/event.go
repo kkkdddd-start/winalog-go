@@ -3,6 +3,9 @@ package types
 import (
 	"database/sql"
 	"encoding/json"
+	"encoding/xml"
+	"io"
+	"strings"
 	"time"
 )
 
@@ -322,4 +325,30 @@ func (e *Event) GetDestPort() int {
 		}
 	}
 	return 0
+}
+
+func (e *Event) ParseRawXML() error {
+	if e.RawXML == nil || *e.RawXML == "" {
+		return nil
+	}
+
+	decoder := xml.NewDecoder(strings.NewReader(*e.RawXML))
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		switch elem := token.(type) {
+		case xml.StartElement:
+			var data string
+			if err := decoder.DecodeElement(&data, &elem); err == nil {
+				e.SetExtractedField(elem.Name.Local, data)
+			}
+		}
+	}
+	return nil
 }

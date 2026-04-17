@@ -10,11 +10,12 @@ import (
 )
 
 type LiveHandler struct {
-	db         *storage.DB
-	startTime  time.Time
-	eventCount int64
-	lastCount  int64
-	mu         sync.RWMutex
+	db             *storage.DB
+	startTime      time.Time
+	eventCount     int64
+	lastCount      int64
+	mu             sync.RWMutex
+	lastImportTime time.Time
 }
 
 type LiveEventMessage struct {
@@ -50,7 +51,9 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 
 	clientGone := c.Request.Context().Done()
 
-	var lastEventID int64 = 0
+	h.mu.Lock()
+	h.lastImportTime = time.Now().Add(-24 * time.Hour)
+	h.mu.Unlock()
 
 	c.SSEvent("connected", map[string]interface{}{
 		"message": "Connected to live event stream",
@@ -65,21 +68,26 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 		select {
 		case <-ticker.C:
 			if h.db != nil {
+				h.mu.RLock()
+				lastImport := h.lastImportTime
+				h.mu.RUnlock()
+
 				filter := &storage.EventFilter{
-					Limit: 50,
+					Limit:     100,
+					StartTime: &lastImport,
 				}
 				events, _, err := h.db.ListEvents(filter)
 				if err == nil && len(events) > 0 {
 					for _, event := range events {
-						if event.ID > lastEventID {
-							msg := LiveEventMessage{
-								Type: "event",
-								Data: formatLiveEvent(event),
-							}
-							c.SSEvent("event", msg)
-							lastEventID = event.ID
+						msg := LiveEventMessage{
+							Type: "event",
+							Data: formatLiveEvent(event),
 						}
+						c.SSEvent("event", msg)
 					}
+					h.mu.Lock()
+					h.lastImportTime = events[len(events)-1].ImportTime
+					h.mu.Unlock()
 				}
 
 				stats, err := h.db.GetStats()

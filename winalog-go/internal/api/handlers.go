@@ -166,6 +166,7 @@ func (h *AlertHandler) SearchEvents(c *gin.Context) {
 		EventIDs:  req.EventIDs,
 		Levels:    req.Levels,
 		LogNames:  req.LogNames,
+		Sources:   req.Sources,
 		Computers: req.Computers,
 		Users:     req.Users,
 	}

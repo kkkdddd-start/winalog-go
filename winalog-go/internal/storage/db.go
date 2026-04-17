@@ -239,6 +239,7 @@ type EventFilter struct {
 	EventIDs  []int32
 	Levels    []int
 	LogNames  []string
+	Sources   []string
 	Computers []string
 	Users     []string
 	StartTime *time.Time
