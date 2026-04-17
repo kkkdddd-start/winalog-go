@@ -23,7 +23,7 @@
 
 | 命令 | 功能 | 关键选项 |
 |------|------|----------|
-| `import` | 导入 EVTX/ETL/CSV/LOG 文件 | `--workers`, `--batch-size`, `--incremental`, `--alert-on-import`, `--skip-patterns` |
+| `import` | 导入 EVTX/ETL/CSV/IIS/Sysmon/LOG 文件 | `--workers`, `--batch-size`, `--incremental`, `--alert-on-import`, `--skip-patterns`, `--format` |
 
 ### 1.2 事件搜索
 
@@ -32,7 +32,13 @@
 | `search` | 全文搜索事件 | `--keywords`, `--regex`, `--event-id`, `--level`, `--user`, `--computer`, `--start-time`, `--end-time` |
 | `query` | 执行 SQL 查询 | 直接输入 SQL 语句 |
 
-### 1.3 告警管理
+### 1.3 数据导出
+
+| 命令 | 功能 | 关键选项 |
+|------|------|----------|
+| `export` | 导出数据 | `--format json\|csv\|timeline`, `--include-events`, `--include-alerts` |
+
+### 1.4 告警管理
 
 | 命令 | 子命令 | 功能 |
 |------|--------|------|
@@ -44,15 +50,17 @@
 | `alert` | `stats` | 告警统计 |
 | `alert` | `run` | 运行告警分析 |
 | `alert` | `monitor` | 持续监控模式 |
+| `alert` | `upgrade` | 告警升级（高危告警自动提升） |
+| `alert` | `suppress` | 告警抑制（误报过滤） |
 
-### 1.4 威胁分析
+### 1.5 威胁分析
 
 | 命令 | 功能 |
 |------|------|
-| `analyze [type]` | 运行分析器（brute_force, login, kerberos, powershell, lateral_movement, privilege_escalation, persistence, data_exfiltration） |
+| `analyze [type]` | 运行分析器（brute_force, login, kerberos, powershell, lateral_movement, privilege_escalation, persistence, data_exfiltration, file_analysis, anomaly_detection） |
 | `correlate` | 关联分析 |
 
-### 1.5 取证与持久化
+### 1.6 取证与持久化
 
 | 命令 | 功能 | 关键选项 |
 |------|------|----------|
@@ -60,14 +68,20 @@
 | `forensics` | 取证功能 | `collect`, `hash`, `verify` |
 | `persistence detect` | 持久化检测 | `--category`, `--technique`, `--format` |
 
-### 1.6 报告与导出
+### 1.7 报告
 
 | 命令 | 功能 |
 |------|------|
 | `report generate` | 生成报告（security, summary, threat, compliance） |
-| `export` | 导出数据（json, csv, timeline） |
+| `report templates` | 报告模板管理 |
 
-### 1.7 其他命令
+### 1.8 白名单管理
+
+| 命令 | 功能 |
+|------|------|
+| `whitelist` | 白名单查看/添加/删除 |
+
+### 1.9 其他命令
 
 | 命令 | 功能 |
 |------|------|
@@ -82,10 +96,22 @@
 | `live collect` | 实时监控 |
 | `tui` | 启动 TUI 界面 |
 | `serve` | 启动 API 服务 |
+| `profile` | 性能分析（--output, --type cpu\|mem\|block） |
 
 ---
 
 ## 2. API 端点
+
+### 2.0 通用参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `page` | int | 页码（默认 1） |
+| `page_size` | int | 每页数量（默认 50，最大 1000） |
+| `start_time` | string | 开始时间（ISO 8601） |
+| `end_time` | string | 结束时间（ISO 8601） |
+| `level` | string | 过滤级别（info/warning/error/critical） |
+| `keyword` | string | 关键词搜索 |
 
 ### 2.1 事件 API
 
@@ -342,8 +368,21 @@
 | `lateral_movement` | 横向移动 |
 | `privilege_escalation` | 权限提升 |
 | `persistence` | 持久化机制 |
+| `file_analysis` | 文件分析（哈希、签名、熵值） |
+| `anomaly_detection` | 异常行为检测 |
 
-### 5.4 持久化技术
+### 5.4 内置规则（60+ 规则，MITRE ATT&CK 映射）
+
+| 类别 | 示例规则 |
+|------|----------|
+| 凭证访问 | T1110 暴力破解、T1003 凭证转储 |
+| 持久化 | T1547 注册表Run键、T1053 计划任务 |
+| 横向移动 | T1021 远程服务、T1550 替代凭证 |
+| 权限提升 | T1068 特权提升、T1548 滥用权限 |
+| 命令与控制 | T1059 命令执行、T1105 外部远程服务 |
+| 数据外泄 | T1041 编码数据、T1567 加密外泄 |
+
+### 5.5 持久化技术
 
 | 技术 ID | 技术名称 | 类别 |
 |---------|----------|------|
@@ -357,7 +396,7 @@
 | T1053.005 | Scheduled Task | Tasks |
 | T1543.003 | Windows Service | Service |
 
-### 5.5 常用事件 ID
+### 5.6 常用事件 ID
 
 | 事件 ID | 描述 | 日志源 |
 |---------|------|--------|
@@ -373,5 +412,5 @@
 
 ---
 
-**文档版本**: v2.4.0  
+**文档版本**: v2.5.0  
 **最后更新**: 2026-04-17
