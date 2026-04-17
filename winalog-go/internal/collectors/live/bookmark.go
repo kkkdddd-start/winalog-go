@@ -2,6 +2,7 @@ package live
 
 import (
 	"encoding/json"
+	"os"
 	"sync"
 	"time"
 
@@ -75,7 +76,11 @@ func (b *Bookmark) Save() error {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	_, err := json.Marshal(struct {
+	if b.path == "" {
+		return nil
+	}
+
+	data, err := json.Marshal(struct {
 		LastTime time.Time `json:"last_time"`
 		LastID   int64     `json:"last_id"`
 		Path     string    `json:"path"`
@@ -89,12 +94,7 @@ func (b *Bookmark) Save() error {
 		return err
 	}
 
-	if b.path == "" {
-		return nil
-	}
-
-	// Write to file would happen here
-	return nil
+	return os.WriteFile(b.path, data, 0644)
 }
 
 func (b *Bookmark) Load() error {
@@ -102,7 +102,29 @@ func (b *Bookmark) Load() error {
 		return nil
 	}
 
-	// Read from file would happen here
+	data, err := os.ReadFile(b.path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	var bookmarkData struct {
+		LastTime time.Time `json:"last_time"`
+		LastID   int64     `json:"last_id"`
+		Path     string    `json:"path"`
+	}
+
+	if err := json.Unmarshal(data, &bookmarkData); err != nil {
+		return err
+	}
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.lastTime = bookmarkData.LastTime
+	b.lastID = bookmarkData.LastID
+
 	return nil
 }
 
