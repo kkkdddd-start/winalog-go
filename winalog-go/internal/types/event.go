@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -351,4 +352,30 @@ func (e *Event) ParseRawXML() error {
 		}
 	}
 	return nil
+}
+
+func (e *Event) ExtractKeyFields() map[string]string {
+	fields := make(map[string]string)
+
+	keyGetters := []struct {
+		key    string
+		getter func() string
+	}{
+		{"TargetUserName", e.GetTargetUserName},
+		{"SubjectUserName", e.GetSubjectUserName},
+		{"LogonType", func() string { return fmt.Sprintf("%d", e.GetLogonType()) }},
+		{"ProcessName", e.GetProcessName},
+		{"ProcessId", e.GetProcessId},
+		{"CommandLine", e.GetCommandLine},
+		{"ServiceName", e.GetServiceName},
+		{"DestPort", func() string { return fmt.Sprintf("%d", e.GetDestPort()) }},
+	}
+
+	for _, kg := range keyGetters {
+		if v := kg.getter(); v != "" {
+			fields[kg.key] = v
+		}
+	}
+
+	return fields
 }

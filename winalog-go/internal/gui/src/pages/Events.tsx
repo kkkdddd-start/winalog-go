@@ -48,6 +48,8 @@ function Events() {
   const [computers, setComputers] = useState('')
   const [eventIdsInput, setEventIdsInput] = useState('')
   const [logNamesInput, setLogNamesInput] = useState('')
+  const [hoveredEvent, setHoveredEvent] = useState<Event | null>(null)
+  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 })
 
   const [filters, setFilters] = useState<ExportParams['filters']>({
     event_ids: [],
@@ -452,7 +454,21 @@ function Events() {
                     <td className="event-id">{event.event_id}</td>
                     <td className="source-cell">{event.source || '-'}</td>
                     <td className="computer-cell">{event.computer || '-'}</td>
-                    <td className="message-cell" title={event.message}>
+                    <td 
+                      className="message-cell"
+                      onMouseEnter={(e) => {
+                        if (event.message && event.message.length > 120) {
+                          setHoveredEvent(event)
+                          setHoverPosition({ x: e.clientX, y: e.clientY })
+                        }
+                      }}
+                      onMouseMove={(e) => {
+                        if (hoveredEvent?.id === event.id) {
+                          setHoverPosition({ x: e.clientX, y: e.clientY })
+                        }
+                      }}
+                      onMouseLeave={() => setHoveredEvent(null)}
+                    >
                       {event.message?.substring(0, 120)}
                       {event.message && event.message.length > 120 ? '...' : ''}
                     </td>
@@ -461,6 +477,23 @@ function Events() {
               </tbody>
             </table>
           </div>
+
+          {hoveredEvent && (
+            <div
+              className="message-float-panel"
+              style={{
+                left: Math.min(hoverPosition.x + 10, window.innerWidth - 620),
+                top: Math.min(hoverPosition.y + 10, window.innerHeight - 420),
+              }}
+              onMouseLeave={() => setHoveredEvent(null)}
+            >
+              <div className="float-panel-header">
+                <span>Full Message</span>
+                <button className="float-panel-close" onClick={() => setHoveredEvent(null)}>x</button>
+              </div>
+              <pre className="float-panel-content">{hoveredEvent.message}</pre>
+            </div>
+          )}
 
           <div className="pagination">
             <button 
@@ -854,6 +887,58 @@ function Events() {
           text-overflow: ellipsis;
           white-space: nowrap;
           color: #aaa;
+          cursor: default;
+        }
+        
+        .message-float-panel {
+          position: fixed;
+          max-width: 600px;
+          max-height: 400px;
+          overflow: hidden;
+          background: #0a0a1a;
+          border: 1px solid #00d9ff;
+          border-radius: 8px;
+          padding: 0;
+          z-index: 1000;
+          box-shadow: 0 4px 20px rgba(0, 217, 255, 0.3);
+        }
+        
+        .float-panel-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 12px;
+          background: rgba(0, 217, 255, 0.1);
+          border-bottom: 1px solid #00d9ff;
+        }
+        
+        .float-panel-header span {
+          font-weight: bold;
+          color: #00d9ff;
+        }
+        
+        .float-panel-close {
+          background: none;
+          border: none;
+          color: #888;
+          cursor: pointer;
+          font-size: 16px;
+          padding: 0 4px;
+        }
+        
+        .float-panel-close:hover {
+          color: #fff;
+        }
+        
+        .float-panel-content {
+          padding: 12px;
+          max-height: 340px;
+          overflow: auto;
+          white-space: pre-wrap;
+          word-break: break-all;
+          margin: 0;
+          font-size: 13px;
+          color: #ccc;
         }
         
         .pagination {

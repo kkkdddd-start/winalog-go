@@ -174,11 +174,24 @@ func (m Model) renderEventDetail() string {
 	}
 
 	sb.WriteString("\n" + styles.SectionTitle.Render(" Message ") + "\n")
-	sb.WriteString(fmt.Sprintf("  %s\n", truncate(event.Message, m.width-8)))
+	maxMsgWidth := m.width - 4
+	msgLines := strings.Split(event.Message, "\n")
+	displayLines := min(len(msgLines), 20)
+	for i := 0; i < displayLines; i++ {
+		line := msgLines[i]
+		if len(line) > maxMsgWidth {
+			line = line[:maxMsgWidth-3] + "..."
+		}
+		sb.WriteString(fmt.Sprintf("  %s\n", line))
+	}
+	if len(msgLines) > displayLines {
+		sb.WriteString(fmt.Sprintf("  %s\n", styles.WarningStyle.Render(
+			fmt.Sprintf("... (%d more lines, use API to view full message)", len(msgLines)-displayLines))))
+	}
 
 	if event.RawXML != nil && *event.RawXML != "" {
 		sb.WriteString("\n" + styles.SectionTitle.Render(" Raw XML ") + "\n")
-		sb.WriteString(fmt.Sprintf("  %s\n", truncate(*event.RawXML, 200)))
+		sb.WriteString(fmt.Sprintf("  %s\n", truncate(*event.RawXML, min(200, maxMsgWidth))))
 	}
 
 	sb.WriteString("\n" + styles.StatusBarStyle.Render(
