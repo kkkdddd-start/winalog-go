@@ -2,31 +2,34 @@
 
 package collectors
 
-type ShimCacheCollector struct {
-	BaseCollector
-}
-
-type ShimCacheEntry struct {
-	Path          string
-	LastModified  string
-	LastUpdateTime string
-	ExecutionTime  string
-	Size          uint32
-	Flag          uint32
-}
-
-func NewShimCacheCollector() *ShimCacheCollector {
-	return &ShimCacheCollector{}
-}
-
 import (
 	"context"
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
+
+type ShimCacheCollector struct {
+	BaseCollector
+}
+
+type ShimCacheEntry struct {
+	Path           string
+	LastModified   string
+	LastUpdateTime string
+	ExecutionTime  string
+	Size           uint32
+	Flag           uint32
+}
+
+func NewShimCacheCollector() *ShimCacheCollector {
+	return &ShimCacheCollector{}
+}
 
 func (c *ShimCacheCollector) collectShimCache() ([]*types.ShimCacheEntry, error) {
 	entries := make([]*types.ShimCacheEntry, 0)
@@ -87,18 +90,75 @@ func parseShimCacheBinary(data string) []ShimCacheEntry {
 func parseShimCacheHex(hexString string) []ShimCacheEntry {
 	entries := make([]ShimCacheEntry, 0)
 
-	hexStrings := strings.Fields(hexString)
-	if len(hexStrings) < 64 {
+	hexData := strings.ReplaceAll(hexString, " ", "")
+	if len(hexData) < 64 {
 		return entries
+	}
+
+	data, err := hex.DecodeString(hexData)
+	if err != nil {
+		return entries
+	}
+
+	offset := 0
+	if len(data) < 24 {
+		return entries
+	}
+
+	for offset < len(data)-24 {
+		pathLen := int(binary.LittleEndian.Uint32(data[offset : offset+4]))
+		offset += 4
+
+		if offset+pathLen > len(data) {
+			break
+		}
+
+		path := string(data[offset : offset+pathLen])
+		offset += pathLen
+
+		if (pathLen % 8) != 0 {
+			offset += 8 - (pathLen % 8)
+		}
+
+		if offset+12 > len(data) {
+			break
+		}
+
+		timestamp := binary.LittleEndian.Uint64(data[offset : offset+8])
+		offset += 8
+
+		flag := binary.LittleEndian.Uint32(data[offset : offset+4])
+		offset += 4
+
+		entries = append(entries, ShimCacheEntry{
+			Path:           path,
+			LastUpdateTime: parseWindowsTime(timestamp),
+			Flag:           flag,
+		})
 	}
 
 	return entries
 }
 
-func toBase64String(data string) string {
-	cmd := `[System.Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes('%s'))`
+func parseWindowsTime(timestamp uint64) string {
+	if timestamp == 0 {
+		return ""
+	}
+	sec := timestamp / 10000000
+	min := sec / 60
+	hour := min / 60
+	day := hour / 24
 
-	result := utils.RunPowerShell(strings.Replace(cmd, "%s", data, 1))
+	startTime := time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC)
+	t := startTime.Add(time.Duration(day) * 24 * time.Hour).Add(time.Duration(hour%24) * time.Hour).Add(time.Duration(min%60) * time.Minute).Add(time.Duration(sec%60) * time.Second)
+
+	return t.Format("2006-01-02 15:04:05")
+}
+
+func toBase64String(data string) string {
+	cmd := fmt.Sprintf(`[System.Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes('%s'))`, data)
+
+	result := utils.RunPowerShell(cmd)
 	if result.Success() {
 		return strings.TrimSpace(result.Output)
 	}
@@ -113,9 +173,9 @@ func ParseShimCache(regKey string) ([]*types.ShimCacheEntry, error) {
 		regKey = `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatibility`
 	}
 
-	cmd := `Get-ItemProperty -Path '%s' -Name 'AppCompatCache' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty AppCompatCache`
+	cmd := fmt.Sprintf(`Get-ItemProperty -Path '%s' -Name 'AppCompatCache' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty AppCompatCache`, regKey)
 
-	result := utils.RunPowerShell(strings.Replace(cmd, "%s", regKey, 1))
+	result := utils.RunPowerShell(cmd)
 	if !result.Success() {
 		return entries, nil
 	}
@@ -175,7 +235,7 @@ func parseIntFromString(s string) int {
 }
 
 func ClearShimCache() error {
-	return nil
+	return fmt.Errorf("clearing ShimCache is not supported via this API for security reasons")
 }
 
 func GetRecentExecutables(limit int) ([]string, error) {
@@ -187,10 +247,13 @@ func GetRecentExecutables(limit int) ([]string, error) {
 	}
 
 	for _, entry := range entries {
-		if entry.ExecutionTime.After(time.Now().AddDate(0, 0, -30)) {
-			executables = append(executables, entry.Path)
-			if len(executables) >= limit {
-				break
+		execTime, err := time.Parse("2006-01-02 15:04:05", entry.ExecutionTime)
+		if err == nil {
+			if execTime.After(time.Now().AddDate(0, 0, -30)) {
+				executables = append(executables, entry.Path)
+				if len(executables) >= limit {
+					break
+				}
 			}
 		}
 	}

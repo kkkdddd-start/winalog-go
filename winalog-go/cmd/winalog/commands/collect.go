@@ -75,7 +75,18 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	ctx := context.Background()
-	result, err := collectors.RunOneClickCollection(ctx, nil)
+
+	opts := collectors.CollectOptions{
+		Workers:           collectFlags.workers,
+		IncludePrefetch:   collectFlags.includePrefetch,
+		IncludeRegistry:   collectFlags.includeRegistry,
+		IncludeSystemInfo: collectFlags.includeSystemInfo,
+		OutputPath:        collectFlags.outputPath,
+		Compress:          collectFlags.compress,
+		CalculateHash:     collectFlags.calculateHash,
+	}
+
+	result, err := collectors.RunOneClickCollection(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("collection failed: %w", err)
 	}

@@ -30,20 +30,10 @@ type CollectConfig struct {
 	IncludeSystemInfo  bool
 	IncludeProcessSig  bool
 	IncludeProcessDLLs bool
-	DLLCollectionMode  string
-	SelectedPIDs       []int
-	OutputPath         string
-	Compress           bool
-	CalculateHash      bool
-}
-
-type CollectOptions struct {
-	Workers            int
-	IncludePrefetch    bool
-	IncludeRegistry    bool
-	IncludeSystemInfo  bool
-	IncludeProcessSig  bool
-	IncludeProcessDLLs bool
+	IncludeAmcache     bool
+	IncludeUserassist  bool
+	IncludeUSNJournal  bool
+	IncludeShimCache   bool
 	DLLCollectionMode  string
 	SelectedPIDs       []int
 	OutputPath         string
@@ -58,6 +48,12 @@ type OneClickResult struct {
 	CollectedItems map[string]int    `json:"collected_items"`
 	Hashes         map[string]string `json:"hashes,omitempty"`
 	Errors         []string          `json:"errors,omitempty"`
+}
+
+type CollectProgressCallback interface {
+	OnProgress(stage string, current, total int)
+	OnError(stage string, err error)
+	OnComplete(result *OneClickResult)
 }
 
 func NewOneClickCollector() *OneClickCollector {
@@ -80,7 +76,11 @@ func NewOneClickCollector() *OneClickCollector {
 }
 
 func (c *OneClickCollector) Collect(ctx context.Context) ([]interface{}, error) {
-	return nil, nil
+	result, err := c.FullCollect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return []interface{}{result}, nil
 }
 
 func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, error) {
@@ -94,6 +94,10 @@ func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, 
 			c.cfg.IncludeSystemInfo = collectOpts.IncludeSystemInfo
 			c.cfg.IncludeProcessSig = collectOpts.IncludeProcessSig
 			c.cfg.IncludeProcessDLLs = collectOpts.IncludeProcessDLLs
+			c.cfg.IncludeAmcache = collectOpts.IncludeAmcache
+			c.cfg.IncludeUserassist = collectOpts.IncludeUserassist
+			c.cfg.IncludeUSNJournal = collectOpts.IncludeUSNJournal
+			c.cfg.IncludeShimCache = collectOpts.IncludeShimCache
 			c.cfg.DLLCollectionMode = collectOpts.DLLCollectionMode
 			c.cfg.SelectedPIDs = collectOpts.SelectedPIDs
 			if collectOpts.OutputPath != "" {
@@ -168,6 +172,30 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		}
 	}
 
+	if c.cfg.IncludeAmcache {
+		if err := c.CollectAmcache(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
+	if c.cfg.IncludeUserassist {
+		if err := c.CollectUserAssist(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
+	if c.cfg.IncludeUSNJournal {
+		if err := c.CollectUSNJournal(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
+	if c.cfg.IncludeShimCache {
+		if err := c.CollectShimCache(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, err.Error())
+		}
+	}
+
 	if c.cfg.CalculateHash {
 		hashes, err := c.CalculateFileHashes(tempDir)
 		if err == nil {
@@ -193,6 +221,35 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	result.Errors = allErrors
 	if len(allErrors) > 0 {
 		result.Success = false
+	}
+
+	return result, nil
+}
+
+func (c *OneClickCollector) FullCollectWithCallback(ctx context.Context, callback CollectProgressCallback) (*OneClickResult, error) {
+	stages := []string{"systemInfo", "registry", "prefetch", "eventLogs", "processInfo", "amcache", "userassist", "usnjournal", "shimcache"}
+	total := len(stages)
+
+	if callback != nil {
+		callback.OnProgress("init", 0, total)
+	}
+
+	result, err := c.FullCollect(ctx)
+	if err != nil {
+		if callback != nil {
+			callback.OnError("fullCollect", err)
+		}
+		return result, err
+	}
+
+	for i, stage := range stages {
+		if callback != nil {
+			callback.OnProgress(stage, i+1, total)
+		}
+	}
+
+	if callback != nil {
+		callback.OnComplete(result)
 	}
 
 	return result, nil
@@ -265,13 +322,13 @@ func (c *OneClickCollector) collectProcessInfoWithSignaturesAndDLLs(tempDir stri
 	}
 
 	processData, _ := json.MarshalIndent(processList, "", "  ")
-	if err := os.WriteFile(filepath.Join(processDir, "processes.json"), processData, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(processDir, "processes.json"), processData, 0600); err != nil {
 		return err
 	}
 
 	if len(dllList) > 0 {
 		dllData, _ := json.MarshalIndent(dllList, "", "  ")
-		if err := os.WriteFile(filepath.Join(processDir, "process_dlls.json"), dllData, 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(processDir, "process_dlls.json"), dllData, 0600); err != nil {
 			return err
 		}
 	}
@@ -291,7 +348,7 @@ func (c *OneClickCollector) collectSystemInfoTo(tempDir string) error {
 	}
 
 	data, _ := json.MarshalIndent(info, "", "  ")
-	return os.WriteFile(filepath.Join(infoDir, "system_info.json"), data, 0644)
+	return os.WriteFile(filepath.Join(infoDir, "system_info.json"), data, 0600)
 }
 
 func (c *OneClickCollector) CollectEvtxLogs(ctx context.Context, outputDir string) error {
@@ -337,7 +394,7 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 		}
 
 		exportPath := filepath.Join(eventLogDir, logName+".evtx")
-		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]`,
+		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]]`,
 			logName, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
 
 		utils.RunPowerShell(exportCmd)
@@ -390,11 +447,75 @@ func (c *OneClickCollector) CollectRegistry(ctx context.Context, outputDir strin
 		cmd := fmt.Sprintf(`Get-ItemProperty -Path '%s' -ErrorAction SilentlyContinue | ConvertTo-Json -Compress`, keyPath)
 		result := utils.RunPowerShell(cmd)
 		if result.Success() && result.Output != "" {
-			os.WriteFile(outputPath, []byte(result.Output), 0644)
+			os.WriteFile(outputPath, []byte(result.Output), 0600)
 		}
 	}
 
 	return nil
+}
+
+func (c *OneClickCollector) CollectAmcache(ctx context.Context, outputDir string) error {
+	amcacheDir := filepath.Join(outputDir, "amcache")
+	if err := os.MkdirAll(amcacheDir, 0755); err != nil {
+		return err
+	}
+
+	entries, err := GetAmcache()
+	if err != nil {
+		return err
+	}
+
+	data, _ := json.MarshalIndent(entries, "", "  ")
+	return os.WriteFile(filepath.Join(amcacheDir, "amcache.json"), data, 0600)
+}
+
+func (c *OneClickCollector) CollectUserAssist(ctx context.Context, outputDir string) error {
+	uaDir := filepath.Join(outputDir, "userassist")
+	if err := os.MkdirAll(uaDir, 0755); err != nil {
+		return err
+	}
+
+	entries, err := GetUserAssist()
+	if err != nil {
+		return err
+	}
+
+	data, _ := json.MarshalIndent(entries, "", "  ")
+	return os.WriteFile(filepath.Join(uaDir, "userassist.json"), data, 0600)
+}
+
+func (c *OneClickCollector) CollectUSNJournal(ctx context.Context, outputDir string) error {
+	usnDir := filepath.Join(outputDir, "usnjournal")
+	if err := os.MkdirAll(usnDir, 0755); err != nil {
+		return err
+	}
+
+	for _, drive := range []string{"C:", "D:", "E:"} {
+		entries, err := GetUSNJournal(drive)
+		if err != nil {
+			continue
+		}
+		data, _ := json.MarshalIndent(entries, "", "  ")
+		fileName := fmt.Sprintf("usnjournal_%s.json", strings.TrimSuffix(drive, ":"))
+		os.WriteFile(filepath.Join(usnDir, fileName), data, 0600)
+	}
+
+	return nil
+}
+
+func (c *OneClickCollector) CollectShimCache(ctx context.Context, outputDir string) error {
+	shimDir := filepath.Join(outputDir, "shimcache")
+	if err := os.MkdirAll(shimDir, 0755); err != nil {
+		return err
+	}
+
+	entries, err := GetShimCache()
+	if err != nil {
+		return err
+	}
+
+	data, _ := json.MarshalIndent(entries, "", "  ")
+	return os.WriteFile(filepath.Join(shimDir, "shimcache.json"), data, 0600)
 }
 
 func (c *OneClickCollector) CreateZipFromDir(sourceDir, zipPath string) error {
@@ -528,9 +649,27 @@ func getDir(path string) string {
 }
 
 func (c *OneClickCollector) GenerateCollectReport(success bool, outputDir string) error {
-	return nil
-}
+	reportPath := filepath.Join(outputDir, "collection_report.txt")
 
-func CreateZipFromDir(sourceDir, zipPath string) error {
-	return nil
+	var report strings.Builder
+	report.WriteString(fmt.Sprintf("WinLog One-Click Collection Report\n"))
+	report.WriteString(fmt.Sprintf("===================================\n"))
+	report.WriteString(fmt.Sprintf("Timestamp: %s\n", time.Now().Format(time.RFC3339)))
+	report.WriteString(fmt.Sprintf("Success: %v\n", success))
+	report.WriteString(fmt.Sprintf("Output Directory: %s\n", outputDir))
+
+	if c.cfg.IncludePrefetch {
+		report.WriteString(fmt.Sprintf("  - Prefetch: Enabled\n"))
+	}
+	if c.cfg.IncludeRegistry {
+		report.WriteString(fmt.Sprintf("  - Registry: Enabled\n"))
+	}
+	if c.cfg.IncludeSystemInfo {
+		report.WriteString(fmt.Sprintf("  - System Info: Enabled\n"))
+	}
+	if c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs {
+		report.WriteString(fmt.Sprintf("  - Process Info: Enabled\n"))
+	}
+
+	return os.WriteFile(reportPath, []byte(report.String()), 0600)
 }
