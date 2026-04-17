@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/reports/template"
+	"github.com/kkkdddd-start/winalog-go/internal/version"
 )
 
 type HTMLReport struct {
@@ -34,7 +35,7 @@ func (r *HTMLReport) Write(w io.Writer) error {
 		GeneratedAtStr: r.Report.GeneratedAt.Format(time.RFC1123),
 		StartTimeStr:   r.Report.TimeRange.Start.Format(time.RFC1123),
 		EndTimeStr:     r.Report.TimeRange.End.Format(time.RFC1123),
-		Version:        "2.4.0",
+		Version:        version.Version,
 	}
 
 	return tmpl.ExecuteTemplate(w, "report", data)

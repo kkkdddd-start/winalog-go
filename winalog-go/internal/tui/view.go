@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbletea"
 
 	"github.com/kkkdddd-start/winalog-go/internal/tui/styles"
+	"github.com/kkkdddd-start/winalog-go/internal/version"
 )
 
 func (m Model) View() string {
@@ -63,7 +64,7 @@ func (m Model) View() string {
 func (m Model) renderDashboard() string {
 	var sb strings.Builder
 
-	sb.WriteString(styles.TitleStyle.Render(" WinLogAnalyzer v2.4.0 ") + "\n")
+	sb.WriteString(styles.TitleStyle.Render(fmt.Sprintf(" WinLogAnalyzer v%s ", version.Version)) + "\n")
 	sb.WriteString(styles.SubtitleStyle.Render(" Windows Security Forensics Tool ") + "\n\n")
 
 	if len(m.alerts) > 0 {

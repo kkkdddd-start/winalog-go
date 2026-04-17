@@ -14,6 +14,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/kkkdddd-start/winalog-go/internal/version"
 	"golang.org/x/sys/windows"
 )
 
@@ -388,7 +389,7 @@ func CreateMemoryDumpMetadata(dumpPath string, dumpType string, hostname string,
 	hash := sha256.Sum256(data)
 
 	metadata := &MemoryDumpMetadata{
-		Version:      "2.4.0",
+		Version:      version.Version,
 		Timestamp:    time.Now(),
 		Hostname:     hostname,
 		ProcessID:    pid,

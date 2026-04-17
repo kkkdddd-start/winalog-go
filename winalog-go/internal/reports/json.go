@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/kkkdddd-start/winalog-go/internal/version"
 )
 
 type JSONReport struct {
@@ -148,7 +150,7 @@ func (e *JSONExporter) ExportStructured(req *ReportRequest) (*JSONReportTemplate
 	}
 
 	template := &JSONReportTemplate{
-		Version:       "2.4.0",
+		Version:       version.Version,
 		GeneratedAt:   report.GeneratedAt,
 		ReportTitle:   report.Title,
 		Summary:       SummarySection{},

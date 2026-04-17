@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS events (
 	session_id TEXT,
 	ip_address TEXT,
 	import_time TEXT NOT NULL,
-	import_id INTEGER DEFAULT 0
+	import_id INTEGER,
+	FOREIGN KEY (import_id) REFERENCES import_log(id) ON DELETE SET NULL
 );
 
 -- Alerts table
