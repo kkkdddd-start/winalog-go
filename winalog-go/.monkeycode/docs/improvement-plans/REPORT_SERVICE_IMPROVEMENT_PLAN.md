@@ -1,8 +1,8 @@
-# R7: 统一报告服务层 - 深入评估
+# R7: 统一报告服务层 - 完整实施计划
 
 ## 问题摘要
 
-当前报告生成逻辑分散在 3 个位置，共约 **2299 行代码**，存在严重的代码重复和维护问题。
+当前报告生成逻辑分散在 3 个位置，共约 **2299 行代码**，存在约 **400 行重复代码**。
 
 ## 代码统计
 
@@ -14,339 +14,733 @@
 | `internal/api/handlers_reports.go` | ~842 | API 报告处理（**大量重复**） |
 | `cmd/winalog/commands/report.go` | ~160 | CLI 报告命令 |
 
-## 重复类型详细对比
+## 重复类型对比
 
-### 1. ReportRequest
+| 类型 | reports 包 | api 包 | 处理方式 |
+|------|------------|--------|----------|
+| `TimeRange` | ✅ | ✅ (完全相同) | 统一使用 reports 包 |
+| `ReportRequest` | ✅ | ✅ (字段不同) | API 用适配器转换 |
+| `ReportSummary` | ✅ | ✅ (字段交集) | API 用适配器转换 |
+| `ReportAlert` | ❌ | ✅ | 保留在 api 包用于 JSON |
+| `ReportEvent` | ❌ | ✅ | 保留在 api 包用于 JSON |
+| `ReportTimeline` | ❌ | ✅ | 保留在 api 包用于 JSON |
 
-| 字段 | reports 包 | api 包 | 说明 |
-|------|------------|--------|------|
-| Title | ✅ string | ✅ string | 相同 |
-| Format | ✅ ReportFormat | ✅ string | 类型不同 |
-| StartTime | ✅ time.Time | ✅ string (RFC3339) | 类型不同 |
-| EndTime | ✅ time.Time | ✅ string (RFC3339) | 类型不同 |
-| IncludeRaw | ✅ bool | ✅ bool | 相同 |
-| IncludeIOC | ✅ bool | ❌ | 仅 reports |
-| IncludeMITRE | ✅ bool | ❌ | 仅 reports |
-| Compression | ❌ | ✅ bool | 仅 api |
-| Type | ❌ | ✅ string | 仅 api (security_summary/alert_report 等) |
-| Description | ❌ | ✅ string | 仅 api |
+---
 
-**问题**: 两个结构体字段有交集但不完全相同，api 包需要 `Type` 字段来区分报告类型。
+# 完整实施计划
 
-### 2. ReportSummary
+## 阶段总览
 
-| 字段 | reports 包 | api 包 | 说明 |
-|------|------------|--------|------|
-| TotalEvents | ✅ int64 | ✅ int64 | 相同 |
-| TotalAlerts | ✅ int64 | ✅ int64 | 相同 |
-| CriticalEvents | ✅ int64 | ❌ | 仅 reports |
-| HighAlerts | ✅ int64 | ✅ int64 | 相同 |
-| MediumAlerts | ❌ | ✅ int64 | 仅 api |
-| LowAlerts | ❌ | ✅ int64 | 仅 api |
-| TimeRangeDays | ✅ float64 | ❌ | 仅 reports |
-| TopEventSources | ❌ | ✅ map[string]int64 | 仅 api |
-| TimeRange | ❌ | ✅ TimeRange | 仅 api |
-| Computers | ✅ []string | ❌ | 仅 reports |
+| 阶段 | 周期 | 交付物 | 风险 |
+|------|------|--------|------|
+| Phase 1 | Day 1 | `service.go` + PDF 支持 | 中 |
+| Phase 2 | Day 2 | 重构 `handlers_reports.go` | 低 |
+| Phase 3 | Day 3 | 测试 + CLI 优化（可选） | 低 |
 
-**问题**: 两个结构体设计目的不同，但有很多重叠字段。
+---
 
-### 3. TimeRange
+## Phase 1: 创建统一服务层
 
-```go
-// reports 包
-type TimeRange struct {
-    Start time.Time `json:"start"`
-    End   time.Time `json:"end"`
-}
+### Day 1 - 实施任务
 
-// api 包
-type TimeRange struct {
-    Start time.Time `json:"start"`
-    End   time.Time `json:"end"`
-}
-```
+#### 任务 1.1: 创建 `internal/reports/service.go`
 
-**完全重复！** 两个结构体定义一模一样。
-
-### 4. API 独有的类型
-
-| 类型 | 行数 | 功能 |
-|------|------|------|
-| `ReportContent` | ~10 | 包装 Summary/Alerts/Events/Timeline |
-| `ReportAlert` | ~15 | 告警详情 |
-| `ReportEvent` | ~15 | 事件详情 |
-| `ReportTimeline` | ~10 | 时间线条目 |
-| `ReportInfo` | ~15 | 报告元信息 |
-| `ReportRequest` (api) | ~15 | API 请求结构 |
-
-## 重复的逻辑
-
-### 1. 报告生成逻辑对比
-
-**CLI 使用 reports 包**:
-```go
-// cmd/winalog/commands/report.go:70-82
-gen := reports.NewGenerator(db)
-htmlExporter := reports.NewHTMLExporter(gen)
-return htmlExporter.Export(req, file)
-```
-
-**Web API 自行实现**:
-```go
-// internal/api/handlers_reports.go:161-236
-// - 直接查询数据库获取统计数据
-// - 手动构建 ReportContent
-// - 手动生成 PDF
-// - 没有使用 reports.Generator
-```
-
-### 2. 数据查询重复
-
-**reports 包** (`generator.go:291-316`):
-```go
-func (g *Generator) calculateSummary(req *ReportRequest) (ReportSummary, error) {
-    stats, err := g.db.GetStats()
-    summary.TotalEvents = stats.EventCount
-    summary.TotalAlerts = stats.AlertCount
-    // ...
-}
-```
-
-**api 包** (`handlers_reports.go:476-507`):
-```go
-func (h *ReportsHandler) buildSecuritySummary(startTime, endTime *time.Time) (*ReportSummary, error) {
-    h.db.QueryRow("SELECT COUNT(*) FROM events").Scan(&summary.TotalEvents)
-    h.db.QueryRow("SELECT COUNT(*) FROM alerts").Scan(&summary.TotalAlerts)
-    // ... 完全相同的查询逻辑
-}
-```
-
-### 3. PDF 生成
-
-Web API 单独实现了 PDF 生成（使用 gofpdf），而 reports 包没有 PDF 支持：
-- `handlers_reports.go:238-278` - PDF 生成逻辑（约 40 行）
-- `handlers_reports.go:281-421` - PDF 辅助方法（约 140 行）
-
-## 不修改的影响
-
-### 1. 维护成本
-
-| 问题 | 影响 |
-|------|------|
-| **数据不一致风险** | 两个地方计算统计数据，可能产生不同的结果 |
-| **修改成本加倍** | 修改报告格式需要在两处同步修改 |
-| **知识碎片化** | 新成员需要理解两套相似的报告系统 |
-| **Bug 定位困难** | 问题可能在两个地方以不同方式出现 |
-
-### 2. 功能演进障碍
-
-| 问题 | 影响 |
-|------|------|
-| **reports 包改进无法利用** | 如果在 generator.go 添加新报告类型，Web API 无法自动获得 |
-| **性能优化重复** | 查询优化需要在两个地方分别实施 |
-| **新格式支持困难** | 添加 PDF 到 reports 包后，Web API 仍需单独处理 |
-
-### 3. 架构债务
-
-```
-当前架构:
-┌─────────────────┐    ┌─────────────────┐
-│  CLI Commands   │    │   Web API       │
-│  (report.go)    │    │ (handlers_)     │
-└────────┬────────┘    └────────┬────────┘
-         │                      │
-         ▼                      ▼
-┌──────────────────────────────────────┐
-│         reports 包                    │
-│  Generator, HTMLExporter, JSON       │
-│  ❌ 没有 PDF 支持                      │
-│  ❌ 没有异步生成                       │
-└──────────────────────────────────────┘
-
-问题:
-- CLI 使用 reports 包 ✓
-- Web API 不使用 reports 包 ✗
-- 两边统计逻辑可能不一致
-- PDF 生成逻辑重复
-```
-
-### 4. 具体风险场景
-
-| 场景 | 不修改的风险 |
-|------|--------------|
-| 安全团队要求统一报告格式 | 需要在两处同步修改，容易遗漏 |
-| 添加新的报告类型（如 PCI 合规报告） | 需要在 CLI 和 API 两处实现 |
-| 修复统计数据计算错误 | 可能在 generator.go 修一处，另一处遗漏 |
-| 性能优化：批量查询代替循环查询 | 两处都要优化，可能不同步 |
-| 升级 PDF 库版本 | 两处都用 gofpdf，但只有 API 用了 |
-
-## 修改方案
-
-### 方案选择
-
-推荐 **渐进式重构方案**，分为 3 个阶段：
-
-### Phase 1: 创建统一服务层（高风险任务）
-
-**目标**: 在 reports 包中创建 `ReportService`，统一所有报告生成逻辑
-
-**新增文件**: `internal/reports/service.go`
+**文件**: `internal/reports/service.go` (新建，约 150 行)
 
 ```go
 package reports
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"text/template"
+	"time"
+
+	"github.com/jung-kurt/gofpdf"
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
+)
 
 type ReportService struct {
-    db        *storage.DB
-    generator *Generator
-    pdfLib    PDFGenerator  // 抽象 PDF 生成
+	db        *storage.DB
+	generator *Generator
 }
 
-type PDFGenerator interface {
-    GeneratePDF(content *Report, w io.Writer) error
+func NewReportService(db *storage.DB) *ReportService {
+	return &ReportService{
+		db:        db,
+		generator: NewGenerator(db),
+	}
 }
 
-func NewReportService(db *storage.DB) *ReportService
+func (s *ReportService) Generate(req *ReportRequest) (*Report, error) {
+	return s.generator.Generate(req)
+}
 
-// 核心接口
-func (s *ReportService) Generate(req *ReportRequest) (*Report, error)
-func (s *ReportService) ExportHTML(req *ReportRequest, w io.Writer) error
-func (s *ReportService) ExportJSON(req *ReportRequest) ([]byte, error)
-func (s *ReportService) ExportPDF(req *ReportRequest, w io.Writer) error
+func (s *ReportService) ExportHTML(req *ReportRequest, w io.Writer) error {
+	report, err := s.Generate(req)
+	if err != nil {
+		return err
+	}
 
-// 异步生成（支持 Web API）
-func (s *ReportService) GenerateAsync(req *ReportRequest, callback func(*Report, error))
+	htmlReport := NewHTMLReport(report)
+	return htmlReport.Write(w)
+}
+
+func (s *ReportService) ExportJSON(req *ReportRequest) ([]byte, error) {
+	report, err := s.Generate(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.MarshalIndent(report, "", "  ")
+}
+
+func (s *ReportService) ExportPDF(req *ReportRequest, w io.Writer) error {
+	report, err := s.Generate(req)
+	if err != nil {
+		return err
+	}
+
+	return generatePDF(report, w)
+}
+
+func (s *ReportService) GenerateAsync(req *ReportRequest, callback func(*Report, error)) {
+	go func() {
+		report, err := s.Generate(req)
+		callback(report, err)
+	}()
+}
+
+func generatePDF(report *Report, w io.Writer) error {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(15, 15, 15)
+	pdf.AddPage()
+
+	pdf.SetFillColor(22, 33, 62)
+	pdf.Rect(0, 0, 210, 40, "F")
+	pdf.SetTextColor(0, 217, 255)
+	pdf.SetFont("Arial", "B", 20)
+	pdf.SetXY(15, 12)
+	pdf.Cell(180, 10, report.Title)
+
+	pdf.SetTextColor(136, 136, 136)
+	pdf.SetFont("Arial", "", 10)
+	pdf.SetXY(15, 28)
+	pdf.Cell(180, 6, fmt.Sprintf("Generated: %s", report.GeneratedAt.Format("2006-01-02 15:04:05")))
+
+	pdf.SetTextColor(51, 51, 51)
+	pdf.SetY(50)
+
+	if report.Summary.TotalEvents > 0 {
+		addSummaryToPDF(pdf, report.Summary)
+	}
+
+	if len(report.TopAlerts) > 0 {
+		addAlertsToPDF(pdf, report.TopAlerts)
+	}
+
+	return pdf.Output(w)
+}
+
+func addSummaryToPDF(pdf *gofpdf.Fpdf, summary ReportSummary) {
+	pdf.SetFont("Arial", "B", 14)
+	pdf.SetTextColor(0, 217, 255)
+	pdf.Cell(0, 10, "Security Summary")
+	pdf.Ln(12)
+
+	pdf.SetFont("Arial", "", 10)
+	pdf.SetTextColor(51, 51, 51)
+
+	metrics := []struct {
+		label string
+		value int64
+	}{
+		{"Total Events", summary.TotalEvents},
+		{"Total Alerts", summary.TotalAlerts},
+		{"Critical Events", summary.CriticalEvents},
+		{"High Alerts", summary.HighAlerts},
+	}
+
+	for _, m := range metrics {
+		pdf.SetFont("Arial", "B", 10)
+		pdf.Cell(60, 7, m.label+":")
+		pdf.SetFont("Arial", "", 10)
+		pdf.Cell(0, 7, fmt.Sprintf("%d", m.value))
+		pdf.Ln(7)
+	}
+	pdf.Ln(5)
+}
+
+func addAlertsToPDF(pdf *gofpdf.Fpdf, alerts []*types.Alert) {
+	pdf.SetFont("Arial", "B", 14)
+	pdf.SetTextColor(0, 217, 255)
+	pdf.Cell(0, 10, "Alert Details")
+	pdf.Ln(12)
+
+	tableWidth := []float64{25, 40, 25, 70}
+	headers := []string{"Severity", "Rule Name", "Count", "Message"}
+
+	pdf.SetFont("Arial", "B", 9)
+	pdf.SetFillColor(0, 217, 255)
+	pdf.SetTextColor(255, 255, 255)
+	for i, h := range headers {
+		pdf.Cell(tableWidth[i], 8, h)
+	}
+	pdf.Ln(8)
+
+	pdf.SetFont("Arial", "", 8)
+	pdf.SetTextColor(51, 51, 51)
+	fill := false
+	for i, alert := range alerts {
+		if i >= 20 {
+			pdf.Cell(0, 7, "... and more alerts")
+			break
+		}
+		if fill {
+			pdf.SetFillColor(245, 245, 245)
+		} else {
+			pdf.SetFillColor(255, 255, 255)
+		}
+		pdf.Cell(tableWidth[0], 6, string(alert.Severity))
+		pdf.Cell(tableWidth[1], 6, truncateString(alert.RuleName, 25))
+		pdf.Cell(tableWidth[2], 6, fmt.Sprintf("%d", alert.Count))
+		pdf.Cell(tableWidth[3], 6, truncateString(alert.Message, 45))
+		pdf.Ln(6)
+		fill = !fill
+	}
+}
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
+}
 ```
 
-**API 适配器**: `internal/reports/api_adapter.go`
+#### 任务 1.2: 创建 `internal/reports/api_adapter.go`
+
+**文件**: `internal/reports/api_adapter.go` (新建，约 80 行)
 
 ```go
 package reports
 
-// 将 api.ReportRequest 转换为 reports.ReportRequest
-func AdaptAPIRequest(apiReq *api.ReportRequest) (*ReportRequest, error)
+import (
+	"fmt"
+	"time"
 
-// 将 reports.Report 转换为 api.ReportContent
-func AdaptReportContent(report *Report) *api.ReportContent
+	"github.com/kkkdddd-start/winalog-go/internal/api"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
+)
+
+func AdaptAPIRequest(apiReq *api.ReportRequest) (*ReportRequest, error) {
+	req := &ReportRequest{
+		Title:      apiReq.Title,
+		Format:     ReportFormat(apiReq.Format),
+		IncludeRaw: apiReq.IncludeRaw,
+	}
+
+	if apiReq.StartTime != "" {
+		if t, err := time.Parse(time.RFC3339, apiReq.StartTime); err == nil {
+			req.StartTime = t
+		}
+	}
+
+	if apiReq.EndTime != "" {
+		if t, err := time.Parse(time.RFC3339, apiReq.EndTime); err == nil {
+			req.EndTime = t
+		}
+	}
+
+	return req, nil
+}
+
+func AdaptReportContent(report *Report) *api.ReportContent {
+	content := &api.ReportContent{}
+
+	if report.Summary.TotalEvents > 0 {
+		content.Summary = &api.ReportSummary{
+			TotalEvents:    report.Summary.TotalEvents,
+			TotalAlerts:    report.Summary.TotalAlerts,
+			CriticalAlerts: report.Summary.CriticalEvents,
+			HighAlerts:     report.Summary.HighAlerts,
+		}
+	}
+
+	for _, alert := range report.TopAlerts {
+		content.Alerts = append(content.Alerts, &api.ReportAlert{
+			ID:        alert.ID,
+			RuleName:  alert.RuleName,
+			Severity:  string(alert.Severity),
+			Message:   alert.Message,
+			Count:     alert.Count,
+			FirstSeen: alert.FirstSeen,
+			LastSeen:  alert.LastSeen,
+		})
+	}
+
+	return content
+}
 ```
 
-### Phase 2: 重构 Web API（中风险）
+#### 任务 1.3: 添加 gofpdf 依赖
 
-**修改文件**: `internal/api/handlers_reports.go`
-
-**步骤**:
-1. 添加 `ReportService` 到 `ReportsHandler`
-2. 修改 `GenerateReport` 使用 `ReportService.GenerateAsync()`
-3. 删除重复的类型定义（保留 `ReportInfo`, `ReportRequest` api 版本用于 JSON 绑定）
-4. 删除 `buildSecuritySummary`, `buildAlertReport` 等重复方法
-5. 删除 `generatePDF`, `addSummaryToPDF` 等 PDF 方法（约 180 行）
-
-**删除的代码**: 约 400 行重复代码
-
-### Phase 3: 清理 CLI（低风险，可选）
-
-CLI 已经正确使用 reports 包，可以保持不变或可选重构。
-
-## 成本收益分析
-
-### 实施成本
-
-| 阶段 | 工作量 | 风险 |
-|------|--------|------|
-| Phase 1 | 约 200 行新代码 | 中 - 需要设计 PDF 抽象接口 |
-| Phase 2 | 约 100 行修改，删除 400 行 | 低 - 功能保持一致 |
-| Phase 3 | 可选 | 低 |
-
-**总成本**: 约 2-3 天开发时间
-
-### 收益
-
-| 收益类型 | 具体好处 |
-|----------|----------|
-| **代码质量** | 删除 ~400 行重复代码 |
-| **可维护性** | 修改报告格式只需一处 |
-| **一致性** | CLI 和 Web API 使用相同的数据模型 |
-| **可扩展性** | 添加新报告类型只需修改 ReportService |
-| **可测试性** | 可以针对 ReportService 编写单元测试 |
-
-### ROI 估算
-
-| 指标 | 当前 | 完成后 |
-|------|------|--------|
-| 报告相关代码行数 | ~2299 | ~1700 |
-| 报告类型定义位置 | 2 处 | 1 处 |
-| 统计数据计算位置 | 2 处 | 1 处 |
-| 添加新报告类型成本 | 2x | 1x |
-
-## 迁移风险与缓解
-
-### 风险 1: PDF 功能可能不完全兼容
-
-**风险**: reports 包的 Report 结构与 api.ReportContent 不同
-
-**缓解**:
-- Phase 1 创建适配器层
-- 保留 api.ReportContent 用于 API 响应格式
-
-### 风险 2: 异步生成需要回调机制
-
-**风险**: 当前 API 使用 goroutine + callback，Generator 是同步的
-
-**缓解**:
-- ReportService.GenerateAsync() 提供异步包装
-- 保持 API 的异步行为不变
-
-### 风险 3: JSON 字段名称可能变化
-
-**风险**: 重构后 API 响应格式可能变化
-
-**缓解**:
-- Phase 2 确保响应格式一致
-- 添加集成测试验证
-
-## 推荐实施顺序
-
-```
-Week 1:
-├── Phase 1: 创建 ReportService
-│   ├── 定义 PDFGenerator 接口
-│   ├── 实现 ReportService
-│   ├── 实现 reports 包内的 PDF 生成
-│   └── 编写单元测试
-│
-Week 2:
-├── Phase 2: 重构 Web API
-│   ├── 修改 ReportsHandler 使用 ReportService
-│   ├── 删除重复代码
-│   ├── 集成测试
-│   └── 手动测试
-│
-Week 3:
-├── Phase 3: 可选 CLI 优化
-└── 文档更新
+```bash
+go get github.com/jung-kurt/gofpdf
 ```
 
-## 结论
+#### 任务 1.4: 编写单元测试
 
-### 为什么必须修改
+**文件**: `internal/reports/service_test.go` (新建，约 100 行)
 
-1. **代码重复严重**: ~400 行重复代码在两处维护
-2. **数据不一致风险**: 同样的统计数据可能在两处计算不同
-3. **维护成本高**: 添加功能需要在两处同步修改
-4. **架构不健康**: Web API 没有使用已有的 reports 包
+```go
+package reports
 
-### 修改的收益远大于成本
+import (
+	"testing"
+	"time"
 
-- 一次性投入 ~2-3 天
-- 长期节省维护时间
-- 降低 bug 风险
-- 提高代码质量
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
+)
 
-### 不修改的后果
+func TestReportService_Generate(t *testing.T) {
+	db, err := storage.NewDB(":memory:")
+	if err != nil {
+		t.Skip("skipping test: %v", err)
+	}
+	defer db.Close()
 
-- 每次报告相关修改需要 2x 时间
-- 可能出现 CLI 和 Web API 报告不一致
-- 技术债务持续累积
-- 新功能开发速度受限
+	svc := NewReportService(db)
+
+	req := &ReportRequest{
+		Title:     "Test Report",
+		StartTime: time.Now().Add(-24 * time.Hour),
+		EndTime:   time.Now(),
+	}
+
+	report, err := svc.Generate(req)
+	if err != nil {
+		t.Errorf("Generate() error = %v", err)
+		return
+	}
+
+	if report.Title != req.Title {
+		t.Errorf("report.Title = %v, want %v", report.Title, req.Title)
+	}
+}
+
+func TestReportService_ExportJSON(t *testing.T) {
+	db, err := storage.NewDB(":memory:")
+	if err != nil {
+		t.Skip("skipping test: %v", err)
+	}
+	defer db.Close()
+
+	svc := NewReportService(db)
+
+	req := &ReportRequest{
+		Title:     "Test Report",
+		StartTime: time.Now().Add(-24 * time.Hour),
+		EndTime:   time.Now(),
+	}
+
+	data, err := svc.ExportJSON(req)
+	if err != nil {
+		t.Errorf("ExportJSON() error = %v", err)
+		return
+	}
+
+	if len(data) == 0 {
+		t.Error("ExportJSON() returned empty data")
+	}
+}
+```
+
+### Day 1 验收标准
+
+| 验收项 | 标准 |
+|--------|------|
+| `service.go` 编译通过 | `go build ./internal/reports/` 无错误 |
+| `api_adapter.go` 编译通过 | `go build ./internal/reports/` 无错误 |
+| `Generate()` 返回有效报告 | 单元测试通过 |
+| `ExportJSON()` 输出有效 JSON | 单元测试验证 JSON 格式 |
+| PDF 生成不崩溃 | `ExportPDF()` 能生成文件头 |
+
+---
+
+## Phase 2: 重构 Web API
+
+### Day 2 - 实施任务
+
+#### 任务 2.1: 修改 `internal/api/handlers_reports.go`
+
+**预估修改**: 约 100 行
+**预估删除**: 约 400 行
+
+**修改点 1**: 添加 ReportService 到 ReportsHandler
+
+```go
+type ReportsHandler struct {
+	db     *storage.DB
+	svc    *reports.ReportService  // 新增
+}
+```
+
+**修改点 2**: NewReportsHandler 使用 ReportService
+
+```go
+func NewReportsHandler(db *storage.DB) *ReportsHandler {
+	return &ReportsHandler{
+		db:  db,
+		svc: reports.NewReportService(db),  // 新增
+	}
+}
+```
+
+**修改点 3**: GenerateReport 使用 ReportService
+
+```go
+func (h *ReportsHandler) GenerateReport(c *gin.Context) {
+	var req ReportRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	reportID := fmt.Sprintf("report_%s_%d", req.Type, time.Now().UnixNano())
+
+	generatedAt := time.Now()
+	_, err := h.db.Exec(`
+		INSERT INTO reports (id, report_type, format, title, description, status, generated_at, query_params)
+		VALUES (?, ?, ?, ?, ?, 'generating', ?, ?)`,
+		reportID, req.Type, req.Format, req.Title, req.Description, generatedAt, "")
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	// 使用 ReportService 异步生成
+	apiReq := &reports.ReportRequest{
+		Title:      req.Title,
+		Format:     reports.ReportFormat(req.Format),
+		StartTime:  parseTime(req.StartTime),
+		EndTime:    parseTime(req.EndTime),
+		IncludeRaw: req.IncludeRaw,
+	}
+
+	h.svc.GenerateAsync(apiReq, func(report *reports.Report, err error) {
+		if err != nil {
+			h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+				err.Error(), time.Now(), reportID)
+			return
+		}
+
+		reportDir := filepath.Join(os.TempDir(), "winalog_reports")
+		os.MkdirAll(reportDir, 0755)
+		fileName := fmt.Sprintf("%s.%s", reportID, req.Format)
+		filePath := filepath.Join(reportDir, fileName)
+
+		if req.Format == "pdf" {
+			if f, err := os.Create(filePath); err == nil {
+				h.svc.ExportPDF(apiReq, f)
+				f.Close()
+			}
+		} else {
+			if data, err := h.svc.ExportJSON(apiReq); err == nil {
+				os.WriteFile(filePath, data, 0644)
+			}
+		}
+
+		if fi, _ := os.Stat(filePath); fi != nil {
+			h.db.Exec(`UPDATE reports SET status = 'completed', completed_at = ?, file_path = ?, file_size = ? WHERE id = ?`,
+				time.Now(), filePath, fi.Size(), reportID)
+		}
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":           reportID,
+		"type":         req.Type,
+		"format":       req.Format,
+		"status":       "generating",
+		"generated_at": generatedAt,
+		"message":      "Report generation started",
+	})
+}
+
+func parseTime(s string) time.Time {
+	if s == "" {
+		return time.Time{}
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
+	}
+	return time.Time{}
+}
+```
+
+**修改点 4**: 删除以下重复方法（约 400 行）
+
+需要删除的方法：
+- `buildSecuritySummary()` - 第 476-507 行
+- `buildAlertReport()` - 第 509-554 行
+- `buildEventReport()` - 第 556-597 行
+- `buildTimelineReport()` - 第 599-660 行
+- `buildReportContent()` - 第 430-474 行
+- `generatePDF()` - 第 238-279 行
+- `addSummaryToPDF()` - 第 281-311 行
+- `addAlertsToPDF()` - 第 313-352 行
+- `addEventsToPDF()` - 第 354-393 行
+- `addTimelineToPDF()` - 第 395-421 行
+- `truncateString()` - 第 423-428 行
+
+#### 任务 2.2: 更新 `internal/api/handlers_reports.go` 导入
+
+```go
+import (
+	// ... existing imports ...
+	"github.com/kkkdddd-start/winalog-go/internal/reports"  // 新增
+)
+```
+
+### Day 2 验收标准
+
+| 验收项 | 标准 |
+|--------|------|
+| API 编译通过 | `go build ./internal/api/` 无错误 |
+| `GET /api/reports` 正常 | 返回报告列表 |
+| `POST /api/reports/generate` 正常 | 触发报告生成 |
+| PDF 生成正常 | 生成有效 PDF 文件 |
+| JSON 格式与之前一致 | API 响应字段不变 |
+| 异步生成正常 | 报告状态更新正确 |
+
+---
+
+## Phase 3: 测试与优化
+
+### Day 3 - 实施任务
+
+#### 任务 3.1: 集成测试
+
+**文件**: `internal/api/reports_integration_test.go` (新建)
+
+```go
+package api
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestReportsHandler_GenerateReport(t *testing.T) {
+	setupTestDB(t)
+	defer closeTestDB()
+
+	body := map[string]interface{}{
+		"type":        "security_summary",
+		"format":      "json",
+		"start_time":  "",
+		"end_time":    "",
+		"include_raw": false,
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/api/reports/generate", bytes.NewReader(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	handler := NewReportsHandler(testDB)
+	handler.GenerateReport(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp["status"] != "generating" {
+		t.Errorf("expected status 'generating', got %v", resp["status"])
+	}
+}
+
+func TestReportsHandler_ListReports(t *testing.T) {
+	setupTestDB(t)
+	defer closeTestDB()
+
+	req := httptest.NewRequest("GET", "/api/reports", nil)
+	w := httptest.NewRecorder()
+
+	handler := NewReportsHandler(testDB)
+	handler.ListReports(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+}
+```
+
+#### 任务 3.2: 手动测试清单
+
+- [ ] CLI `report generate security_summary --format html` 正常工作
+- [ ] CLI `report generate security_summary --format json` 正常工作
+- [ ] Web API `POST /api/reports/generate` 生成 JSON 报告
+- [ ] Web API `POST /api/reports/generate` 生成 PDF 报告
+- [ ] Web API `GET /api/reports` 列出报告
+- [ ] 报告统计数据一致（CLI 和 API 生成的结果相同）
+
+#### 任务 3.3: 性能验证
+
+- [ ] 生成 1000 条事件的报告 < 5 秒
+- [ ] 生成 10000 条事件的报告 < 15 秒
+
+---
+
+## 详细时间估算
+
+| 任务 | 预估时间 | 实际时间 | 备注 |
+|------|----------|----------|------|
+| **Phase 1: 服务层** | | | |
+| 任务 1.1: service.go | 2 小时 | | |
+| 任务 1.2: api_adapter.go | 1 小时 | | |
+| 任务 1.3: 添加依赖 | 15 分钟 | | |
+| 任务 1.4: 单元测试 | 1.5 小时 | | |
+| **Phase 1 小计** | **5 小时** | | |
+| **Phase 2: Web API** | | | |
+| 任务 2.1: 修改 handlers | 4 小时 | | |
+| 任务 2.2: 编译调试 | 1 小时 | | |
+| **Phase 2 小计** | **5 小时** | | |
+| **Phase 3: 测试** | | | |
+| 任务 3.1: 集成测试 | 2 小时 | | |
+| 任务 3.2: 手动测试 | 1 小时 | | |
+| 任务 3.3: 性能验证 | 1 小时 | | |
+| **Phase 3 小计** | **4 小时** | | |
+| **总计** | **14 小时** | | 约 2 个工作日 |
+
+---
+
+## 文件修改清单
+
+### 新增文件
+
+| 文件路径 | 行数 | 说明 |
+|----------|------|------|
+| `internal/reports/service.go` | ~150 | ReportService 核心实现 |
+| `internal/reports/api_adapter.go` | ~80 | API 请求/响应适配器 |
+| `internal/reports/service_test.go` | ~100 | 单元测试 |
+| `internal/api/reports_integration_test.go` | ~80 | 集成测试 |
+
+### 修改文件
+
+| 文件路径 | 修改类型 | 删除行 | 新增行 | 说明 |
+|----------|----------|--------|--------|------|
+| `internal/api/handlers_reports.go` | 重构 | ~400 | ~100 | 使用 ReportService |
+| `go.mod` | 修改 | 0 | 1 | 添加 gofpdf 依赖 |
+
+### 不需要修改的文件
+
+| 文件路径 | 说明 |
+|----------|------|
+| `cmd/winalog/commands/report.go` | CLI 已正确使用 reports 包 |
+| `internal/reports/generator.go` | 核心逻辑保持不变 |
+| `internal/reports/html.go` | 保持不变 |
+| `internal/reports/json.go` | 保持不变 |
+
+---
+
+## 验收标准汇总
+
+### 功能验收
+
+| 功能 | 验收方法 |
+|------|----------|
+| JSON 报告生成 | CLI 和 API 生成相同结构 |
+| HTML 报告生成 | CLI 和 API 生成相同 HTML |
+| PDF 报告生成 | API 生成有效 PDF 文件 |
+| 报告统计数据 | 两处计算结果一致 |
+| 异步生成 | API 报告状态正确更新 |
+
+### 代码质量验收
+
+| 标准 | 验收方法 |
+|------|----------|
+| 无编译错误 | `go build ./...` |
+| 无 vet 警告 | `go vet ./...` |
+| 单元测试通过 | `go test ./internal/reports/...` |
+| 集成测试通过 | `go test ./internal/api/...` |
+
+### 性能验收
+
+| 场景 | 目标 |
+|------|------|
+| 1000 事件报告 | < 5 秒 |
+| 10000 事件报告 | < 15 秒 |
+
+---
+
+## 向后兼容策略
+
+### API 响应字段保持不变
+
+当前 API 返回:
+```json
+{
+  "id": "report_xxx",
+  "type": "security_summary",
+  "format": "json",
+  "status": "generating"
+}
+```
+
+重构后保持完全一致。
+
+### 新增字段可选
+
+ReportService 可以提供额外字段（如 `reports.Report.ComplianceStatus`），但 API 可以选择不返回。
+
+---
+
+## 风险缓解措施
+
+| 风险 | 缓解措施 | 验证方法 |
+|------|----------|----------|
+| PDF 格式变化 | Phase 1 单独测试 PDF | 对比新旧 PDF 文件结构 |
+| 统计数据不一致 | 使用同一个 ReportService | 编写对比测试 |
+| API 响应格式变化 | 保留 api.ReportContent | 适配器转换 |
+| 性能下降 | 性能基准测试 | 对比重构前后时间 |
+
+---
+
+## 实施检查清单
+
+### Day 1 结束检查
+
+- [ ] `service.go` 存在且可编译
+- [ ] `api_adapter.go` 存在且可编译
+- [ ] 单元测试存在且可通过
+- [ ] gofpdf 依赖已添加
+
+### Day 2 结束检查
+
+- [ ] `handlers_reports.go` 已重构
+- [ ] 约 400 行重复代码已删除
+- [ ] API 编译无错误
+- [ ] `go vet` 无警告
+
+### Day 3 结束检查
+
+- [ ] 集成测试存在且通过
+- [ ] CLI 报告命令正常
+- [ ] API 报告端点正常
+- [ ] PDF 生成正常
+- [ ] 统计数据一致
+
+---
 
 ## 状态
 
@@ -355,3 +749,10 @@ Week 3:
 ## 优先级
 
 **P1** - 重要且紧急，建议本季度完成
+
+## 历史版本
+
+| 版本 | 日期 | 作者 | 变更 |
+|------|------|------|------|
+| v1.0 | 2026-04-17 | MonkeyCode AI | 初始版本（问题分析） |
+| v2.0 | 2026-04-17 | MonkeyCode AI | 补充完整实施计划 |
