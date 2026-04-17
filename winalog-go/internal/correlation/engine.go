@@ -312,7 +312,7 @@ func (e *Engine) analyzeRule(rule *rules.CorrelationRule) []*types.CorrelationRe
 			}
 
 			nextPattern := patterns[i+1]
-			nextEvents := e.findRelatedEvents(baseEvent, nextPattern)
+			nextEvents := e.findRelatedEventsWithRule(baseEvent, nextPattern, rule)
 
 			if len(nextEvents) > 0 {
 				for _, nextEvent := range nextEvents {
@@ -366,7 +366,13 @@ func (e *Engine) findRelatedEvents(base *types.Event, pattern *rules.Pattern) []
 		}
 		filtered := make([]*types.Event, 0)
 		for _, evt := range events {
-			if evt.User == base.User || (evt.UserSID != nil && base.UserSID != nil && *evt.UserSID == *base.UserSID) {
+			userMatch := false
+			if evt.User != nil && base.User != nil {
+				userMatch = *evt.User == *base.User
+			} else if evt.UserSID != nil && base.UserSID != nil {
+				userMatch = *evt.UserSID == *base.UserSID
+			}
+			if userMatch {
 				filtered = append(filtered, evt)
 			}
 		}
@@ -400,6 +406,63 @@ func (e *Engine) findRelatedEvents(base *types.Event, pattern *rules.Pattern) []
 
 	default:
 		return e.index.GetByEventID(pattern.EventID)
+	}
+}
+
+func (e *Engine) findRelatedEventsWithRule(base *types.Event, pattern *rules.Pattern, rule *rules.CorrelationRule) []*types.Event {
+	join := pattern.Join
+	if join == "" {
+		join = rule.Join
+	}
+
+	switch join {
+	case "user":
+		events := e.index.GetByEventID(pattern.EventID)
+		if events == nil {
+			return nil
+		}
+		filtered := make([]*types.Event, 0)
+		for _, evt := range events {
+			userMatch := false
+			if evt.User != nil && base.User != nil {
+				userMatch = *evt.User == *base.User
+			} else if evt.UserSID != nil && base.UserSID != nil {
+				userMatch = *evt.UserSID == *base.UserSID
+			}
+			if userMatch {
+				filtered = append(filtered, evt)
+			}
+		}
+		return filtered
+
+	case "computer":
+		events := e.index.GetByEventID(pattern.EventID)
+		if events == nil {
+			return nil
+		}
+		filtered := make([]*types.Event, 0)
+		for _, evt := range events {
+			if evt.Computer == base.Computer {
+				filtered = append(filtered, evt)
+			}
+		}
+		return filtered
+
+	case "ip":
+		events := e.index.GetByEventID(pattern.EventID)
+		if events == nil {
+			return nil
+		}
+		filtered := make([]*types.Event, 0)
+		for _, evt := range events {
+			if evt.IPAddress != nil && base.IPAddress != nil && *evt.IPAddress == *base.IPAddress {
+				filtered = append(filtered, evt)
+			}
+		}
+		return filtered
+
+	default:
+		return nil
 	}
 }
 
