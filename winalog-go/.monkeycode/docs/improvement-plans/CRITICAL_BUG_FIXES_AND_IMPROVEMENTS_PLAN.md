@@ -15,13 +15,15 @@
 | 🔴 编译阻断问题 | 2 | 必须修复 |
 | 🔴 逻辑错误 | 5 | 必须修复 |
 | ⚠️ 并发安全 & 资源泄漏 | 3 | 重要 |
+| ⚠️ UEBA 模块问题 | 2 | 重要 |
+| ⚠️ 规则系统问题 | 3 | 重要 |
 | ⚠️ 其他问题 | 5 | 一般 |
 
 ### 1.2 问题验证状态
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
-| ✅ 已验证存在 | 11 | 确认问题真实 |
+| ✅ 已验证存在 | 15 | 确认问题真实 |
 | ❌ 问题不存在 | 3 | 源码已修复或描述不准确 |
 | ⚠️ 部分问题 | 4 | 存在但影响有限 |
 
@@ -866,7 +868,549 @@ query := `SELECT id, detection_id, technique, category, severity, title, descrip
 
 ---
 
-## 六、已确认无问题的项目
+## 六、⚠️ UEBA 模块问题
+
+---
+
+### U1: BaselineManager 内存无限增长
+
+**文件**: `internal/ueba/baseline.go`
+
+**问题描述**:
+```go
+type BaselineManager struct {
+    mu           sync.RWMutex
+    userActivity map[string]*UserBaseline  // 只增不减
+    entityStats  map[string]*EntityStats   // 只增不减
+    window       time.Duration
+}
+```
+
+`Update` 方法持续向 map 添加数据，但从未清理过期条目：
+```go
+func (m *BaselineManager) Update(events []*types.Event) error {
+    m.mu.Lock()
+    defer m.mu.Unlock()
+
+    for _, event := range events {
+        if event.User != nil {
+            m.updateUserBaseline(*event.User, event)
+        }
+        m.updateEntityStats(event)
+    }
+    // 没有清理过期数据的逻辑
+    return nil
+}
+```
+
+**影响**:
+- 长期运行的 UEBA 分析会持续占用内存
+- 旧用户的数据永远不会释放
+- 可能导致内存耗尽
+
+**验证状态**: ✅ 已验证存在
+
+**修复方案**:
+
+```go
+type BaselineManager struct {
+    mu            sync.RWMutex
+    userActivity  map[string]*UserBaseline
+    entityStats   map[string]*EntityStats
+    window        time.Duration
+    lastCleanup   time.Time
+    cleanupMu     sync.Mutex
+    maxAge        time.Duration  // 新增：最大保存期限
+}
+
+func NewBaselineManager() *BaselineManager {
+    return &BaselineManager{
+        userActivity: make(map[string]*UserBaseline),
+        entityStats:  make(map[string]*EntityStats),
+        window:       7 * 24 * time.Hour,
+        maxAge:       30 * 24 * time.Hour,  // 默认 30 天
+        lastCleanup:  time.Now(),
+    }
+}
+
+func (m *BaselineManager) Update(events []*types.Event) error {
+    m.mu.Lock()
+    defer m.mu.Unlock()
+
+    // 每小时清理一次过期数据
+    m.cleanupMu.Lock()
+    if time.Since(m.lastCleanup) > time.Hour {
+        m.cleanupExpired()
+        m.lastCleanup = time.Now()
+    }
+    m.cleanupMu.Unlock()
+
+    for _, event := range events {
+        if event.User != nil {
+            m.updateUserBaseline(*event.User, event)
+        }
+        m.updateEntityStats(event)
+    }
+
+    return nil
+}
+
+func (m *BaselineManager) cleanupExpired() {
+    cutoff := time.Now().Add(-m.maxAge)
+    
+    // 清理过期用户基线
+    for user, baseline := range m.userActivity {
+        if baseline.LastUpdated.Before(cutoff) {
+            delete(m.userActivity, user)
+        }
+    }
+    
+    // 清理过期实体统计
+    for key, stats := range m.entityStats {
+        if stats.LastSeen.Before(cutoff) {
+            delete(m.entityStats, key)
+        }
+    }
+}
+
+func (m *BaselineManager) SetMaxAge(maxAge time.Duration) {
+    m.mu.Lock()
+    defer m.mu.Unlock()
+    m.maxAge = maxAge
+}
+```
+
+**评估**:
+- 复杂度: 中 - 需添加 TTL 清理机制
+- 优先级: P1
+- 适配性: 高 - 不改变 API
+- 必要性: 高 - 可能导致内存耗尽
+- 可靠性: 高
+
+---
+
+### U2: detectPrivilegeEscalation 阈值硬编码
+
+**文件**: `internal/ueba/engine.go:233-234`
+
+**问题描述**:
+```go
+for user, events := range adminEvents {
+    if len(events) > 5 {  // BUG: 硬编码阈值 5
+        results = append(results, &AnomalyResult{...})
+    }
+}
+```
+
+**影响**:
+- 不同环境的"正常"权限提升事件数量差异很大
+- 硬编码阈值可能导致误报或漏报
+
+**验证状态**: ✅ 已验证存在
+
+**修复方案**:
+
+```go
+type EngineConfig struct {
+    LearningWindow       time.Duration
+    AlertThreshold       float64
+    MinEventsForBaseline int
+    // 新增配置
+    PrivilegeEscalationThreshold int  // 默认 5
+}
+
+func NewEngine(cfg EngineConfig) *Engine {
+    if cfg.PrivilegeEscalationThreshold == 0 {
+        cfg.PrivilegeEscalationThreshold = 5  // 默认值
+    }
+    return &Engine{
+        baseline: NewBaselineManager(),
+        config:   &cfg,
+    }
+}
+
+func (e *Engine) detectPrivilegeEscalation(events []*types.Event) []*AnomalyResult {
+    results := make([]*AnomalyResult, 0)
+    adminEvents := make(map[string][]*types.Event)
+
+    for _, event := range events {
+        if event.EventID == 4672 {
+            if event.User != nil {
+                adminEvents[*event.User] = append(adminEvents[*event.User], event)
+            }
+        }
+    }
+
+    threshold := 5
+    if e.config != nil && e.config.PrivilegeEscalationThreshold > 0 {
+        threshold = e.config.PrivilegeEscalationThreshold
+    }
+
+    for user, events := range adminEvents {
+        if len(events) > threshold {  // 使用配置阈值
+            results = append(results, &AnomalyResult{
+                Type:        AnomalyTypePrivilegeEscalation,
+                User:        user,
+                Severity:    "high",
+                Score:       80,
+                Description: "Multiple privilege assignment events",
+                Details: map[string]interface{}{
+                    "event_count": len(events),
+                    "threshold":   threshold,
+                },
+            })
+        }
+    }
+
+    return results
+}
+```
+
+**评估**:
+- 复杂度: 低
+- 优先级: P1
+- 适配性: 高 - 向后兼容
+- 必要性: 中 - 影响检测准确性
+- 可靠性: 高
+
+---
+
+## 七、⚠️ 规则系统问题
+
+---
+
+### R1: CreateCustomTemplate 允许覆盖内置模板
+
+**文件**: `internal/alerts/policy_template.go:314-324`
+
+**问题描述**:
+```go
+func (m *PolicyManager) CreateCustomTemplate(template *PolicyTemplate) error {
+    if template.Name == "" {
+        return fmt.Errorf("template name is required")
+    }
+    if _, ok := m.templates[template.Name]; ok {
+        return fmt.Errorf("template '%s' already exists", template.Name)
+    }
+    // BUG: 内置模板也会被覆盖
+    m.templates[template.Name] = template
+    return nil
+}
+```
+
+内置模板在 `registerBuiltInTemplates()` 时已添加到 `templates` map，`CreateCustomTemplate` 会直接覆盖它们。
+
+**影响**:
+- 用户可能无意中覆盖内置策略模板
+- 内置模板被破坏后无法恢复（重启后也不会重新注册）
+
+**验证状态**: ✅ 已验证存在
+
+**修复方案**:
+
+```go
+type PolicyTemplate struct {
+    Name         string            `json:"name"`
+    Description  string            `json:"description"`
+    PolicyType   PolicyType        `json:"policy_type"`
+    Parameters   []PolicyParam     `json:"parameters,omitempty"`
+    Conditions   []PolicyCondition `json:"conditions"`
+    Actions      []PolicyAction    `json:"actions"`
+    TimeWindow   time.Duration     `json:"time_window"`
+    Enabled      bool              `json:"enabled"`
+    Priority     int               `json:"priority"`
+    MITREMapping []string          `json:"mitre_mapping,omitempty"`
+    BuiltIn      bool              `json:"built_in"`  // 新增：标记内置模板
+}
+
+func (m *PolicyManager) registerBuiltInTemplates() {
+    m.templates["brute_force_protection"] = &PolicyTemplate{
+        Name:        "brute_force_protection",
+        // ...
+        BuiltIn:    true,  // 标记为内置
+    }
+    // 其他内置模板...
+}
+
+func (m *PolicyManager) CreateCustomTemplate(template *PolicyTemplate) error {
+    m.mu.Lock()
+    defer m.mu.Unlock()
+
+    if template.Name == "" {
+        return fmt.Errorf("template name is required")
+    }
+    
+    // 新增：检查是否是内置模板
+    if existing, ok := m.templates[template.Name]; ok {
+        if existing.BuiltIn {
+            return fmt.Errorf("cannot override built-in template '%s'", template.Name)
+        }
+    }
+    
+    template.BuiltIn = false
+    m.templates[template.Name] = template
+    return nil
+}
+
+func (m *PolicyManager) DeleteTemplate(name string) bool {
+    m.mu.Lock()
+    defer m.mu.Unlock()
+    
+    if existing, ok := m.templates[name]; ok {
+        if existing.BuiltIn {
+            return false  // 不允许删除内置模板
+        }
+    }
+    
+    if _, ok := m.templates[name]; ok {
+        delete(m.templates, name)
+        return true
+    }
+    return false
+}
+```
+
+**评估**:
+- 复杂度: 低
+- 优先级: P2
+- 适配性: 高
+- 必要性: 中 - 防止用户误操作
+- 可靠性: 高
+
+---
+
+### R2: PolicyInstance key 使用时间戳可能碰撞
+
+**文件**: `internal/alerts/policy_template.go:208`
+
+**问题描述**:
+```go
+key := fmt.Sprintf("%s_%s_%d", templateName, ruleName, time.Now().UnixNano())
+m.instances[key] = instance
+```
+
+**影响**:
+- 在同一纳秒内调用会生成相同的 key
+- 虽然概率极低，但理论上存在碰撞可能
+
+**验证状态**: ⚠️ 存在但概率极低
+
+**修复方案**:
+
+```go
+import (
+    "github.com/google/uuid"
+)
+
+func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string, params map[string]string) (*PolicyInstance, error) {
+    template, ok := m.templates[templateName]
+    if !ok {
+        return nil, fmt.Errorf("template '%s' not found", templateName)
+    }
+    // ...
+    
+    instance := &PolicyInstance{
+        TemplateName: templateName,
+        RuleName:     ruleName,
+        Parameters:   params,
+        CreatedAt:    time.Now(),
+        Enabled:      true,
+    }
+    
+    // 使用 UUID 生成唯一 key
+    key := fmt.Sprintf("%s_%s_%s", templateName, ruleName, uuid.New().String())
+    m.instances[key] = instance
+    
+    return instance, nil
+}
+```
+
+**评估**:
+- 复杂度: 低
+- 优先级: P2
+- 必要性: 低 - 碰撞概率极低
+- 可靠性: 高
+
+---
+
+### R3: Event ID 覆盖不完整
+
+**文件**: `internal/rules/builtin/definitions.go`
+
+**问题描述**:
+
+当前规则覆盖约 60+ 个 Event ID，但缺失多个关键安全事件：
+
+| 缺失 Event ID | 事件名称 | 安全意义 |
+|---------------|----------|----------|
+| 4719 | 审计策略变更 | 攻击者关闭审计的标志 |
+| 22 (Sysmon) | DNS 查询 | C2/DGA 检测的核心数据源 |
+| 4703 | 特权调整 | 潜在权限提升活动 |
+| 8 (Sysmon) | CreateRemoteThread | 进程注入检测 |
+| 7045 | 服务安装 (System 日志) | 恶意服务部署 |
+
+**验证状态**: ✅ 已验证存在
+
+**修复方案**:
+
+在 `internal/rules/builtin/definitions.go` 中添加新规则：
+
+```go
+// 审计策略变更检测
+{
+    Name:        "audit-policy-change",
+    Description: "审计策略被更改",
+    Enabled:     true,
+    Severity:    types.SeverityHigh,
+    Score:       85,
+    MitreAttack: "T1562.002",
+    Filter: &rules.Filter{
+        EventIDs: []int32{4719},
+        Levels:   []int{4},
+    },
+    Message: "Audit policy change detected - potential defense evasion",
+    Tags:    []string{"defense-evasion", "policy"},
+},
+
+// DNS 查询监控 (Sysmon Event ID 22)
+{
+    Name:        "sysmon-dns-query",
+    Description: "可疑 DNS 查询",
+    Enabled:     true,
+    Severity:    types.SeverityMedium,
+    Score:       60,
+    MitreAttack: "T1071.004",
+    Filter: &rules.Filter{
+        EventIDs: []int32{22},  // Sysmon DNS Query
+        Levels:   []int{4},
+    },
+    Message: "DNS query to suspicious domain: {{.QueryName}}",
+    Tags:    []string{"command-and-control", "dns"},
+},
+
+// 进程注入检测 (Sysmon Event ID 8)
+{
+    Name:        "sysmon-remote-thread",
+    Description: "远程线程创建-进程注入",
+    Enabled:     true,
+    Severity:    types.SeverityHigh,
+    Score:       85,
+    MitreAttack: "T1055.008",
+    Filter: &rules.Filter{
+        EventIDs: []int32{8},  // Sysmon CreateRemoteThread
+        Levels:   []int{4},
+    },
+    Message: "Remote thread created - possible process injection",
+    Tags:    []string{"defense-evasion", "privilege-escalation"},
+},
+
+// 服务安装检测 (Event ID 7045)
+{
+    Name:        "service-installation",
+    Description: "可疑服务安装",
+    Enabled:     true,
+    Severity:    types.SeverityHigh,
+    Score:       75,
+    MitreAttack: "T1569.002",
+    Filter: &rules.Filter{
+        EventIDs: []int32{7045},  // System 日志中的服务安装
+        Levels:   []int{4},
+    },
+    Message: "New service installed: {{.ServiceName}} on {{.Computer}}",
+    Tags:    []string{"persistence", "service"},
+},
+```
+
+**评估**:
+- 复杂度: 低
+- 优先级: P1
+- 适配性: 高
+- 必要性: 高 - 覆盖关键安全事件
+- 可靠性: 高
+
+---
+
+### R4: 高误报率规则
+
+**文件**: `internal/rules/builtin/definitions.go`
+
+**问题描述**:
+
+部分规则仅靠 Event ID + Level 匹配，缺少条件过滤，导致高误报率：
+
+1. **`admin-login-unusual`** (行 38-50)
+   - 仅匹配 `EventID=4624, Level=4`
+   - 误报：任何 4624 事件都会触发
+
+2. **`sysmon-network-suspicious-port`** (行 654-666)
+   - 仅匹配 `EventID=3, Level=4`
+   - 误报：所有网络连接都会触发
+
+**验证状态**: ✅ 已验证存在
+
+**修复方案**:
+
+```go
+// admin-login-unusual - 添加条件过滤
+{
+    Name:        "admin-login-unusual",
+    Description: "管理员账户异常登录",
+    Enabled:     true,
+    Severity:    types.SeverityHigh,
+    Score:       80,
+    MitreAttack: "T1078.004",
+    Threshold:   3,                    // 添加阈值
+    TimeWindow:  10 * time.Minute,    // 添加时间窗口
+    AggregationKey: "user",           // 按用户聚合
+    Filter: &rules.Filter{
+        EventIDs: []int32{4624},
+        Levels:   []int{4},
+    },
+    // 添加条件：必须是管理员账户或来自异常 IP
+    Conditions: &rules.Conditions{
+        Any: []*rules.Condition{
+            {Field: "message", Operator: "contains", Value: "Administrator"},
+            {Field: "message", Operator: "contains", Value: "Admin"},
+            {Field: "ip_address", Operator: "not", Value: "127.0.0.1"},
+        },
+    },
+    Message: "Unusual admin login detected for {{.User}} on {{.Computer}}",
+    Tags:    []string{"authentication", "privilege"},
+},
+
+// sysmon-network-suspicious-port - 添加端口过滤
+{
+    Name:        "sysmon-network-suspicious-port",
+    Description: "Sysmon可疑网络连接(高位端口)",
+    Enabled:     true,
+    Severity:    types.SeverityMedium,
+    Score:       60,
+    MitreAttack: "T1043",
+    Filter: &rules.Filter{
+        EventIDs: []int32{3},
+        Levels:   []int{4},
+    },
+    // 添加条件：目标端口 > 1024 且非标准端口
+    Conditions: &rules.Conditions{
+        All: []*rules.Condition{
+            {Field: "destination_port", Operator: "gt", Value: "1024"},
+        },
+    },
+    Message: "Connection to suspicious port {{.DestinationPort}}",
+    Tags:    []string{"command-and-control", "network"},
+},
+```
+
+**评估**:
+- 复杂度: 低
+- 优先级: P1
+- 适配性: 高
+- 必要性: 高 - 减少误报
+- 可靠性: 高
+
+---
+
+## 七、已确认无问题的项目
 
 以下项目经源码验证，问题不存在或已修复：
 
@@ -879,7 +1423,7 @@ query := `SELECT id, detection_id, technique, category, severity, title, descrip
 
 ---
 
-## 七、实施优先级矩阵
+## 八、实施优先级矩阵
 
 ### 7.1 优先级定义
 
@@ -902,22 +1446,28 @@ query := `SELECT id, detection_id, technique, category, severity, title, descrip
 | **P1** | C2: searchCache key 缺少时间 | 低 | 0.5h | 中 |
 | **P1** | L3: findNextEvents 合成事件 | 高 | 4h | 中 |
 | **P1** | L4: CollectParallel 丢弃错误 | 低 | 1h | 中 |
+| **P1** | U1: BaselineManager 内存增长 | 中 | 2h | 高 |
+| **P1** | U2: PrivilegeEscalation 阈值硬编码 | 低 | 0.5h | 中 |
+| **P1** | R3: Event ID 覆盖不完整 | 低 | 2h | 高 |
+| **P1** | R4: 高误报率规则 | 低 | 2h | 高 |
 | **P2** | C3: generateResultID 重复 | 低 | 0.5h | 低 |
 | **P2** | O1: BeginWithUnlock 实现 | 中 | 1.5h | 低 |
 | **P2** | O2: CountByStatus 类型 | 低 | 0.3h | 低 |
+| **P2** | R1: CreateCustomTemplate 覆盖内置 | 低 | 1h | 中 |
+| **P2** | R2: PolicyInstance key 碰撞 | 低 | 0.5h | 低 |
 
 ### 7.3 总工时估算
 
 | 优先级 | 问题数 | 总工时 |
 |--------|--------|--------|
 | P0 | 4 | ~1.3h |
-| P1 | 5 | ~8h |
-| P2 | 3 | ~2.3h |
-| **总计** | 12 | **~11.6h** |
+| P1 | 9 | ~12.5h |
+| P2 | 5 | ~3.8h |
+| **总计** | 18 | **~17.6h**
 
 ---
 
-## 八、修复执行计划
+## 九、修复执行计划
 
 ### Phase 1: P0 修复（立即执行）
 
@@ -933,16 +1483,22 @@ query := `SELECT id, detection_id, technique, category, severity, title, descrip
 3. **C2: searchCache key** - 添加 StartTime/EndTime
 4. **L3: findNextEvents** - 实现真实事件查询
 5. **L4: CollectParallel** - 保留错误信息
+6. **U1: BaselineManager** - 添加 TTL 清理机制
+7. **U2: PrivilegeEscalation** - 添加可配置阈值
+8. **R3: Event ID** - 添加缺失的规则
+9. **R4: 高误报率规则** - 添加条件过滤
 
 ### Phase 3: P2 修复（计划中）
 
 1. **C3: generateResultID** - 添加原子计数器
 2. **O1: BeginWithUnlock** - 重命名或修复实现
 3. **O2: CountByStatus** - 改用 int 类型
+4. **R1: CreateCustomTemplate** - 添加 BuiltIn 标记
+5. **R2: PolicyInstance key** - 使用 UUID
 
 ---
 
-## 九、验证方法
+## 十、验证方法
 
 ### 9.1 编译验证
 
@@ -973,10 +1529,12 @@ go test ./internal/types/... -run TestIsExternalIP
 | L1 | 输入 IP `11.1.2.3`，验证返回 `true` (外部) |
 | L2 | 创建 `Duration=0` 的抑制规则，验证生效 |
 | C2 | 用不同时间范围执行相同查询，验证缓存不混淆 |
+| U1 | 长时间运行后检查内存使用是否稳定 |
+| R4 | 检查 `admin-login-unusual` 是否只在真正异常时触发 |
 
 ---
 
-## 十、风险评估
+## 十一、风险评估
 
 | 问题 | 风险 | 缓解措施 |
 |------|------|----------|
@@ -984,9 +1542,11 @@ go test ./internal/types/... -run TestIsExternalIP
 | L1 IsExternalIP | 中 - 改变安全判断 | 添加单元测试验证 |
 | L3 findNextEvents | 高 - 架构变更 | 添加集成测试 |
 | C1 PolicyManager | 中 - 并发逻辑复杂 | 使用细粒度锁 |
+| R3 Event ID | 低 - 新规则可能误报 | 添加条件过滤 |
 
 ---
 
-**文档版本**: v1.0
+**文档版本**: v1.1
 **生成时间**: 2026-04-17
+**更新内容**: 新增 U1/U2 (UEBA 模块)、R1-R4 (规则系统) 共 6 个问题
 **验证深度**: 完整源码审查
