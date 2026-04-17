@@ -49,15 +49,7 @@ func (l *Loader) Load(configPath string) (*Config, error) {
 
 	cfg := DefaultConfig()
 
-	l.bindEnv("database.path", "WINALOG_DATABASE_PATH")
-	l.bindEnv("database.wal_mode", "WINALOG_DATABASE_WAL_MODE")
-	l.bindEnv("import.workers", "WINALOG_IMPORT_WORKERS")
-	l.bindEnv("import.batch_size", "WINALOG_IMPORT_BATCH_SIZE")
-	l.bindEnv("alerts.enabled", "WINALOG_ALERTS_ENABLED")
-	l.bindEnv("alerts.dedup_window", "WINALOG_ALERTS_DEDUP_WINDOW")
-	l.bindEnv("api.host", "WINALOG_API_HOST")
-	l.bindEnv("api.port", "WINALOG_API_PORT")
-	l.bindEnv("log.level", "WINALOG_LOG_LEVEL")
+	l.bindAllEnvs()
 
 	if err := l.viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -71,12 +63,44 @@ func (l *Loader) Load(configPath string) (*Config, error) {
 
 	expandPaths(cfg)
 
+	if _, err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("config validation failed: %w", err)
+	}
+
 	return cfg, nil
 }
 
 func (l *Loader) bindEnv(key, envKey string) {
 	if val := os.Getenv(envKey); val != "" {
 		l.viper.Set(key, val)
+	}
+}
+
+func (l *Loader) bindAllEnvs() {
+	envBindings := map[string]string{
+		"database.path":            "WINALOG_DATABASE_PATH",
+		"database.wal_mode":        "WINALOG_DATABASE_WAL_MODE",
+		"import.workers":           "WINALOG_IMPORT_WORKERS",
+		"import.batch_size":        "WINALOG_IMPORT_BATCH_SIZE",
+		"import.skip_patterns":     "WINALOG_IMPORT_SKIP_PATTERNS",
+		"import.incremental":       "WINALOG_IMPORT_INCREMENTAL",
+		"parser.workers":           "WINALOG_PARSER_WORKERS",
+		"parser.memory_limit":      "WINALOG_PARSER_MEMORY_LIMIT",
+		"search.max_results":       "WINALOG_SEARCH_MAX_RESULTS",
+		"search.default_page_size": "WINALOG_SEARCH_DEFAULT_PAGE_SIZE",
+		"alerts.enabled":           "WINALOG_ALERTS_ENABLED",
+		"alerts.dedup_window":      "WINALOG_ALERTS_DEDUP_WINDOW",
+		"correlation.enabled":      "WINALOG_CORRELATION_ENABLED",
+		"correlation.time_window":  "WINALOG_CORRELATION_TIME_WINDOW",
+		"report.output_dir":        "WINALOG_REPORT_OUTPUT_DIR",
+		"api.host":                 "WINALOG_API_HOST",
+		"api.port":                 "WINALOG_API_PORT",
+		"log.level":                "WINALOG_LOG_LEVEL",
+		"log.format":               "WINALOG_LOG_FORMAT",
+	}
+
+	for key, env := range envBindings {
+		l.bindEnv(key, env)
 	}
 }
 

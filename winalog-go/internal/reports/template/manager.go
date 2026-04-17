@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 )
 
 type Manager struct {
@@ -49,6 +50,79 @@ func (m *Manager) SetCustomTemplate(name string, content string) error {
 		"printf": func(format string, args ...interface{}) string {
 			return fmt.Sprintf(format, args...)
 		},
+		"add": func(a, b int) int { return a + b },
+		"sub": func(a, b int) int { return a - b },
+		"mul": func(a, b int) int { return a * b },
+		"gt":  func(a, b int) bool { return a > b },
+		"lt":  func(a, b int) bool { return a < b },
+		"eq":  func(a, b interface{}) bool { return a == b },
+		"ne":  func(a, b interface{}) bool { return a != b },
+		"and": func(cond ...bool) bool {
+			for _, c := range cond {
+				if !c {
+					return false
+				}
+			}
+			return true
+		},
+		"or": func(cond ...bool) bool {
+			for _, c := range cond {
+				if c {
+					return true
+				}
+			}
+			return false
+		},
+		"not": func(b bool) bool { return !b },
+		"default": func(v, def interface{}) interface{} {
+			if v == nil || v == "" {
+				return def
+			}
+			return v
+		},
+		"truncate": func(s string, length int) string {
+			if len(s) <= length {
+				return s
+			}
+			return s[:length] + "..."
+		},
+		"formatTime": func(t time.Time, layout string) string {
+			if layout == "" {
+				layout = "2006-01-02 15:04:05"
+			}
+			return t.Format(layout)
+		},
+		"formatBytes": func(bytes int64) string {
+			const unit = 1024
+			if bytes < unit {
+				return fmt.Sprintf("%d B", bytes)
+			}
+			div, exp := int64(unit), 0
+			for n := bytes / unit; n >= unit; n /= unit {
+				div *= unit
+				exp++
+			}
+			return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+		},
+		"percentage": func(part, total int64) float64 {
+			if total == 0 {
+				return 0
+			}
+			return float64(part) / float64(total) * 100
+		},
+		"severityColor": func(severity string) string {
+			colors := map[string]string{
+				"critical": "#dc3545",
+				"high":     "#fd7e14",
+				"medium":   "#ffc107",
+				"low":      "#17a2b8",
+				"info":     "#6c757d",
+			}
+			if color, ok := colors[strings.ToLower(severity)]; ok {
+				return color
+			}
+			return "#6c757d"
+		},
 	}
 
 	tmpl, err := template.New(name).Funcs(funcMap).Parse(content)
@@ -76,6 +150,82 @@ func (m *Manager) GetTemplate(name string) (*template.Template, bool) {
 					return 0
 				}
 				return a / b
+			},
+			"printf": func(format string, args ...interface{}) string {
+				return fmt.Sprintf(format, args...)
+			},
+			"add": func(a, b int) int { return a + b },
+			"sub": func(a, b int) int { return a - b },
+			"mul": func(a, b int) int { return a * b },
+			"gt":  func(a, b int) bool { return a > b },
+			"lt":  func(a, b int) bool { return a < b },
+			"eq":  func(a, b interface{}) bool { return a == b },
+			"ne":  func(a, b interface{}) bool { return a != b },
+			"and": func(cond ...bool) bool {
+				for _, c := range cond {
+					if !c {
+						return false
+					}
+				}
+				return true
+			},
+			"or": func(cond ...bool) bool {
+				for _, c := range cond {
+					if c {
+						return true
+					}
+				}
+				return false
+			},
+			"not": func(b bool) bool { return !b },
+			"default": func(v, def interface{}) interface{} {
+				if v == nil || v == "" {
+					return def
+				}
+				return v
+			},
+			"truncate": func(s string, length int) string {
+				if len(s) <= length {
+					return s
+				}
+				return s[:length] + "..."
+			},
+			"formatTime": func(t time.Time, layout string) string {
+				if layout == "" {
+					layout = "2006-01-02 15:04:05"
+				}
+				return t.Format(layout)
+			},
+			"formatBytes": func(bytes int64) string {
+				const unit = 1024
+				if bytes < unit {
+					return fmt.Sprintf("%d B", bytes)
+				}
+				div, exp := int64(unit), 0
+				for n := bytes / unit; n >= unit; n /= unit {
+					div *= unit
+					exp++
+				}
+				return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+			},
+			"percentage": func(part, total int64) float64 {
+				if total == 0 {
+					return 0
+				}
+				return float64(part) / float64(total) * 100
+			},
+			"severityColor": func(severity string) string {
+				colors := map[string]string{
+					"critical": "#dc3545",
+					"high":     "#fd7e14",
+					"medium":   "#ffc107",
+					"low":      "#17a2b8",
+					"info":     "#6c757d",
+				}
+				if color, ok := colors[strings.ToLower(severity)]; ok {
+					return color
+				}
+				return "#6c757d"
 			},
 		}
 		tmpl, err := template.New(name).Funcs(funcMap).Parse(content)

@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS system_info (
 -- Reports table
 CREATE TABLE IF NOT EXISTS reports (
 	id TEXT PRIMARY KEY,
-	type TEXT NOT NULL,
+	report_type TEXT NOT NULL,
 	format TEXT NOT NULL,
 	title TEXT,
 	description TEXT,
@@ -393,7 +393,7 @@ var TableDefinitions = map[string]TableDefinition{
 		Name: "reports",
 		Columns: []ColumnDefinition{
 			{Name: "id", Type: "TEXT", PrimaryKey: true},
-			{Name: "type", Type: "TEXT", NotNull: true},
+			{Name: "report_type", Type: "TEXT", NotNull: true},
 			{Name: "format", Type: "TEXT", NotNull: true},
 			{Name: "title", Type: "TEXT"},
 			{Name: "description", Type: "TEXT"},

@@ -3,6 +3,7 @@ package reports
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
@@ -67,6 +68,17 @@ type Report struct {
 	Recommendations  []Recommendation  `json:"recommendations,omitempty"`
 	AttackPatterns   []*AttackPattern  `json:"attack_patterns,omitempty"`
 	ComplianceStatus *ComplianceStatus `json:"compliance_status,omitempty"`
+}
+
+type ReportGenerationError struct {
+	Errors []error
+}
+
+func (e *ReportGenerationError) Error() string {
+	if len(e.Errors) == 0 {
+		return "report generation completed with errors"
+	}
+	return fmt.Sprintf("report generation completed with %d errors", len(e.Errors))
 }
 
 type ExecutiveSummary struct {
@@ -231,28 +243,46 @@ func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
 		report.RawEvents = events
 	}
 
-	if execSummary, err := g.generateExecutiveSummary(req); err == nil {
+	var errs []error
+
+	if execSummary, err := g.generateExecutiveSummary(req); err != nil {
+		errs = append(errs, fmt.Errorf("executive summary: %w", err))
+	} else {
 		report.ExecutiveSummary = execSummary
 	}
 
-	if timeline, err := g.generateTimelineAnalysis(req); err == nil {
+	if timeline, err := g.generateTimelineAnalysis(req); err != nil {
+		errs = append(errs, fmt.Errorf("timeline analysis: %w", err))
+	} else {
 		report.TimelineAnalysis = timeline
 	}
 
-	if threat, err := g.generateThreatLandscape(req); err == nil {
+	if threat, err := g.generateThreatLandscape(req); err != nil {
+		errs = append(errs, fmt.Errorf("threat landscape: %w", err))
+	} else {
 		report.ThreatLandscape = threat
 	}
 
-	if recs, err := g.generateRecommendations(req); err == nil {
+	if recs, err := g.generateRecommendations(req); err != nil {
+		errs = append(errs, fmt.Errorf("recommendations: %w", err))
+	} else {
 		report.Recommendations = recs
 	}
 
-	if patterns, err := g.generateAttackPatterns(req); err == nil {
+	if patterns, err := g.generateAttackPatterns(req); err != nil {
+		errs = append(errs, fmt.Errorf("attack patterns: %w", err))
+	} else {
 		report.AttackPatterns = patterns
 	}
 
-	if compliance, err := g.generateComplianceStatus(req); err == nil {
+	if compliance, err := g.generateComplianceStatus(req); err != nil {
+		errs = append(errs, fmt.Errorf("compliance status: %w", err))
+	} else {
 		report.ComplianceStatus = compliance
+	}
+
+	if len(errs) > 0 {
+		return report, &ReportGenerationError{Errors: errs}
 	}
 
 	return report, nil
@@ -463,11 +493,114 @@ func (g *Generator) calculateMITREDistribution(req *ReportRequest) (*MITREDist, 
 	return dist, nil
 }
 
+var tacticMapping = map[string]string{
+	"TA0001": "Initial Access",
+	"TA0002": "Execution",
+	"TA0003": "Persistence",
+	"TA0004": "Privilege Escalation",
+	"TA0005": "Defense Evasion",
+	"TA0006": "Credential Access",
+	"TA0007": "Discovery",
+	"TA0008": "Lateral Movement",
+	"TA0009": "Collection",
+	"TA0010": "Exfiltration",
+	"TA0011": "Command and Control",
+	"TA0040": "Impact",
+}
+
+var techniqueToTactic = map[string]string{
+	"T1003": "Credential Access",
+	"T1005": "Collection",
+	"T1007": "Discovery",
+	"T1010": "Collection",
+	"T1018": "Discovery",
+	"T1021": "Lateral Movement",
+	"T1027": "Defense Evasion",
+	"T1033": "Discovery",
+	"T1036": "Defense Evasion",
+	"T1047": "Execution",
+	"T1050": "Persistence",
+	"T1053": "Execution",
+	"T1055": "Defense Evasion",
+	"T1057": "Discovery",
+	"T1059": "Execution",
+	"T1060": "Persistence",
+	"T1068": "Privilege Escalation",
+	"T1070": "Defense Evasion",
+	"T1071": "Command and Control",
+	"T1072": "Lateral Movement",
+	"T1078": "Defense Evasion",
+	"T1082": "Discovery",
+	"T1083": "Discovery",
+	"T1086": "Execution",
+	"T1090": "Command and Control",
+	"T1095": "Command and Control",
+	"T1098": "Persistence",
+	"T1106": "Execution",
+	"T1110": "Credential Access",
+	"T1112": "Defense Evasion",
+	"T1113": "Collection",
+	"T1114": "Collection",
+	"T1115": "Collection",
+	"T1123": "Collection",
+	"T1124": "Discovery",
+	"T1127": "Defense Evasion",
+	"T1128": "Persistence",
+	"T1132": "Command and Control",
+	"T1133": "Persistence",
+	"T1134": "Privilege Escalation",
+	"T1136": "Persistence",
+	"T1137": "Persistence",
+	"T1146": "Command and Control",
+	"T1154": "Persistence",
+	"T1189": "Initial Access",
+	"T1190": "Initial Access",
+	"T1203": "Execution",
+	"T1204": "Execution",
+	"T1210": "Lateral Movement",
+	"T1218": "Defense Evasion",
+	"T1220": "Defense Evasion",
+	"T1222": "Defense Evasion",
+	"T1484": "Defense Evasion",
+	"T1486": "Impact",
+	"T1489": "Impact",
+	"T1490": "Impact",
+	"T1498": "Impact",
+	"T1499": "Impact",
+	"T1518": "Discovery",
+	"T1525": "Persistence",
+	"T1526": "Discovery",
+	"T1543": "Persistence",
+	"T1546": "Persistence",
+	"T1547": "Privilege Escalation",
+	"T1548": "Privilege Escalation",
+	"T1550": "Defense Evasion",
+	"T1552": "Credential Access",
+	"T1553": "Defense Evasion",
+	"T1556": "Credential Access",
+	"T1558": "Credential Access",
+	"T1559": "Execution",
+	"T1560": "Collection",
+	"T1562": "Defense Evasion",
+	"T1566": "Initial Access",
+	"T1567": "Exfiltration",
+	"T1569": "Execution",
+	"T1570": "Lateral Movement",
+	"T1571": "Command and Control",
+	"T1574": "Defense Evasion",
+	"T1588": "Resource Development",
+}
+
 func extractTactic(mitreID string) string {
-	if len(mitreID) < 4 {
-		return "Unknown"
+	if strings.HasPrefix(mitreID, "TA") {
+		if tactic, ok := tacticMapping[mitreID]; ok {
+			return tactic
+		}
 	}
-	return mitreID[:4]
+	if tactic, ok := techniqueToTactic[mitreID]; ok {
+		return tactic
+	}
+	return "Other"
 }
 
 func (g *Generator) getTopAlerts(req *ReportRequest) ([]*types.Alert, error) {

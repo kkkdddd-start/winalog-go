@@ -830,7 +830,11 @@ func runServe(cmd *cobra.Command, args []string) error {
 	cfg := getConfig()
 	if serveFlags.configPath != "" {
 		globalConfigPath = serveFlags.configPath
-		cfg, _ = globalConfigLoader.Load(serveFlags.configPath)
+		var err error
+		cfg, err = globalConfigLoader.Load(serveFlags.configPath)
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
 	}
 	db, err := storage.NewDB(cfg.Database.Path)
 	if err != nil {

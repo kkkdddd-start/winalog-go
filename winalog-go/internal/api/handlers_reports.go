@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -106,7 +107,7 @@ func NewReportsHandler(db *storage.DB) *ReportsHandler {
 
 func (h *ReportsHandler) ListReports(c *gin.Context) {
 	rows, err := h.db.Query(`
-		SELECT id, type, format, title, description, status, generated_at, completed_at, file_path, file_size
+		SELECT id, report_type, format, title, description, status, generated_at, completed_at, file_path, file_size
 		FROM reports 
 		ORDER BY generated_at DESC 
 		LIMIT 100
@@ -174,7 +175,7 @@ func (h *ReportsHandler) GenerateReport(c *gin.Context) {
 	generatedAt := time.Now()
 
 	_, err := h.db.Exec(`
-		INSERT INTO reports (id, type, format, title, description, status, generated_at, query_params)
+		INSERT INTO reports (id, report_type, format, title, description, status, generated_at, query_params)
 		VALUES (?, ?, ?, ?, ?, 'generating', ?, ?)`,
 		reportID, req.Type, req.Format, req.Title, req.Description, generatedAt, "")
 
@@ -603,13 +604,15 @@ func (h *ReportsHandler) buildTimelineReport(startTime, endTime *time.Time) ([]*
 		limit = 1000
 	}
 
-	eventRows, err := h.db.Query(`
+	eventFilter, eventArgs := buildTimeFilter(startTime, endTime)
+	eventQuery := `
 		SELECT timestamp, event_id, source, log_name, message 
 		FROM events 
-		WHERE 1=1
-	`+buildTimeFilter(startTime, endTime)+`
-		ORDER BY timestamp DESC LIMIT ?
-	`, limit/2)
+		WHERE 1=1` + eventFilter + `
+		ORDER BY timestamp DESC LIMIT ?`
+	eventArgs = append(eventArgs, limit/2)
+
+	eventRows, err := h.db.Query(eventQuery, eventArgs...)
 
 	if err == nil {
 		defer eventRows.Close()
@@ -629,13 +632,15 @@ func (h *ReportsHandler) buildTimelineReport(startTime, endTime *time.Time) ([]*
 		}
 	}
 
-	alertRows, err := h.db.Query(`
+	alertFilter, alertArgs := buildTimeFilter(startTime, endTime)
+	alertQuery := `
 		SELECT first_seen, source, message, severity 
 		FROM alerts 
-		WHERE 1=1
-	`+buildTimeFilter(startTime, endTime)+`
-		ORDER BY first_seen DESC LIMIT ?
-	`, limit/2)
+		WHERE 1=1` + alertFilter + `
+		ORDER BY first_seen DESC LIMIT ?`
+	alertArgs = append(alertArgs, limit/2)
+
+	alertRows, err := h.db.Query(alertQuery, alertArgs...)
 
 	if err == nil {
 		defer alertRows.Close()
@@ -658,15 +663,23 @@ func (h *ReportsHandler) buildTimelineReport(startTime, endTime *time.Time) ([]*
 	return entries, nil
 }
 
-func buildTimeFilter(startTime, endTime *time.Time) string {
-	filter := ""
+func buildTimeFilter(startTime, endTime *time.Time) (string, []interface{}) {
+	var conditions []string
+	var args []interface{}
+
 	if startTime != nil {
-		filter += fmt.Sprintf(" AND timestamp >= '%s'", startTime.Format(time.RFC3339))
+		conditions = append(conditions, "timestamp >= ?")
+		args = append(args, startTime.Format(time.RFC3339))
 	}
 	if endTime != nil {
-		filter += fmt.Sprintf(" AND timestamp <= '%s'", endTime.Format(time.RFC3339))
+		conditions = append(conditions, "timestamp <= ?")
+		args = append(args, endTime.Format(time.RFC3339))
 	}
-	return filter
+
+	if len(conditions) == 0 {
+		return "", nil
+	}
+	return " AND " + strings.Join(conditions, " AND "), args
 }
 
 func (h *ReportsHandler) GetReport(c *gin.Context) {
@@ -679,7 +692,7 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 	var fileSize sql.NullInt64
 
 	err := h.db.QueryRow(`
-		SELECT id, type, format, title, description, status, generated_at, completed_at, file_path, file_size, query_params
+		SELECT id, report_type, format, title, description, status, generated_at, completed_at, file_path, file_size, query_params
 		FROM reports WHERE id = ?
 	`, reportID).Scan(&report.ID, &report.Type, &report.Format, &title, &description, &report.Status,
 		&generatedAt, &completedAt, &filePath, &fileSize, &queryParams)

@@ -269,9 +269,17 @@ func (r *EventRepo) DeleteByImportID(importID int64) error {
 }
 
 func (r *EventRepo) DeleteOldEvents(age string) (int64, error) {
+	if age == "" {
+		return 0, fmt.Errorf("age parameter cannot be empty")
+	}
+
 	t, err := time.ParseDuration(age)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("invalid duration format: %w", err)
+	}
+
+	if t < 0 {
+		return 0, fmt.Errorf("duration must be positive")
 	}
 
 	cutoff := time.Now().Add(-t)
@@ -436,11 +444,12 @@ func (r *EventRepo) deduplicate(events []*types.Event) []*types.Event {
 }
 
 func (r *EventRepo) generateEventKey(e *types.Event) string {
-	return fmt.Sprintf("%d|%s|%s|%s|%s",
+	return fmt.Sprintf("%d|%s|%s|%s|%s|%s",
 		e.EventID,
 		e.Timestamp.Format(time.RFC3339Nano),
 		e.Computer,
-		e.Message,
+		e.LogName,
+		e.Source,
 		getUserKey(e))
 }
 
