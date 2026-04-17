@@ -132,6 +132,21 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 	if err != nil {
 		return err
 	}
+
+	if r.supportsFTS() && len(uniqueEvents) > 0 {
+		importID := uniqueEvents[0].ImportID
+		var firstID, lastID int64
+		err := r.db.QueryRow(`
+			SELECT MIN(id), MAX(id) FROM events 
+			WHERE import_id = ?`, importID).Scan(&firstID, &lastID)
+		if err == nil && firstID > 0 && lastID >= firstID {
+			_, _ = r.db.Exec(`
+				INSERT INTO events_fts(rowid, event_id, message, source)
+				SELECT id, event_id, message, source FROM events
+				WHERE id >= ? AND id <= ?`, firstID, lastID)
+		}
+	}
+
 	return nil
 }
 

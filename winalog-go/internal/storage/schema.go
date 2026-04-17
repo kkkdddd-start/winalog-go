@@ -25,11 +25,9 @@ CREATE TABLE IF NOT EXISTS events (
 
 -- FTS5 virtual table for full-text search
 CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(
-	event_id UNINDEXED,
+	event_id,
 	message,
-	source,
-	content='events',
-	content_rowid='id'
+	source
 );
 
 -- Alerts table

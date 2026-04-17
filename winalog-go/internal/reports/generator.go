@@ -387,6 +387,12 @@ func (g *Generator) generateTimelineReport(req *ReportRequest, report *Report) e
 	}
 	report.Summary = summary
 
+	stats, err := g.calculateSecurityStats(req)
+	if err != nil {
+		return fmt.Errorf("failed to calculate security stats: %w", err)
+	}
+	report.Stats = stats
+
 	timeline, err := g.buildTimeline(req)
 	if err != nil {
 		return fmt.Errorf("failed to build timeline: %w", err)
