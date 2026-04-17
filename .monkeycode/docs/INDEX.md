@@ -46,14 +46,13 @@
 | 模块 | 说明 |
 |------|------|
 | [collectors](./模块/collectors.md) | 采集器接口与实现 |
-| [collectors/live](./模块/collectors_live.md) | 实时事件采集 |
+| [collectors/live](./模块/collectors_live.md) | Windows Event Log 实时采集 |
 | [collectors/persistence](./模块/collectors_persistence.md) | 取证持久化数据采集 |
 
 #### 报告与导出
 | 模块 | 说明 |
 |------|------|
-| [reports](./模块/reports.md) | 报告生成器 |
-| [reports/template](./模块/reports_template.md) | HTML 报告模板 |
+| [reports](./模块/reports.md) | 报告生成器（统一服务层） |
 | [exporters](./模块/exporters.md) | 数据导出器 |
 | [timeline](./模块/timeline.md) | 时间线构建与可视化 |
 

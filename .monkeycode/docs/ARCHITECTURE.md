@@ -261,9 +261,11 @@ type Collector interface {
 ```
 
 **Live 采集** (`collectors/live/`):
-- `FilteredCollector` - 过滤事件采集
-- `BookmarkedCollector` - 书签续传采集
-- `StatsCollector` - 实时统计
+- `EvtLiveCollector` - Windows Event Log 实时采集，使用 `EvtSubscribe` API 实现推送式订阅
+- `LiveCollector` - 多采集器管理框架，支持过滤器链和书签
+- `Bookmark` - 事件书签，支持断点续传持久化
+- `EventFilter` - 7 种事件过滤器（Level/EventID/Source/LogName/TimeRange/Keyword/Composite）
+- `CollectStats` - 采集统计，支持 `AdaptivePoller` 自适应轮询
 
 **Persistence 采集** (`collectors/persistence/`):
 - `UserAssistCollector` - 用户辅助数据
@@ -274,15 +276,22 @@ type Collector interface {
 
 ### 7. Reports (`internal/reports/`)
 
-报告生成模块。
+报告生成模块，已重构为统一服务层。
 
-**Generator**:
+**ReportService** (`service.go`):
 ```go
-type Generator struct {
-    db     *storage.DB
-    stats  *SecurityStats
-    config *GeneratorConfig
+type ReportService struct {
+    db        *storage.DB
+    generator *Generator
 }
+
+func (s *ReportService) Generate(req *ReportRequest) (*Report, error)
+func (s *ReportService) ExportHTML(req *ReportRequest, w io.Writer) error
+func (s *ReportService) ExportHTMLFromReport(report *Report, w io.Writer) error
+func (s *ReportService) ExportJSON(req *ReportRequest) ([]byte, error)
+func (s *ReportService) ExportPDF(req *ReportRequest, w io.Writer) error
+func (s *ReportService) GenerateAsync(req *ReportRequest, callback func(*Report, error))
+func (s *ReportService) GenerateFromAPIRequest(apiReq *APIReportRequest) (*Report, error)
 ```
 
 **Report 结构**:
@@ -290,6 +299,7 @@ type Generator struct {
 type Report struct {
     GeneratedAt time.Time
     Title       string
+    Type        ReportType
     TimeRange   TimeRange
     Summary     ReportSummary
     Stats       *SecurityStats
@@ -302,6 +312,18 @@ type Report struct {
     RawEvents   []*types.Event
 }
 ```
+
+**报告类型** (`ReportType`):
+| 类型 | 说明 |
+|------|------|
+| `ReportTypeSummary` | 安全摘要 |
+| `ReportTypeTimeline` | 时间线 |
+| `ReportTypeAlerts` | 告警详情 |
+| `ReportTypeEvents` | 原始事件 |
+| `ReportTypeLogin` | 登录分析 |
+| `ReportTypeFile` | 文件操作 |
+| `ReportTypeNetwork` | 网络活动 |
+| `ReportTypeThreat` | 威胁检测 |
 
 ### 8. Timeline (`internal/timeline/`)
 
