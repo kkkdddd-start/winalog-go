@@ -162,34 +162,31 @@ winalog-go/
 │   └── winalog/
 │       ├── main.go              # CLI 主入口
 │       └── commands/            # CLI 子命令
-│           ├── import.go         # 日志导入
-│           ├── search.go         # 搜索
+│           ├── alert.go          # 告警管理
+│           ├── analyze.go        # 分析命令
 │           ├── collect.go        # 一键采集
-│           ├── analyze.go        # 分析
-│           ├── alert.go          # 告警
-│           ├── correlate.go      # 关联
-│           ├── report.go         # 报告
-│           ├── gui.go            # GUI 启动 (已废弃)
-│           ├── serve.go          # HTTP API (Web UI 后端)
-│           ├── tui.go             # TUI 启动 (Bubble Tea)
-│           ├── forensics.go      # 取证
-│           ├── status.go         # 状态查看 (新增)
-│           ├── verify.go         # 完整性验证 (新增)
-│           ├── db.go             # 数据库管理 (新增)
-│           └── rules_cmd.go      # 规则管理 (新增)
+│           ├── config.go         # 配置管理
+│           ├── dashboard.go     # 仪表盘
+│           ├── db_util.go       # 数据库工具
+│           ├── import.go         # 日志导入
+│           ├── persistence.go   # 取证持久化
+│           ├── report.go        # 报告生成
+│           ├── root.go          # 根命令
+│           ├── search.go         # 搜索
+│           ├── system.go        # 系统管理
+│           ├── ueba.go          # UEBA分析
+│           └── whitelist.go     # 白名单管理
 │
 ├── internal/
 │   ├── engine/                   # 核心引擎
 │   │   ├── engine.go             # 分析引擎
 │   │   ├── importer.go           # 导入器
-│   │   └── pipeline.go           # 事件管道
+│   │   ├── pipeline.go           # 事件管道
+│   │   └── parsers_init.go      # 解析器初始化
 │   │
 │   ├── parsers/                  # 日志解析器
 │   │   ├── parser.go             # 解析器接口
 │   │   ├── evtx/                 # EVTX 解析
-│   │   │   ├── parser.go         # 主解析器
-│   │   │   ├── xml.go            # XML 解析
-│   │   │   └── wevtutil.go       # wevtutil 备用
 │   │   ├── etl/                  # ETL 解析
 │   │   ├── iis/                  # IIS 解析
 │   │   ├── csv/                  # CSV 解析
@@ -200,7 +197,10 @@ winalog-go/
 │   │   ├── schema.go             # Schema 定义
 │   │   ├── repository.go         # Repository 接口
 │   │   ├── events.go             # 事件存储
-│   │   └── alerts.go             # 告警存储
+│   │   ├── alerts.go             # 告警存储
+│   │   ├── persistence.go        # 取证持久化
+│   │   ├── rule_state.go        # 规则状态
+│   │   └── system.go             # 系统存储
 │   │
 │   ├── alerts/                   # 告警引擎 (7 个模块)
 │   │   ├── engine.go             # 告警引擎核心
@@ -209,7 +209,8 @@ winalog-go/
 │   │   ├── stats.go              # 告警统计
 │   │   ├── trend.go             # 告警趋势
 │   │   ├── upgrade.go            # 告警升级
-│   │   └── suppress.go           # 告警抑制
+│   │   ├── suppress.go           # 告警抑制
+│   │   └── policy_template.go   # 策略模板
 │   │
 │   ├── correlation/               # 关联引擎
 │   │   ├── engine.go             # 关联引擎
@@ -218,38 +219,32 @@ winalog-go/
 │   │
 │   ├── rules/                    # 规则系统 (统一)
 │   │   ├── rule.go               # 统一规则接口
-│   │   ├── alert_rule.go         # 告警规则
-│   │   ├── corr_rule.go          # 关联规则
+│   │   ├── custom_rules.go       # 自定义规则
+│   │   ├── filter.go            # 过滤器
 │   │   ├── loader.go             # 规则加载
 │   │   ├── validator.go          # 规则校验
-│   │   └── builtin/              # 内置规则 (60+ 规则完整迁移)
+│   │   └── builtin/              # 内置规则
 │   │       ├── registry.go       # 规则注册表
 │   │       ├── definitions.go   # 规则定义
-│   │       ├── explanations.go  # 规则解释和建议
 │   │       └── mitre.go         # MITRE ATT&CK 映射
-│   │
-│   ├── persistence/              # 持久化检测 (Phase 5)
-│   │   ├── types.go              # 核心类型定义
-│   │   ├── detector.go           # 检测引擎
-│   │   ├── registry.go            # Run Key/UserInit 检测
-│   │   ├── accessibility.go       # 辅助功能后门 (T1546.001)
-│   │   ├── com.go                 # COM 劫持检测 (T1546.015)
-│   │   ├── ifeo.go               # IFEO 检测 (T1546.012)
-│   │   ├── appinit.go            # AppInit_DLLs 检测 (T1546.010)
-│   │   ├── wmi.go                # WMI 持久化检测 (T1546.003)
-│   │   └── service.go             # Windows 服务检测 (T1543.003)
 │   │
 │   ├── analyzers/                # 专用分析器
 │   │   ├── analyzer.go          # 分析器接口
 │   │   ├── brute_force.go       # 暴力破解检测
 │   │   ├── login.go             # 登录分析
 │   │   ├── kerberos.go          # Kerberos 分析
-│   │   └── powershell.go       # PowerShell 分析
+│   │   ├── powershell.go       # PowerShell 分析
+│   │   ├── lateral_movement.go  # 横向移动
+│   │   ├── persistence.go       # 持久化检测
+│   │   ├── privilege_escalation.go # 权限提升
+│   │   ├── data_exfiltration.go # 数据泄露
+│   │   └── manager.go           # 分析器管理
 │   │
 │   ├── collectors/               # 采集模块
 │   │   ├── collector.go          # 采集器接口
 │   │   ├── live/                 # 实时采集
 │   │   │   ├── collector.go     # 基础采集器
+│   │   │   ├── evt_collector.go # Event Log 采集器
 │   │   │   ├── bookmark.go     # 书签支持
 │   │   │   ├── filtered.go     # 过滤采集
 │   │   │   └── stats.go        # 采集统计
@@ -261,7 +256,6 @@ winalog-go/
 │   │   ├── dll_info.go          # DLL 模块
 │   │   ├── user_info.go         # 用户账户
 │   │   ├── persistence/           # 持久化检测
-│   │   │   ├── collector.go     # 主采集器
 │   │   │   ├── prefetch.go     # Prefetch
 │   │   │   ├── shimcache.go    # ShimCache
 │   │   │   ├── amcache.go      # Amcache
@@ -270,14 +264,14 @@ winalog-go/
 │   │   └── task_info.go          # 计划任务
 │   │
 │   ├── forensics/                # 取证模块
-│   │   ├── hash.go               # 哈希计算
-│   │   ├── signature.go          # 数字签名
 │   │   ├── timestamp.go          # 时间戳服务
 │   │   ├── memory.go             # 内存采集
 │   │   └── chain.go              # 证据链
 │   │
 │   ├── reports/                  # 报告生成
 │   │   ├── generator.go          # 报告生成器
+│   │   ├── service.go            # 报告服务
+│   │   ├── api_adapter.go        # API 适配器
 │   │   ├── html.go               # HTML 报告
 │   │   ├── json.go               # JSON 报告
 │   │   ├── security_stats.go     # 安全统计
@@ -287,70 +281,42 @@ winalog-go/
 │   │   ├── exporter.go           # 导出接口
 │   │   ├── json.go               # JSON 导出
 │   │   ├── csv.go                # CSV 导出
+│   │   ├── evtx.go              # EVTX 导出
+│   │   ├── excel.go             # Excel 导出
 │   │   └── timeline.go           # 时间线导出
 │   │
 │   ├── api/                      # HTTP API
-│   │   ├── server.go             # Gin 服务器
-│   │   ├── handlers.go           # 请求处理 (详细设计)
-│   │   ├── handlers_live.go      # 实时监控 Handler
-│   │   ├── middleware.go         # 中间件
-│   │   └── routes.go             # 路由
-│   │
-│   ├── gui/                      # Web UI
-│   │   ├── index.html            # 入口 HTML
-│   │   ├── package.json          # 前端依赖
-│   │   └── src/                  # React 源码
-│   │       ├── App.tsx
-│   │       ├── components/
-│   │       ├── pages/
-│   │       └── hooks/
 │   │
 │   ├── multi/                    # 多机分析
-│   │   └── analyzer.go           # 多机关联
 │   │
 │   ├── timeline/                 # 时间线
-│   │   ├── builder.go            # 构建器
-│   │   └── visualizer.go         # 可视化
 │   │
 │   ├── types/                    # 类型定义
 │   │   ├── event.go              # 事件类型
 │   │   ├── alert.go              # 告警类型
 │   │   ├── rule.go               # 规则类型
 │   │   ├── system.go             # 系统信息
-│   │   ├── errors.go            # 错误类型 (已扩展)
-│   │   └── result.go             # 结果类型
+│   │   ├── errors.go            # 错误类型
+│   │   ├── result.go             # 结果类型
+│   │   └── helpers.go           # 辅助函数
 │   │
 │   ├── config/                   # 配置
-│   │   ├── config.go             # 配置结构 (已扩展)
+│   │   ├── config.go             # 配置结构
 │   │   └── loader.go             # 配置加载
 │   │
-│   └── utils/                    # 工具函数
-│       ├── windows.go            # Windows API
-│       ├── powershell.go         # PowerShell
-│       ├── geoip.go              # GeoIP
-│       └── logger.go             # 日志
+│   ├── utils/                    # 工具函数
+│   │
+│   ├── version/                  # 版本信息
+│   │
+│   └── ueba/                     # UEBA 模块
 │
 ├── pkg/
 │   ├── evtx/                     # EVTX 解析库 (独立包)
-│   │   ├── reader.go
-│   │   ├── record.go
-│   │   └── xml.go
-│   │
 │   └── mitre/                    # MITRE ATT&CK
-│       └── mappings.go
-│
-├── web/                          # Web UI 编译输出
-│
-├── rules/                        # 规则文件
-│   ├── alerts/
-│   │   └── builtin.yaml
-│   └── correlation/
-│       └── builtin.yaml
 │
 ├── go.mod                        # Go 模块
 ├── go.sum
 ├── Makefile
-├── Dockerfile
 └── README.md
 ```
 
@@ -388,39 +354,80 @@ type BaseRule struct {
 
 // AlertRule 告警规则
 type AlertRule struct {
-    BaseRule
-    EventIDs       []int32            `json:"event_ids"`
-    Filters        []Filter            `json:"filters,omitempty"`
-    ConditionOp    LogicalOp           `json:"condition_op"`  // AND/OR
-    GroupBy        string              `json:"group_by,omitempty"`
-    Threshold      int                 `json:"threshold"`
-    TimeWindow     time.Duration       `json:"time_window"`
-    RuleScore      float64             `json:"rule_score"`
-    Recommendations []string           `json:"recommendations,omitempty"`
+    Name           string         `yaml:"name"`
+    Description    string         `yaml:"description"`
+    Enabled        bool           `yaml:"enabled"`
+    Severity       Severity       `yaml:"severity"`
+    Score          float64        `yaml:"score"`
+    MitreAttack    string         `yaml:"mitre_attack,omitempty"`
+    Priority       int            `yaml:"priority"` // 1-100，默认 50
+    Weight         float64        `yaml:"weight"`  // 告警权重，默认 1.0
+    Filter         *Filter        `yaml:"filter"`
+    Conditions     *Conditions    `yaml:"conditions,omitempty"`
+    Threshold      int            `yaml:"threshold,omitempty"`
+    TimeWindow     time.Duration  `yaml:"time_window,omitempty"`
+    AggregationKey string         `yaml:"aggregation_key,omitempty"`
+    Message        string         `yaml:"message"`
+    Tags           []string       `yaml:"tags,omitempty"`
 }
 
 // CorrelationRule 关联规则
 type CorrelationRule struct {
-    BaseRule
-    TimeWindow       time.Duration  `json:"time_window"`
-    Conditions       []Condition    `json:"conditions"`
-    JoinField        string         `json:"join_field,omitempty"`
-    CrossBucket      bool           `json:"cross_bucket"`
+    Name        string         `yaml:"name"`
+    Description string         `yaml:"description"`
+    Enabled     bool           `yaml:"enabled"`
+    Severity    Severity       `yaml:"severity"`
+    Patterns    []*Pattern     `yaml:"patterns"`
+    TimeWindow  time.Duration  `yaml:"time_window"`
+    Join        string         `yaml:"join"` // user, computer, ip
+    MitreAttack string         `yaml:"mitre_attack,omitempty"`
+    Tags        []string       `yaml:"tags,omitempty"`
+}
+
+// Pattern 关联模式
+type Pattern struct {
+    EventID    int32         `yaml:"event_id"`
+    Conditions []*Condition  `yaml:"conditions,omitempty"`
+    Join       string        `yaml:"join,omitempty"`
+    TimeWindow time.Duration `yaml:"time_window,omitempty"`
+    MinCount   int           `yaml:"min_count,omitempty"`
+    MaxCount   int           `yaml:"max_count,omitempty"`
+    Ordered    bool          `yaml:"ordered,omitempty"`
+    Negate     bool          `yaml:"negate,omitempty"`
 }
 
 // Filter 过滤器
 type Filter struct {
-    Field    string      `json:"field"`
-    Operator string      `json:"operator"` // equals, contains, regex, etc.
-    Value    interface{} `json:"value"`
+    EventIDs         []int32          `yaml:"event_ids,omitempty"`
+    Levels           []int            `yaml:"levels,omitempty"`
+    LogNames         []string         `yaml:"log_names,omitempty"`
+    Sources          []string         `yaml:"sources,omitempty"`
+    Computers        []string         `yaml:"computers,omitempty"`
+    Keywords         string           `yaml:"keywords,omitempty"`
+    KeywordMode      LogicalOp        `yaml:"keyword_mode,omitempty"`
+    TimeRange        *TimeRange      `yaml:"time_range,omitempty"`
+    LogonTypes       []int           `yaml:"logon_types,omitempty"`
+    ExcludeUsers     []string        `yaml:"exclude_users,omitempty"`
+    ExcludeComputers []string        `yaml:"exclude_computers,omitempty"`
+    ExcludeDomains   []string        `yaml:"exclude_domains,omitempty"`
+    MinFailureCount  int             `yaml:"min_failure_count,omitempty"`
+    IpAddress        []string        `yaml:"ip_address,omitempty"`
+    ProcessNames     []string        `yaml:"process_names,omitempty"`
 }
 
-// Condition 关联条件
+// Conditions 条件组合
+type Conditions struct {
+    Any  []*Condition `yaml:"any,omitempty"`
+    All  []*Condition `yaml:"all,omitempty"`
+    None []*Condition `yaml:"none,omitempty"`
+}
+
+// Condition 条件
 type Condition struct {
-    EventIDs   []int32   `json:"event_ids"`
-    LogSource  string    `json:"log_source,omitempty"`
-    Filters    []Filter  `json:"filters,omitempty"`
-    Aggregation string   `json:"aggregation,omitempty"` // ip, user, computer
+    Field    string `yaml:"field"`
+    Operator string `yaml:"operator"`
+    Value    string `yaml:"value"`
+    Regex    bool   `yaml:"regex,omitempty"`
 }
 
 // LogicalOp 逻辑操作
@@ -1179,10 +1186,190 @@ package correlation
 
 // Engine 关联分析引擎
 type Engine struct {
-    rules        []*rules.CorrelationRule
-    eventIndex   map[int32][]*types.Event  // 按 event_id 索引
-    timeIndex    map[int64][]*types.Event   // 按时间窗口索引
-    mu           sync.RWMutex
+    mu      sync.RWMutex
+    events  map[int64]*types.Event
+    index   *EventIndex
+    matcher *Matcher
+    chain   *ChainBuilder
+    maxAge  time.Duration
+}
+
+type EventIndex struct {
+    mu              sync.RWMutex
+    eventRepo       *storage.EventRepo
+    eventsCache     map[int64]*types.Event
+    byID            map[int64]time.Time
+    byTime          []indexEntry
+    byEID           map[int32][]int64
+    maxAge          time.Duration
+    lastCleanup     time.Time
+    cleanupInterval time.Duration
+}
+
+type indexEntry struct {
+    ID        int64
+    Timestamp time.Time
+}
+
+// NewEngine 创建关联引擎
+func NewEngine(maxAge time.Duration) *Engine {
+    return &Engine{
+        events:  make(map[int64]*types.Event),
+        index:   NewEventIndex(maxAge),
+        matcher: NewMatcher(),
+        chain:   NewChainBuilder(),
+        maxAge:  maxAge,
+    }
+}
+
+func NewEngineWithEventRepo(eventRepo *storage.EventRepo, maxAge time.Duration) *Engine {
+    return &Engine{
+        events:  make(map[int64]*types.Event),
+        index:   NewEventIndex(maxAge),
+        matcher: NewMatcher(),
+        chain:   NewChainBuilderWithEventRepo(eventRepo),
+        maxAge:  maxAge,
+    }
+}
+
+// Analyze 执行关联分析
+func (e *Engine) Analyze(ctx context.Context, rules []*rules.CorrelationRule) ([]*types.CorrelationResult, error) {
+    e.mu.RLock()
+    defer e.mu.RUnlock()
+
+    results := make([]*types.CorrelationResult, 0)
+
+    for _, rule := range rules {
+        if !rule.Enabled {
+            continue
+        }
+
+        ruleResults := e.analyzeRule(rule)
+        results = append(results, ruleResults...)
+    }
+
+    return results, nil
+}
+
+// analyzeRule 分析单条规则
+func (e *Engine) analyzeRule(rule *rules.CorrelationRule) []*types.CorrelationResult {
+    allResults := make([]*types.CorrelationResult, 0)
+    patterns := rule.Patterns
+    if len(patterns) < 2 {
+        return allResults
+    }
+
+    seenChains := make(map[string]bool)
+
+    for i, pattern := range patterns {
+        if i == len(patterns)-1 {
+            break
+        }
+
+        events := e.index.GetByEventID(pattern.EventID)
+        if events == nil {
+            continue
+        }
+
+        if pattern.TimeWindow > 0 {
+            events = e.filterByTimeWindow(events, pattern.TimeWindow)
+        }
+
+        if pattern.MinCount > 0 && len(events) < pattern.MinCount {
+            continue
+        }
+
+        if pattern.MaxCount > 0 && len(events) > pattern.MaxCount {
+            events = events[:pattern.MaxCount]
+        }
+
+        for idx := 0; idx < len(events); idx++ {
+            baseEvent := events[idx]
+            if baseEvent == nil {
+                continue
+            }
+
+            nextPattern := patterns[i+1]
+            nextEvents := e.findRelatedEventsWithRule(baseEvent, nextPattern, rule)
+
+            if len(nextEvents) > 0 {
+                for _, nextEvent := range nextEvents {
+                    if !e.matcher.CheckOrderedSequence([]*types.Event{baseEvent, nextEvent}, nextPattern) {
+                        continue
+                    }
+                    chainKey := fmt.Sprintf("%d:%d", baseEvent.ID, nextEvent.ID)
+                    if seenChains[chainKey] {
+                        continue
+                    }
+                    seenChains[chainKey] = true
+                    result := e.chain.Build(baseEvent, []*types.Event{nextEvent}, rule)
+                    if result != nil {
+                        allResults = append(allResults, result)
+                    }
+                    break
+                }
+            }
+        }
+    }
+
+    return allResults
+}
+
+// findRelatedEventsWithRule 查找关联事件
+func (e *Engine) findRelatedEventsWithRule(base *types.Event, pattern *rules.Pattern, rule *rules.CorrelationRule) []*types.Event {
+    join := pattern.Join
+    if join == "" {
+        join = rule.Join
+    }
+
+    events := e.index.GetByEventID(pattern.EventID)
+    if events == nil {
+        return nil
+    }
+
+    switch join {
+    case "user":
+        filtered := make([]*types.Event, 0)
+        for _, evt := range events {
+            userMatch := false
+            if evt.User != nil && base.User != nil {
+                userMatch = *evt.User == *base.User
+            } else if evt.UserSID != nil && base.UserSID != nil {
+                userMatch = *evt.UserSID == *base.UserSID
+            }
+            if userMatch {
+                filtered = append(filtered, evt)
+            }
+        }
+        return filtered
+
+    case "computer":
+        filtered := make([]*types.Event, 0)
+        for _, evt := range events {
+            if evt.Computer == base.Computer {
+                filtered = append(filtered, evt)
+            }
+        }
+        if len(filtered) > 0 {
+            return filtered
+        }
+        return events
+
+    case "ip":
+        filtered := make([]*types.Event, 0)
+        for _, evt := range events {
+            if evt.IPAddress != nil && base.IPAddress != nil && *evt.IPAddress == *base.IPAddress {
+                filtered = append(filtered, evt)
+            }
+        }
+        if len(filtered) > 0 {
+            return filtered
+        }
+        return events
+
+    default:
+        return events
+    }
 }
 
 // NewEngine 创建关联引擎
