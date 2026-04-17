@@ -40,19 +40,23 @@ func NewEventIndex(maxAge time.Duration) *EventIndex {
 
 func (idx *EventIndex) Add(event *types.Event) {
 	idx.mu.Lock()
-	defer idx.mu.Unlock()
 
 	if time.Since(idx.lastCleanup) > idx.cleanupInterval {
-		go idx.cleanupLocked()
 		idx.lastCleanup = time.Now()
+		go idx.cleanupLocked()
 	}
 
 	idx.byID[event.ID] = event
 	idx.byTime = append(idx.byTime, event)
 	idx.byEID[event.EventID] = append(idx.byEID[event.EventID], event)
+
+	idx.mu.Unlock()
 }
 
 func (idx *EventIndex) cleanupLocked() {
+	idx.mu.Lock()
+	defer idx.mu.Unlock()
+
 	if idx.maxAge <= 0 {
 		return
 	}

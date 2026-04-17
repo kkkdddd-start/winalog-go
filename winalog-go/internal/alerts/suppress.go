@@ -84,8 +84,8 @@ func (c *SuppressCache) matchesConditions(conds []types.SuppressCondition, event
 }
 
 func (c *SuppressCache) matchesTimeWindow(rule *types.SuppressRule, event *types.Event) bool {
-	if rule.Duration <= 0 {
-		return false
+	if rule.Duration == 0 {
+		return true
 	}
 
 	if !rule.ExpiresAt.IsZero() {

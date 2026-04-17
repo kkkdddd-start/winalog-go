@@ -12,6 +12,9 @@ type BaselineManager struct {
 	userActivity map[string]*UserBaseline
 	entityStats  map[string]*EntityStats
 	window       time.Duration
+	maxAge       time.Duration
+	lastCleanup  time.Time
+	cleanupMu    sync.Mutex
 }
 
 type UserBaseline struct {
@@ -38,12 +41,21 @@ func NewBaselineManager() *BaselineManager {
 		userActivity: make(map[string]*UserBaseline),
 		entityStats:  make(map[string]*EntityStats),
 		window:       7 * 24 * time.Hour,
+		maxAge:       30 * 24 * time.Hour,
+		lastCleanup:  time.Now(),
 	}
 }
 
 func (m *BaselineManager) Update(events []*types.Event) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	m.cleanupMu.Lock()
+	if time.Since(m.lastCleanup) > time.Hour {
+		m.cleanupExpired()
+		m.lastCleanup = time.Now()
+	}
+	m.cleanupMu.Unlock()
 
 	for _, event := range events {
 		if event.User != nil {
@@ -53,6 +65,28 @@ func (m *BaselineManager) Update(events []*types.Event) error {
 	}
 
 	return nil
+}
+
+func (m *BaselineManager) cleanupExpired() {
+	cutoff := time.Now().Add(-m.maxAge)
+
+	for user, baseline := range m.userActivity {
+		if baseline.LastUpdated.Before(cutoff) {
+			delete(m.userActivity, user)
+		}
+	}
+
+	for key, stats := range m.entityStats {
+		if stats.LastSeen.Before(cutoff) {
+			delete(m.entityStats, key)
+		}
+	}
+}
+
+func (m *BaselineManager) SetMaxAge(maxAge time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.maxAge = maxAge
 }
 
 func (m *BaselineManager) updateUserBaseline(user string, event *types.Event) {

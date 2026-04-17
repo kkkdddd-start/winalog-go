@@ -560,13 +560,13 @@ func (r *AlertRepo) CountByStatus() (map[string]int64, error) {
 
 	counts := make(map[string]int64)
 	for rows.Next() {
-		var resolved bool
+		var resolved int
 		var count int64
 		if err := rows.Scan(&resolved, &count); err != nil {
 			return nil, err
 		}
 		status := "unresolved"
-		if resolved {
+		if resolved == 1 {
 			status = "resolved"
 		}
 		counts[status] = count

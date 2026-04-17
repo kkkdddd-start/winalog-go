@@ -1,6 +1,8 @@
 package correlation
 
 import (
+	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
@@ -142,6 +144,13 @@ func (cb *ChainBuilder) BuildFromRule(rule *rules.CorrelationRule, events []*typ
 	return result
 }
 
+var resultCounter uint64
+
 func generateResultID() string {
-	return time.Now().Format("20060102150405.000000")
+	now := time.Now()
+	counter := atomic.AddUint64(&resultCounter, 1)
+	return fmt.Sprintf("%s.%06d.%d",
+		now.Format("20060102150405"),
+		now.Nanosecond()/1000,
+		counter)
 }

@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -122,8 +123,11 @@ func (d *DB) validateAlertRuleExists(ruleName string) (bool, error) {
 
 func (d *DB) validateCorrelationRuleExists(ruleName string) (bool, error) {
 	var count int
-	err := d.QueryRow("SELECT COUNT(*) FROM correlation_results WHERE rule_name = ?", ruleName).Scan(&count)
+	err := d.QueryRow("SELECT COUNT(*) FROM alerts WHERE rule_name = ?", ruleName).Scan(&count)
 	if err != nil {
+		if strings.Contains(err.Error(), "no such table") {
+			return false, nil
+		}
 		return false, err
 	}
 	return count > 0, nil

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
@@ -20,14 +21,15 @@ type PolicyTemplate struct {
 	Enabled      bool              `json:"enabled"`
 	Priority     int               `json:"priority"`
 	MITREMapping []string          `json:"mitre_mapping,omitempty"`
+	BuiltIn      bool              `json:"built_in"`
 }
 
 type PolicyType string
 
 const (
-	PolicyTypeUpgrade  PolicyType = "upgrade"
-	PolicyTypeSuppress PolicyType = "suppress"
-	PolicyType複合       PolicyType = "composite"
+	PolicyTypeUpgrade   PolicyType = "upgrade"
+	PolicyTypeSuppress  PolicyType = "suppress"
+	PolicyTypeComposite PolicyType = "composite"
 )
 
 type PolicyParam struct {
@@ -51,6 +53,7 @@ type PolicyAction struct {
 }
 
 type PolicyManager struct {
+	mu        sync.RWMutex
 	templates map[string]*PolicyTemplate
 	instances map[string]*PolicyInstance
 }
@@ -102,6 +105,7 @@ func (m *PolicyManager) registerBuiltInTemplates() {
 		Enabled:      true,
 		Priority:     10,
 		MITREMapping: []string{"T1110"},
+		BuiltIn:      true,
 	}
 
 	m.templates["lateral_movement_suppress"] = &PolicyTemplate{
@@ -122,6 +126,7 @@ func (m *PolicyManager) registerBuiltInTemplates() {
 		TimeWindow: 24 * time.Hour,
 		Enabled:    true,
 		Priority:   5,
+		BuiltIn:    true,
 	}
 
 	m.templates["credential_theft_alert"] = &PolicyTemplate{
@@ -144,6 +149,7 @@ func (m *PolicyManager) registerBuiltInTemplates() {
 		Enabled:      true,
 		Priority:     20,
 		MITREMapping: []string{"T1003", "T1078", "T1110"},
+		BuiltIn:      true,
 	}
 
 	m.templates["malware_activity_detect"] = &PolicyTemplate{
@@ -165,10 +171,14 @@ func (m *PolicyManager) registerBuiltInTemplates() {
 		Enabled:      true,
 		Priority:     15,
 		MITREMapping: []string{"T1566", "T1006", "T1059"},
+		BuiltIn:      true,
 	}
 }
 
 func (m *PolicyManager) ListTemplates() []*PolicyTemplate {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	templates := make([]*PolicyTemplate, 0, len(m.templates))
 	for _, t := range m.templates {
 		templates = append(templates, t)
@@ -177,11 +187,17 @@ func (m *PolicyManager) ListTemplates() []*PolicyTemplate {
 }
 
 func (m *PolicyManager) GetTemplate(name string) (*PolicyTemplate, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	t, ok := m.templates[name]
 	return t, ok
 }
 
 func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string, params map[string]string) (*PolicyInstance, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	template, ok := m.templates[templateName]
 	if !ok {
 		return nil, fmt.Errorf("template '%s' not found", templateName)
@@ -205,13 +221,16 @@ func (m *PolicyManager) InstantiateTemplate(templateName string, ruleName string
 		Enabled:      true,
 	}
 
-	key := fmt.Sprintf("%s_%s_%d", templateName, ruleName, time.Now().UnixNano())
+	key := fmt.Sprintf("%s_%s_%s", templateName, ruleName, uuid.New().String())
 	m.instances[key] = instance
 
 	return instance, nil
 }
 
 func (m *PolicyManager) ListInstances() []*PolicyInstance {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	instances := make([]*PolicyInstance, 0, len(m.instances))
 	for _, inst := range m.instances {
 		instances = append(instances, inst)
@@ -220,6 +239,9 @@ func (m *PolicyManager) ListInstances() []*PolicyInstance {
 }
 
 func (m *PolicyManager) DeleteInstance(key string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, ok := m.instances[key]; ok {
 		delete(m.instances, key)
 		return true
@@ -228,6 +250,9 @@ func (m *PolicyManager) DeleteInstance(key string) bool {
 }
 
 func (m *PolicyManager) ApplyToEngine(e *Engine) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	for _, inst := range m.instances {
 		if !inst.Enabled {
 			continue
@@ -312,18 +337,34 @@ func (m *PolicyManager) applySuppressPolicy(e *Engine, template *PolicyTemplate,
 }
 
 func (m *PolicyManager) CreateCustomTemplate(template *PolicyTemplate) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if template.Name == "" {
 		return fmt.Errorf("template name is required")
 	}
-	if _, ok := m.templates[template.Name]; ok {
-		return fmt.Errorf("template '%s' already exists", template.Name)
+
+	if existing, ok := m.templates[template.Name]; ok {
+		if existing.BuiltIn {
+			return fmt.Errorf("cannot override built-in template '%s'", template.Name)
+		}
 	}
 
+	template.BuiltIn = false
 	m.templates[template.Name] = template
 	return nil
 }
 
 func (m *PolicyManager) DeleteTemplate(name string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if existing, ok := m.templates[name]; ok {
+		if existing.BuiltIn {
+			return false
+		}
+	}
+
 	if _, ok := m.templates[name]; ok {
 		delete(m.templates, name)
 		return true

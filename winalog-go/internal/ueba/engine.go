@@ -13,12 +13,16 @@ type Engine struct {
 }
 
 type EngineConfig struct {
-	LearningWindow       time.Duration
-	AlertThreshold       float64
-	MinEventsForBaseline int
+	LearningWindow               time.Duration
+	AlertThreshold               float64
+	MinEventsForBaseline         int
+	PrivilegeEscalationThreshold int
 }
 
 func NewEngine(cfg EngineConfig) *Engine {
+	if cfg.PrivilegeEscalationThreshold == 0 {
+		cfg.PrivilegeEscalationThreshold = 5
+	}
 	return &Engine{
 		baseline: NewBaselineManager(),
 		config:   &cfg,
@@ -230,8 +234,13 @@ func (e *Engine) detectPrivilegeEscalation(events []*types.Event) []*AnomalyResu
 		}
 	}
 
+	threshold := 5
+	if e.config != nil && e.config.PrivilegeEscalationThreshold > 0 {
+		threshold = e.config.PrivilegeEscalationThreshold
+	}
+
 	for user, events := range adminEvents {
-		if len(events) > 5 {
+		if len(events) > threshold {
 			results = append(results, &AnomalyResult{
 				Type:        AnomalyTypePrivilegeEscalation,
 				User:        user,
@@ -240,6 +249,7 @@ func (e *Engine) detectPrivilegeEscalation(events []*types.Event) []*AnomalyResu
 				Description: "Multiple privilege assignment events",
 				Details: map[string]interface{}{
 					"event_count": len(events),
+					"threshold":   threshold,
 				},
 			})
 		}

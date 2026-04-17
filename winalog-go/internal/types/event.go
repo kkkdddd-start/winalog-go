@@ -394,7 +394,7 @@ func IsExternalIP(ip string) bool {
 			firstOctet = firstOctet*10 + int(c-'0')
 		}
 	}
-	if firstOctet >= 10 && firstOctet <= 11 {
+	if firstOctet == 10 {
 		return false
 	}
 	if firstOctet == 192 && parts[1] == "168" {

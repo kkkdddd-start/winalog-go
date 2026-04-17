@@ -1,6 +1,6 @@
 module github.com/kkkdddd-start/winalog-go
 
-go 1.25.6
+go 1.25.0
 
 require (
 	github.com/0xrawsec/golang-evtx v1.2.9

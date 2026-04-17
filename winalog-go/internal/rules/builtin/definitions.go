@@ -1342,6 +1342,62 @@ func GetAlertRules() []*rules.AlertRule {
 			Message: "AD replication operation detected - potential DCSync attack",
 			Tags:    []string{"credential-access", "lateral-movement"},
 		},
+		{
+			Name:        "audit-policy-change",
+			Description: "审计策略被更改-攻击者关闭审计的标志",
+			Enabled:     true,
+			Severity:    types.SeverityHigh,
+			Score:       85,
+			MitreAttack: "T1562.002",
+			Filter: &rules.Filter{
+				EventIDs: []int32{4719},
+				Levels:   []int{4},
+			},
+			Message: "Audit policy change detected - potential defense evasion",
+			Tags:    []string{"defense-evasion", "policy"},
+		},
+		{
+			Name:        "sysmon-dns-query",
+			Description: "可疑DNS查询-C2/DGA检测",
+			Enabled:     true,
+			Severity:    types.SeverityMedium,
+			Score:       60,
+			MitreAttack: "T1071.004",
+			Filter: &rules.Filter{
+				EventIDs: []int32{22},
+				Levels:   []int{4},
+			},
+			Message: "DNS query to suspicious domain: {{.QueryName}}",
+			Tags:    []string{"command-and-control", "dns"},
+		},
+		{
+			Name:        "sysmon-remote-thread",
+			Description: "远程线程创建-进程注入检测",
+			Enabled:     true,
+			Severity:    types.SeverityHigh,
+			Score:       85,
+			MitreAttack: "T1055.008",
+			Filter: &rules.Filter{
+				EventIDs: []int32{8},
+				Levels:   []int{4},
+			},
+			Message: "Remote thread created - possible process injection",
+			Tags:    []string{"defense-evasion", "privilege-escalation"},
+		},
+		{
+			Name:        "service-installation",
+			Description: "可疑服务安装-恶意服务部署",
+			Enabled:     true,
+			Severity:    types.SeverityHigh,
+			Score:       75,
+			MitreAttack: "T1569.002",
+			Filter: &rules.Filter{
+				EventIDs: []int32{7045},
+				Levels:   []int{4},
+			},
+			Message: "New service installed: {{.ServiceName}} on {{.Computer}}",
+			Tags:    []string{"persistence", "service"},
+		},
 	}
 }
 

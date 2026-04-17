@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -164,7 +165,7 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 
 	var batch []*types.Event
 	var totalEvents int64
-	var lastErr error
+	var importErr error
 	var batchNum int
 
 	for event := range events {
@@ -178,18 +179,18 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 		if len(batch) >= e.importCfg.BatchSize {
 			batchNum++
 			if err := e.eventRepo.InsertBatch(batch); err != nil {
-				lastErr = fmt.Errorf("batch %d failed: %w", batchNum, err)
-			} else {
-				totalEvents += int64(len(batch))
+				importErr = fmt.Errorf("batch %d failed: %w", batchNum, err)
+				break
 			}
+			totalEvents += int64(len(batch))
 			batch = batch[:0]
 		}
 	}
 
-	if len(batch) > 0 {
+	if importErr == nil && len(batch) > 0 {
 		batchNum++
 		if err := e.eventRepo.InsertBatch(batch); err != nil {
-			lastErr = fmt.Errorf("batch %d (final) failed: %w", batchNum, err)
+			importErr = fmt.Errorf("batch %d (final) failed: %w", batchNum, err)
 		} else {
 			totalEvents += int64(len(batch))
 		}
@@ -197,12 +198,20 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 	}
 
 	duration := time.Since(startTime)
+	if importErr != nil {
+		e.db.InsertImportLog(path, "", int(totalEvents), int(duration.Milliseconds()), "failed", importErr.Error())
+		return &ImportResult{
+			EventsImported: totalEvents,
+			Duration:       duration,
+		}, importErr
+	}
+
 	e.db.InsertImportLog(path, "", int(totalEvents), int(duration.Milliseconds()), "success", "")
 
 	return &ImportResult{
 		EventsImported: totalEvents,
 		Duration:       duration,
-	}, lastErr
+	}, nil
 }
 
 type ImportResult struct {
@@ -290,9 +299,47 @@ func (e *Engine) Search(req *types.SearchRequest) (*types.SearchResponse, error)
 }
 
 func (e *Engine) generateCacheKey(req *types.SearchRequest) string {
-	return fmt.Sprintf("%d|%d|%s|%s|%v|%v|%v|%v|%v|%v",
-		req.Page, req.PageSize, req.SortOrder, req.Keywords,
-		req.EventIDs, req.Levels, req.LogNames, req.Sources, req.Computers, req.Users)
+	parts := []string{
+		fmt.Sprintf("%d", req.Page),
+		fmt.Sprintf("%d", req.PageSize),
+		req.SortOrder,
+		req.Keywords,
+		formatIntSlice(req.EventIDs),
+		formatIntSliceForLevels(req.Levels),
+		strings.Join(req.LogNames, ","),
+		strings.Join(req.Sources, ","),
+		strings.Join(req.Computers, ","),
+		strings.Join(req.Users, ","),
+	}
+
+	if req.StartTime != nil {
+		parts = append(parts, req.StartTime.Format("20060102150405"))
+	}
+	if req.EndTime != nil {
+		parts = append(parts, req.EndTime.Format("20060102150405"))
+	}
+
+	return strings.Join(parts, "|")
+}
+
+func formatIntSlice(vals []int32) string {
+	if len(vals) == 0 {
+		return ""
+	}
+	ints := make([]int, len(vals))
+	for i, v := range vals {
+		ints[i] = int(v)
+	}
+	sort.Ints(ints)
+	return fmt.Sprintf("%v", ints)
+}
+
+func formatIntSliceForLevels(vals []int) string {
+	if len(vals) == 0 {
+		return ""
+	}
+	sort.Ints(vals)
+	return fmt.Sprintf("%v", vals)
 }
 
 func (c *searchCache) get(key string) *cacheEntry {
