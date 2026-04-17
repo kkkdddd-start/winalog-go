@@ -169,21 +169,25 @@ func truncateString(s string, maxLen int) string {
 }
 
 type APIReportRequest struct {
-	Type        string
-	Format      string
-	StartTime   string
-	EndTime     string
-	IncludeRaw  bool
-	Compression bool
-	Title       string
-	Description string
+	Type         string
+	Format       string
+	StartTime    string
+	EndTime      string
+	IncludeRaw   bool
+	IncludeIOC   bool
+	IncludeMITRE bool
+	Compression  bool
+	Title        string
+	Description  string
 }
 
 func (s *ReportService) GenerateFromAPIRequest(apiReq *APIReportRequest) (*Report, error) {
 	req := &ReportRequest{
-		Title:      apiReq.Title,
-		Format:     ReportFormat(apiReq.Format),
-		IncludeRaw: apiReq.IncludeRaw,
+		Title:        apiReq.Title,
+		Format:       ReportFormat(apiReq.Format),
+		IncludeRaw:   apiReq.IncludeRaw,
+		IncludeIOC:   apiReq.IncludeIOC,
+		IncludeMITRE: apiReq.IncludeMITRE,
 	}
 
 	if apiReq.StartTime != "" {

@@ -68,6 +68,15 @@ type Report struct {
 	Recommendations  []Recommendation  `json:"recommendations,omitempty"`
 	AttackPatterns   []*AttackPattern  `json:"attack_patterns,omitempty"`
 	ComplianceStatus *ComplianceStatus `json:"compliance_status,omitempty"`
+	Timeline         []TimelineEntry   `json:"timeline,omitempty"`
+}
+
+type TimelineEntry struct {
+	Timestamp time.Time `json:"timestamp"`
+	Type      string    `json:"type"`
+	Source    string    `json:"source"`
+	Message   string    `json:"message"`
+	Severity  string    `json:"severity,omitempty"`
 }
 
 type ReportGenerationError struct {
@@ -235,11 +244,13 @@ func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
 	}
 	report.TopAlerts = alerts
 
+	events, err := g.getTopEvents(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top events: %w", err)
+	}
+	report.TopEvents = events
+
 	if req.IncludeRaw {
-		events, err := g.getTopEvents(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get top events: %w", err)
-		}
 		report.RawEvents = events
 	}
 
@@ -279,6 +290,12 @@ func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
 		errs = append(errs, fmt.Errorf("compliance status: %w", err))
 	} else {
 		report.ComplianceStatus = compliance
+	}
+
+	if timeline, err := g.buildTimeline(req); err != nil {
+		errs = append(errs, fmt.Errorf("timeline: %w", err))
+	} else {
+		report.Timeline = timeline
 	}
 
 	if len(errs) > 0 {
@@ -1014,4 +1031,62 @@ func (g *Generator) generateComplianceStatus(req *ReportRequest) (*ComplianceSta
 	}
 
 	return status, nil
+}
+
+func (g *Generator) buildTimeline(req *ReportRequest) ([]TimelineEntry, error) {
+	entries := make([]TimelineEntry, 0)
+
+	limit := 500
+	if !req.StartTime.IsZero() || !req.EndTime.IsZero() {
+		limit = 1000
+	}
+
+	eventFilter := &storage.EventFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     limit / 2,
+	}
+	events, _, err := g.db.ListEvents(eventFilter)
+	if err != nil {
+		return entries, err
+	}
+
+	for _, event := range events {
+		entries = append(entries, TimelineEntry{
+			Timestamp: event.Timestamp,
+			Type:      "event",
+			Source:    event.Source,
+			Message:   event.Message,
+		})
+	}
+
+	alertFilter := &storage.AlertFilter{
+		StartTime: &req.StartTime,
+		EndTime:   &req.EndTime,
+		Limit:     limit / 2,
+	}
+	alerts, err := g.db.AlertRepo().Query(alertFilter)
+	if err != nil {
+		return entries, err
+	}
+
+	for _, alert := range alerts {
+		entries = append(entries, TimelineEntry{
+			Timestamp: alert.FirstSeen,
+			Type:      "alert",
+			Source:    alert.LogName,
+			Message:   alert.Message,
+			Severity:  string(alert.Severity),
+		})
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Timestamp.After(entries[j].Timestamp)
+	})
+
+	if len(entries) > limit {
+		entries = entries[:limit]
+	}
+
+	return entries, nil
 }

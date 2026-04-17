@@ -121,6 +121,18 @@ func AdaptReportToAPI(report *Report) *APIReportContent {
 		content.RawEvents = report.RawEvents
 	}
 
+	if len(report.Timeline) > 0 {
+		for _, entry := range report.Timeline {
+			content.Timeline = append(content.Timeline, &APIReportTimeline{
+				Timestamp: entry.Timestamp,
+				Type:      entry.Type,
+				Source:    entry.Source,
+				Message:   entry.Message,
+				Severity:  entry.Severity,
+			})
+		}
+	}
+
 	return content
 }
 
