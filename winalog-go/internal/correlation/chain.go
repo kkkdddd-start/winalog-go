@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
@@ -34,7 +35,8 @@ var DefaultChainConfig = &ChainConfig{
 }
 
 type ChainBuilder struct {
-	config *ChainConfig
+	eventRepo *storage.EventRepo
+	config    *ChainConfig
 }
 
 func NewChainBuilder() *ChainBuilder {
@@ -43,6 +45,17 @@ func NewChainBuilder() *ChainBuilder {
 
 func NewChainBuilderWithConfig(cfg *ChainConfig) *ChainBuilder {
 	return &ChainBuilder{config: cfg}
+}
+
+func NewChainBuilderWithEventRepo(eventRepo *storage.EventRepo) *ChainBuilder {
+	return &ChainBuilder{
+		eventRepo: eventRepo,
+		config:    DefaultChainConfig,
+	}
+}
+
+func (cb *ChainBuilder) SetEventRepo(eventRepo *storage.EventRepo) {
+	cb.eventRepo = eventRepo
 }
 
 func (cb *ChainBuilder) Build(startEvent *types.Event, relatedEvents []*types.Event, rule *rules.CorrelationRule) *types.CorrelationResult {
@@ -77,7 +90,10 @@ func (cb *ChainBuilder) FindChains(startEvent *types.Event, maxDepth int) ([]*ty
 	currentEvents := []*types.Event{startEvent}
 
 	for depth < maxDepth {
-		nextEvents := cb.findNextEvents(currentEvents)
+		nextEvents, err := cb.findNextEvents(currentEvents)
+		if err != nil {
+			return chains, err
+		}
 		if len(nextEvents) == 0 {
 			break
 		}
@@ -100,7 +116,52 @@ func (cb *ChainBuilder) FindChains(startEvent *types.Event, maxDepth int) ([]*ty
 	return chains, nil
 }
 
-func (cb *ChainBuilder) findNextEvents(events []*types.Event) []*types.Event {
+func (cb *ChainBuilder) findNextEvents(events []*types.Event) ([]*types.Event, error) {
+	if len(events) == 0 {
+		return nil, nil
+	}
+
+	if cb.eventRepo == nil {
+		return cb.findNextEventsFallback(events)
+	}
+
+	nextEventIDs := make(map[int32]bool)
+	for _, event := range events {
+		if nextIDs, ok := cb.config.Transitions[event.EventID]; ok {
+			for _, nextID := range nextIDs {
+				nextEventIDs[nextID] = true
+			}
+		}
+	}
+	if len(nextEventIDs) == 0 {
+		return nil, nil
+	}
+
+	maxTime := events[0].Timestamp
+	for _, e := range events {
+		if e.Timestamp.After(maxTime) {
+			maxTime = e.Timestamp
+		}
+	}
+
+	ids := make([]int32, 0, len(nextEventIDs))
+	for id := range nextEventIDs {
+		ids = append(ids, id)
+	}
+
+	req := &types.SearchRequest{
+		EventIDs:  ids,
+		StartTime: &maxTime,
+		PageSize:  1000,
+	}
+	results, _, err := cb.eventRepo.Search(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query subsequent events: %w", err)
+	}
+	return results, nil
+}
+
+func (cb *ChainBuilder) findNextEventsFallback(events []*types.Event) ([]*types.Event, error) {
 	nextEvents := make([]*types.Event, 0)
 
 	for _, event := range events {
@@ -117,7 +178,7 @@ func (cb *ChainBuilder) findNextEvents(events []*types.Event) []*types.Event {
 		}
 	}
 
-	return nextEvents
+	return nextEvents, nil
 }
 
 func (cb *ChainBuilder) BuildFromRule(rule *rules.CorrelationRule, events []*types.Event) *types.CorrelationResult {

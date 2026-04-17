@@ -255,6 +255,8 @@ func (e *Evaluator) matchCondition(cond *rules.Condition, event *types.Event) bo
 		return e.compareString(event.GetServiceName(), cond.Operator, cond.Value, cond.Regex)
 	case "logon_type":
 		return e.compareValue(event.GetLogonType(), cond.Operator, cond.Value)
+	case "destination_port":
+		return e.compareValue(event.GetDestPort(), cond.Operator, cond.Value)
 	case "status":
 		if v := event.GetExtractedField("Status"); v != nil {
 			if s, ok := v.(string); ok {

@@ -1,6 +1,9 @@
 package correlation
 
 import (
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
@@ -54,6 +57,10 @@ func (m *Matcher) matchConditions(conditions []*rules.Condition, event *types.Ev
 func (m *Matcher) matchCondition(cond *rules.Condition, event *types.Event) bool {
 	field := cond.Field
 	value := cond.Value
+	op := cond.Operator
+	if op == "" {
+		op = "=="
+	}
 
 	getUserStr := func() string {
 		if event.User != nil {
@@ -64,18 +71,127 @@ func (m *Matcher) matchCondition(cond *rules.Condition, event *types.Event) bool
 
 	switch field {
 	case "source":
-		return event.Source == value
+		return m.compareString(event.Source, value, op)
 	case "log_name":
-		return event.LogName == value
+		return m.compareString(event.LogName, value, op)
 	case "computer":
-		return event.Computer == value
+		return m.compareString(event.Computer, value, op)
 	case "user":
-		return getUserStr() == value
+		return m.compareString(getUserStr(), value, op)
 	case "message":
-		return contains(event.Message, value)
+		return m.compareString(event.Message, value, op)
+	case "ip_address":
+		if event.IPAddress == nil {
+			return false
+		}
+		return m.compareString(*event.IPAddress, value, op)
+	case "destination_port":
+		port := m.getExtendedDataInt(event, "DestinationPort")
+		return m.compareInt(port, value, op)
+	case "logon_type":
+		lt := m.getExtendedDataInt(event, "LogonType")
+		return m.compareInt(lt, value, op)
+	case "status":
+		return m.compareString(event.Message, value, op)
+	case "process_name":
+		return m.compareString(m.getExtendedDataStr(event, "NewProcessName"), value, op)
+	case "command_line":
+		return m.compareString(m.getExtendedDataStr(event, "CommandLine"), value, op)
+	case "service_name":
+		return m.compareString(m.getExtendedDataStr(event, "ServiceName"), value, op)
+	case "provider_name":
+		return m.compareString(event.Source, value, op)
+	case "workstation":
+		return m.compareString(m.getExtendedDataStr(event, "WorkstationName"), value, op)
+	case "domain":
+		return m.compareString(m.getExtendedDataStr(event, "TargetDomainName"), value, op)
+	case "target_username":
+		return m.compareString(m.getExtendedDataStr(event, "TargetUserName"), value, op)
+	case "task_name":
+		return m.compareString(m.getExtendedDataStr(event, "TaskName"), value, op)
 	default:
 		return false
 	}
+}
+
+func (m *Matcher) compareString(fieldValue, condValue, op string) bool {
+	switch op {
+	case "==", "=", "equals":
+		return fieldValue == condValue
+	case "!=", "not_equals":
+		return fieldValue != condValue
+	case "contains":
+		return contains(fieldValue, condValue)
+	case "not_contains":
+		return !contains(fieldValue, condValue)
+	case "startswith":
+		return strings.HasPrefix(fieldValue, condValue)
+	case "endswith":
+		return strings.HasSuffix(fieldValue, condValue)
+	case "regex":
+		matched, err := regexp.MatchString(condValue, fieldValue)
+		return err == nil && matched
+	default:
+		return fieldValue == condValue
+	}
+}
+
+func (m *Matcher) compareInt(fieldValue int, condValue string, op string) bool {
+	condInt, err := strconv.Atoi(condValue)
+	if err != nil {
+		return false
+	}
+	switch op {
+	case "==", "=", "equals":
+		return fieldValue == condInt
+	case "!=", "not_equals":
+		return fieldValue != condInt
+	case ">":
+		return fieldValue > condInt
+	case ">=":
+		return fieldValue >= condInt
+	case "<":
+		return fieldValue < condInt
+	case "<=":
+		return fieldValue <= condInt
+	default:
+		return fieldValue == condInt
+	}
+}
+
+func (m *Matcher) getExtendedDataStr(event *types.Event, key string) string {
+	if event.ExtractedFields == nil {
+		return ""
+	}
+	if v, ok := event.ExtractedFields[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func (m *Matcher) getExtendedDataInt(event *types.Event, key string) int {
+	if event.ExtractedFields == nil {
+		return 0
+	}
+	if v, ok := event.ExtractedFields[key]; ok {
+		switch val := v.(type) {
+		case int:
+			return val
+		case int32:
+			return int(val)
+		case int64:
+			return int(val)
+		case float64:
+			return int(val)
+		case string:
+			if i, err := strconv.Atoi(val); err == nil {
+				return i
+			}
+		}
+	}
+	return 0
 }
 
 func (m *Matcher) FilterByTimeRange(events []*types.Event, start, end time.Time) []*types.Event {

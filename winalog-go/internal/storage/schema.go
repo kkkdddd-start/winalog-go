@@ -23,6 +23,15 @@ CREATE TABLE IF NOT EXISTS events (
 	FOREIGN KEY (import_id) REFERENCES import_log(id) ON DELETE SET NULL
 );
 
+-- FTS5 virtual table for full-text search
+CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(
+	event_id UNINDEXED,
+	message,
+	source,
+	content='events',
+	content_rowid='id'
+);
+
 -- Alerts table
 CREATE TABLE IF NOT EXISTS alerts (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,

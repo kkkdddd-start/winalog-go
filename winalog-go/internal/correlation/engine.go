@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
@@ -18,11 +19,18 @@ type Engine struct {
 	maxAge  time.Duration
 }
 
+type indexEntry struct {
+	ID        int64
+	Timestamp time.Time
+}
+
 type EventIndex struct {
 	mu              sync.RWMutex
-	byID            map[int64]*types.Event
-	byTime          []*types.Event
-	byEID           map[int32][]*types.Event
+	eventRepo       *storage.EventRepo
+	eventsCache     map[int64]*types.Event
+	byID            map[int64]time.Time
+	byTime          []indexEntry
+	byEID           map[int32][]int64
 	maxAge          time.Duration
 	lastCleanup     time.Time
 	cleanupInterval time.Duration
@@ -30,27 +38,34 @@ type EventIndex struct {
 
 func NewEventIndex(maxAge time.Duration) *EventIndex {
 	return &EventIndex{
-		byID:            make(map[int64]*types.Event),
-		byEID:           make(map[int32][]*types.Event),
+		eventsCache:     make(map[int64]*types.Event),
+		byID:            make(map[int64]time.Time),
+		byEID:           make(map[int32][]int64),
 		maxAge:          maxAge,
 		lastCleanup:     time.Now(),
 		cleanupInterval: 5 * time.Minute,
 	}
 }
 
+func (idx *EventIndex) SetEventRepo(eventRepo *storage.EventRepo) {
+	idx.mu.Lock()
+	defer idx.mu.Unlock()
+	idx.eventRepo = eventRepo
+}
+
 func (idx *EventIndex) Add(event *types.Event) {
 	idx.mu.Lock()
+	defer idx.mu.Unlock()
 
 	if time.Since(idx.lastCleanup) > idx.cleanupInterval {
 		idx.lastCleanup = time.Now()
 		go idx.cleanupLocked()
 	}
 
-	idx.byID[event.ID] = event
-	idx.byTime = append(idx.byTime, event)
-	idx.byEID[event.EventID] = append(idx.byEID[event.EventID], event)
-
-	idx.mu.Unlock()
+	idx.eventsCache[event.ID] = event
+	idx.byID[event.ID] = event.Timestamp
+	idx.byTime = append(idx.byTime, indexEntry{ID: event.ID, Timestamp: event.Timestamp})
+	idx.byEID[event.EventID] = append(idx.byEID[event.EventID], event.ID)
 }
 
 func (idx *EventIndex) cleanupLocked() {
@@ -63,8 +78,8 @@ func (idx *EventIndex) cleanupLocked() {
 	cutoff := time.Now().Add(-idx.maxAge)
 
 	splitIdx := 0
-	for i, event := range idx.byTime {
-		if event.Timestamp.After(cutoff) {
+	for i, entry := range idx.byTime {
+		if entry.Timestamp.After(cutoff) {
 			break
 		}
 		splitIdx = i + 1
@@ -74,11 +89,11 @@ func (idx *EventIndex) cleanupLocked() {
 		return
 	}
 
-	oldEvents := idx.byTime[:splitIdx]
+	oldEntries := idx.byTime[:splitIdx]
 	idx.byTime = idx.byTime[splitIdx:]
 
-	for _, event := range oldEvents {
-		delete(idx.byID, event.ID)
+	for _, entry := range oldEntries {
+		delete(idx.byID, entry.ID)
 	}
 }
 
@@ -96,31 +111,18 @@ func (idx *EventIndex) Cleanup() {
 	}
 
 	splitIdx := 0
-	for i, event := range idx.byTime {
-		if event.Timestamp.After(cutoff) {
+	for i, entry := range idx.byTime {
+		if entry.Timestamp.After(cutoff) {
 			break
 		}
 		splitIdx = i + 1
 	}
 
-	oldEvents := idx.byTime[:splitIdx]
+	oldEntries := idx.byTime[:splitIdx]
 	idx.byTime = idx.byTime[splitIdx:]
 
-	for _, event := range oldEvents {
-		delete(idx.byID, event.ID)
-		if slice, ok := idx.byEID[event.EventID]; ok {
-			newSlice := make([]*types.Event, 0, len(slice))
-			for _, e := range slice {
-				if e.ID != event.ID {
-					newSlice = append(newSlice, e)
-				}
-			}
-			if len(newSlice) > 0 {
-				idx.byEID[event.EventID] = newSlice
-			} else {
-				delete(idx.byEID, event.EventID)
-			}
-		}
+	for _, entry := range oldEntries {
+		delete(idx.byID, entry.ID)
 	}
 }
 
@@ -128,35 +130,82 @@ func (idx *EventIndex) GetByID(id int64) (*types.Event, bool) {
 	idx.mu.RLock()
 	defer idx.mu.RUnlock()
 
-	event, ok := idx.byID[id]
-	return event, ok
+	_, ok := idx.byID[id]
+	if !ok {
+		return nil, false
+	}
+
+	if event, ok := idx.eventsCache[id]; ok {
+		return event, true
+	}
+
+	if idx.eventRepo != nil {
+		event, err := idx.eventRepo.GetByID(id)
+		if err == nil {
+			return event, true
+		}
+	}
+
+	return nil, false
 }
 
 func (idx *EventIndex) GetByEventID(eid int32) []*types.Event {
 	idx.mu.RLock()
-	defer idx.mu.RUnlock()
+	candidateIDs := idx.byEID[eid]
+	idx.mu.RUnlock()
 
-	events, ok := idx.byEID[eid]
-	if !ok {
+	if len(candidateIDs) == 0 {
 		return nil
 	}
 
-	result := make([]*types.Event, len(events))
-	copy(result, events)
-	return result
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+
+	if idx.eventRepo != nil {
+		events, err := idx.eventRepo.GetByIDs(candidateIDs)
+		if err == nil {
+			return events
+		}
+	}
+
+	var events []*types.Event
+	for _, id := range candidateIDs {
+		if event, ok := idx.eventsCache[id]; ok {
+			events = append(events, event)
+		}
+	}
+	return events
 }
 
 func (idx *EventIndex) GetByTimeRange(start, end time.Time) []*types.Event {
 	idx.mu.RLock()
 	defer idx.mu.RUnlock()
 
-	var result []*types.Event
-	for _, event := range idx.byTime {
-		if event.Timestamp.After(start) && event.Timestamp.Before(end) {
-			result = append(result, event)
+	var validIDs []int64
+	for _, entry := range idx.byTime {
+		if entry.Timestamp.After(start) && entry.Timestamp.Before(end) {
+			validIDs = append(validIDs, entry.ID)
 		}
 	}
-	return result
+
+	if len(validIDs) == 0 {
+		return nil
+	}
+
+	if idx.eventRepo != nil {
+		events, err := idx.eventRepo.GetByIDs(validIDs)
+		if err == nil {
+			return events
+		}
+	}
+
+	var events []*types.Event
+	for _, id := range validIDs {
+		if event, ok := idx.eventsCache[id]; ok {
+			events = append(events, event)
+		}
+	}
+	return events
 }
 
 func NewEngine(maxAge time.Duration) *Engine {
@@ -167,6 +216,23 @@ func NewEngine(maxAge time.Duration) *Engine {
 		chain:   NewChainBuilder(),
 		maxAge:  maxAge,
 	}
+}
+
+func NewEngineWithEventRepo(eventRepo *storage.EventRepo, maxAge time.Duration) *Engine {
+	return &Engine{
+		events:  make(map[int64]*types.Event),
+		index:   NewEventIndex(maxAge),
+		matcher: NewMatcher(),
+		chain:   NewChainBuilderWithEventRepo(eventRepo),
+		maxAge:  maxAge,
+	}
+}
+
+func (e *Engine) SetEventRepo(eventRepo *storage.EventRepo) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.chain.SetEventRepo(eventRepo)
+	e.index.SetEventRepo(eventRepo)
 }
 
 func (e *Engine) LoadEvents(events []*types.Event) {

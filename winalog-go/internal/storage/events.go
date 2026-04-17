@@ -24,11 +24,24 @@ var allowedSortFields = map[string]bool{
 }
 
 type EventRepo struct {
-	db *DB
+	db       *DB
+	ftsReady bool
 }
 
 func NewEventRepo(db *DB) *EventRepo {
-	return &EventRepo{db: db}
+	repo := &EventRepo{db: db}
+	repo.checkFTS()
+	return repo
+}
+
+func (r *EventRepo) checkFTS() {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM events_fts LIMIT 1").Scan(&count)
+	r.ftsReady = err == nil
+}
+
+func (r *EventRepo) supportsFTS() bool {
+	return r.ftsReady
 }
 
 func (r *EventRepo) Insert(event *types.Event) error {
@@ -36,7 +49,7 @@ func (r *EventRepo) Insert(event *types.Event) error {
 		INSERT INTO events (timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	_, err := r.db.Exec(query,
+	result, err := r.db.Exec(query,
 		event.Timestamp.Format(time.RFC3339Nano),
 		event.EventID,
 		int(event.Level),
@@ -52,7 +65,21 @@ func (r *EventRepo) Insert(event *types.Event) error {
 		event.ImportTime.Format(time.RFC3339Nano),
 		event.ImportID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if r.supportsFTS() {
+		lastID, _ := result.LastInsertId()
+		if lastID > 0 {
+			_, _ = r.db.Exec(`
+				INSERT INTO events_fts(rowid, event_id, message, source)
+				VALUES (?, ?, ?, ?)`,
+				lastID, event.EventID, event.Message, event.Source)
+		}
+	}
+
+	return nil
 }
 
 func (r *EventRepo) InsertBatch(events []*types.Event) error {
@@ -117,11 +144,77 @@ func (r *EventRepo) GetByID(id int64) (*types.Event, error) {
 	return scanEvent(row)
 }
 
+func (r *EventRepo) GetByIDs(ids []int64) ([]*types.Event, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id
+		FROM events WHERE id IN (%s)`, strings.Join(placeholders, ","))
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*types.Event
+	for rows.Next() {
+		event, err := scanEventFromRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
 func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, error) {
 	var conditions []string
 	var args []interface{}
+	var useFTS bool
 
-	if len(req.Keywords) > 0 {
+	if len(req.Keywords) > 0 && r.supportsFTS() && !req.Regex {
+		keywordMode := strings.ToUpper(req.KeywordMode)
+		if keywordMode == "" {
+			keywordMode = "AND"
+		}
+
+		useFTS = true
+		words := strings.Fields(req.Keywords)
+
+		if len(words) == 0 {
+			ftsQuery := fmt.Sprintf("message:%s", escapeFTSQuery(req.Keywords))
+			conditions = append(conditions, fmt.Sprintf(
+				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
+				ftsQuery))
+		} else if keywordMode == "OR" {
+			var ftsTerms []string
+			for _, word := range words {
+				ftsTerms = append(ftsTerms, fmt.Sprintf("message:%s", escapeFTSQuery(word)))
+			}
+			conditions = append(conditions, fmt.Sprintf(
+				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
+				strings.Join(ftsTerms, " OR ")))
+		} else {
+			var ftsTerms []string
+			for _, word := range words {
+				ftsTerms = append(ftsTerms, fmt.Sprintf("message:%s", escapeFTSQuery(word)))
+			}
+			conditions = append(conditions, fmt.Sprintf(
+				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
+				strings.Join(ftsTerms, " ")))
+		}
+	} else if len(req.Keywords) > 0 {
 		keywordMode := strings.ToUpper(req.KeywordMode)
 		if keywordMode == "" {
 			keywordMode = "AND"
@@ -157,6 +250,8 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 			}
 		}
 	}
+
+	_ = useFTS
 
 	if len(req.EventIDs) > 0 {
 		placeholders := make([]string, len(req.EventIDs))
@@ -461,4 +556,18 @@ func getUserKey(e *types.Event) string {
 		return *e.User
 	}
 	return ""
+}
+
+func escapeFTSQuery(s string) string {
+	var result strings.Builder
+	for _, c := range s {
+		switch c {
+		case '"', '(', ')', '*', '-', ':', '^', '{', '}', '[', ']', '\'', '~':
+			result.WriteByte('\\')
+			result.WriteRune(c)
+		default:
+			result.WriteRune(c)
+		}
+	}
+	return result.String()
 }
