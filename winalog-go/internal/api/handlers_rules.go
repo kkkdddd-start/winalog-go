@@ -49,6 +49,17 @@ type RulesListResponse struct {
 	Rules        []RuleInfo `json:"rules"`
 	TotalCount   int        `json:"total_count"`
 	EnabledCount int        `json:"enabled_count"`
+	Page         int        `json:"page,omitempty"`
+	PageSize     int        `json:"page_size,omitempty"`
+	TotalPages   int        `json:"total_pages,omitempty"`
+}
+
+type ListRulesRequest struct {
+	Page     int    `form:"page"`
+	PageSize int    `form:"page_size"`
+	Severity string `form:"severity"`
+	Enabled  *bool  `form:"enabled"`
+	Keyword  string `form:"keyword"`
 }
 
 func NewRulesHandler() *RulesHandler {
@@ -58,102 +69,177 @@ func NewRulesHandler() *RulesHandler {
 }
 
 func (h *RulesHandler) ListRules(c *gin.Context) {
+	var req ListRulesRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		req.Page = 1
+		req.PageSize = 20
+	}
+
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 {
+		req.PageSize = 20
+	}
+	if req.PageSize > 100 {
+		req.PageSize = 100
+	}
+
 	alertRules := builtin.GetAlertRules()
 	customRules := h.customManager.List()
 
-	rulesList := make([]RuleInfo, 0, len(alertRules)+len(customRules))
+	allRules := make([]RuleInfo, 0, len(alertRules)+len(customRules))
 	enabledCount := 0
 
 	for _, rule := range alertRules {
-		ruleInfo := RuleInfo{
-			ID:          rule.Name,
-			Name:        rule.Name,
-			Description: rule.Description,
-			Enabled:     rule.Enabled,
-			Severity:    string(rule.Severity),
-			Score:       rule.Score,
-			MitreAttack: []string{},
-			Tags:        rule.Tags,
-			IsCustom:    false,
+		ruleInfo := convertToRuleInfo(rule, false)
+		if !applyRuleFilter(ruleInfo, &req) {
+			continue
 		}
-		if rule.Filter != nil {
-			ruleInfo.EventIDs = rule.Filter.EventIDs
-			ruleInfo.Levels = rule.Filter.Levels
-		}
-		ruleInfo.Message = rule.Message
-		if rule.MitreAttack != "" {
-			ruleInfo.MitreAttack = []string{rule.MitreAttack}
-		}
-		if rule.Filter != nil {
-			keywords := []string{}
-			if rule.Filter.Keywords != "" {
-				keywords = strings.Fields(rule.Filter.Keywords)
-			}
-			ipAddr := ""
-			if len(rule.Filter.IpAddress) > 0 {
-				ipAddr = rule.Filter.IpAddress[0]
-			}
-			ruleInfo.Filter = &FilterInfo{
-				EventIDs:         rule.Filter.EventIDs,
-				Levels:           rule.Filter.Levels,
-				LogNames:         rule.Filter.LogNames,
-				Sources:          rule.Filter.Sources,
-				Computers:        rule.Filter.Computers,
-				Keywords:         keywords,
-				ExcludeUsers:     rule.Filter.ExcludeUsers,
-				ExcludeComputers: rule.Filter.ExcludeComputers,
-				IpAddress:        ipAddr,
-			}
-		}
-		rulesList = append(rulesList, ruleInfo)
+		allRules = append(allRules, ruleInfo)
 		if rule.Enabled {
 			enabledCount++
 		}
 	}
 
 	for _, rule := range customRules {
-		ruleInfo := RuleInfo{
-			ID:          rule.Name,
-			Name:        rule.Name,
-			Description: rule.Description,
-			Enabled:     rule.Enabled,
-			Severity:    rule.Severity,
-			Score:       rule.Score,
-			MitreAttack: []string{},
-			Tags:        rule.Tags,
-			IsCustom:    true,
-			EventIDs:    rule.EventIDs,
-			Levels:      rule.Levels,
-			Message:     rule.Message,
+		ruleInfo := convertToRuleInfoFromCustom(rule)
+		if !applyRuleFilter(ruleInfo, &req) {
+			continue
 		}
-		if rule.MitreAttack != "" {
-			ruleInfo.MitreAttack = []string{rule.MitreAttack}
-		}
-		if rule.Filter != nil {
-			ruleInfo.Filter = &FilterInfo{
-				EventIDs:         rule.Filter.EventIDs,
-				Levels:           rule.Filter.Levels,
-				LogNames:         rule.Filter.LogNames,
-				Sources:          rule.Filter.Sources,
-				Computers:        rule.Filter.Computers,
-				Users:            rule.Filter.Users,
-				Keywords:         rule.Filter.Keywords,
-				ExcludeUsers:     rule.Filter.ExcludeUsers,
-				ExcludeComputers: rule.Filter.ExcludeComputers,
-				IpAddress:        rule.Filter.IpAddress,
-			}
-		}
-		rulesList = append(rulesList, ruleInfo)
+		allRules = append(allRules, ruleInfo)
 		if rule.Enabled {
 			enabledCount++
 		}
 	}
 
+	rules.SortRules(alertRules)
+
+	totalCount := len(allRules)
+	totalPages := (totalCount + req.PageSize - 1) / req.PageSize
+
+	start := (req.Page - 1) * req.PageSize
+	end := start + req.PageSize
+	if start > totalCount {
+		start = totalCount
+	}
+	if end > totalCount {
+		end = totalCount
+	}
+
+	pagedRules := allRules
+	if start < end {
+		pagedRules = allRules[start:end]
+	}
+
 	c.JSON(http.StatusOK, RulesListResponse{
-		Rules:        rulesList,
-		TotalCount:   len(rulesList),
+		Rules:        pagedRules,
+		TotalCount:   totalCount,
 		EnabledCount: enabledCount,
+		Page:         req.Page,
+		PageSize:     req.PageSize,
+		TotalPages:   totalPages,
 	})
+}
+
+func convertToRuleInfo(rule *rules.AlertRule, isCustom bool) RuleInfo {
+	ruleInfo := RuleInfo{
+		ID:          rule.Name,
+		Name:        rule.Name,
+		Description: rule.Description,
+		Enabled:     rule.Enabled,
+		Severity:    string(rule.Severity),
+		Score:       rule.Score,
+		MitreAttack: []string{},
+		Tags:        rule.Tags,
+		IsCustom:    isCustom,
+	}
+	if rule.Filter != nil {
+		ruleInfo.EventIDs = rule.Filter.EventIDs
+		ruleInfo.Levels = rule.Filter.Levels
+	}
+	ruleInfo.Message = rule.Message
+	if rule.MitreAttack != "" {
+		ruleInfo.MitreAttack = []string{rule.MitreAttack}
+	}
+	if rule.Filter != nil {
+		keywords := []string{}
+		if rule.Filter.Keywords != "" {
+			keywords = strings.Fields(rule.Filter.Keywords)
+		}
+		ipAddr := ""
+		if len(rule.Filter.IpAddress) > 0 {
+			ipAddr = rule.Filter.IpAddress[0]
+		}
+		ruleInfo.Filter = &FilterInfo{
+			EventIDs:         rule.Filter.EventIDs,
+			Levels:           rule.Filter.Levels,
+			LogNames:         rule.Filter.LogNames,
+			Sources:          rule.Filter.Sources,
+			Computers:        rule.Filter.Computers,
+			Keywords:         keywords,
+			ExcludeUsers:     rule.Filter.ExcludeUsers,
+			ExcludeComputers: rule.Filter.ExcludeComputers,
+			IpAddress:        ipAddr,
+		}
+	}
+	return ruleInfo
+}
+
+func convertToRuleInfoFromCustom(rule *rules.CustomRule) RuleInfo {
+	ruleInfo := RuleInfo{
+		ID:          rule.Name,
+		Name:        rule.Name,
+		Description: rule.Description,
+		Enabled:     rule.Enabled,
+		Severity:    rule.Severity,
+		Score:       rule.Score,
+		MitreAttack: []string{},
+		Tags:        rule.Tags,
+		IsCustom:    true,
+		EventIDs:    rule.EventIDs,
+		Levels:      rule.Levels,
+		Message:     rule.Message,
+	}
+	if rule.MitreAttack != "" {
+		ruleInfo.MitreAttack = []string{rule.MitreAttack}
+	}
+	if rule.Filter != nil {
+		ruleInfo.Filter = &FilterInfo{
+			EventIDs:         rule.Filter.EventIDs,
+			Levels:           rule.Filter.Levels,
+			LogNames:         rule.Filter.LogNames,
+			Sources:          rule.Filter.Sources,
+			Computers:        rule.Filter.Computers,
+			Users:            rule.Filter.Users,
+			Keywords:         rule.Filter.Keywords,
+			ExcludeUsers:     rule.Filter.ExcludeUsers,
+			ExcludeComputers: rule.Filter.ExcludeComputers,
+			IpAddress:        rule.Filter.IpAddress,
+		}
+	}
+	return ruleInfo
+}
+
+func applyRuleFilter(rule RuleInfo, req *ListRulesRequest) bool {
+	if req.Severity != "" && rule.Severity != req.Severity {
+		return false
+	}
+
+	if req.Enabled != nil && rule.Enabled != *req.Enabled {
+		return false
+	}
+
+	if req.Keyword != "" {
+		keyword := strings.ToLower(req.Keyword)
+		name := strings.ToLower(rule.Name)
+		desc := strings.ToLower(rule.Description)
+		if !strings.Contains(name, keyword) && !strings.Contains(desc, keyword) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (h *RulesHandler) GetRule(c *gin.Context) {

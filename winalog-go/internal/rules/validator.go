@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type ValidationResult struct {
@@ -203,5 +205,14 @@ func ValidateRuleSyntax(ruleYAML string) *ValidationResult {
 }
 
 func unmarshalYAML(data string, v interface{}) error {
+	if data == "" {
+		return fmt.Errorf("empty YAML data")
+	}
+
+	err := yaml.Unmarshal([]byte(data), v)
+	if err != nil {
+		return fmt.Errorf("YAML parse error: %w", err)
+	}
+
 	return nil
 }

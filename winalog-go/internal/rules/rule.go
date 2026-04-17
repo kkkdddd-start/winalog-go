@@ -3,6 +3,8 @@ package rules
 import (
 	"fmt"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +25,8 @@ type AlertRule struct {
 	Severity       types.Severity `yaml:"severity"`
 	Score          float64        `yaml:"score"`
 	MitreAttack    string         `yaml:"mitre_attack,omitempty"`
+	Priority       int            `yaml:"priority"` // 1-100，默认 50
+	Weight         float64        `yaml:"weight"`   // 告警权重，默认 1.0
 	Filter         *Filter        `yaml:"filter"`
 	Conditions     *Conditions    `yaml:"conditions,omitempty"`
 	Threshold      int            `yaml:"threshold,omitempty"`
@@ -128,14 +132,24 @@ type BaseRule struct {
 }
 
 var validConditionFields = map[string]bool{
-	"event_id":   true,
-	"level":      true,
-	"source":     true,
-	"log_name":   true,
-	"computer":   true,
-	"user":       true,
-	"message":    true,
-	"ip_address": true,
+	"event_id":        true,
+	"level":           true,
+	"source":          true,
+	"log_name":        true,
+	"computer":        true,
+	"user":            true,
+	"message":         true,
+	"ip_address":      true,
+	"process_name":    true,
+	"command_line":    true,
+	"service_name":    true,
+	"logon_type":      true,
+	"status":          true,
+	"provider_name":   true,
+	"workstation":     true,
+	"domain":          true,
+	"target_username": true,
+	"task_name":       true,
 }
 
 var validOperators = map[string]bool{
@@ -179,6 +193,12 @@ func (r *AlertRule) Validate() error {
 		return fmt.Errorf("invalid severity: %s", r.Severity)
 	}
 
+	if r.MitreAttack != "" {
+		if err := validateMitreIDFormat(r.MitreAttack); err != nil {
+			return err
+		}
+	}
+
 	if r.Filter != nil {
 		if err := r.validateFilter(r.Filter); err != nil {
 			return fmt.Errorf("filter validation failed: %w", err)
@@ -202,8 +222,8 @@ func (r *AlertRule) validateFilter(f *Filter) error {
 	}
 
 	for _, lvl := range f.Levels {
-		if lvl < 1 || lvl > 5 {
-			return fmt.Errorf("invalid level: %d (must be 1-5)", lvl)
+		if lvl < 0 || lvl > 5 {
+			return fmt.Errorf("invalid level: %d (must be 0-5)", lvl)
 		}
 	}
 
@@ -307,4 +327,80 @@ func ScoreValue(s types.Severity) float64 {
 	default:
 		return 10
 	}
+}
+
+var mitreIDRegex = regexp.MustCompile(`^(T\d{4}(?:\.\d{3})?)$`)
+
+func validateMitreIDFormat(id string) error {
+	if id == "" {
+		return nil
+	}
+
+	if !mitreIDRegex.MatchString(id) {
+		return fmt.Errorf("invalid mitre_attack format: %s (expected T#### or T####.###)", id)
+	}
+
+	tacticStr := strings.TrimPrefix(id, "T")
+	if strings.Contains(tacticStr, ".") {
+		tacticStr = strings.Split(tacticStr, ".")[0]
+	}
+
+	tacticNum, err := strconv.Atoi(tacticStr)
+	if err != nil {
+		return fmt.Errorf("invalid mitre_attack: %s", id)
+	}
+
+	tacticType := tacticNum / 1000
+	if tacticType < 1 || tacticType > 3 {
+		return fmt.Errorf("invalid mitre_attack: %s (tactic type must be 1-3)", id)
+	}
+
+	return nil
+}
+
+func (r *AlertRule) GetPriority() int {
+	if r.Priority <= 0 {
+		return 50
+	}
+	if r.Priority > 100 {
+		return 100
+	}
+	return r.Priority
+}
+
+func (r *AlertRule) GetWeight() float64 {
+	if r.Weight <= 0 {
+		return 1.0
+	}
+	return r.Weight
+}
+
+func (r *AlertRule) GetEffectiveScore() float64 {
+	return r.Score * r.GetWeight()
+}
+
+type RuleSorter struct {
+	rules []*AlertRule
+}
+
+func (s *RuleSorter) Len() int {
+	return len(s.rules)
+}
+
+func (s *RuleSorter) Less(i, j int) bool {
+	pi := s.rules[i].GetPriority()
+	pj := s.rules[j].GetPriority()
+	if pi != pj {
+		return pi > pj
+	}
+	return s.rules[i].GetWeight() > s.rules[j].GetWeight()
+}
+
+func (s *RuleSorter) Swap(i, j int) {
+	s.rules[i], s.rules[j] = s.rules[j], s.rules[i]
+}
+
+func SortRules(rules []*AlertRule) {
+	sorter := &RuleSorter{rules: rules}
+	sort.Sort(sorter)
 }

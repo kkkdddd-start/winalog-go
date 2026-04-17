@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
@@ -268,7 +269,7 @@ func (r *CustomRule) ToAlertRule() *AlertRule {
 }
 
 func Now() string {
-	return "2024-01-01T00:00:00Z"
+	return time.Now().UTC().Format(time.RFC3339)
 }
 
 func (m *CustomRuleManager) Update(rule *CustomRule) error {
