@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -128,37 +127,7 @@ func NewValidator() *Validator {
 }
 
 func (v *Validator) ValidateAlertRule(rule *AlertRule) error {
-	if rule.Name == "" {
-		return fmt.Errorf("rule name is required")
-	}
-
-	if rule.Severity == "" {
-		return fmt.Errorf("severity is required")
-	}
-
-	validSeverities := map[types.Severity]bool{
-		types.SeverityCritical: true,
-		types.SeverityHigh:     true,
-		types.SeverityMedium:   true,
-		types.SeverityLow:      true,
-		types.SeverityInfo:     true,
-	}
-
-	if !validSeverities[rule.Severity] {
-		return fmt.Errorf("invalid severity: %s", rule.Severity)
-	}
-
-	if rule.Filter == nil && rule.Conditions == nil {
-		return fmt.Errorf("either filter or conditions is required")
-	}
-
-	if rule.Filter != nil {
-		if err := v.validateFilter(rule.Filter); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return rule.Validate()
 }
 
 func (v *Validator) ValidateCorrelationRule(rule *CorrelationRule) error {
@@ -174,26 +143,6 @@ func (v *Validator) ValidateCorrelationRule(rule *CorrelationRule) error {
 		if pattern.EventID == 0 {
 			return fmt.Errorf("pattern %d has invalid event_id", i)
 		}
-	}
-
-	return nil
-}
-
-func (v *Validator) validateFilter(filter *Filter) error {
-	for _, eid := range filter.EventIDs {
-		if eid < 0 || eid > 65535 {
-			return fmt.Errorf("invalid event_id: %d", eid)
-		}
-	}
-
-	for _, level := range filter.Levels {
-		if level < 0 || level > 4 {
-			return fmt.Errorf("invalid level: %d", level)
-		}
-	}
-
-	if filter.Keywords != "" && filter.KeywordMode == "" {
-		filter.KeywordMode = OpAnd
 	}
 
 	return nil

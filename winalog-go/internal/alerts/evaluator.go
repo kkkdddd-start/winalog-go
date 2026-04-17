@@ -23,15 +23,17 @@ type eventCountEntry struct {
 }
 
 type Evaluator struct {
-	mu         sync.RWMutex
-	eventCount map[eventCountKey]*eventCountEntry
-	stopCh     chan struct{}
+	mu          sync.RWMutex
+	eventCount  map[eventCountKey]*eventCountEntry
+	stopCh      chan struct{}
+	filterCache map[*rules.Filter]*rules.FilterMatcher
 }
 
 func NewEvaluator() *Evaluator {
 	e := &Evaluator{
-		eventCount: make(map[eventCountKey]*eventCountEntry),
-		stopCh:     make(chan struct{}),
+		eventCount:  make(map[eventCountKey]*eventCountEntry),
+		stopCh:      make(chan struct{}),
+		filterCache: make(map[*rules.Filter]*rules.FilterMatcher),
 	}
 	go e.cleanupExpiredEntries()
 	return e
@@ -61,6 +63,31 @@ func (e *Evaluator) cleanupExpiredEntries() {
 	}
 }
 
+func (e *Evaluator) getFilterMatcher(f *rules.Filter) *rules.FilterMatcher {
+	if f == nil {
+		return nil
+	}
+
+	e.mu.RLock()
+	matcher, exists := e.filterCache[f]
+	e.mu.RUnlock()
+
+	if exists {
+		return matcher
+	}
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if matcher, exists = e.filterCache[f]; exists {
+		return matcher
+	}
+
+	matcher = rules.NewFilterMatcher(f)
+	e.filterCache[f] = matcher
+	return matcher
+}
+
 func (e *Evaluator) Evaluate(rule *rules.AlertRule, event *types.Event) (bool, error) {
 	if !e.matchFilter(rule.Filter, event) {
 		return false, nil
@@ -86,69 +113,26 @@ func (e *Evaluator) matchFilter(filter *rules.Filter, event *types.Event) bool {
 		return true
 	}
 
-	if len(filter.EventIDs) > 0 {
-		found := false
-		for _, eid := range filter.EventIDs {
-			if event.EventID == eid {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
+	matcher := e.getFilterMatcher(filter)
+
+	if !matcher.MatchEventID(event.EventID) {
+		return false
 	}
 
-	if len(filter.Levels) > 0 {
-		found := false
-		for _, level := range filter.Levels {
-			if int(event.Level) == level {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
+	if !matcher.MatchLevel(int(event.Level)) {
+		return false
 	}
 
-	if len(filter.LogNames) > 0 {
-		found := false
-		for _, logName := range filter.LogNames {
-			if event.LogName == logName {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
+	if !matcher.MatchLogName(event.LogName) {
+		return false
 	}
 
-	if len(filter.Sources) > 0 {
-		found := false
-		for _, source := range filter.Sources {
-			if event.Source == source {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
+	if !matcher.MatchSource(event.Source) {
+		return false
 	}
 
-	if len(filter.Computers) > 0 {
-		found := false
-		for _, computer := range filter.Computers {
-			if event.Computer == computer {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
+	if !matcher.MatchComputer(event.Computer) {
+		return false
 	}
 
 	if filter.Keywords != "" {
@@ -257,7 +241,68 @@ func (e *Evaluator) matchCondition(cond *rules.Condition, event *types.Event) bo
 		return e.compareString(userStr, cond.Operator, cond.Value, cond.Regex)
 	case "message":
 		return e.compareString(event.Message, cond.Operator, cond.Value, cond.Regex)
+	case "ip_address":
+		var ipStr string
+		if event.IPAddress != nil {
+			ipStr = *event.IPAddress
+		}
+		return e.compareString(ipStr, cond.Operator, cond.Value, cond.Regex)
+	case "process_name":
+		return e.compareString(event.GetProcessName(), cond.Operator, cond.Value, cond.Regex)
+	case "command_line":
+		return e.compareString(event.GetCommandLine(), cond.Operator, cond.Value, cond.Regex)
+	case "service_name":
+		return e.compareString(event.GetServiceName(), cond.Operator, cond.Value, cond.Regex)
+	case "logon_type":
+		return e.compareValue(event.GetLogonType(), cond.Operator, cond.Value)
+	case "status":
+		if v := event.GetExtractedField("Status"); v != nil {
+			if s, ok := v.(string); ok {
+				return e.compareString(s, cond.Operator, cond.Value, cond.Regex)
+			}
+		}
+		return false
+	case "provider_name":
+		if v := event.GetExtractedField("ProviderName"); v != nil {
+			if s, ok := v.(string); ok {
+				return e.compareString(s, cond.Operator, cond.Value, cond.Regex)
+			}
+		}
+		return false
+	case "workstation":
+		if v := event.GetExtractedField("WorkstationName"); v != nil {
+			if s, ok := v.(string); ok {
+				return e.compareString(s, cond.Operator, cond.Value, cond.Regex)
+			}
+		}
+		return false
+	case "domain":
+		if v := event.GetExtractedField("TargetDomainName"); v != nil {
+			if s, ok := v.(string); ok {
+				return e.compareString(s, cond.Operator, cond.Value, cond.Regex)
+			}
+		}
+		return false
+	case "target_username":
+		return e.compareString(event.GetTargetUserName(), cond.Operator, cond.Value, cond.Regex)
+	case "task_name":
+		if v := event.GetExtractedField("TaskName"); v != nil {
+			if s, ok := v.(string); ok {
+				return e.compareString(s, cond.Operator, cond.Value, cond.Regex)
+			}
+		}
+		return false
 	default:
+		if event.ExtractedFields != nil {
+			if v, ok := event.ExtractedFields[field]; ok {
+				if s, ok := v.(string); ok {
+					return e.compareString(s, cond.Operator, cond.Value, cond.Regex)
+				}
+				if f, ok := v.(float64); ok {
+					return e.compareValue(int(f), cond.Operator, cond.Value)
+				}
+			}
+		}
 		return false
 	}
 }
