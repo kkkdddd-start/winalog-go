@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../locales/I18n'
-import { alertsAPI, analyzeAPI } from '../api'
+import { alertsAPI } from '../api'
 
 interface Alert {
   id: number
@@ -22,6 +22,15 @@ interface ListResponse {
   total_pages: number
 }
 
+interface RunAnalysisResponse {
+  success: boolean
+  alerts_created: number
+  events_analyzed: number
+  rules_executed: number
+  duration: string
+  errors?: string[]
+}
+
 function Alerts() {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -30,9 +39,9 @@ function Alerts() {
   const [page, _setPage] = useState(1)
   const [severityFilter, setSeverityFilter] = useState('')
   const [selectedAlerts, setSelectedAlerts] = useState<number[]>([])
-  const [selectedAnalyzer, setSelectedAnalyzer] = useState('brute-force')
   const [showAnalyzeModal, setShowAnalyzeModal] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState<RunAnalysisResponse | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -123,17 +132,24 @@ function Alerts() {
 
   const handleRunAnalysis = () => {
     setAnalyzing(true)
-    analyzeAPI.run(selectedAnalyzer, { hours: 24 })
-      .then(() => {
+    setAnalysisResult(null)
+    alertsAPI.runAnalysis()
+      .then(res => {
+        const data = res.data as RunAnalysisResponse
+        setAnalysisResult(data)
         setAnalyzing(false)
-        setShowAnalyzeModal(false)
-        navigate('/analyze')
       })
       .catch(err => {
         console.error('Analysis failed:', err)
         setAnalyzing(false)
-        setShowAnalyzeModal(false)
-        navigate('/analyze')
+        setAnalysisResult({
+          success: false,
+          alerts_created: 0,
+          events_analyzed: 0,
+          rules_executed: 0,
+          duration: '0s',
+          errors: [err.response?.data?.error || 'Analysis failed']
+        })
       })
   }
 
@@ -339,64 +355,87 @@ function Alerts() {
       )}
 
       {showAnalyzeModal && (
-        <div className="modal-overlay" onClick={() => setShowAnalyzeModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowAnalyzeModal(false); setAnalysisResult(null); }}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{t('alerts.runAnalysis')}</h3>
-              <button className="close-btn" onClick={() => setShowAnalyzeModal(false)}>×</button>
+              <button className="close-btn" onClick={() => { setShowAnalyzeModal(false); setAnalysisResult(null); }}>×</button>
             </div>
             <div className="modal-body">
-              <p className="modal-desc">{t('alerts.analysisDesc')}</p>
-              
-              <div className="analyzer-select-group">
-                <label>{t('alerts.selectAnalyzer')}</label>
-                <div className="analyzer-options">
-                  {[
-                    { id: 'brute-force', icon: '🔐', name: t('analyze.bruteForce') },
-                    { id: 'login', icon: '🔑', name: t('analyze.login') },
-                    { id: 'kerberos', icon: '🎭', name: t('analyze.kerberos') },
-                    { id: 'powershell', icon: '⚡', name: t('analyze.powershell') },
-                  ].map(analyzer => (
-                    <div 
-                      key={analyzer.id}
-                      className={`analyzer-option ${selectedAnalyzer === analyzer.id ? 'selected' : ''}`}
-                      onClick={() => setSelectedAnalyzer(analyzer.id)}
-                    >
-                      <span className="analyzer-icon">{analyzer.icon}</span>
-                      <span className="analyzer-name">{analyzer.name}</span>
-                    </div>
-                  ))}
+              {!analyzing && !analysisResult && (
+                <>
+                  <p className="modal-desc">{t('alerts.analysisDesc')}</p>
+                  <div className="analysis-summary">
+                    <h4>{t('alerts.analysisSummary')}</h4>
+                    <ul>
+                      <li>{t('alerts.analysisTarget')}: {t('alerts.allEvents')}</li>
+                      <li>{t('alerts.analysisScope')}: {t('alerts.allEnabledRules')}</li>
+                    </ul>
+                  </div>
+                  <div className="modal-actions">
+                    <button className="btn-cancel" onClick={() => { setShowAnalyzeModal(false); setAnalysisResult(null); }}>
+                      {t('common.cancel')}
+                    </button>
+                    <button className="btn-primary" onClick={handleRunAnalysis}>
+                      <>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        {t('alerts.startAnalysis')}
+                      </>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {analyzing && (
+                <div className="analyzing-state">
+                  <div className="analyzing-spinner"></div>
+                  <p>{t('alerts.analyzing')}</p>
+                  <p className="analyzing-hint">{t('alerts.analyzingHint')}</p>
                 </div>
-              </div>
+              )}
 
-              <div className="analysis-summary">
-                <h4>{t('alerts.analysisSummary')}</h4>
-                <ul>
-                  <li>{t('alerts.analysisTarget')}: {selectedAlerts.length > 0 ? `${selectedAlerts.length} ${t('alerts.selectedAlerts')}` : t('alerts.allAlerts')}</li>
-                  <li>{t('alerts.analysisScope')}: {severityFilter || t('alerts.allSeverities')}</li>
-                </ul>
-              </div>
-
-              <div className="modal-actions">
-                <button className="btn-cancel" onClick={() => setShowAnalyzeModal(false)}>
-                  {t('common.cancel')}
-                </button>
-                <button className="btn-primary" onClick={handleRunAnalysis} disabled={analyzing}>
-                  {analyzing ? (
-                    <>
-                      <span className="btn-spinner"></span>
-                      {t('alerts.analyzing')}
-                    </>
-                  ) : (
-                    <>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                      </svg>
-                      {t('alerts.startAnalysis')}
-                    </>
+              {analysisResult && (
+                <div className="analysis-result">
+                  <div className={`result-header ${analysisResult.success ? 'success' : 'error'}`}>
+                    {analysisResult.success ? '✓' : '✗'} {analysisResult.success ? 'Analysis Complete' : 'Analysis Failed'}
+                  </div>
+                  <div className="result-stats">
+                    <div className="result-stat">
+                      <span className="stat-label">{t('alerts.alertsCreated')}</span>
+                      <span className="stat-value">{analysisResult.alerts_created}</span>
+                    </div>
+                    <div className="result-stat">
+                      <span className="stat-label">{t('alerts.eventsAnalyzed')}</span>
+                      <span className="stat-value">{analysisResult.events_analyzed}</span>
+                    </div>
+                    <div className="result-stat">
+                      <span className="stat-label">{t('alerts.rulesExecuted')}</span>
+                      <span className="stat-value">{analysisResult.rules_executed}</span>
+                    </div>
+                    <div className="result-stat">
+                      <span className="stat-label">{t('alerts.duration')}</span>
+                      <span className="stat-value">{analysisResult.duration}</span>
+                    </div>
+                  </div>
+                  {analysisResult.errors && analysisResult.errors.length > 0 && (
+                    <div className="result-errors">
+                      <h4>Errors:</h4>
+                      <ul>
+                        {analysisResult.errors.map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
-                </button>
-              </div>
+                  <div className="modal-actions">
+                    <button className="btn-primary" onClick={() => { setShowAnalyzeModal(false); setAnalysisResult(null); navigate('/alerts'); }}>
+                      {t('common.done')}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

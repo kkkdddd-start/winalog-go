@@ -84,6 +84,8 @@ export const alertsAPI = {
     api.delete(`/alerts/${id}`),
   batchAction: (ids: number[], action: string, notes?: string) =>
     api.post('/alerts/batch', { ids, action, notes }),
+  runAnalysis: () =>
+    api.post('/alerts/run-analysis'),
 }
 
 export interface CollectParams {
