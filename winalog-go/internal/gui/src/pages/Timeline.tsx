@@ -8,21 +8,54 @@ function Timeline() {
   const navigate = useNavigate()
   const [entries, setEntries] = useState<TimelineEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({ eventCount: 0, alertCount: 0 })
   const [filter, setFilter] = useState<'all' | 'events' | 'alerts'>('all')
-  const [timeRange, setTimeRange] = useState('24h')
+  const [startDate, setStartDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [endTime, setEndTime] = useState('')
 
-  useEffect(() => {
+  const fetchTimeline = () => {
     setLoading(true)
-    timelineAPI.get(300)
+    
+    let startTimeISO: string | undefined
+    let endTimeISO: string | undefined
+    
+    if (startDate && startTime) {
+      startTimeISO = new Date(`${startDate}T${startTime}:00Z`).toISOString()
+    } else if (startDate) {
+      startTimeISO = new Date(`${startDate}T00:00:00Z`).toISOString()
+    }
+    
+    if (endDate && endTime) {
+      endTimeISO = new Date(`${endDate}T${endTime}:59Z`).toISOString()
+    } else if (endDate) {
+      endTimeISO = new Date(`${endDate}T23:59:59Z`).toISOString()
+    }
+    
+    timelineAPI.get(1000, startTimeISO, endTimeISO)
       .then(res => {
         const data = res.data as TimelineResponse
         setEntries(data.entries || [])
-        setStats({ eventCount: data.event_count, alertCount: data.alert_count })
         setLoading(false)
       })
       .catch(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchTimeline()
   }, [])
+
+  const handleApplyFilter = () => {
+    fetchTimeline()
+  }
+
+  const handleClearFilter = () => {
+    setStartDate('')
+    setStartTime('')
+    setEndDate('')
+    setEndTime('')
+    fetchTimeline()
+  }
 
   const getTypeIcon = (type_: string, severity?: string) => {
     if (type_ === 'alert') {
@@ -60,6 +93,11 @@ function Timeline() {
     if (filter === 'alerts') return entry.type === 'alert'
     return true
   })
+
+  const filteredStats = {
+    eventCount: filteredEntries.filter(e => e.type === 'event').length,
+    alertCount: filteredEntries.filter(e => e.type === 'alert').length,
+  }
 
   const handleDeleteAlert = (id: number) => {
     timelineAPI.deleteAlert(id)
@@ -102,26 +140,26 @@ function Timeline() {
         <div className="stat-card events">
           <div className="stat-icon">📋</div>
           <div className="stat-content">
-            <span className="stat-value">{stats.eventCount}</span>
+            <span className="stat-value">{filteredStats.eventCount}</span>
             <span className="stat-label">{t('timeline.totalEvents')}</span>
           </div>
           <div className="stat-bar">
             <div 
               className="stat-bar-fill events" 
-              style={{ width: `${stats.eventCount > 0 ? (stats.eventCount / (stats.eventCount + stats.alertCount)) * 100 : 0}%` }}
+              style={{ width: `${filteredStats.eventCount + filteredStats.alertCount > 0 ? (filteredStats.eventCount / (filteredStats.eventCount + filteredStats.alertCount)) * 100 : 0}%` }}
             />
           </div>
         </div>
         <div className="stat-card alerts">
           <div className="stat-icon">🚨</div>
           <div className="stat-content">
-            <span className="stat-value">{stats.alertCount}</span>
+            <span className="stat-value">{filteredStats.alertCount}</span>
             <span className="stat-label">{t('timeline.totalAlerts')}</span>
           </div>
           <div className="stat-bar">
             <div 
               className="stat-bar-fill alerts" 
-              style={{ width: `${stats.alertCount > 0 ? (stats.alertCount / (stats.eventCount + stats.alertCount)) * 100 : 0}%` }}
+              style={{ width: `${filteredStats.alertCount > 0 ? (filteredStats.alertCount / (filteredStats.eventCount + filteredStats.alertCount)) * 100 : 0}%` }}
             />
           </div>
         </div>
@@ -129,8 +167,8 @@ function Timeline() {
           <div className="stat-icon">📊</div>
           <div className="stat-content">
             <span className="stat-value">
-              {stats.eventCount + stats.alertCount > 0 
-                ? ((stats.alertCount / (stats.eventCount + stats.alertCount)) * 100).toFixed(1)
+              {filteredStats.eventCount + filteredStats.alertCount > 0 
+                ? ((filteredStats.alertCount / (filteredStats.eventCount + filteredStats.alertCount)) * 100).toFixed(1)
                 : 0}%
             </span>
             <span className="stat-label">{t('timeline.alertRatio')}</span>
@@ -146,36 +184,58 @@ function Timeline() {
               onClick={() => setFilter('all')}
             >
               {t('timeline.all')}
-              <span className="count">{stats.eventCount + stats.alertCount}</span>
+              <span className="count">{filteredStats.eventCount + filteredStats.alertCount}</span>
             </button>
             <button 
               className={`filter-tab ${filter === 'events' ? 'active' : ''}`}
               onClick={() => setFilter('events')}
             >
               {t('timeline.eventsOnly')}
-              <span className="count events">{stats.eventCount}</span>
+              <span className="count events">{filteredStats.eventCount}</span>
             </button>
             <button 
               className={`filter-tab ${filter === 'alerts' ? 'active' : ''}`}
               onClick={() => setFilter('alerts')}
             >
               {t('timeline.alertsOnly')}
-              <span className="count alerts">{stats.alertCount}</span>
+              <span className="count alerts">{filteredStats.alertCount}</span>
             </button>
           </div>
         </div>
         <div className="toolbar-right">
-          <select 
-            className="time-range-select"
-            value={timeRange}
-            onChange={e => setTimeRange(e.target.value)}
-          >
-            <option value="1h">{t('timeline.last1h')}</option>
-            <option value="6h">{t('timeline.last6h')}</option>
-            <option value="24h">{t('timeline.last24h')}</option>
-            <option value="7d">{t('timeline.last7d')}</option>
-            <option value="30d">{t('timeline.last30d')}</option>
-          </select>
+          <div className="datetime-filter">
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              placeholder="Start date"
+            />
+            <input
+              type="time"
+              value={startTime}
+              onChange={e => setStartTime(e.target.value)}
+              placeholder="Start time"
+            />
+            <span className="datetime-separator">-</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              placeholder="End date"
+            />
+            <input
+              type="time"
+              value={endTime}
+              onChange={e => setEndTime(e.target.value)}
+              placeholder="End time"
+            />
+            <button className="btn-apply-filter" onClick={handleApplyFilter}>
+              {t('common.apply')}
+            </button>
+            <button className="btn-clear-filter" onClick={handleClearFilter}>
+              {t('common.clear')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -208,6 +268,9 @@ function Timeline() {
                       </span>
                       {entry.type === 'event' && entry.event_id && (
                         <span className="event-id-badge">Event {entry.event_id}</span>
+                      )}
+                      {entry.type === 'event' && entry.computer && (
+                        <span className="computer-badge">{entry.computer}</span>
                       )}
                       {entry.type === 'alert' && entry.severity && (
                         <span 

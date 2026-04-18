@@ -867,17 +867,20 @@ type TimelineHandler struct {
 }
 
 type TimelineEntry struct {
-	ID        int64     `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	Type      string    `json:"type"` // "event" or "alert"
-	EventID   int32     `json:"event_id,omitempty"`
-	AlertID   int64     `json:"alert_id,omitempty"`
-	Level     string    `json:"level,omitempty"`
-	Source    string    `json:"source,omitempty"`
-	Message   string    `json:"message"`
-	Severity  string    `json:"severity,omitempty"`
-	RuleName  string    `json:"rule_name,omitempty"`
-	MITRE     []string  `json:"mitre_attack,omitempty"`
+	ID         int64     `json:"id"`
+	Timestamp  time.Time `json:"timestamp"`
+	Type       string    `json:"type"` // "event" or "alert"
+	EventID    int32     `json:"event_id,omitempty"`
+	AlertID    int64     `json:"alert_id,omitempty"`
+	Level      string    `json:"level,omitempty"`
+	Source     string    `json:"source,omitempty"`
+	Message    string    `json:"message"`
+	Severity   string    `json:"severity,omitempty"`
+	RuleName   string    `json:"rule_name,omitempty"`
+	MITRE      []string  `json:"mitre_attack,omitempty"`
+	Computer   string    `json:"computer,omitempty"`
+	LogName    string    `json:"log_name,omitempty"`
+	EventDBIDs []int64   `json:"event_db_ids,omitempty"`
 }
 
 type TimelineResponse struct {
@@ -920,8 +923,7 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	entries := make([]*TimelineEntry, 0)
 
 	eventFilter := &storage.EventFilter{
-		Limit:  limit,
-		Offset: offset,
+		Limit: 0,
 	}
 	if start != nil {
 		eventFilter.StartTime = start
@@ -929,7 +931,11 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	if end != nil {
 		eventFilter.EndTime = end
 	}
-	events, eventTotal, err := h.db.ListEvents(eventFilter)
+
+	maxEvents := limit + offset + 100
+	eventFilter.Limit = int(maxEvents)
+	eventFilter.Offset = 0
+	events, _, err := h.db.ListEvents(eventFilter)
 	if err != nil {
 		log.Printf("failed to fetch events for timeline: %v", err)
 	}
@@ -942,12 +948,13 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 			Level:     e.Level.String(),
 			Source:    e.Source,
 			Message:   e.Message,
+			Computer:  e.Computer,
+			LogName:   e.LogName,
 		})
 	}
 
 	alertFilter := &storage.AlertFilter{
-		Limit:  limit,
-		Offset: offset,
+		Limit: 0,
 	}
 	if start != nil {
 		alertFilter.StartTime = start
@@ -955,20 +962,26 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	if end != nil {
 		alertFilter.EndTime = end
 	}
+
+	maxAlerts := limit + offset + 100
+	alertFilter.Limit = int(maxAlerts)
+	alertFilter.Offset = 0
 	alerts, err := h.db.AlertRepo().Query(alertFilter)
 	if err != nil {
 		log.Printf("failed to fetch alerts for timeline: %v", err)
 	}
 	for _, a := range alerts {
 		entries = append(entries, &TimelineEntry{
-			ID:        a.ID,
-			Timestamp: a.FirstSeen,
-			Type:      "alert",
-			AlertID:   a.ID,
-			Severity:  string(a.Severity),
-			Message:   a.Message,
-			RuleName:  a.RuleName,
-			MITRE:     a.MITREAttack,
+			ID:         a.ID,
+			Timestamp:  a.FirstSeen,
+			Type:       "alert",
+			AlertID:    a.ID,
+			Severity:   string(a.Severity),
+			Message:    a.Message,
+			RuleName:   a.RuleName,
+			MITRE:      a.MITREAttack,
+			LogName:    a.LogName,
+			EventDBIDs: a.EventDBIDs,
 		})
 	}
 
@@ -977,15 +990,26 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	eventCount := len(events)
 	alertCount := len(alerts)
 
-	hasMore := (offset + eventCount + alertCount) < int(eventTotal)
-	nextOffset := 0
-	if hasMore {
-		nextOffset = offset + limit
+	if offset > 0 && offset < len(entries) {
+		entries = entries[offset:]
+	} else if offset >= len(entries) {
+		entries = []*TimelineEntry{}
+	}
+
+	if len(entries) > limit {
+		entries = entries[:limit]
+	}
+
+	totalItems := eventCount + alertCount
+	hasMore := (offset + limit) < totalItems
+	nextOffset := offset + limit
+	if !hasMore {
+		nextOffset = 0
 	}
 
 	c.JSON(200, TimelineResponse{
 		Entries:    entries,
-		TotalCount: int(eventTotal),
+		TotalCount: totalItems,
 		EventCount: eventCount,
 		AlertCount: alertCount,
 		HasMore:    hasMore,

@@ -2480,6 +2480,58 @@ button:disabled {
   cursor: pointer;
 }
 
+.datetime-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.datetime-filter input {
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #eee;
+  font-size: 0.85rem;
+}
+
+.datetime-filter input:focus {
+  outline: none;
+  border-color: #00d9ff;
+}
+
+.datetime-separator {
+  color: #888;
+}
+
+.btn-apply-filter {
+  padding: 8px 16px;
+  background: #00d9ff;
+  border: none;
+  border-radius: 6px;
+  color: #1a1a2e;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-apply-filter:hover {
+  background: #00b8d9;
+}
+
+.btn-clear-filter {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #888;
+  cursor: pointer;
+}
+
+.btn-clear-filter:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
 .timeline-container {
   background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
   border-radius: 12px;

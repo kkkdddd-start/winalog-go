@@ -510,6 +510,8 @@ export const zh = {
     close: '关闭',
     back: '返回',
     noData: '暂无数据',
+    apply: '应用',
+    clear: '清除',
   },
 }
 
@@ -1025,6 +1027,8 @@ export const en = {
     close: 'Close',
     back: 'Back',
     noData: 'No Data',
+    apply: 'Apply',
+    clear: 'Clear',
   },
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -14,6 +15,15 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
+
+func getStaticDir() string {
+	exePath, err := os.Executable()
+	if err != nil {
+		return filepath.Join("internal", "gui", "dist")
+	}
+	exeDir := filepath.Dir(exePath)
+	return filepath.Join(exeDir, "internal", "gui", "dist")
+}
 
 type Server struct {
 	engine         *gin.Engine
@@ -125,8 +135,10 @@ func (s *Server) setupRoutes() {
 
 	setupPersistenceStreamRoutes(s.engine, s.persistenceEng)
 
-	staticDir := filepath.Join("internal", "gui", "dist")
+	staticDir := getStaticDir()
 	staticFs := http.Dir(staticDir)
+
+	log.Printf("Serving static files from: %s", staticDir)
 
 	s.engine.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path

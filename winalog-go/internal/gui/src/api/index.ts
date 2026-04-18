@@ -234,6 +234,9 @@ export interface TimelineEntry {
   severity?: string
   rule_name?: string
   mitre_attack?: string[]
+  computer?: string
+  log_name?: string
+  event_db_ids?: number[]
 }
 
 export interface TimelineResponse {
