@@ -11,6 +11,7 @@ interface Event {
   log_name: string
   computer: string
   message: string
+  raw_xml?: string
 }
 
 interface ListResponse {
@@ -54,6 +55,7 @@ function Events() {
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 })
   const [keywordMode, setKeywordMode] = useState<'AND' | 'OR'>('AND')
   const [availableLogNames, setAvailableLogNames] = useState<string[]>([])
+  const [showRawModal, setShowRawModal] = useState(false)
 
   const [filters, setFilters] = useState<ExportParams['filters']>({
     event_ids: [],
@@ -659,43 +661,92 @@ function Events() {
           </div>
 
           {hoveredEvent && (
-            <div 
-              className="message-float-panel"
-              style={{ 
-                left: hoverPosition.x, 
-                top: hoverPosition.y,
-                position: 'fixed'
-              }}
-            >
-              <div className="float-panel-header">
-                <span>Event Details</span>
-                <button 
-                  className="float-panel-copy"
-                  onClick={() => {
-                    navigator.clipboard.writeText(JSON.stringify(hoveredEvent, null, 2))
-                  }}
-                >
-                  Copy
-                </button>
-                <button 
-                  className="float-panel-close"
-                  onClick={() => setHoveredEvent(null)}
-                >
-                  ×
-                </button>
+            <>
+              <div 
+                className="message-float-panel"
+                style={{ 
+                  left: hoverPosition.x, 
+                  top: hoverPosition.y,
+                  position: 'fixed'
+                }}
+              >
+                <div className="float-panel-header">
+                  <span>Event Details</span>
+                  <div className="float-panel-actions">
+                    <button 
+                      className="float-panel-copy"
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(hoveredEvent, null, 2))
+                      }}
+                    >
+                      Copy
+                    </button>
+                    {hoveredEvent.raw_xml && (
+                      <button 
+                        className="float-panel-formatted"
+                        onClick={() => {
+                          const formatted = (() => {
+                            try {
+                              return JSON.stringify(JSON.parse(hoveredEvent.raw_xml!), null, 2)
+                            } catch {
+                              return hoveredEvent.raw_xml || ''
+                            }
+                          })()
+                          navigator.clipboard.writeText(formatted)
+                        }}
+                      >
+                        Copy JSON
+                      </button>
+                    )}
+                    {hoveredEvent.raw_xml && (
+                      <button 
+                        className="float-panel-view"
+                        onClick={() => setShowRawModal(true)}
+                      >
+                        View JSON
+                      </button>
+                    )}
+                    <button 
+                      className="float-panel-close"
+                      onClick={() => { setHoveredEvent(null); setShowRawModal(false); }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+                <div className="float-panel-content">
+                  <div><strong>ID:</strong> {hoveredEvent.id}</div>
+                  <div><strong>Time:</strong> {new Date(hoveredEvent.timestamp).toLocaleString()}</div>
+                  <div><strong>Level:</strong> {hoveredEvent.level}</div>
+                  <div><strong>Event ID:</strong> {hoveredEvent.event_id}</div>
+                  <div><strong>Source:</strong> {hoveredEvent.source || '-'}</div>
+                  <div><strong>Computer:</strong> {hoveredEvent.computer || '-'}</div>
+                  <div><strong>Log Name:</strong> {hoveredEvent.log_name}</div>
+                  <div style={{marginTop: '8px'}}><strong>Message:</strong></div>
+                  <div>{hoveredEvent.message || '-'}</div>
+                </div>
               </div>
-              <div className="float-panel-content">
-                <div><strong>ID:</strong> {hoveredEvent.id}</div>
-                <div><strong>Time:</strong> {new Date(hoveredEvent.timestamp).toLocaleString()}</div>
-                <div><strong>Level:</strong> {hoveredEvent.level}</div>
-                <div><strong>Event ID:</strong> {hoveredEvent.event_id}</div>
-                <div><strong>Source:</strong> {hoveredEvent.source || '-'}</div>
-                <div><strong>Computer:</strong> {hoveredEvent.computer || '-'}</div>
-                <div><strong>Log Name:</strong> {hoveredEvent.log_name}</div>
-                <div style={{marginTop: '8px'}}><strong>Message:</strong></div>
-                <div>{hoveredEvent.message || '-'}</div>
-              </div>
-            </div>
+
+              {showRawModal && hoveredEvent.raw_xml && (
+                <div className="modal-overlay" onClick={() => setShowRawModal(false)}>
+                  <div className="modal-content modal-large" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                      <span>Raw JSON - Event #{hoveredEvent.id}</span>
+                      <button className="modal-close" onClick={() => setShowRawModal(false)}>×</button>
+                    </div>
+                    <div className="modal-body">
+                      <pre className="json-large">{(() => {
+                        try {
+                          return JSON.stringify(JSON.parse(hoveredEvent.raw_xml!), null, 2)
+                        } catch {
+                          return hoveredEvent.raw_xml
+                        }
+                      })()}</pre>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
@@ -1139,6 +1190,12 @@ function Events() {
           color: #00d9ff;
         }
         
+        .float-panel-actions {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+        
         .float-panel-close {
           background: none;
           border: none;
@@ -1146,6 +1203,7 @@ function Events() {
           cursor: pointer;
           font-size: 16px;
           padding: 0 4px;
+          margin-left: 8px;
         }
         
         .float-panel-close:hover {
@@ -1160,12 +1218,40 @@ function Events() {
           font-size: 12px;
           padding: 2px 8px;
           border-radius: 3px;
-          margin-right: 8px;
         }
         
         .float-panel-copy:hover {
           background: #555;
           border-color: #666;
+        }
+        
+        .float-panel-formatted {
+          background: #1a4d1a;
+          border: 1px solid #2e7d32;
+          color: #fff;
+          cursor: pointer;
+          font-size: 12px;
+          padding: 2px 8px;
+          border-radius: 3px;
+        }
+        
+        .float-panel-formatted:hover {
+          background: #2e7d32;
+        }
+        
+        .float-panel-view {
+          background: #1a3d5c;
+          border: 1px solid #00d9ff;
+          color: #00d9ff;
+          cursor: pointer;
+          font-size: 12px;
+          padding: 2px 8px;
+          border-radius: 3px;
+        }
+        
+        .float-panel-view:hover {
+          background: #00d9ff;
+          color: #0a0a1a;
         }
         
         .float-panel-content {
@@ -1276,6 +1362,77 @@ function Events() {
         
         .page-info strong {
           color: #00d9ff;
+        }
+        
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.85);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 2000;
+        }
+        
+        .modal-content {
+          background: #0a0a1a;
+          border: 1px solid #00d9ff;
+          border-radius: 8px;
+          max-width: 90vw;
+          max-height: 90vh;
+          overflow: hidden;
+        }
+        
+        .modal-large {
+          width: 90vw;
+          height: 85vh;
+        }
+        
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 15px 20px;
+          background: #1a1a2e;
+          border-bottom: 1px solid #333;
+        }
+        
+        .modal-header span {
+          font-weight: bold;
+          color: #00d9ff;
+        }
+        
+        .modal-close {
+          background: none;
+          border: none;
+          color: #e0e0e0;
+          font-size: 24px;
+          cursor: pointer;
+          padding: 0;
+          line-height: 1;
+        }
+        
+        .modal-close:hover {
+          color: #00d9ff;
+        }
+        
+        .modal-body {
+          padding: 20px;
+          overflow: auto;
+          max-height: calc(85vh - 60px);
+        }
+        
+        .json-large {
+          margin: 0;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 13px;
+          line-height: 1.5;
+          color: #e0e0e0;
+          white-space: pre-wrap;
+          word-break: break-all;
         }
       `}</style>
     </div>
