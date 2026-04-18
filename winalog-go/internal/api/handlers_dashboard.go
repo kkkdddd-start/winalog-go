@@ -23,6 +23,29 @@ func NewDashboardHandler(db *storage.DB) *DashboardHandler {
 	return &DashboardHandler{db: db}
 }
 
+func (h *DashboardHandler) GetLogNames(c *gin.Context) {
+	rows, err := h.db.Query(`
+		SELECT DISTINCT log_name
+		FROM events
+		ORDER BY log_name ASC
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var logNames []string
+	for rows.Next() {
+		var logName string
+		if err := rows.Scan(&logName); err == nil {
+			logNames = append(logNames, logName)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"log_names": logNames})
+}
+
 func (h *DashboardHandler) GetCollectionStats(c *gin.Context) {
 	stats, err := h.db.GetStats()
 	if err != nil {

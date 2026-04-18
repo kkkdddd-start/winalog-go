@@ -113,14 +113,8 @@ func (p *EvtxParser) convertMapToEvent(m *evtxlib.GoEvtxMap) *types.Event {
 					}
 
 					timePath := evtxlib.Path("TimeCreated/SystemTime")
-					if timeElem, err := system.Get(&timePath); err == nil && timeElem != nil {
-						if ts, ok := (*timeElem).(string); ok {
-							if t, err := time.Parse("2006-01-02T15:04:05.9999999Z", ts); err == nil {
-								event.Timestamp = t
-							} else if t, err := time.Parse(time.RFC3339, ts); err == nil {
-								event.Timestamp = t
-							}
-						}
+					if t, err := system.GetTime(&timePath); err == nil {
+						event.Timestamp = t
 					}
 
 					providerPath := evtxlib.Path("Provider")

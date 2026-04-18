@@ -14,8 +14,34 @@ api.interceptors.response.use(
 )
 
 export const eventsAPI = {
-  list: (page = 1, pageSize = 100) =>
-    api.get(`/events?page=${page}&page_size=${pageSize}`),
+  list: (page = 1, pageSize = 100, params?: Partial<SearchParams>) => {
+    let url = `/events?page=${page}&page_size=${pageSize}`
+    if (params) {
+      if (params.levels && params.levels.length > 0) {
+        params.levels.forEach(l => url += `&levels=${l}`)
+      }
+      if (params.event_ids && params.event_ids.length > 0) {
+        params.event_ids.forEach(id => url += `&event_ids=${id}`)
+      }
+      if (params.log_names && params.log_names.length > 0) {
+        params.log_names.forEach(name => url += `&log_names=${encodeURIComponent(name)}`)
+      }
+      if (params.sources && params.sources.length > 0) {
+        params.sources.forEach(s => url += `&sources=${encodeURIComponent(s)}`)
+      }
+      if (params.users && params.users.length > 0) {
+        params.users.forEach(u => url += `&users=${encodeURIComponent(u)}`)
+      }
+      if (params.computers && params.computers.length > 0) {
+        params.computers.forEach(c => url += `&computers=${encodeURIComponent(c)}`)
+      }
+      if (params.start_time) url += `&start_time=${encodeURIComponent(params.start_time)}`
+      if (params.end_time) url += `&end_time=${encodeURIComponent(params.end_time)}`
+      if (params.sort_by) url += `&sort_by=${params.sort_by}`
+      if (params.sort_order) url += `&sort_order=${params.sort_order}`
+    }
+    return api.get(url)
+  },
   get: (id: number) =>
     api.get(`/events/${id}`),
   search: (params: SearchParams) =>
@@ -236,6 +262,8 @@ export interface CollectionStats {
 export const dashboardAPI = {
   getCollectionStats: () =>
     api.get('/dashboard/collection-stats'),
+  getLogNames: () =>
+    api.get('/dashboard/log-names'),
 }
 
 export interface AnalyzeParams {

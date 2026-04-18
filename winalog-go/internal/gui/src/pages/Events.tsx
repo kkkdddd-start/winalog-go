@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { eventsAPI, ExportParams, SearchParams } from '../api'
+import { eventsAPI, ExportParams, SearchParams, dashboardAPI } from '../api'
 
 interface Event {
   id: number
@@ -34,6 +34,8 @@ function Events() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [pageInput, setPageInput] = useState('')
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [exportLoading, setExportLoading] = useState(false)
@@ -48,12 +50,10 @@ function Events() {
   const [users, setUsers] = useState('')
   const [computers, setComputers] = useState('')
   const [eventIdsInput, setEventIdsInput] = useState('')
-  const [logNamesInput, setLogNamesInput] = useState('')
   const [hoveredEvent, setHoveredEvent] = useState<Event | null>(null)
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 })
-  const [hoveredField, setHoveredField] = useState<string | null>(null)
-  const [showImportTime, setShowImportTime] = useState(false)
   const [keywordMode, setKeywordMode] = useState<'AND' | 'OR'>('AND')
+  const [availableLogNames, setAvailableLogNames] = useState<string[]>([])
 
   const [filters, setFilters] = useState<ExportParams['filters']>({
     event_ids: [],
@@ -80,11 +80,6 @@ function Events() {
       .map(s => parseInt(s.trim(), 10))
       .filter(n => !isNaN(n))
 
-    const logNames = logNamesInput
-      .split(',')
-      .map(s => s.trim())
-      .filter(s => s.length > 0)
-
     const sourcesList = sources
       .split(',')
       .map(s => s.trim())
@@ -105,14 +100,14 @@ function Events() {
       keyword_mode: keywordMode,
       regex: useRegex,
       page: pageNum,
-      page_size: 50,
+      page_size: pageSize,
       sort_by: sortBy,
       sort_order: sortOrder,
       start_time: filters?.start_time || undefined,
       end_time: filters?.end_time || undefined,
       levels: selectedLevels.map(l => levelMap[l]).filter(l => l),
       event_ids: eventIds.length > 0 ? eventIds : undefined,
-      log_names: logNames.length > 0 ? logNames : undefined,
+      log_names: filters?.log_names && filters.log_names.length > 0 ? filters.log_names : undefined,
       sources: sourcesList.length > 0 ? sourcesList : undefined,
       users: usersList.length > 0 ? usersList : undefined,
       computers: computersList.length > 0 ? computersList : undefined,
@@ -123,14 +118,14 @@ function Events() {
         const data = res.data as SearchResponse
         setEvents(data.events || [])
         setTotalCount(data.total || 0)
-        const pages = Math.ceil((data.total || 0) / 50)
+        const pages = Math.ceil((data.total || 0) / pageSize)
         setTotalPages(pages || 1)
         setQueryTime(data.query_time_ms || 0)
         setSearchMode(true)
         setLoading(false)
       })
       .catch(() => {
-        eventsAPI.list(pageNum, 50)
+        eventsAPI.list(pageNum, pageSize)
           .then(res => {
             const data = res.data as ListResponse
             setEvents(data.events || [])
@@ -166,7 +161,6 @@ function Events() {
     setUsers('')
     setComputers('')
     setEventIdsInput('')
-    setLogNamesInput('')
     setSearchMode(false)
     setKeywordMode('AND')
     setPage(1)
@@ -174,10 +168,59 @@ function Events() {
 
   useEffect(() => {
     setLoading(true)
+    const hasFilters = filters && (
+      (filters.log_names && filters.log_names.length > 0) ||
+      (filters.levels && filters.levels.length > 0) ||
+      (filters.event_ids && filters.event_ids.length > 0) ||
+      filters.start_time ||
+      filters.end_time
+    )
+    
     if (filters?.keywords && filters.keywords.trim() !== '') {
-      doSearch(page)
+      eventsAPI.search({
+        keywords: filters.keywords,
+        keyword_mode: keywordMode,
+        regex: useRegex,
+        page: page,
+        page_size: pageSize,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        levels: selectedLevels.map(l => ({'Critical': 1, 'Error': 2, 'Warning': 3, 'Info': 4, 'Debug': 5}[l] || 0)).filter(l => l > 0),
+        start_time: filters.start_time,
+        end_time: filters.end_time,
+      })
+        .then(res => {
+          const data = res.data as SearchResponse
+          setEvents(data.events || [])
+          setTotalCount(data.total || 0)
+          const pages = Math.ceil((data.total || 0) / pageSize)
+          setTotalPages(pages || 1)
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    } else if (hasFilters) {
+      eventsAPI.list(page, pageSize, {
+        log_names: filters.log_names,
+        levels: filters.levels,
+        event_ids: filters.event_ids,
+        start_time: filters.start_time,
+        end_time: filters.end_time,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      })
+        .then(res => {
+          const data = res.data as ListResponse
+          setEvents(data.events || [])
+          setTotalCount(data.total || 0)
+          setTotalPages(data.total_pages || 1)
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
     } else {
-      eventsAPI.list(page, 50)
+      eventsAPI.list(page, pageSize, {
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      })
         .then(res => {
           const data = res.data as ListResponse
           setEvents(data.events || [])
@@ -187,7 +230,30 @@ function Events() {
         })
         .catch(() => setLoading(false))
     }
-  }, [page])
+  }, [page, filters, sortBy, sortOrder, pageSize, selectedLevels, keywordMode, useRegex])
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize)
+    setPage(1)
+  }
+
+  const handlePageInputSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const targetPage = parseInt(pageInput, 10)
+    if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= totalPages) {
+      setPage(targetPage)
+      setPageInput('')
+    }
+  }
+
+  useEffect(() => {
+    dashboardAPI.getLogNames()
+      .then(res => {
+        const data = res.data as { log_names: string[] }
+        setAvailableLogNames(data.log_names || [])
+      })
+      .catch(() => {})
+  }, [])
 
   const handleExport = async (format: 'csv' | 'excel' | 'json') => {
     setExportLoading(true)
@@ -321,13 +387,19 @@ function Events() {
             </div>
             <div className="filter-group">
               <label>Log Names</label>
-              <input
-                type="text"
-                placeholder="Security,System,Application"
-                value={logNamesInput}
-                onChange={e => setLogNamesInput(e.target.value)}
-                className="text-input"
-              />
+              <select
+                value={filters?.log_names?.[0] || ''}
+                onChange={e => {
+                  const val = e.target.value
+                  setFilters({...filters!, log_names: val ? [val] : []})
+                }}
+                className="select-input"
+              >
+                <option value="">All Log Names</option>
+                {availableLogNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="filter-row">
@@ -456,30 +528,13 @@ function Events() {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>
-                    <span className="timestamp-header">
-                      <span
-                        className={`timestamp-toggle ${showImportTime ? '' : 'active'}`}
-                        onClick={() => setShowImportTime(false)}
-                        title="Log time"
-                      >
-                        Time
-                      </span>
-                      <span className="timestamp-separator">|</span>
-                      <span
-                        className={`timestamp-toggle ${showImportTime ? 'active' : ''}`}
-                        onClick={() => setShowImportTime(true)}
-                        title="Import time"
-                      >
-                        Import
-                      </span>
-                    </span>
-                  </th>
+                  <th>Time</th>
                   <th>Level</th>
                   <th>Event ID</th>
                   <th>Source</th>
                   <th>Computer</th>
                   <th>Message</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -487,10 +542,7 @@ function Events() {
                   <tr key={event.id}>
                     <td className="id-cell">{event.id}</td>
                     <td className="time-cell">
-                      {showImportTime
-                        ? (event.import_time ? new Date(event.import_time).toLocaleString() : '-')
-                        : new Date(event.timestamp).toLocaleString()
-                      }
+                      {new Date(event.timestamp).toLocaleString()}
                     </td>
                     <td>
                       <span className={`level-badge ${getLevelClass(event.level)}`}>
@@ -498,50 +550,39 @@ function Events() {
                       </span>
                     </td>
                     <td className="event-id">{event.event_id}</td>
-                    <td
+                    <td 
                       className="source-cell"
                       onMouseEnter={(e) => {
-                        if (event.source && event.source.length > 40) {
+                        if (event.source) {
                           setHoveredEvent(event)
-                          setHoveredField('source')
-                          setHoverPosition({ x: e.clientX, y: e.clientY })
+                          setHoverPosition({ x: e.clientX + 10, y: e.clientY + 10 })
                         }
                       }}
-                      onMouseMove={(e) => {
-                        if (hoveredEvent?.id === event.id && hoveredField === 'source') {
-                          setHoverPosition({ x: e.clientX, y: e.clientY })
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        setHoveredEvent(null)
-                        setHoveredField(null)
-                      }}
+                      onMouseLeave={() => setHoveredEvent(null)}
                     >
-                      {event.source?.substring(0, 40) || '-'}
-                      {event.source && event.source.length > 40 ? '...' : ''}
+                      {event.source || '-'}
                     </td>
                     <td className="computer-cell">{event.computer || '-'}</td>
                     <td 
                       className="message-cell"
                       onMouseEnter={(e) => {
-                        if (event.message && event.message.length > 120) {
-                          setHoveredEvent(event)
-                          setHoveredField('message')
-                          setHoverPosition({ x: e.clientX, y: e.clientY })
-                        }
+                        setHoveredEvent(event)
+                        setHoverPosition({ x: e.clientX + 10, y: e.clientY + 10 })
                       }}
-                      onMouseMove={(e) => {
-                        if (hoveredEvent?.id === event.id && hoveredField === 'message') {
-                          setHoverPosition({ x: e.clientX, y: e.clientY })
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        setHoveredEvent(null)
-                        setHoveredField(null)
-                      }}
+                      onMouseLeave={() => setHoveredEvent(null)}
                     >
-                      {event.message?.substring(0, 120)}
-                      {event.message && event.message.length > 120 ? '...' : ''}
+                      {event.message ? (event.message.length > 50 ? event.message.substring(0, 50) + '...' : event.message) : '-'}
+                    </td>
+                    <td className="action-cell">
+                      <button 
+                        className="action-copy-btn" 
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(event, null, 2))
+                        }}
+                        title="Copy all event data"
+                      >
+                        Copy
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -549,64 +590,113 @@ function Events() {
             </table>
           </div>
 
+          <div className="pagination">
+            <div className="page-size-selector">
+              <span>Show:</span>
+              <select 
+                value={pageSize} 
+                onChange={e => handlePageSizeChange(Number(e.target.value))}
+                className="select-input"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+              <span>per page</span>
+            </div>
+
+            <div className="page-nav">
+              <button 
+                className="page-btn" 
+                disabled={page <= 1} 
+                onClick={() => { setPage(1); window.scrollTo({top: 0, behavior: 'smooth'}) }}
+              >
+                First
+              </button>
+              <button 
+                className="page-btn" 
+                disabled={page <= 1} 
+                onClick={() => { setPage(p => p - 1); window.scrollTo({top: 0, behavior: 'smooth'}) }}
+              >
+                Prev
+              </button>
+              
+              <form onSubmit={handlePageInputSubmit} className="page-input-form">
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={pageInput}
+                  onChange={e => setPageInput(e.target.value)}
+                  placeholder={`1-${totalPages}`}
+                  className="page-input"
+                />
+                <button type="submit" className="page-btn go-btn">Go</button>
+              </form>
+              
+              <span className="page-info">
+                Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+                ({totalCount} total)
+              </span>
+              
+              <button 
+                className="page-btn" 
+                disabled={page >= totalPages} 
+                onClick={() => { setPage(p => p + 1); window.scrollTo({top: 0, behavior: 'smooth'}) }}
+              >
+                Next
+              </button>
+              <button 
+                className="page-btn" 
+                disabled={page >= totalPages} 
+                onClick={() => { setPage(totalPages); window.scrollTo({top: 0, behavior: 'smooth'}) }}
+              >
+                Last
+              </button>
+            </div>
+          </div>
+
           {hoveredEvent && (
-            <div
+            <div 
               className="message-float-panel"
-              style={{
-                left: Math.min(hoverPosition.x + 10, window.innerWidth - 620),
-                top: Math.min(hoverPosition.y + 10, window.innerHeight - 420),
-              }}
-              onMouseLeave={() => {
-                setHoveredEvent(null)
-                setHoveredField(null)
+              style={{ 
+                left: hoverPosition.x, 
+                top: hoverPosition.y,
+                position: 'fixed'
               }}
             >
               <div className="float-panel-header">
-                <span>{hoveredField === 'source' ? 'Full Source' : 'Full Message'}</span>
-                <button className="float-panel-close" onClick={() => {
-                  setHoveredEvent(null)
-                  setHoveredField(null)
-                }}>x</button>
+                <span>Event Details</span>
+                <button 
+                  className="float-panel-copy"
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(hoveredEvent, null, 2))
+                  }}
+                >
+                  Copy
+                </button>
+                <button 
+                  className="float-panel-close"
+                  onClick={() => setHoveredEvent(null)}
+                >
+                  ×
+                </button>
               </div>
-              <pre className="float-panel-content">
-                {hoveredField === 'source' ? hoveredEvent.source : hoveredEvent.message}
-              </pre>
+              <div className="float-panel-content">
+                <div><strong>ID:</strong> {hoveredEvent.id}</div>
+                <div><strong>Time:</strong> {new Date(hoveredEvent.timestamp).toLocaleString()}</div>
+                <div><strong>Level:</strong> {hoveredEvent.level}</div>
+                <div><strong>Event ID:</strong> {hoveredEvent.event_id}</div>
+                <div><strong>Source:</strong> {hoveredEvent.source || '-'}</div>
+                <div><strong>Computer:</strong> {hoveredEvent.computer || '-'}</div>
+                <div><strong>Log Name:</strong> {hoveredEvent.log_name}</div>
+                <div style={{marginTop: '8px'}}><strong>Message:</strong></div>
+                <div>{hoveredEvent.message || '-'}</div>
+              </div>
             </div>
           )}
-
-          <div className="pagination">
-            <button 
-              className="page-btn" 
-              disabled={page <= 1} 
-              onClick={() => { setPage(1); window.scrollTo({top: 0, behavior: 'smooth'}) }}
-            >
-              First
-            </button>
-            <button 
-              className="page-btn" 
-              disabled={page <= 1} 
-              onClick={() => { setPage(p => p - 1); window.scrollTo({top: 0, behavior: 'smooth'}) }}
-            >
-              Prev
-            </button>
-            <span className="page-info">
-              Page <strong>{page}</strong> of <strong>{totalPages}</strong>
-            </span>
-            <button 
-              className="page-btn" 
-              disabled={page >= totalPages} 
-              onClick={() => { setPage(p => p + 1); window.scrollTo({top: 0, behavior: 'smooth'}) }}
-            >
-              Next
-            </button>
-            <button 
-              className="page-btn" 
-              disabled={page >= totalPages} 
-              onClick={() => { setPage(totalPages); window.scrollTo({top: 0, behavior: 'smooth'}) }}
-            >
-              Last
-            </button>
-          </div>
         </>
       )}
 
@@ -1004,10 +1094,28 @@ function Events() {
           cursor: default;
         }
         
+        .action-cell {
+          text-align: center;
+        }
+        
+        .action-copy-btn {
+          background: #2563eb;
+          border: none;
+          color: #fff;
+          cursor: pointer;
+          font-size: 11px;
+          padding: 3px 10px;
+          border-radius: 3px;
+        }
+        
+        .action-copy-btn:hover {
+          background: #3b82f6;
+        }
+        
         .message-float-panel {
           position: fixed;
-          max-width: 600px;
-          max-height: 400px;
+          max-width: 800px;
+          max-height: 600px;
           overflow: hidden;
           background: #0a0a1a;
           border: 1px solid #00d9ff;
@@ -1044,38 +1152,31 @@ function Events() {
           color: #fff;
         }
         
+        .float-panel-copy {
+          background: #444;
+          border: 1px solid #555;
+          color: #fff;
+          cursor: pointer;
+          font-size: 12px;
+          padding: 2px 8px;
+          border-radius: 3px;
+          margin-right: 8px;
+        }
+        
+        .float-panel-copy:hover {
+          background: #555;
+          border-color: #666;
+        }
+        
         .float-panel-content {
           padding: 12px;
-          max-height: 340px;
+          max-height: 540px;
           overflow: auto;
           white-space: pre-wrap;
           word-break: break-all;
           margin: 0;
-          font-size: 13px;
+          font-size: 12px;
           color: #ccc;
-        }
-        
-        .timestamp-header {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-        
-        .timestamp-separator {
-          color: #555;
-        }
-        
-        .timestamp-toggle {
-          cursor: pointer;
-          padding: 2px 6px;
-          border-radius: 3px;
-          font-size: 0.85rem;
-          color: #666;
-          transition: all 0.2s;
-        }
-        
-        .timestamp-toggle:hover {
-          color: #00d9ff;
         }
         
         .timestamp-toggle.active {
@@ -1086,10 +1187,33 @@ function Events() {
         .pagination {
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 8px;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 16px;
           padding: 16px;
           margin-top: 16px;
+        }
+        
+        .page-size-selector {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #888;
+        }
+        
+        .page-size-selector .select-input {
+          padding: 6px 10px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid #333;
+          border-radius: 6px;
+          color: #fff;
+          cursor: pointer;
+        }
+        
+        .page-nav {
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
         
         .page-btn {
@@ -1110,6 +1234,39 @@ function Events() {
         .page-btn:disabled {
           opacity: 0.3;
           cursor: not-allowed;
+        }
+        
+        .page-input-form {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        
+        .page-input {
+          width: 70px;
+          padding: 8px 10px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid #333;
+          border-radius: 6px;
+          color: #fff;
+          text-align: center;
+        }
+        
+        .page-input:focus {
+          outline: none;
+          border-color: #00d9ff;
+        }
+        
+        .page-input::-webkit-inner-spin-button,
+        .page-input::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        
+        .go-btn {
+          padding: 8px 12px;
+          background: rgba(0, 217, 255, 0.1);
+          border-color: #00d9ff;
         }
         
         .page-info {

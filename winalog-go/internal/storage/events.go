@@ -37,7 +37,11 @@ func NewEventRepo(db *DB) *EventRepo {
 func (r *EventRepo) checkFTS() {
 	var count int
 	err := r.db.QueryRow("SELECT COUNT(*) FROM events_fts LIMIT 1").Scan(&count)
-	r.ftsReady = err == nil
+	if err == nil && count == 0 {
+		r.db.Exec(`INSERT INTO events_fts(rowid, event_id, message, source) SELECT id, event_id, message, source FROM events`)
+		r.db.QueryRow("SELECT COUNT(*) FROM events_fts LIMIT 1").Scan(&count)
+	}
+	r.ftsReady = err == nil && count > 0
 }
 
 func (r *EventRepo) supportsFTS() bool {
@@ -198,32 +202,33 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 	var args []interface{}
 	var useFTS bool
 
-	if len(req.Keywords) > 0 && r.supportsFTS() && !req.Regex {
-		keywordMode := strings.ToUpper(req.KeywordMode)
-		if keywordMode == "" {
-			keywordMode = "AND"
-		}
+	keywordMode := strings.ToUpper(req.KeywordMode)
+	if keywordMode == "" {
+		keywordMode = "AND"
+	}
 
+	if len(req.Keywords) > 0 && r.supportsFTS() && !req.Regex {
 		useFTS = true
 		words := strings.Fields(req.Keywords)
 
 		if len(words) == 0 {
-			ftsQuery := fmt.Sprintf("message:%s", escapeFTSQuery(req.Keywords))
+			ftsQuery := escapeFTSQuery(req.Keywords) + "*"
 			conditions = append(conditions, fmt.Sprintf(
 				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
 				ftsQuery))
 		} else if keywordMode == "OR" {
 			var ftsTerms []string
 			for _, word := range words {
-				ftsTerms = append(ftsTerms, fmt.Sprintf("message:%s", escapeFTSQuery(word)))
+				ftsTerms = append(ftsTerms, escapeFTSQuery(word)+"*")
 			}
+			ftsQuery := strings.Join(ftsTerms, " OR ")
 			conditions = append(conditions, fmt.Sprintf(
 				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
-				strings.Join(ftsTerms, " OR ")))
+				ftsQuery))
 		} else {
 			var ftsTerms []string
 			for _, word := range words {
-				ftsTerms = append(ftsTerms, fmt.Sprintf("message:%s", escapeFTSQuery(word)))
+				ftsTerms = append(ftsTerms, escapeFTSQuery(word)+"*")
 			}
 			conditions = append(conditions, fmt.Sprintf(
 				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
@@ -236,15 +241,9 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 		}
 
 		if req.Regex {
-			pattern := req.Keywords
-			if keywordMode == "OR" {
-				conditions, args = appendGlobCondition(conditions, args, "message", pattern)
-			} else {
-				words := strings.Fields(req.Keywords)
-				for _, word := range words {
-					conditions, args = appendGlobCondition(conditions, args, "message", word)
-				}
-			}
+			likePattern := regexToLike(req.Keywords)
+			conditions = append(conditions, "message LIKE ?")
+			args = append(args, likePattern)
 		} else {
 			words := strings.Fields(req.Keywords)
 			if len(words) == 0 {
@@ -338,11 +337,11 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 	if req.SortOrder == "asc" {
 		sortOrder = "ASC"
 	}
-	sortBy := "timestamp"
+	sortByColumn := "timestamp"
 	if req.SortBy != "" {
 		sanitized := strings.ToLower(strings.TrimSpace(req.SortBy))
 		if allowedSortFields[sanitized] {
-			sortBy = sanitized
+			sortByColumn = sanitized
 		}
 	}
 
@@ -351,7 +350,7 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 		SELECT id, timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id
 		FROM events %s
 		ORDER BY %s %s
-		LIMIT ? OFFSET ?`, whereClause, sortBy, sortOrder)
+		LIMIT ? OFFSET ?`, whereClause, sortByColumn, sortOrder)
 
 	args = append(args, req.PageSize, offset)
 
@@ -538,6 +537,86 @@ func scanEventFromRows(rows *sql.Rows) (*types.Event, error) {
 	return scanEvent(rows)
 }
 
+func regexToGlob(pattern string) string {
+	var result strings.Builder
+	i := 0
+	for i < len(pattern) {
+		c := pattern[i]
+		switch c {
+		case '.':
+			if i+1 < len(pattern) && pattern[i+1] == '*' {
+				result.WriteString("*")
+				i += 2
+			} else if i+1 < len(pattern) && pattern[i+1] == '+' {
+				result.WriteString("*")
+				i += 2
+			} else {
+				result.WriteByte('?')
+				i++
+			}
+		case '\\':
+			if i+1 < len(pattern) {
+				result.WriteByte(pattern[i+1])
+				i += 2
+			} else {
+				result.WriteByte('\\')
+				i++
+			}
+		case '*', '?', '[', ']':
+			result.WriteByte('\\')
+			result.WriteByte(c)
+			i++
+		default:
+			result.WriteByte(c)
+			i++
+		}
+	}
+	return result.String()
+}
+
+func regexToLike(pattern string) string {
+	var result strings.Builder
+	i := 0
+	for i < len(pattern) {
+		c := pattern[i]
+		switch c {
+		case '.':
+			if i+1 < len(pattern) && pattern[i+1] == '*' {
+				result.WriteString("%")
+				i += 2
+			} else if i+1 < len(pattern) && pattern[i+1] == '+' {
+				result.WriteString("%")
+				i += 2
+			} else {
+				result.WriteByte('_')
+				i++
+			}
+		case '\\':
+			if i+1 < len(pattern) {
+				result.WriteByte(pattern[i+1])
+				i += 2
+			} else {
+				result.WriteByte('\\')
+				i++
+			}
+		case '%', '_':
+			result.WriteByte('\\')
+			result.WriteByte(c)
+			i++
+		case '[':
+			result.WriteByte('%')
+			i++
+		case ']':
+			result.WriteByte('%')
+			i++
+		default:
+			result.WriteByte(c)
+			i++
+		}
+	}
+	return "%" + result.String() + "%"
+}
+
 func (r *EventRepo) deduplicate(events []*types.Event) []*types.Event {
 	seen := make(map[string]bool)
 	unique := make([]*types.Event, 0, len(events))
@@ -585,4 +664,21 @@ func escapeFTSQuery(s string) string {
 		}
 	}
 	return result.String()
+}
+
+func (r *EventRepo) RebuildFTS() error {
+	_, err := r.db.Exec("DELETE FROM events_fts")
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec(`
+		INSERT INTO events_fts(rowid, event_id, message, source)
+		SELECT id, event_id, message, source FROM events`)
+	if err != nil {
+		return err
+	}
+
+	r.checkFTS()
+	return nil
 }

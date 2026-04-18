@@ -57,6 +57,7 @@ func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *Impor
 		dashboard := api.Group("/dashboard")
 		{
 			dashboard.GET("/collection-stats", dashboardHandler.GetCollectionStats)
+			dashboard.GET("/log-names", dashboardHandler.GetLogNames)
 		}
 	}
 }

@@ -66,6 +66,7 @@ function AlertDetail() {
   }
 
   const handleSearchRelatedEvents = () => {
+    if (!alert) return
     const params = new URLSearchParams()
     if (alert.message) {
       params.set('keywords', alert.message.substring(0, 100))

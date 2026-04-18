@@ -238,18 +238,21 @@ type ImportLogEntry struct {
 }
 
 type EventFilter struct {
-	Limit     int
-	Offset    int
-	Keywords  string
-	Regex     bool
-	EventIDs  []int32
-	Levels    []int
-	LogNames  []string
-	Sources   []string
-	Computers []string
-	Users     []string
-	StartTime *time.Time
-	EndTime   *time.Time
+	Limit       int
+	Offset      int
+	Keywords    string
+	KeywordMode string
+	Regex       bool
+	EventIDs    []int32
+	Levels      []int
+	LogNames    []string
+	Sources     []string
+	Computers   []string
+	Users       []string
+	StartTime   *time.Time
+	EndTime     *time.Time
+	SortBy      string
+	SortOrder   string
 }
 
 func (d *DB) ListEvents(filter *EventFilter) ([]*types.Event, int64, error) {
@@ -260,10 +263,21 @@ func (d *DB) ListEvents(filter *EventFilter) ([]*types.Event, int64, error) {
 	eventRepo := NewEventRepo(d)
 
 	req := &types.SearchRequest{
-		PageSize: filter.Limit,
-		Page:     1,
-		Keywords: filter.Keywords,
-		Regex:    filter.Regex,
+		PageSize:    filter.Limit,
+		Page:        1,
+		Keywords:    filter.Keywords,
+		KeywordMode: filter.KeywordMode,
+		Regex:       filter.Regex,
+		EventIDs:    filter.EventIDs,
+		Levels:      filter.Levels,
+		LogNames:    filter.LogNames,
+		Sources:     filter.Sources,
+		Users:       filter.Users,
+		Computers:   filter.Computers,
+		StartTime:   filter.StartTime,
+		EndTime:     filter.EndTime,
+		SortBy:      filter.SortBy,
+		SortOrder:   filter.SortOrder,
 	}
 
 	if filter.Offset > 0 {
@@ -281,17 +295,20 @@ func (d *DB) SearchEvents(filter *EventFilter) ([]*types.Event, int64, error) {
 	eventRepo := NewEventRepo(d)
 
 	req := &types.SearchRequest{
-		Keywords:  filter.Keywords,
-		Regex:     filter.Regex,
-		EventIDs:  filter.EventIDs,
-		Levels:    filter.Levels,
-		LogNames:  filter.LogNames,
-		Computers: filter.Computers,
-		Users:     filter.Users,
-		StartTime: filter.StartTime,
-		EndTime:   filter.EndTime,
-		PageSize:  filter.Limit,
-		Page:      1,
+		Keywords:    filter.Keywords,
+		KeywordMode: filter.KeywordMode,
+		Regex:       filter.Regex,
+		EventIDs:    filter.EventIDs,
+		Levels:      filter.Levels,
+		LogNames:    filter.LogNames,
+		Computers:   filter.Computers,
+		Users:       filter.Users,
+		StartTime:   filter.StartTime,
+		EndTime:     filter.EndTime,
+		PageSize:    filter.Limit,
+		Page:        1,
+		SortBy:      filter.SortBy,
+		SortOrder:   filter.SortOrder,
 	}
 
 	if filter.Offset > 0 {

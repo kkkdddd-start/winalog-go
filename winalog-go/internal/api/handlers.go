@@ -55,6 +55,21 @@ type PaginationRequest struct {
 	PageSize int `form:"page_size,default=100" binding:"min=1,max=10000"`
 }
 
+type ListEventsRequest struct {
+	Page      int      `form:"page,default=1" binding:"min=1"`
+	PageSize  int      `form:"page_size,default=100" binding:"min=1,max=10000"`
+	Levels    []int    `form:"levels"`
+	EventIDs  []int32  `form:"event_ids"`
+	LogNames  []string `form:"log_names"`
+	Sources   []string `form:"sources"`
+	Users     []string `form:"users"`
+	Computers []string `form:"computers"`
+	StartTime string   `form:"start_time"`
+	EndTime   string   `form:"end_time"`
+	SortBy    string   `form:"sort_by"`
+	SortOrder string   `form:"sort_order"`
+}
+
 func internalError(c *gin.Context, err error) {
 	c.JSON(http.StatusInternalServerError, ErrorResponse{
 		Error: err.Error(),
@@ -78,15 +93,39 @@ type ListEventsResponse struct {
 }
 
 func (h *AlertHandler) ListEvents(c *gin.Context) {
-	var req PaginationRequest
+	var req ListEventsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
 
 	filter := &storage.EventFilter{
-		Limit:  req.PageSize,
-		Offset: (req.Page - 1) * req.PageSize,
+		Limit:     req.PageSize,
+		Offset:    (req.Page - 1) * req.PageSize,
+		Levels:    req.Levels,
+		EventIDs:  req.EventIDs,
+		LogNames:  req.LogNames,
+		Sources:   req.Sources,
+		Users:     req.Users,
+		Computers: req.Computers,
+		SortBy:    req.SortBy,
+		SortOrder: req.SortOrder,
+	}
+
+	if req.StartTime != "" {
+		if t, err := time.Parse(time.RFC3339, req.StartTime); err == nil {
+			filter.StartTime = &t
+		} else if t, err := time.Parse("2006-01-02T15:04", req.StartTime); err == nil {
+			filter.StartTime = &t
+		}
+	}
+	if req.EndTime != "" {
+		if t, err := time.Parse(time.RFC3339, req.EndTime); err == nil {
+			filter.EndTime = &t
+		} else if t, err := time.Parse("2006-01-02T15:04", req.EndTime); err == nil {
+			endTime := t.Add(24*time.Hour - time.Second)
+			filter.EndTime = &endTime
+		}
 	}
 
 	events, total, err := h.db.ListEvents(filter)
@@ -127,21 +166,22 @@ func (h *AlertHandler) GetEvent(c *gin.Context) {
 }
 
 type SearchEventsRequest struct {
-	Keywords  string   `json:"keywords"`
-	Regex     bool     `json:"regex"`
-	EventIDs  []int32  `json:"event_ids"`
-	Levels    []int    `json:"levels"`
-	LogNames  []string `json:"log_names"`
-	Sources   []string `json:"sources"`
-	Users     []string `json:"users"`
-	Computers []string `json:"computers"`
-	StartTime string   `json:"start_time"`
-	EndTime   string   `json:"end_time"`
-	Page      int      `json:"page"`
-	PageSize  int      `json:"page_size"`
-	SortBy    string   `json:"sort_by"`
-	SortOrder string   `json:"sort_order"`
-	Highlight bool     `json:"highlight"`
+	Keywords    string   `json:"keywords"`
+	KeywordMode string   `json:"keyword_mode"`
+	Regex       bool     `json:"regex"`
+	EventIDs    []int32  `json:"event_ids"`
+	Levels      []int    `json:"levels"`
+	LogNames    []string `json:"log_names"`
+	Sources     []string `json:"sources"`
+	Users       []string `json:"users"`
+	Computers   []string `json:"computers"`
+	StartTime   string   `json:"start_time"`
+	EndTime     string   `json:"end_time"`
+	Page        int      `json:"page"`
+	PageSize    int      `json:"page_size"`
+	SortBy      string   `json:"sort_by"`
+	SortOrder   string   `json:"sort_order"`
+	Highlight   bool     `json:"highlight"`
 }
 
 func (h *AlertHandler) SearchEvents(c *gin.Context) {
@@ -159,26 +199,34 @@ func (h *AlertHandler) SearchEvents(c *gin.Context) {
 	}
 
 	filter := &storage.EventFilter{
-		Keywords:  req.Keywords,
-		Regex:     req.Regex,
-		Limit:     req.PageSize,
-		Offset:    (req.Page - 1) * req.PageSize,
-		EventIDs:  req.EventIDs,
-		Levels:    req.Levels,
-		LogNames:  req.LogNames,
-		Sources:   req.Sources,
-		Computers: req.Computers,
-		Users:     req.Users,
+		Keywords:    req.Keywords,
+		KeywordMode: req.KeywordMode,
+		Regex:       req.Regex,
+		Limit:       req.PageSize,
+		Offset:      (req.Page - 1) * req.PageSize,
+		EventIDs:    req.EventIDs,
+		Levels:      req.Levels,
+		LogNames:    req.LogNames,
+		Sources:     req.Sources,
+		Computers:   req.Computers,
+		Users:       req.Users,
+		SortBy:      req.SortBy,
+		SortOrder:   req.SortOrder,
 	}
 
 	if req.StartTime != "" {
 		if t, err := time.Parse(time.RFC3339, req.StartTime); err == nil {
+			filter.StartTime = &t
+		} else if t, err := time.Parse("2006-01-02T15:04", req.StartTime); err == nil {
 			filter.StartTime = &t
 		}
 	}
 	if req.EndTime != "" {
 		if t, err := time.Parse(time.RFC3339, req.EndTime); err == nil {
 			filter.EndTime = &t
+		} else if t, err := time.Parse("2006-01-02T15:04", req.EndTime); err == nil {
+			endTime := t.Add(24*time.Hour - time.Second)
+			filter.EndTime = &endTime
 		}
 	}
 
