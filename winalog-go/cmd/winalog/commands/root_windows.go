@@ -8,6 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	dbPath     string
+	logLevel   string
+	configPath string
+)
+
 func RegisterCommands(root *cobra.Command) {
 	root.PersistentFlags().StringVar(&dbPath, "db", "", "Database path")
 	root.PersistentFlags().StringVar(&logLevel, "log-level", "", "Log level (debug/info/warn/error)")

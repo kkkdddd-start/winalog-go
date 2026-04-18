@@ -118,6 +118,41 @@ func (d *DB) createTables() error {
 		}
 	}
 
+	return d.runMigrations()
+}
+
+func (d *DB) runMigrations() error {
+	migrations := []struct {
+		name  string
+		check func() (bool, error)
+		exec  func() error
+	}{
+		{
+			name: "add_event_db_ids_to_alerts",
+			check: func() (bool, error) {
+				var count int
+				err := d.conn.QueryRow("SELECT COUNT(*) FROM pragma_table_info('alerts') WHERE name='event_db_ids'").Scan(&count)
+				return count == 0, err
+			},
+			exec: func() error {
+				_, err := d.conn.Exec("ALTER TABLE alerts ADD COLUMN event_db_ids TEXT")
+				return err
+			},
+		},
+	}
+
+	for _, m := range migrations {
+		needsMigration, err := m.check()
+		if err != nil {
+			return fmt.Errorf("migration check failed for %s: %w", m.name, err)
+		}
+		if needsMigration {
+			if err := m.exec(); err != nil {
+				return fmt.Errorf("migration failed for %s: %w", m.name, err)
+			}
+		}
+	}
+
 	return nil
 }
 

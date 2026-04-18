@@ -4,8 +4,6 @@ package api
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"runtime"
 	"time"
 

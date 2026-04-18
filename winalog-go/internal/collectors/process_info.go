@@ -82,7 +82,7 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 		}
 
 		if exePath != "" && !strings.HasSuffix(strings.ToLower(exePath), ".tmp") {
-			sigInfo := forensics.VerifySignature(exePath)
+			sigInfo, _ := forensics.VerifySignature(exePath)
 			if sigInfo != nil {
 				proc.IsSigned = sigInfo.Status == "Valid"
 				if sigInfo.Status != "Error" && sigInfo.Status != "Unsupported" {

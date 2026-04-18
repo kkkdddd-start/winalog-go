@@ -56,10 +56,11 @@ func NewAlertRepo(db *DB) *AlertRepo {
 
 func (r *AlertRepo) Insert(alert *types.Alert) error {
 	query := `
-		INSERT INTO alerts (rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		INSERT INTO alerts (rule_name, severity, message, event_ids, event_db_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	eventIDsJSON, _ := json.Marshal(alert.EventIDs)
+	eventDBIDsJSON, _ := json.Marshal(alert.EventDBIDs)
 	mitreJSON, _ := json.Marshal(alert.MITREAttack)
 
 	var resolvedTime interface{}
@@ -72,6 +73,7 @@ func (r *AlertRepo) Insert(alert *types.Alert) error {
 		alert.Severity,
 		alert.Message,
 		string(eventIDsJSON),
+		string(eventDBIDsJSON),
 		alert.FirstSeen,
 		alert.LastSeen,
 		alert.Count,
@@ -93,6 +95,7 @@ func (r *AlertRepo) Update(alert *types.Alert) error {
 			severity = ?,
 			message = ?,
 			event_ids = ?,
+			event_db_ids = ?,
 			first_seen = ?,
 			last_seen = ?,
 			count = ?,
@@ -106,6 +109,7 @@ func (r *AlertRepo) Update(alert *types.Alert) error {
 		WHERE id = ?`
 
 	eventIDsJSON, _ := json.Marshal(alert.EventIDs)
+	eventDBIDsJSON, _ := json.Marshal(alert.EventDBIDs)
 	mitreJSON, _ := json.Marshal(alert.MITREAttack)
 
 	var resolvedTime interface{}
@@ -118,6 +122,7 @@ func (r *AlertRepo) Update(alert *types.Alert) error {
 		alert.Severity,
 		alert.Message,
 		string(eventIDsJSON),
+		string(eventDBIDsJSON),
 		alert.FirstSeen,
 		alert.LastSeen,
 		alert.Count,
@@ -135,7 +140,7 @@ func (r *AlertRepo) Update(alert *types.Alert) error {
 
 func (r *AlertRepo) GetByID(id int64) (*types.Alert, error) {
 	query := `
-		SELECT id, rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
+		SELECT id, rule_name, severity, message, event_ids, event_db_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
 		FROM alerts WHERE id = ?`
 
 	row := r.db.QueryRow(query, id)
@@ -184,7 +189,7 @@ func (r *AlertRepo) List(query *AlertQuery) ([]*types.Alert, int64, error) {
 
 	offset := (query.Page - 1) * query.PageSize
 	selectQuery := fmt.Sprintf(`
-		SELECT id, rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
+		SELECT id, rule_name, severity, message, event_ids, event_db_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
 		FROM alerts %s
 		ORDER BY first_seen DESC
 		LIMIT ? OFFSET ?`, whereClause)
@@ -221,8 +226,8 @@ func (r *AlertRepo) InsertBatch(alerts []*types.Alert) error {
 	defer unlock()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO alerts (rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		INSERT INTO alerts (rule_name, severity, message, event_ids, event_db_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -230,6 +235,7 @@ func (r *AlertRepo) InsertBatch(alerts []*types.Alert) error {
 
 	for _, alert := range alerts {
 		eventIDsJSON, _ := json.Marshal(alert.EventIDs)
+		eventDBIDsJSON, _ := json.Marshal(alert.EventDBIDs)
 		mitreJSON, _ := json.Marshal(alert.MITREAttack)
 
 		var resolvedTime interface{}
@@ -242,6 +248,7 @@ func (r *AlertRepo) InsertBatch(alerts []*types.Alert) error {
 			alert.Severity,
 			alert.Message,
 			string(eventIDsJSON),
+			string(eventDBIDsJSON),
 			alert.FirstSeen,
 			alert.LastSeen,
 			alert.Count,
@@ -322,7 +329,7 @@ func (r *AlertRepo) Query(filter *AlertFilter) ([]*types.Alert, error) {
 	}
 
 	selectQuery := fmt.Sprintf(`
-		SELECT id, rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
+		SELECT id, rule_name, severity, message, event_ids, event_db_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
 		FROM alerts %s
 		ORDER BY first_seen DESC
 		LIMIT ? OFFSET ?`, whereClause)
@@ -521,7 +528,7 @@ func (r *AlertRepo) MarkFalsePositive(id int64, reason string) error {
 
 func (r *AlertRepo) GetUnresolved() ([]*types.Alert, error) {
 	query := `
-		SELECT id, rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
+		SELECT id, rule_name, severity, message, event_ids, event_db_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
 		FROM alerts WHERE resolved = 0 ORDER BY first_seen DESC`
 
 	rows, err := r.db.Query(query)
@@ -544,7 +551,7 @@ func (r *AlertRepo) GetUnresolved() ([]*types.Alert, error) {
 
 func (r *AlertRepo) GetByRuleName(ruleName string) ([]*types.Alert, error) {
 	query := `
-		SELECT id, rule_name, severity, message, event_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
+		SELECT id, rule_name, severity, message, event_ids, event_db_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
 		FROM alerts WHERE rule_name = ? ORDER BY first_seen DESC`
 
 	rows, err := r.db.Query(query, ruleName)
@@ -646,7 +653,7 @@ func (r *AlertRepo) CountByRule() ([]*types.RuleCount, error) {
 
 func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error) {
 	var a types.Alert
-	var eventIDsJSON, mitreJSON sql.NullString
+	var eventIDsJSON, eventDBIDsJSON, mitreJSON sql.NullString
 	var resolvedTime, firstSeenStr, lastSeenStr sql.NullString
 	var notes sql.NullString
 
@@ -656,6 +663,7 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 		&a.Severity,
 		&a.Message,
 		&eventIDsJSON,
+		&eventDBIDsJSON,
 		&firstSeenStr,
 		&lastSeenStr,
 		&a.Count,
@@ -685,6 +693,11 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 	if eventIDsJSON.Valid {
 		if err := json.Unmarshal([]byte(eventIDsJSON.String), &a.EventIDs); err != nil {
 			return nil, fmt.Errorf("failed to parse event_ids: %w", err)
+		}
+	}
+	if eventDBIDsJSON.Valid {
+		if err := json.Unmarshal([]byte(eventDBIDsJSON.String), &a.EventDBIDs); err != nil {
+			return nil, fmt.Errorf("failed to parse event_db_ids: %w", err)
 		}
 	}
 	if mitreJSON.Valid {
@@ -707,7 +720,7 @@ func scanAlert(row interface{ Scan(...interface{}) error }) (*types.Alert, error
 
 func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 	var a types.Alert
-	var eventIDsJSON, mitreJSON sql.NullString
+	var eventIDsJSON, eventDBIDsJSON, mitreJSON sql.NullString
 	var resolvedTime, firstSeenStr, lastSeenStr sql.NullString
 	var notes sql.NullString
 
@@ -717,6 +730,7 @@ func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 		&a.Severity,
 		&a.Message,
 		&eventIDsJSON,
+		&eventDBIDsJSON,
 		&firstSeenStr,
 		&lastSeenStr,
 		&a.Count,
@@ -746,6 +760,11 @@ func scanAlertFromRows(rows *sql.Rows) (*types.Alert, error) {
 	if eventIDsJSON.Valid {
 		if err := json.Unmarshal([]byte(eventIDsJSON.String), &a.EventIDs); err != nil {
 			return nil, fmt.Errorf("failed to parse event_ids: %w", err)
+		}
+	}
+	if eventDBIDsJSON.Valid {
+		if err := json.Unmarshal([]byte(eventDBIDsJSON.String), &a.EventDBIDs); err != nil {
+			return nil, fmt.Errorf("failed to parse event_db_ids: %w", err)
 		}
 	}
 	if mitreJSON.Valid {

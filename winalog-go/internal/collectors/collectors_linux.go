@@ -4,10 +4,7 @@ package collectors
 
 import (
 	"context"
-	"errors"
 )
-
-var ErrNotSupported = errors.New("this feature requires Windows")
 
 func ListProcesses() ([]Process, error) {
 	return nil, ErrNotSupported

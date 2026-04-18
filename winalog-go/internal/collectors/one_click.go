@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/forensics"
-	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
@@ -108,7 +107,6 @@ func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, 
 		}
 	}
 
-	startTime := time.Now()
 	result, err := c.FullCollect(ctx)
 	if err != nil {
 		return &OneClickResult{
@@ -672,4 +670,48 @@ func (c *OneClickCollector) GenerateCollectReport(success bool, outputDir string
 	}
 
 	return os.WriteFile(reportPath, []byte(report.String()), 0600)
+}
+
+type AmcacheEntry struct {
+	Path   string `json:"path"`
+	SHA1   string `json:"sha1"`
+	Date   string `json:"date"`
+	Volume string `json:"volume"`
+}
+
+type UserAssistEntry struct {
+	Name       string `json:"name"`
+	LastUpdate string `json:"last_update"`
+	Count      int    `json:"count"`
+}
+
+type USNJournalEntry struct {
+	SequenceNumber uint64 `json:"sequence_number"`
+	Timestamp      string `json:"timestamp"`
+	MajorFunc      uint32 `json:"major_func"`
+	MinorFunc      uint32 `json:"minor_func"`
+	Flags          uint32 `json:"flags"`
+	FileName       string `json:"file_name"`
+}
+
+type ShimCacheEntry struct {
+	Path         string `json:"path"`
+	LastModified string `json:"last_modified"`
+	Size         uint64 `json:"size"`
+}
+
+func GetAmcache() ([]AmcacheEntry, error) {
+	return []AmcacheEntry{}, nil
+}
+
+func GetUserAssist() ([]UserAssistEntry, error) {
+	return []UserAssistEntry{}, nil
+}
+
+func GetUSNJournal(drive string) ([]USNJournalEntry, error) {
+	return []USNJournalEntry{}, nil
+}
+
+func GetShimCache() ([]ShimCacheEntry, error) {
+	return []ShimCacheEntry{}, nil
 }

@@ -55,6 +55,25 @@ type FilterToConsumerBinding struct {
 	ConsumerReference string
 }
 
+type WMIEventConsumer struct {
+	Name        string
+	Type        string
+	CommandLine string
+	ScriptFile  string
+}
+
+type WMIEventFilter struct {
+	Name      string
+	Query     string
+	Namespace string
+}
+
+type WMIBinding struct {
+	FilterName   string
+	ConsumerName string
+	Namespace    string
+}
+
 func (d *WMIPersistenceDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	detections := make([]*Detection, 0)
 

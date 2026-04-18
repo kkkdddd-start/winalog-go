@@ -56,6 +56,7 @@ type Alert struct {
 	Severity      Severity   `json:"severity" db:"severity"`
 	Message       string     `json:"message" db:"message"`
 	EventIDs      []int32    `json:"event_ids" db:"event_ids"`
+	EventDBIDs    []int64    `json:"event_db_ids" db:"event_db_ids"`
 	FirstSeen     time.Time  `json:"first_seen" db:"first_seen"`
 	LastSeen      time.Time  `json:"last_seen" db:"last_seen"`
 	Count         int        `json:"count" db:"count"`
@@ -70,6 +71,7 @@ type Alert struct {
 
 func (a *Alert) ToMap() map[string]interface{} {
 	eventIDsJSON, _ := json.Marshal(a.EventIDs)
+	eventDBIDsJSON, _ := json.Marshal(a.EventDBIDs)
 	mitreJSON, _ := json.Marshal(a.MITREAttack)
 
 	m := map[string]interface{}{
@@ -77,6 +79,7 @@ func (a *Alert) ToMap() map[string]interface{} {
 		"severity":       a.Severity,
 		"message":        a.Message,
 		"event_ids":      string(eventIDsJSON),
+		"event_db_ids":   string(eventDBIDsJSON),
 		"first_seen":     a.FirstSeen,
 		"last_seen":      a.LastSeen,
 		"count":          a.Count,

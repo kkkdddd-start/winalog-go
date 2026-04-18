@@ -205,15 +205,16 @@ func (e *Engine) EvaluateBatch(ctx context.Context, events []*types.Event) ([]*t
 }
 
 func (e *Engine) createAlert(rule *rules.AlertRule, event *types.Event) *types.Alert {
-	now := time.Now()
+	eventTime := event.Timestamp
 
 	return &types.Alert{
 		RuleName:    rule.Name,
 		Severity:    types.Severity(rule.Severity),
 		Message:     rule.BuildMessage(event),
 		EventIDs:    []int32{event.EventID},
-		FirstSeen:   now,
-		LastSeen:    now,
+		EventDBIDs:  []int64{event.ID},
+		FirstSeen:   eventTime,
+		LastSeen:    eventTime,
 		Count:       1,
 		MITREAttack: []string{rule.MitreAttack},
 		LogName:     event.LogName,

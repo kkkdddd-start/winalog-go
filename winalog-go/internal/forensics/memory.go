@@ -182,15 +182,15 @@ func (c *MemoryCollector) collectModules(pid uint32) ([]MemoryModule, error) {
 		var modName [windows.MAX_PATH]uint16
 		windows.GetModuleBaseName(hProcess, hModule, &modName[0], uint32(len(modName)))
 
-		var modSize uint64
 		var modInfo windows.ModuleInfo
-		if windows.GetModuleInformation(hProcess, hModule, &modInfo, uint32(unsafe.Sizeof(modInfo))) {
-			modSize = modInfo.SizeOfImage
+		err := windows.GetModuleInformation(hProcess, hModule, &modInfo, uint32(unsafe.Sizeof(modInfo)))
+		if err != nil {
+			continue
 		}
 
 		modules = append(modules, MemoryModule{
-			BaseAddress: uint64(modInfo.BaseAddress),
-			Size:        modSize,
+			BaseAddress: uint64(hModule),
+			Size:        uint64(modInfo.SizeOfImage),
 			Name:        windows.UTF16ToString(modName[:]),
 		})
 	}
@@ -235,16 +235,16 @@ func readProcessMemory(pid uint32) ([]byte, error) {
 	defer windows.CloseHandle(hProcess)
 
 	var memInfo windows.MemoryBasicInformation
-	var bytesRead uint64
 	var buffer bytes.Buffer
 
+	address := uintptr(0)
 	for {
-		err := windows.VirtualQueryEx(hProcess, windows.Pointer(memInfo.BaseAddress), &memInfo, uint32(unsafe.Sizeof(memInfo)))
-		if err != nil || memInfo.BaseAddress == nil {
+		err := windows.VirtualQueryEx(hProcess, address, &memInfo, unsafe.Sizeof(memInfo))
+		if err != nil {
 			break
 		}
 
-		if memInfo.State == windows.MEM_COMMIT && memInfo.Protect&windows.PAGE_READABLE != 0 {
+		if memInfo.State == windows.MEM_COMMIT && memInfo.Protect&0x02 != 0 {
 			size := uint64(memInfo.RegionSize)
 
 			if size > 100*1024*1024 {
@@ -252,23 +252,24 @@ func readProcessMemory(pid uint32) ([]byte, error) {
 			}
 
 			data := make([]byte, size)
-			var nr uint64
-
-			success, _, _ := windows.ReadProcessMemory(
+			var nr uintptr
+			err := windows.ReadProcessMemory(
 				hProcess,
 				memInfo.BaseAddress,
 				&data[0],
-				uint64(len(data)),
+				uintptr(len(data)),
 				&nr,
 			)
 
-			if success && nr > 0 {
+			if err == nil && nr > 0 {
 				buffer.Write(data[:nr])
-				bytesRead += nr
 			}
 		}
 
-		memInfo.BaseAddress = windows.Pointer(uintptr(memInfo.BaseAddress) + uintptr(memInfo.RegionSize))
+		address = uintptr(memInfo.BaseAddress) + uintptr(memInfo.RegionSize)
+		if address == 0 {
+			break
+		}
 	}
 
 	return buffer.Bytes(), nil
@@ -472,8 +473,8 @@ func QueryMemoryRegions(pid uint32) (*MemoryRegions, error) {
 	var address uintptr = 0
 
 	for {
-		err := windows.VirtualQueryEx(hProcess, windows.Pointer(address), &memInfo, uint32(unsafe.Sizeof(memInfo)))
-		if err != nil || memInfo.BaseAddress == nil {
+		err := windows.VirtualQueryEx(hProcess, address, &memInfo, unsafe.Sizeof(memInfo))
+		if err != nil {
 			break
 		}
 
@@ -487,6 +488,9 @@ func QueryMemoryRegions(pid uint32) (*MemoryRegions, error) {
 		})
 
 		address = uintptr(memInfo.BaseAddress) + uintptr(memInfo.RegionSize)
+		if address == 0 {
+			break
+		}
 	}
 
 	return &MemoryRegions{Regions: regions}, nil

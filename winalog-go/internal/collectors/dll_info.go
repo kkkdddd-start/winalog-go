@@ -5,6 +5,7 @@ package collectors
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 	"unsafe"
 

@@ -1604,6 +1604,504 @@ var ruleDetails = map[string]RuleDetail{
 		Recommendation: "1. 立即隔离可疑主机\n2. 检查是否使用了伪造的复制请求\n3. 审查AD安全日志中的复制事件\n4. 限制服务账户的敏感权限\n5. 部署AD防火墙和监控",
 		RealCase:       "2014年德国电信遭Golden Ticket攻击，攻击者使用DCSync获取凭据后建立持久化。",
 	},
+	"admin-login-unusual": {
+		RuleID:         "T1078.004",
+		Explanation:    "管理员账户从异常位置或时间登录是凭证被盗的重要信号。攻击者获取管理员凭据后通常会尝试横向移动。",
+		Recommendation: "1. 确认登录是否由合法管理员执行\n2. 检查登录来源IP和地理位置\n3. 审查该账户的所有远程会话\n4. 启用MFA保护管理员账户",
+		RealCase:       "攻击者通过钓鱼获取管理员凭据后，从外部IP登录企业内网。",
+	},
+	"account-lockout-alert": {
+		RuleID:         "T1078",
+		Explanation:    "账户被锁定通常是由于暴力破解攻击导致的。攻击者尝试多次错误密码后会锁定账户。",
+		Recommendation: "1. 确认是否为合法用户忘记密码\n2. 检查锁定来源IP\n3. 审查安全日志中的登录失败记录\n4. 启用账户锁定策略",
+		RealCase:       "攻击者使用密码字典对企业邮箱账户进行暴力破解，导致多个账户被锁定。",
+	},
+	"network-connection-alert": {
+		RuleID:         "T1059",
+		Explanation:    "可疑网络连接可能表示后门程序运行或C2通信。攻击者常通过异常网络连接远程控制受感染主机。",
+		Recommendation: "1. 检查连接的目的地和端口\n2. 分析进程的网络行为\n3. 使用防火墙规则阻止可疑连接\n4. 部署EDR监控网络活动",
+		RealCase:       "某企业服务器被植入后门，定期向外部C2服务器发送心跳。",
+	},
+	"usb-device-insertion": {
+		RuleID:         "T1091",
+		Explanation:    "USB设备接入可能导致恶意软件感染或数据窃取。攻击者有时使用USB设备进行物理隔离网络的攻击。",
+		Recommendation: "1. 确认USB设备来源和用途\n2. 禁用自动运行功能\n3. 部署USB设备控制策略\n4. 监控USB设备访问敏感文件",
+		RealCase:       "某核设施的隔离网络通过USB设备被Stuxnet蠕虫感染。",
+	},
+	"pass-the-hash-suspect": {
+		RuleID:         "T1550.002",
+		Explanation:    "Pass-the-Hash攻击允许攻击者使用密码哈希值进行认证，无需明文密码。这是一种常见的横向移动技术。",
+		Recommendation: "1. 启用Credential Guard保护凭据\n2. 限制管理员账户的滥用\n3. 部署EPA/EDD防护\n4. 监控异常登录模式",
+		RealCase:       "攻击者使用Mimikatz提取哈希值，通过Pass-the-Hash技术横向移动到多台服务器。",
+	},
+	"encoded-powershell-alert": {
+		RuleID:         "T1059.001",
+		Explanation:    "编码的PowerShell命令是攻击者常用的规避技术。编码后的命令难以被传统安全设备检测。",
+		Recommendation: "1. 启用PowerShell脚本块日志记录\n2. 监控异常的PowerShell执行\n3. 部署约束语言模式\n4. 考虑限制PowerShell使用",
+		RealCase:       "攻击者使用Base64编码的PowerShell命令下载并执行恶意脚本。",
+	},
+	"remote-tasking-creation": {
+		RuleID:         "T1053.005",
+		Explanation:    "远程创建计划任务通常意味着攻击者已经获得了远程执行权限。这是横向移动的典型特征。",
+		Recommendation: "1. 确认任务创建来源\n2. 检查任务执行的操作\n3. 审查远程连接日志\n4. 限制远程计划任务创建权限",
+		RealCase:       "攻击者通过远程桌面创建计划任务，实现持久化控制。",
+	},
+	"suspicious-run-key": {
+		RuleID:         "T1547.001",
+		Explanation:    "注册表Run键修改是最常见的持久化技术之一。恶意软件通过Run键实现开机自启动。",
+		Recommendation: "1. 检查Run键中的程序\n2. 分析程序来源和哈希\n3. 使用注册表监控工具\n4. 部署应用程序白名单",
+		RealCase:       "某木马通过修改Run键实现持久化，开机后自动连接C2服务器。",
+	},
+	"suspicious-dll-load": {
+		RuleID:         "T1574.001",
+		Explanation:    "从异常路径加载DLL可能导致DLL劫持攻击。攻击者通过替换合法DLL来执行恶意代码。",
+		Recommendation: "1. 检查DLL加载来源\n2. 监控异常路径的DLL加载\n3. 使用Safe DLL Search Mode\n4. 部署EDR监控DLL加载",
+		RealCase:       "攻击者利用DLL搜索顺序劫持，在系统目录植入恶意DLL。",
+	},
+	"wmi-suspicious": {
+		RuleID:         "T1047",
+		Explanation:    "WMI活动常被攻击者用于持久化和远程执行。WMI Event Subscription是高级持久化技术。",
+		Recommendation: "1. 监控WMI Event Subscription创建\n2. 审查WMI消费者的来源\n3. 限制WMI远程访问权限\n4. 部署WMI监控",
+		RealCase:       "APT29使用WMI Event Subscription实现无文件持久化。",
+	},
+	"registry-services-modification": {
+		RuleID:         "T1543.003",
+		Explanation:    "修改注册表服务键可以改变服务行为或创建新服务。攻击者常通过修改服务实现持久化。",
+		Recommendation: "1. 监控服务相关注册表修改\n2. 检查修改的来源程序\n3. 审查新服务的合法性\n4. 启用服务创建审核",
+		RealCase:       "攻击者修改现有服务的二进制路径为恶意程序。",
+	},
+	"registry-hive-modification": {
+		RuleID:         "T1003.002",
+		Explanation:    "注册表Hive修改可能表示凭据存储被篡改。SAM hive包含本地账户凭据哈希。",
+		Recommendation: "1. 确认为谁执行了修改\n2. 检查是否有其他凭据访问迹象\n3. 立即重置受影响账户密码\n4. 部署注册表监控",
+		RealCase:       "攻击者通过修改注册表获取SAM hive备份进行离线破解。",
+	},
+	"registry-wmi-persistence": {
+		RuleID:         "T1546.003",
+		Explanation:    "WMI持久化通过注册表实现。攻击者创建WMI Event Consumer来实现定时执行恶意代码。",
+		Recommendation: "1. 监控WMI Event Consumer创建\n2. 检查注册表中的WMI相关键\n3. 限制WMI提供者数量\n4. 启用WMI审核",
+		RealCase:       "攻击者使用WMI Event Consumer实现无文件持久化攻击。",
+	},
+	"registry-bypass-detection": {
+		RuleID:         "T1548.001",
+		Explanation:    "AlwaysInstallElevated注册表键被利用可实现权限提升。攻击者以此绕过UAC安装恶意MSI包。",
+		Recommendation: "1. 禁用AlwaysInstallElevated策略\n2. 启用UAC审核\n3. 监控注册表键修改\n4. 限制用户安装权限",
+		RealCase:       "攻击者修改注册表启用AlwaysInstallElevated，然后以system权限安装恶意MSI。",
+	},
+	"wmic-suspicious": {
+		RuleID:         "T1047",
+		Explanation:    "WMIC命令常被攻击者用于远程执行和信息收集。攻击者使用WMIC绕过部分安全检测。",
+		Recommendation: "1. 监控WMIC远程执行\n2. 限制WMIC使用权限\n3. 启用命令历史记录\n4. 部署脚本执行审核",
+		RealCase:       "攻击者使用WMIC远程执行PowerShell命令窃取凭据。",
+	},
+	"winrm-suspicious": {
+		RuleID:         "T1028",
+		Explanation:    "WinRM活动可能表示攻击者正在进行横向移动或远程控制。WinRM是合法的远程管理协议。",
+		Recommendation: "1. 确认WinRM连接来源\n2. 审查WinRM会话日志\n3. 限制WinRM使用范围\n4. 监控异常WinRM行为",
+		RealCase:       "攻击者利用WinRM横向移动到多台服务器。",
+	},
+	"winrm-remote-connection": {
+		RuleID:         "T1028",
+		Explanation:    "WinRM远程连接是Windows内置的远程管理协议。异常连接可能表示未授权访问。",
+		Recommendation: "1. 确认连接来源和目标\n2. 审查WinRM日志\n3. 限制允许连接的用户\n4. 启用WinRM审核",
+		RealCase:       "攻击者通过WinRM远程连接控制多台服务器。",
+	},
+	"domain-recon": {
+		RuleID:         "T1018",
+		Explanation:    "域内侦察活动包括枚举用户、计算机、组等信息。攻击者在获得初始访问后会进行广泛侦察。",
+		Recommendation: "1. 监控异常的AD查询\n2. 审查登录后的信息访问\n3. 部署AD安全监控\n4. 限制敏感信息访问权限",
+		RealCase:       "攻击者使用BloodHound进行域内侦察，绘制完整的攻击路径图。",
+	},
+	"domain-admin-login": {
+		RuleID:         "T1078.002",
+		Explanation:    "域管理员登录到域内主机是高风险操作。如果被攻击者利用，将导致整个域被控制。",
+		Recommendation: "1. 限制域管理员的登录范围\n2. 使用特权访问工作站\n3. 监控管理员登录模式\n4. 部署MFA保护管理员账户",
+		RealCase:       "攻击者获取域管理员凭据后登录多台服务器，提权并横向移动。",
+	},
+	"dc-sync-attack": {
+		RuleID:         "T1003.004",
+		Explanation:    "DCSync攻击伪装成域控制器同步请求，骗取所有用户的密码哈希。这是获取域凭据的高级技术。",
+		Recommendation: "1. 监控异常的复制请求\n2. 限制敏感账户的复制权限\n3. 部署AD防火墙\n4. 启用复制审核",
+		RealCase:       "攻击者使用Mimikatz的DCSync功能获取所有用户密码哈希。",
+	},
+	"powershell-remoting": {
+		RuleID:         "T1028.003",
+		Explanation:    "PowerShell远程执行允许管理员远程运行命令。攻击者利用此技术进行横向移动。",
+		Recommendation: "1. 限制PowerShell Remoting使用\n2. 启用会话配置审核\n3. 监控远程执行历史\n4. 使用JEA限制权限",
+		RealCase:       "攻击者通过PowerShell Remoting横向移动到多台服务器。",
+	},
+	"powershell-download": {
+		RuleID:         "T1105",
+		Explanation:    "PowerShell恶意下载表示攻击者正在下载额外的恶意工具。这是入侵后阶段的典型行为。",
+		Recommendation: "1. 监控PowerShell网络连接\n2. 启用脚本块日志\n3. 限制下载源\n4. 部署Web过滤",
+		RealCase:       "攻击者使用PowerShell从C2服务器下载Mimikatz。",
+	},
+	"certutil-download": {
+		RuleID:         "T1105",
+		Explanation:    "CertUtil被攻击者用于下载文件，因为它是一个合法工具，容易绕过安全检测。",
+		Recommendation: "1. 监控CertUtil的网络使用\n2. 阻止CertUtil访问网络\n3. 启用命令参数审核\n4. 部署应用白名单",
+		RealCase:       "攻击者使用certutil.exe从远程服务器下载恶意可执行文件。",
+	},
+	"smb-lateral-movement": {
+		RuleID:         "T1021.002",
+		Explanation:    "SMB横向移动允许攻击者访问远程共享。攻击者使用SMB协议在网络内传播。",
+		Recommendation: "1. 限制SMB共享访问\n2. 监控异常SMB流量\n3. 禁用SMBv1\n4. 部署网络分段",
+		RealCase:       "攻击者使用SMB横向移动到文件服务器，加密所有文件。",
+	},
+	"smb-unauthenticated-access": {
+		RuleID:         "T1021.002",
+		Explanation:    "未认证的SMB访问可能是攻击者正在尝试匿名枚举网络资源。",
+		Recommendation: "1. 限制匿名SMB访问\n2. 监控失败的SMB连接\n3. 禁用SMBv1\n4. 启用签名和加密",
+		RealCase:       "攻击者使用空会话枚举网络共享和用户信息。",
+	},
+	"rdp-lateral-movement": {
+		RuleID:         "T1021.001",
+		Explanation:    "RDP横向移动是攻击者常用的技术。从外部IP的RDP连接需要特别注意。",
+		Recommendation: "1. 限制RDP远程访问\n2. 启用RDP网络级认证\n3. 监控异常RDP登录\n4. 封锁RDP到互联网",
+		RealCase:       "某企业服务器开放RDP到互联网，被攻击者暴力破解后横向移动。",
+	},
+	"rdp-brute-force": {
+		RuleID:         "T1110.001",
+		Explanation:    "RDP暴力破解是常见的初始访问方式。攻击者使用自动化工具尝试大量密码组合。",
+		Recommendation: "1. 限制RDP登录尝试次数\n2. 使用强密码策略\n3. 启用账户锁定\n4. 部署MFA",
+		RealCase:       "攻击者对RDP服务进行暴力破解，获得管理员权限。",
+	},
+	"wmi-event-subscription": {
+		RuleID:         "T1546.003",
+		Explanation:    "WMI Event Subscription是高级持久化技术。攻击者使用它在特定条件满足时执行恶意代码。",
+		Recommendation: "1. 监控WMI Event Consumer创建\n2. 检查MSFT_MSIE消费者\n3. 限制WMI提供者权限\n4. 启用详细WMI审核",
+		RealCase:       "FIN7组织使用WMI Event Subscription实现定时执行恶意脚本。",
+	},
+	"com-object-hijacking": {
+		RuleID:         "T1546.001",
+		Explanation:    "COM对象劫持通过修改注册表将合法COM对象替换为恶意对象。这是隐蔽的持久化技术。",
+		Recommendation: "1. 监控COM相关注册表修改\n2. 建立COM对象基线\n3. 启用注册表审核\n4. 使用EDR监控COM活动",
+		RealCase:       "攻击者劫持系统COM对象，实现恶意代码持久化执行。",
+	},
+	"dll-search-order-hijacking": {
+		RuleID:         "T1574.001",
+		Explanation:    "DLL搜索顺序劫持利用Windows DLL加载顺序，将恶意DLL放置在合法程序之前。",
+		Recommendation: "1. 启用Safe DLL Search Mode\n2. 监控异常DLL加载\n3. 使用完整路径指定系统DLL\n4. 部署EDR检测",
+		RealCase:       "攻击者通过DLL劫持实现Web服务器被控。",
+	},
+	"service-dll-hijacking": {
+		RuleID:         "T1574.002",
+		Explanation:    "服务DLL劫持通过替换服务加载的DLL来以服务权限执行恶意代码。",
+		Recommendation: "1. 监控服务相关DLL加载\n2. 使用绝对路径指定服务DLL\n3. 启用服务权限隔离\n4. 部署DLL加载审核",
+		RealCase:       "攻击者通过DLL劫持实现以SYSTEM权限执行恶意代码。",
+	},
+	"dns-tunneling": {
+		RuleID:         "T1071.004",
+		Explanation:    "DNS隧道利用DNS协议传输数据，绕过网络防火墙。攻击者常用此技术进行数据外泄。",
+		Recommendation: "1. 监控异常的DNS查询\n2. 阻止非常用域名的DNS解析\n3. 启用DNS SEC\n4. 使用DNS防火墙",
+		RealCase:       "攻击者使用DNS隧道从隔离网络外传敏感数据。",
+	},
+	"cobalt-strike-beacon": {
+		RuleID:         "T1027.005",
+		Explanation:    "Cobalt Strike是流行的渗透测试工具，攻击者也广泛使用。Beacon是它的远控木马。",
+		Recommendation: "1. 隔离感染主机\n2. 阻断Beacon通信\n3. 分析Beacon特征\n4. 清除持久化痕迹",
+		RealCase:       "某企业网络中被植入Cobalt Strike Beacon，长时间未被检测。",
+	},
+	"cobalt-strike-pipe": {
+		RuleID:         "T1021.002",
+		Explanation:    "Cobalt Strike命名管道是Beacon的通信管道。独特的管道名是Cobalt Strike的特征。",
+		Recommendation: "1. 监控命名管道创建\n2. 阻断msagent通信\n3. 使用EDR检测异常管道\n4. 隔离可疑主机",
+		RealCase:       "Cobalt Strike使用命名管道进行SMB Beacon通信。",
+	},
+	"suspicious-powershell-loop": {
+		RuleID:         "T1059.001",
+		Explanation:    "PowerShell循环执行可能表示攻击者正在等待命令或下载。长时间的循环是可疑的。",
+		Recommendation: "1. 监控长时间运行的PowerShell\n2. 审查循环中的网络活动\n3. 设置PowerShell执行超时\n4. 启用脚本块日志",
+		RealCase:       "攻击者使用PowerShell循环持续从C2服务器获取命令。",
+	},
+	"powershell-no-profile": {
+		RuleID:         "T1059.001",
+		Explanation:    "无Profile执行的PowerShell绕过了个人配置文件加载，是规避检测的常用技术。",
+		Recommendation: "1. 监控无Profile的PowerShell执行\n2. 启用PowerShell日志记录\n3. 限制PowerShell使用\n4. 部署约束语言模式",
+		RealCase:       "攻击者使用-nop -noni参数绕过PowerShell安全策略。",
+	},
+	"sysmon-network-suspicious-port": {
+		RuleID:         "T1043",
+		Explanation:    "连接到高位端口可能是后门或C2通信。常用端口以外的连接需要特别关注。",
+		Recommendation: "1. 监控高位端口连接\n2. 建立正常网络行为基线\n3. 封锁不必要的出站端口\n4. 使用网络防火墙",
+		RealCase:       "恶意软件连接到非常用端口的C2服务器。",
+	},
+	"sysmon-network-outbound": {
+		RuleID:         "T1049",
+		Explanation:    "可疑出站连接可能表示数据外泄或C2通信。需要分析连接的目的地和模式。",
+		Recommendation: "1. 监控所有出站连接\n2. 分析连接目的地\n3. 启用网络行为分析\n4. 使用数据丢失防护",
+		RealCase:       "攻击者将窃取的数据通过出站连接发送到外部服务器。",
+	},
+	"sysmon-dll-suspicious-path": {
+		RuleID:         "T1574.001",
+		Explanation:    "从可疑路径加载DLL是DLL劫持的典型特征。临时目录和网络路径是常见的加载源。",
+		Recommendation: "1. 监控异常路径的DLL加载\n2. 禁止从临时目录加载系统DLL\n3. 使用DLL签名验证\n4. 部署应用白名单",
+		RealCase:       "恶意软件从用户临时目录加载伪造的DLL。",
+	},
+	"sysmon-dll-lsass": {
+		RuleID:         "T1003.001",
+		Explanation:    "LSASS进程加载异常DLL是凭据窃取的强烈信号。Mimikatz常通过恶意DLL注入LSASS。",
+		Recommendation: "1. 立即隔离受感染主机\n2. 启用Credential Guard\n3. 监控LSASS的DLL加载\n4. 启用PPLEdit",
+		RealCase:       "攻击者使用Mimikatz通过恶意DLL从LSASS提取凭据。",
+	},
+	"sysmon-file-suspicious-location": {
+		RuleID:         "T1547.001",
+		Explanation:    "在可疑位置创建文件可能是攻击者在部署工具或持久化。临时目录和启动文件夹是常见目标。",
+		Recommendation: "1. 监控敏感目录的文件创建\n2. 限制临时目录的可执行权限\n3. 审核启动文件夹内容\n4. 使用应用白名单",
+		RealCase:       "攻击者在临时目录部署恶意可执行文件。",
+	},
+	"sysmon-file-executable": {
+		RuleID:         "T1127",
+		Explanation:    "在敏感位置创建可执行文件可能是攻击者在部署工具。需要分析文件来源和目的。",
+		Recommendation: "1. 监控可执行文件创建\n2. 限制可执行文件写入位置\n3. 使用文件完整性监控\n4. 启用文件签名验证",
+		RealCase:       "攻击者在系统目录创建恶意可执行文件。",
+	},
+	"sysmon-pipe-suspicious": {
+		RuleID:         "T1021.002",
+		Explanation:    "可疑命名管道可能是后门通信或进程注入。攻击者常使用命名管道进行本地通信。",
+		Recommendation: "1. 监控命名管道创建\n2. 分析管道的用途\n3. 限制pipe创建权限\n4. 使用EDR检测异常管道",
+		RealCase:       "Cobalt Strike使用命名管道进行进程间通信。",
+	},
+	"ueba-off-hours-login": {
+		RuleID:         "T1078",
+		Explanation:    "异常时间登录可能是被盗凭据或内部威胁的迹象。攻击者常选择非工作时间进行攻击。",
+		Recommendation: "1. 确认登录是否由合法用户执行\n2. 审查异常时间的登录\n3. 设置登录时间策略\n4. 启用MFA",
+		RealCase:       "攻击者在周末凌晨使用被盗凭据登录企业系统。",
+	},
+	"ueba-massive-file-access": {
+		RuleID:         "T1036",
+		Explanation:    "大量文件访问可能是数据窃取的前兆。攻击者在收集阶段会访问大量文件。",
+		Recommendation: "1. 监控大量文件访问\n2. 设置文件访问阈值告警\n3. 限制批量下载权限\n4. 使用DLP监控敏感文件",
+		RealCase:       "攻击者使用脚本批量复制敏感文件到可访问的共享目录。",
+	},
+	"ueba-privilege-escalation": {
+		RuleID:         "T1068",
+		Explanation:    "权限提升表示攻击者正在获取更高权限。可能利用漏洞或错误配置进行提权。",
+		Recommendation: "1. 审查提权事件\n2. 检查是否有漏洞利用\n3. 更新系统和应用程序\n4. 限制高权限账户使用",
+		RealCase:       "攻击者利用Windows漏洞将普通用户权限提升到SYSTEM。",
+	},
+	"amsi-bypass": {
+		RuleID:         "T1562.001",
+		Explanation:    "AMSI绕过是攻击者禁用反恶意软件接口以逃避检测。这是高级攻击的典型技术。",
+		Recommendation: "1. 监控AMSI相关注册表修改\n2. 检测AMSI绕过特征\n3. 启用详细PowerShell日志\n4. 使用内存保护",
+		RealCase:       "攻击者通过patch AMSI相关内存绕过反病毒检测。",
+	},
+	"etw-tampering": {
+		RuleID:         "T1562.006",
+		Explanation:    "ETW干扰是攻击者禁用Windows事件追踪以隐藏活动。ETW提供详细的事件日志。",
+		Recommendation: "1. 监控ETW提供者状态\n2. 检测ETW patch特征\n3. 启用内核审计\n4. 使用备用日志收集",
+		RealCase:       "攻击者patch ETW相关函数隐藏恶意PowerShell执行。",
+	},
+	"defender-realtime-disabled": {
+		RuleID:         "T1562.001",
+		Explanation:    "禁用实时保护是攻击者部署恶意软件的常用步骤。攻击者需要先禁用防病毒软件。",
+		Recommendation: "1. 确认为谁禁用了防护\n2. 立即重新启用防护\n3. 调查是否有恶意软件\n4. 使用篡改保护",
+		RealCase:       "勒索软件在加密文件前先禁用Windows Defender。",
+	},
+	"defender-exclusion-added": {
+		RuleID:         "T1562.001",
+		Explanation:    "添加防御排除是攻击者确保恶意软件不被检测的方法。排除路径常被用于隐藏恶意软件。",
+		Recommendation: "1. 审查所有排除项\n2. 确认排除的合法性\n3. 监控新的排除项\n4. 使用应用白名单",
+		RealCase:       "攻击者将临时目录添加到排除列表以隐藏恶意软件。",
+	},
+	"event-log-cleared-system": {
+		RuleID:         "T1070.001",
+		Explanation:    "系统日志清除是攻击者隐藏痕迹的常用手法。需要同时检查安全和系统日志。",
+		Recommendation: "1. 确认为谁执行了清除\n2. 检查是否有其他可疑活动\n3. 启用日志集中收集\n4. 设置删除告警",
+		RealCase:       "攻击者在获得权限后清除系统日志以隐藏入侵痕迹。",
+	},
+	"ntlm-v1-authentication": {
+		RuleID:         "T1550.002",
+		Explanation:    "NTLMv1认证容易受到中继攻击。攻击者可以拦截并重放NTLM认证进行横向移动。",
+		Recommendation: "1. 禁用NTLMv1\n2. 启用LM兼容性设置\n3. 监控NTLM使用\n4. 部署EPA",
+		RealCase:       "攻击者使用NTLM中继攻击获取管理员权限。",
+	},
+	"bloodhound-detection": {
+		RuleID:         "T1018",
+		Explanation:    "BloodHound用于枚举AD攻击路径。检测到此类工具表明攻击者正在进行侦察。",
+		Recommendation: "1. 隔离使用BloodHound的主机\n2. 审查AD查询日志\n3. 限制敏感AD查询权限\n4. 部署BloodHound检测",
+		RealCase:       "攻击者使用BloodHound识别域管理员攻击路径。",
+	},
+	"psexec-remote-execution": {
+		RuleID:         "T1570",
+		Explanation:    "PsExec是微软Sysinternals工具，常被攻击者用于远程执行。攻击者使用它进行横向移动。",
+		Recommendation: "1. 监控PsExec使用\n2. 限制PsExec访问\n3. 审核远程执行日志\n4. 部署最小权限原则",
+		RealCase:       "攻击者使用PsExec远程执行Mimikatz获取凭据。",
+	},
+	"certutil-download-suspect": {
+		RuleID:         "T1105",
+		Explanation:    "CertUtil用于下载文件是常见的攻击技术。CertUtil是合法工具，易被滥用。",
+		Recommendation: "1. 阻止CertUtil访问网络\n2. 监控CertUtil使用\n3. 启用命令行审核\n4. 使用应用白名单",
+		RealCase:       "攻击者使用certutil.exe下载恶意可执行文件。",
+	},
+	"bcdedit-modification": {
+		RuleID:         "T1542.003",
+		Explanation:    "BCD修改可实现攻击持久化或绕过安全启动。攻击者使用它来禁用安全功能。",
+		Recommendation: "1. 监控BCD修改\n2. 启用安全启动完整性\n3. 审核启动配置\n4. 使用BitLocker保护",
+		RealCase:       "攻击者使用bcdedit禁用安全启动和Windows Defender。",
+	},
+	"lsass-memory-dump": {
+		RuleID:         "T1003.001",
+		Explanation:    "LSASS内存转储是凭据窃取的主要方法。Mimikatz等工具直接从LSASS提取凭据。",
+		Recommendation: "1. 启用Credential Guard\n2. 监控LSASS访问\n3. 启用PPLEdit\n4. 使用LSASS保护",
+		RealCase:       "攻击者使用Mimikatz从LSASS转储凭据。",
+	},
+	"dcsync-attack": {
+		RuleID:         "T1003.006",
+		Explanation:    "DCSync攻击模拟域控制器同步获取所有用户凭据。这是获取域哈希的高级技术。",
+		Recommendation: "1. 监控复制请求来源\n2. 限制敏感账户的复制权限\n3. 启用AD复制审核\n4. 部署AD防火墙",
+		RealCase:       "攻击者使用Mimikatz的DCSync功能获取krbtgt哈希。",
+	},
+	"tunneling-tool-detected": {
+		RuleID:         "T1090.002",
+		Explanation:    "内网穿透工具允许攻击者建立持久隧道。frp、ngrok等工具被攻击者滥用。",
+		Recommendation: "1. 隔离可疑主机\n2. 阻断隧道软件运行\n3. 监控异常出站连接\n4. 使用网络分段",
+		RealCase:       "攻击者在受感染主机部署frp建立反向隧道。",
+	},
+	"cloud-storage-upload": {
+		RuleID:         "T1567.002",
+		Explanation:    "上传到云存储可能是数据外泄。攻击者常将窃取的数据上传到云盘。",
+		Recommendation: "1. 监控云存储上传\n2. 使用DLP控制敏感数据\n3. 阻止未授权云存储访问\n4. 审核云API使用",
+		RealCase:       "攻击者将窃取的文档上传到攻击者控制的云存储。",
+	},
+	"ransomware-file-encryption": {
+		RuleID:         "T1486",
+		Explanation:    "勒索软件加密文件是最终攻击阶段。加密模式是勒索软件的典型特征。",
+		Recommendation: "1. 立即隔离受感染主机\n2. 阻断勒索软件通信\n3. 不要支付赎金\n4. 从备份恢复",
+		RealCase:       "WannaCry勒索软件在数小时内加密了全球数十万台电脑。",
+	},
+	"startup-folder-write": {
+		RuleID:         "T1547.001",
+		Explanation:    "启动文件夹写入是持久化技术。恶意软件通过在启动文件夹创建快捷方式或程序。",
+		Recommendation: "1. 审核启动文件夹内容\n2. 监控启动文件夹写入\n3. 使用应用程序控制\n4. 启用启动文件夹保护",
+		RealCase:       "攻击者在启动文件夹创建恶意快捷方式实现持久化。",
+	},
+	"registry-service-persistence": {
+		RuleID:         "T1543.003",
+		Explanation:    "注册表服务键修改用于持久化。攻击者创建或修改服务注册表键。",
+		Recommendation: "1. 审核服务相关注册表\n2. 监控服务创建和修改\n3. 限制服务创建权限\n4. 使用服务监控工具",
+		RealCase:       "攻击者修改服务注册表指向恶意可执行文件。",
+	},
+	"winrm-brute-force": {
+		RuleID:         "T1110.001",
+		Explanation:    "WinRM暴力破解是远程攻击的一种。攻击者针对WinRM服务尝试大量密码。",
+		Recommendation: "1. 限制登录尝试次数\n2. 使用强密码\n3. 启用账户锁定\n4. 监控失败登录",
+		RealCase:       "攻击者使用PowerShell脚本对WinRM服务进行暴力破解。",
+	},
+	"winrm-unauthorized-enable": {
+		RuleID:         "T1028",
+		Explanation:    "未授权启用WinRM服务表示攻击者可能正在建立远程控制通道。",
+		Recommendation: "1. 审核WinRM服务状态\n2. 限制服务启动权限\n3. 监控远程启用操作\n4. 使用最小权限原则",
+		RealCase:       "攻击者远程启用WinRM服务以便后续横向移动。",
+	},
+	"winrm-suspicious-shell": {
+		RuleID:         "T1028.003",
+		Explanation:    "可疑WinRM Shell创建可能是攻击者建立的远程Shell会话。",
+		Recommendation: "1. 审核Shell创建事件\n2. 监控异常Shell活动\n3. 限制Shell创建权限\n4. 使用会话监控",
+		RealCase:       "攻击者创建WinRM Shell建立持久远程访问。",
+	},
+	"winrm-powershell-execution": {
+		RuleID:         "T1059.001",
+		Explanation:    "通过WinRM执行PowerShell是远程控制的一种方式。攻击者使用它执行命令。",
+		Recommendation: "1. 审核PowerShell远程执行\n2. 监控异常PS会话\n3. 启用PowerShell日志\n4. 限制PS Remoting权限",
+		RealCase:       "攻击者通过WinRM远程执行PowerShell下载并运行恶意脚本。",
+	},
+	"winrm-remote-command": {
+		RuleID:         "T1028",
+		Explanation:    "WinRM远程命令执行是横向移动技术。攻击者通过WinRM在远程主机执行命令。",
+		Recommendation: "1. 审核命令执行日志\n2. 监控异常远程会话\n3. 限制WinRM使用\n4. 使用最小权限原则",
+		RealCase:       "攻击者通过WinRM在多台服务器执行Mimikatz。",
+	},
+	"winrm-lateral-movement": {
+		RuleID:         "T1028.004",
+		Explanation:    "WinRM横向移动从外部IP是可疑行为。正常WinRM应该是内部管理流量。",
+		Recommendation: "1. 确认外部连接来源\n2. 封锁外部WinRM访问\n3. 监控异常IP登录\n4. 使用VPN保护管理接口",
+		RealCase:       "攻击者从外部IP通过WinRM横向移动到内部服务器。",
+	},
+	"winrm-admin-lateral": {
+		RuleID:         "T1028.004",
+		Explanation:    "管理员账户使用WinRM横向移动是高风险操作。如果被攻击者利用将导致全面沦陷。",
+		Recommendation: "1. 限制管理员使用WinRM\n2. 使用特权访问工作站\n3. 监控管理员远程会话\n4. 启用MFA保护管理员",
+		RealCase:       "攻击者使用窃取的管理员凭据通过WinRM横向移动。",
+	},
+	"winrm-credential-theft": {
+		RuleID:         "T1003.001",
+		Explanation:    "WinRM凭据窃取通过LSASS访问实现。攻击者利用WinRM会话访问LSASS。",
+		Recommendation: "1. 启用LSASS保护\n2. 监控WinRM会话的LSASS访问\n3. 限制高权限账户WinRM使用\n4. 使用Credential Guard",
+		RealCase:       "攻击者通过WinRM会话访问LSASS提取凭据。",
+	},
+	"winrm-suspicious-data-transfer": {
+		RuleID:         "T1048",
+		Explanation:    "大量数据通过WinRM传输可能是数据外泄。WinRM通常用于管理而非数据传输。",
+		Recommendation: "1. 监控数据传输量\n2. 设置传输阈值告警\n3. 审核大数据传输\n4. 使用DLP控制敏感数据",
+		RealCase:       "攻击者通过WinRM会话将窃取的数据传输到外部。",
+	},
+	"winrm-channel-creation-flood": {
+		RuleID:         "T1028.003",
+		Explanation:    "WinRM Channel创建异常可能表示隧道建立。大量Channel创建是可疑的。",
+		Recommendation: "1. 监控Channel创建\n2. 设置Channel数量阈值\n3. 审核异常Channel活动\n4. 限制每个会话的Channel",
+		RealCase:       "攻击者创建大量WinRM Channel建立多条隧道。",
+	},
+	"winrm-certificate-mapping-fail": {
+		RuleID:         "T1556",
+		Explanation:    "WinRM证书映射失败可能是攻击者探测的迹象。攻击者常在攻击前进行探测。",
+		Recommendation: "1. 审核证书映射失败\n2. 监控重复失败\n3. 确认失败来源\n4. 使用智能卡认证替代",
+		RealCase:       "攻击者在获得凭据前先探测证书映射漏洞。",
+	},
+	"winrm-plugin-loading": {
+		RuleID:         "T1543",
+		Explanation:    "WinRM插件加载可能是攻击者在扩展功能。恶意插件可以增强攻击能力。",
+		Recommendation: "1. 审核插件加载\n2. 验证插件签名\n3. 限制插件安装权限\n4. 监控异常插件",
+		RealCase:       "攻击者加载恶意WinRM插件实现额外功能。",
+	},
+	"winrm-remote-forwarding": {
+		RuleID:         "T1028.004",
+		Explanation:    "WinRM远程端口转发是建立隧道的常用技术。攻击者用它绕过网络隔离。",
+		Recommendation: "1. 监控端口转发配置\n2. 审核转发规则创建\n3. 限制转发权限\n4. 使用网络监控",
+		RealCase:       "攻击者通过WinRM建立端口转发隧道访问内网资源。",
+	},
+	"suspicious-privilege-use": {
+		RuleID:         "T1098",
+		Explanation:    "可疑特权使用可能是攻击者在提权或维持权限。特殊权限的异常使用需要关注。",
+		Recommendation: "1. 审核特权使用事件\n2. 监控异常权限操作\n3. 限制敏感权限分配\n4. 使用最小权限原则",
+		RealCase:       "攻击者利用SeDebugPrivilege访问LSASS。",
+	},
+	"mass-privilege-assignment": {
+		RuleID:         "T1098",
+		Explanation:    "批量特权分配可能是攻击者在提权多个账户。异常的权限变更需要立即调查。",
+		Recommendation: "1. 审核权限分配事件\n2. 监控批量权限变更\n3. 限制权限管理权限\n4. 使用特权访问管理",
+		RealCase:       "攻击者批量将普通用户加入管理员组。",
+	},
+	"key-operations-alert": {
+		RuleID:         "T1003",
+		Explanation:    "密钥操作告警涉及敏感加密操作。可能表示攻击者在访问凭据或创建后门。",
+		Recommendation: "1. 审核密钥访问事件\n2. 监控异常密钥操作\n3. 保护CNG密钥存储\n4. 使用硬件安全模块",
+		RealCase:       "攻击者访问LSASS进程获取密钥。",
+	},
+	"audit-policy-change": {
+		RuleID:         "T1562.002",
+		Explanation:    "审计策略更改可能是攻击者在关闭检测。攻击者常在入侵后修改审计策略。",
+		Recommendation: "1. 审核审计策略变更\n2. 监控安全日志配置\n3. 启用策略更改告警\n4. 使用集中日志管理",
+		RealCase:       "攻击者修改审计策略关闭登录事件审核。",
+	},
+	"sysmon-dns-query": {
+		RuleID:         "T1071.004",
+		Explanation:    "可疑DNS查询可能表示C2通信或DGA活动。异常域名查询需要分析。",
+		Recommendation: "1. 监控DNS查询\n2. 阻止非常用域名\n3. 使用DNS安全服务器\n4. 启用DNS日志审核",
+		RealCase:       "恶意软件使用DGA生成大量随机域名进行C2通信。",
+	},
+	"sysmon-remote-thread": {
+		RuleID:         "T1055.008",
+		Explanation:    "远程线程创建是进程注入的典型技术。攻击者通过它将代码注入其他进程。",
+		Recommendation: "1. 监控远程线程创建\n2. 审核OpenThread调用\n3. 使用EDR检测注入\n4. 启用LSASS保护",
+		RealCase:       "Mimikatz通过创建远程线程将代码注入LSASS。",
+	},
+	"service-installation": {
+		RuleID:         "T1569.002",
+		Explanation:    "可疑服务安装可能是恶意软件部署。新服务的创建需要审核来源。",
+		Recommendation: "1. 审核服务创建事件\n2. 检查服务二进制来源\n3. 验证服务签名\n4. 使用最小权限运行服务",
+		RealCase:       "攻击者安装恶意服务实现持久化控制。",
+	},
 }
 
 func GetRuleExplanation(ruleName string) string {
@@ -1643,6 +2141,12 @@ func GetAlertRuleByName(name string) *rules.AlertRule {
 	return nil
 }
 
+var keywordFields = []string{
+	"message", "command_line", "process_name", "service_name",
+	"target_filename", "image", "parent_image", "pipe_name",
+	"target_object", "query_name", "destination_hostname",
+}
+
 func GetAlertRuleKeywords(name string) string {
 	rule := GetAlertRuleByName(name)
 	if rule == nil {
@@ -1653,15 +2157,27 @@ func GetAlertRuleKeywords(name string) string {
 	}
 	if rule.Conditions != nil {
 		var keywords []string
-		for _, cond := range rule.Conditions.All {
-			if cond.Field == "message" && cond.Operator == "contains" {
-				keywords = append(keywords, cond.Value)
+		extractKeywordsFromConditions := func(conds []*rules.Condition) {
+			for _, cond := range conds {
+				if cond.Operator == "contains" || cond.Operator == "==" {
+					fieldLower := strings.ToLower(cond.Field)
+					for _, kwField := range keywordFields {
+						if fieldLower == kwField {
+							keywords = append(keywords, cond.Value)
+							break
+						}
+					}
+				}
 			}
 		}
-		for _, cond := range rule.Conditions.Any {
-			if cond.Field == "message" && cond.Operator == "contains" {
-				keywords = append(keywords, cond.Value)
-			}
+		if rule.Conditions.All != nil {
+			extractKeywordsFromConditions(rule.Conditions.All)
+		}
+		if rule.Conditions.Any != nil {
+			extractKeywordsFromConditions(rule.Conditions.Any)
+		}
+		if rule.Conditions.None != nil {
+			extractKeywordsFromConditions(rule.Conditions.None)
 		}
 		return strings.Join(keywords, " ")
 	}

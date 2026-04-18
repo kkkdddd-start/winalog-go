@@ -269,7 +269,7 @@ func (w *Whitelist) addServiceWhitelist() {
 		{"bthserv", "Bluetooth Support Service"},
 		{"CorrespondingSurface*", "Corresponding Surface"},
 		{"CoreMessaging", "Core Messaging"},
-		{"CoreUIArchitect*`, `Core UI"},
+		{"CoreUIArchitect*", "Core UI"},
 		{"CryptSvc", "Cryptographic Services"},
 		{"DcomLaunch", "DCOM Launch"},
 		{"defragsvc", "Disk Defragmenter"},

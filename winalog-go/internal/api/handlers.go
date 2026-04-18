@@ -533,7 +533,18 @@ func (h *AlertHandler) GetAlert(c *gin.Context) {
 		MatchedEvents  []*types.Event `json:"matched_events,omitempty"`
 	}
 
-	relatedEvents, _ := h.db.EventRepo().GetByEventIDs(alert.EventIDs)
+	var relatedEvents []*types.Event
+
+	if len(alert.EventDBIDs) > 0 {
+		relatedEvents, _ = h.db.EventRepo().GetByIDs(alert.EventDBIDs)
+	}
+
+	if len(relatedEvents) == 0 && len(alert.EventIDs) > 0 {
+		timeWindow := 5 * time.Minute
+		startTime := alert.FirstSeen.Add(-timeWindow)
+		endTime := alert.LastSeen.Add(timeWindow)
+		relatedEvents, _ = h.db.EventRepo().GetEventsByWindowsEventIDs(alert.EventIDs, startTime, endTime)
+	}
 
 	response := AlertWithDetails{
 		Alert:          alert,
