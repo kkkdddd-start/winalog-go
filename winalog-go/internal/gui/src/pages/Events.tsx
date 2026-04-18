@@ -552,15 +552,52 @@ function Events() {
                       </span>
                     </td>
                     <td className="event-id">{event.event_id}</td>
-                    <td className="source-cell">
-                      {event.source || '-'}
+                    <td 
+                      className="source-cell"
+                      onMouseEnter={(e) => {
+                        if (event.source) {
+                          setHoveredEvent(event)
+                          setHoverPosition({ x: e.clientX + 10, y: e.clientY + 10 })
+                        }
+                      }}
+                      onMouseLeave={() => setHoveredEvent(null)}
+                    >
+                      <span className="cell-content">{event.source || '-'}</span>
+                      <button 
+                        className="cell-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHoveredEvent(event)
+                          setHoverPosition({ x: e.clientX - 200, y: e.clientY + 20 })
+                        }}
+                        title="View details"
+                      >
+                        ...
+                      </button>
                     </td>
                     <td className="computer-cell">{event.computer || '-'}</td>
                     <td 
                       className="message-cell"
-                      style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      onMouseEnter={(e) => {
+                        setHoveredEvent(event)
+                        setHoverPosition({ x: e.clientX + 10, y: e.clientY + 10 })
+                      }}
+                      onMouseLeave={() => setHoveredEvent(null)}
                     >
-                      {event.message ? (event.message.length > 50 ? event.message.substring(0, 50) + '...' : event.message) : '-'}
+                      <span className="cell-content" style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>
+                        {event.message ? (event.message.length > 50 ? event.message.substring(0, 50) + '...' : event.message) : '-'}
+                      </span>
+                      <button 
+                        className="cell-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHoveredEvent(event)
+                          setHoverPosition({ x: e.clientX - 200, y: e.clientY + 20 })
+                        }}
+                        title="View details"
+                      >
+                        ...
+                      </button>
                     </td>
                     <td className="action-cell">
                       <button 
@@ -1131,10 +1168,12 @@ function Events() {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          position: relative;
         }
         
         .message-cell {
           max-width: 400px;
+          position: relative;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -1177,6 +1216,28 @@ function Events() {
           background: #00d9ff;
           color: #0a0a1a;
           border-color: #00d9ff;
+        }
+        
+        .cell-btn {
+          background: transparent;
+          border: none;
+          color: #555;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: bold;
+          padding: 0 4px;
+          margin-left: 4px;
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+        
+        .source-cell:hover .cell-btn,
+        .message-cell:hover .cell-btn {
+          opacity: 1;
+        }
+        
+        .cell-btn:hover {
+          color: #00d9ff;
         }
         
         .message-float-panel {
