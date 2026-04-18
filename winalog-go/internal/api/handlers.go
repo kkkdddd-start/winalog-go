@@ -521,7 +521,30 @@ func (h *AlertHandler) GetAlert(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, alert)
+	explanation, recommendation, realCase := builtin.GetRuleDetails(alert.RuleName)
+	keywords := builtin.GetAlertRuleKeywords(alert.RuleName)
+
+	type AlertWithDetails struct {
+		*types.Alert
+		Explanation    string         `json:"explanation"`
+		Recommendation string         `json:"recommendation"`
+		RealCase       string         `json:"real_case"`
+		Keywords       string         `json:"keywords"`
+		MatchedEvents  []*types.Event `json:"matched_events,omitempty"`
+	}
+
+	relatedEvents, _ := h.db.EventRepo().GetByEventIDs(alert.EventIDs)
+
+	response := AlertWithDetails{
+		Alert:          alert,
+		Explanation:    explanation,
+		Recommendation: recommendation,
+		RealCase:       realCase,
+		Keywords:       keywords,
+		MatchedEvents:  relatedEvents,
+	}
+
+	c.JSON(200, response)
 }
 
 type ResolveAlertRequest struct {

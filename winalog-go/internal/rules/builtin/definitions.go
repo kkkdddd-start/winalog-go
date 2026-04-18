@@ -1634,6 +1634,40 @@ func GetRuleDetails(ruleName string) (explanation, recommendation, realCase stri
 	return "暂无详细规则解读", "暂无处置建议", "暂无真实案例"
 }
 
+func GetAlertRuleByName(name string) *rules.AlertRule {
+	for _, rule := range GetAlertRules() {
+		if rule.Name == name {
+			return rule
+		}
+	}
+	return nil
+}
+
+func GetAlertRuleKeywords(name string) string {
+	rule := GetAlertRuleByName(name)
+	if rule == nil {
+		return ""
+	}
+	if rule.Filter != nil && rule.Filter.Keywords != "" {
+		return rule.Filter.Keywords
+	}
+	if rule.Conditions != nil {
+		var keywords []string
+		for _, cond := range rule.Conditions.All {
+			if cond.Field == "message" && cond.Operator == "contains" {
+				keywords = append(keywords, cond.Value)
+			}
+		}
+		for _, cond := range rule.Conditions.Any {
+			if cond.Field == "message" && cond.Operator == "contains" {
+				keywords = append(keywords, cond.Value)
+			}
+		}
+		return strings.Join(keywords, " ")
+	}
+	return ""
+}
+
 var suspiciousKeywords = []string{
 	"mimikatz", "pwdump", "hashdump", "sekurlsa",
 	"kerberos::", "lsass", "Empire", "Metasploit", "Cobalt Strike",

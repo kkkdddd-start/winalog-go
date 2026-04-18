@@ -197,6 +197,40 @@ func (r *EventRepo) GetByIDs(ids []int64) ([]*types.Event, error) {
 	return events, nil
 }
 
+func (r *EventRepo) GetByEventIDs(eventIDs []int32) ([]*types.Event, error) {
+	if len(eventIDs) == 0 {
+		return nil, nil
+	}
+
+	placeholders := make([]string, len(eventIDs))
+	args := make([]interface{}, len(eventIDs))
+	for i, eid := range eventIDs {
+		placeholders[i] = "?"
+		args[i] = eid
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id
+		FROM events WHERE event_id IN (%s) ORDER BY timestamp DESC LIMIT 1000`, strings.Join(placeholders, ","))
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*types.Event
+	for rows.Next() {
+		event, err := scanEventFromRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
 func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, error) {
 	var conditions []string
 	var args []interface{}

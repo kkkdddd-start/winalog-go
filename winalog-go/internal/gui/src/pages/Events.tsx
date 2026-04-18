@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { eventsAPI, ExportParams, SearchParams, dashboardAPI } from '../api'
 
 interface Event {
@@ -32,6 +33,7 @@ interface SearchResponse {
 }
 
 function Events() {
+  const location = useLocation()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -66,6 +68,24 @@ function Events() {
     keywords: '',
     limit: 10000,
   })
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const eventIdsParam = params.get('event_ids')
+    const keywordsParam = params.get('keywords')
+    
+    if (eventIdsParam || keywordsParam) {
+      setSearchMode(true)
+      setFilters(prev => ({
+        ...prev,
+        event_ids: eventIdsParam ? eventIdsParam.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)) : [],
+        keywords: keywordsParam || '',
+      }))
+      if (eventIdsParam) {
+        setEventIdsInput(eventIdsParam)
+      }
+    }
+  }, [location.search])
 
   const doSearch = (pageNum: number = 1) => {
     setLoading(true)
