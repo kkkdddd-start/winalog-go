@@ -50,6 +50,24 @@ const analyzerIcons: Record<string, string> = {
   'anomaly': '🔍',
 }
 
+const findingDescMap: Record<string, Record<string, string>> = {
+  'en': {
+    'Possible compromised account due to successful login after multiple failures': '可能因多次登录失败后成功登录而导致账户被盗',
+    'High number of failed login attempts': '大量登录失败尝试',
+    'Suspicious IP with high failed login count targeting multiple users': '可疑IP大量登录失败尝试并针对多个用户',
+  },
+  'zh': {
+    'Possible compromised account due to successful login after multiple failures': '可能因多次登录失败后成功登录而导致账户被盗',
+    'High number of failed login attempts': '大量登录失败尝试',
+    'Suspicious IP with high failed login count targeting multiple users': '可疑IP大量登录失败尝试并针对多个用户',
+  },
+}
+
+const getLocalizedFindingDesc = (desc: string, locale: string = 'zh'): string => {
+  const lang = locale.startsWith('zh') ? 'zh' : 'en'
+  return findingDescMap[lang][desc] || desc
+}
+
 const analyzerCategories = [
   { id: 'authentication', name: 'Authentication' },
   { id: 'execution', name: 'Execution' },
@@ -59,7 +77,7 @@ const analyzerCategories = [
 ]
 
 function Analyze() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnalyzeResult | null>(null)
@@ -275,7 +293,7 @@ function Analyze() {
                     <div key={i} className="finding-item">
                       <div className="finding-header">
                         <span className={`severity-indicator severity-${f.severity}`}></span>
-                        <span className="finding-desc">{f.description}</span>
+                        <span className="finding-desc">{getLocalizedFindingDesc(f.description, locale)}</span>
                       </div>
                       <div className="finding-meta">
                         {f.rule_name && <span className="rule-name">{f.rule_name}</span>}

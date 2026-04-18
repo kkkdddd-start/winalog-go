@@ -145,6 +145,12 @@ export const rulesAPI = {
     api.post('/rules/import', { rules }),
   export: (format: 'json' | 'yaml' = 'json') =>
     api.get(`/rules/export?format=${format}`, { responseType: 'blob' }),
+  listTemplates: () =>
+    api.get('/rules/templates'),
+  getTemplate: (name: string) =>
+    api.get(`/rules/templates/${name}`),
+  instantiateTemplate: (name: string, params: Record<string, string>) =>
+    api.post(`/rules/templates/${name}/instantiate`, { name, params }),
 }
 
 export const reportsAPI = {

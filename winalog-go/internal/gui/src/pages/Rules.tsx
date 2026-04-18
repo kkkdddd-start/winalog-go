@@ -1,6 +1,22 @@
 import { useEffect, useState, useRef } from 'react'
 import { rulesAPI, RuleInfo } from '../api'
 
+interface TemplateInfo {
+  name: string
+  description: string
+  parameters: TemplateParamInfo[]
+  is_template: boolean
+}
+
+interface TemplateParamInfo {
+  name: string
+  description: string
+  default?: string
+  required: boolean
+  type: string
+  options?: string[]
+}
+
 function Rules() {
   const [rules, setRules] = useState<RuleInfo[]>([])
   const [loading, setLoading] = useState(true)
@@ -13,6 +29,10 @@ function Rules() {
   const [selectedRule, setSelectedRule] = useState<RuleInfo | null>(null)
   const [showValidateModal, setShowValidateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [templates, setTemplates] = useState<TemplateInfo[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateInfo | null>(null)
+  const [templateParams, setTemplateParams] = useState<Record<string, string>>({})
   const [validateResult, setValidateResult] = useState<{valid: boolean, errors: string[], warnings: string[]} | null>(null)
   const [validating, setValidating] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -36,6 +56,45 @@ function Rules() {
   useEffect(() => {
     fetchRules()
   }, [])
+
+  const fetchTemplates = () => {
+    rulesAPI.listTemplates()
+      .then(res => {
+        setTemplates(res.data.templates || [])
+      })
+      .catch(err => {
+        console.error('Failed to load templates:', err)
+      })
+  }
+
+  const handleOpenTemplateModal = () => {
+    fetchTemplates()
+    setShowTemplateModal(true)
+  }
+
+  const handleSelectTemplate = (template: TemplateInfo) => {
+    setSelectedTemplate(template)
+    const params: Record<string, string> = {}
+    template.parameters.forEach(p => {
+      params[p.name] = p.default || ''
+    })
+    setTemplateParams(params)
+  }
+
+  const handleInstantiateTemplate = () => {
+    if (!selectedTemplate) return
+    rulesAPI.instantiateTemplate(selectedTemplate.name, templateParams)
+      .then(() => {
+        setShowTemplateModal(false)
+        setSelectedTemplate(null)
+        setTemplateParams({})
+        fetchRules()
+      })
+      .catch(err => {
+        console.error('Failed to create rule from template:', err)
+        alert('Failed to create rule from template')
+      })
+  }
 
   const handleToggle = (name: string, currentEnabled: boolean) => {
     rulesAPI.toggle(name, !currentEnabled)
@@ -68,17 +127,22 @@ function Rules() {
   }
 
   const handleAddRule = () => {
-    const name = prompt('Enter rule name:')
-    if (!name) return
-    const description = prompt('Enter rule description:') || ''
-    const severity = prompt('Enter severity (critical/high/medium/low):', 'medium') || 'medium'
-    rulesAPI.save({ name, description, severity, enabled: true, score: 50 })
-      .then(() => {
-        fetchRules()
-      })
-      .catch(err => {
-        console.error('Failed to add rule:', err)
-      })
+    const choice = prompt('Add rule: (1) From template, (2) Custom rule\nEnter 1 or 2:')
+    if (choice === '1') {
+      handleOpenTemplateModal()
+    } else if (choice === '2') {
+      const name = prompt('Enter rule name:')
+      if (!name) return
+      const description = prompt('Enter rule description:') || ''
+      const severity = prompt('Enter severity (critical/high/medium/low):', 'medium') || 'medium'
+      rulesAPI.save({ name, description, severity, enabled: true, score: 50 })
+        .then(() => {
+          fetchRules()
+        })
+        .catch(err => {
+          console.error('Failed to add rule:', err)
+        })
+    }
   }
 
   const handleValidate = () => {
@@ -554,6 +618,91 @@ function Rules() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTemplateModal && (
+        <div className="modal-overlay" onClick={() => setShowTemplateModal(false)}>
+          <div className="modal-content template-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Create Rule from Template</h3>
+              <button className="close-btn" onClick={() => setShowTemplateModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              {!selectedTemplate ? (
+                <>
+                  <p className="modal-desc">Select a template:</p>
+                  <div className="template-list">
+                    {templates.length === 0 ? (
+                      <div className="empty-state">No templates available</div>
+                    ) : (
+                      templates.map(template => (
+                        <div 
+                          key={template.name} 
+                          className="template-card"
+                          onClick={() => handleSelectTemplate(template)}
+                        >
+                          <div className="template-name">{template.name}</div>
+                          <div className="template-desc">{template.description}</div>
+                          <div className="template-params">
+                            {template.parameters.length} parameters
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="selected-template-header">
+                    <button className="btn-back" onClick={() => setSelectedTemplate(null)}>← Back</button>
+                    <h4>{selectedTemplate.name}</h4>
+                  </div>
+                  <div className="template-params-form">
+                    {selectedTemplate.parameters.map(param => (
+                      <div key={param.name} className="param-item">
+                        <label>
+                          {param.name}
+                          {param.required && <span className="required">*</span>}
+                        </label>
+                        <p className="param-desc">{param.description}</p>
+                        {param.options && param.options.length > 0 ? (
+                          <select 
+                            value={templateParams[param.name] || ''}
+                            onChange={e => setTemplateParams({...templateParams, [param.name]: e.target.value})}
+                          >
+                            <option value="">Select...</option>
+                            {param.options.map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={param.type === 'number' ? 'number' : 'text'}
+                            value={templateParams[param.name] || ''}
+                            onChange={e => setTemplateParams({...templateParams, [param.name]: e.target.value})}
+                            placeholder={param.default || ''}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="modal-actions">
+                    <button className="btn-secondary" onClick={() => setShowTemplateModal(false)}>
+                      Cancel
+                    </button>
+                    <button 
+                      className="btn-primary"
+                      onClick={handleInstantiateTemplate}
+                      disabled={selectedTemplate.parameters.some(p => p.required && !templateParams[p.name])}
+                    >
+                      Create Rule
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1137,6 +1286,114 @@ function Rules() {
           color: #a855f7;
           border-radius: 4px;
           font-size: 12px;
+        }
+        
+        .template-modal {
+          max-width: 600px;
+        }
+        
+        .template-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          max-height: 400px;
+          overflow-y: auto;
+        }
+        
+        .template-card {
+          padding: 15px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid #333;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .template-card:hover {
+          background: rgba(0, 217, 255, 0.05);
+          border-color: #00d9ff;
+        }
+        
+        .template-name {
+          font-weight: bold;
+          color: #00d9ff;
+          margin-bottom: 5px;
+        }
+        
+        .template-desc {
+          font-size: 13px;
+          color: #888;
+          margin-bottom: 8px;
+        }
+        
+        .template-params {
+          font-size: 12px;
+          color: #666;
+        }
+        
+        .selected-template-header {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 20px;
+        }
+        
+        .selected-template-header h4 {
+          margin: 0;
+          color: #00d9ff;
+        }
+        
+        .btn-back {
+          background: none;
+          border: none;
+          color: #888;
+          cursor: pointer;
+          padding: 5px 10px;
+        }
+        
+        .btn-back:hover {
+          color: #00d9ff;
+        }
+        
+        .template-params-form {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+        
+        .param-item label {
+          display: block;
+          font-weight: bold;
+          color: #ccc;
+          margin-bottom: 5px;
+        }
+        
+        .param-item .required {
+          color: #ef4444;
+          margin-left: 4px;
+        }
+        
+        .param-desc {
+          font-size: 12px;
+          color: #666;
+          margin: 0 0 8px 0;
+        }
+        
+        .param-item input,
+        .param-item select {
+          width: 100%;
+          padding: 8px 12px;
+          background: #16213e;
+          border: 1px solid #333;
+          border-radius: 4px;
+          color: #eee;
+          font-size: 14px;
+        }
+        
+        .param-item input:focus,
+        .param-item select:focus {
+          outline: none;
+          border-color: #00d9ff;
         }
       `}</style>
     </div>
