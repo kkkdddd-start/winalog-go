@@ -298,6 +298,12 @@ function Alerts() {
                     </span>
                   </td>
                   <td className="actions-col">
+                    <button 
+                      className="btn-detail"
+                      onClick={() => navigate(`/alerts/${alert.id}`)}
+                    >
+                      Detail
+                    </button>
                     {!alert.resolved && (
                       <button 
                         className="btn-resolve"

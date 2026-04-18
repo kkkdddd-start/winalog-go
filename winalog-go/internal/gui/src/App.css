@@ -2626,7 +2626,8 @@ button:disabled {
 
 .btn-detail,
 .btn-delete,
-.btn-falsepositive {
+.btn-falsepositive,
+.btn-detail {
   padding: 6px 12px;
   background: transparent;
   border: 1px solid #333;

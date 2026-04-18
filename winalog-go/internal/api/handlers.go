@@ -579,6 +579,17 @@ func (h *AlertHandler) MarkFalsePositive(c *gin.Context) {
 		return
 	}
 
+	alert, err := h.db.AlertRepo().GetByID(id)
+	if err != nil {
+		c.JSON(404, ErrorResponse{Error: "alert not found", Code: types.ErrCodeAlertNotFound})
+		return
+	}
+
+	if alert.FalsePositive {
+		c.JSON(400, ErrorResponse{Error: "alert already marked as false positive", Code: types.ErrCodeInvalidRequest})
+		return
+	}
+
 	if err := h.db.AlertRepo().MarkFalsePositive(id, req.Reason); err != nil {
 		c.JSON(500, ErrorResponse{Error: err.Error()})
 		return
@@ -592,6 +603,12 @@ func (h *AlertHandler) DeleteAlert(c *gin.Context) {
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		c.JSON(400, ErrorResponse{Error: "invalid alert id", Code: types.ErrCodeInvalidRequest})
+		return
+	}
+
+	_, err = h.db.AlertRepo().GetByID(id)
+	if err != nil {
+		c.JSON(404, ErrorResponse{Error: "alert not found", Code: types.ErrCodeAlertNotFound})
 		return
 	}
 
@@ -626,20 +643,34 @@ func (h *AlertHandler) BatchAlertAction(c *gin.Context) {
 	successCount := 0
 
 	for _, id := range req.IDs {
-		var err error
+		alert, err := h.db.AlertRepo().GetByID(id)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("alert %d not found", id))
+			continue
+		}
+
+		var actionErr error
 		switch req.Action {
 		case "resolve":
-			err = h.db.AlertRepo().Resolve(id, req.Notes)
+			if alert.Resolved {
+				errors = append(errors, fmt.Sprintf("alert %d already resolved", id))
+				continue
+			}
+			actionErr = h.db.AlertRepo().Resolve(id, req.Notes)
 		case "false-positive":
-			err = h.db.AlertRepo().MarkFalsePositive(id, req.Reason)
+			if alert.FalsePositive {
+				errors = append(errors, fmt.Sprintf("alert %d already marked as false positive", id))
+				continue
+			}
+			actionErr = h.db.AlertRepo().MarkFalsePositive(id, req.Reason)
 		case "delete":
-			err = h.db.AlertRepo().Delete(id)
+			actionErr = h.db.AlertRepo().Delete(id)
 		default:
 			errors = append(errors, fmt.Sprintf("unknown action: %s", req.Action))
 			continue
 		}
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("failed to %s alert %d: %v", req.Action, id, err))
+		if actionErr != nil {
+			errors = append(errors, fmt.Sprintf("failed to %s alert %d: %v", req.Action, id, actionErr))
 		} else {
 			successCount++
 		}
