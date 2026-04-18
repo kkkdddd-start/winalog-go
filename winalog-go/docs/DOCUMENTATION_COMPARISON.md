@@ -70,8 +70,9 @@
 | 解决告警 | `alert resolve` | POST /api/alerts/:id/resolve | AlertDetail按钮 |
 | 标记误报 | `alert resolve --false-positive` | POST /api/alerts/:id/false-positive | AlertDetail按钮 |
 | 删除告警 | `alert delete` | DELETE /api/alerts/:id | AlertDetail按钮 |
-| 导出告警 | `alert export` | - | - |
+| 导出告警 | `alert export` | - (✅ 缺失) | - |
 | 告警统计 | `alert stats` | GET /api/alerts/stats | Alerts统计卡片 |
+| 告警趋势 | - | GET /api/alerts/trend | ✅ 趋势图 |
 | 运行分析 | `alert run` | POST /api/alerts/run-analysis | Alerts/Analyze按钮 |
 | 持续监控 | `alert monitor` | - | - |
 | Severity过滤 | `--severity` | `?severity=` | ✅ 下拉选择 |
@@ -79,7 +80,7 @@
 | 批量操作 | - | POST /api/alerts/batch | ✅ 批量按钮 |
 | 添加备注 | - | `notes` 参数 | ✅ 备注输入框 |
 
-**结论**: ✅ 三端功能基本统一，CLI多了导出和监控功能
+**结论**: ⚠️ API 缺少 `/api/alerts/export` 端点
 
 ---
 
@@ -201,10 +202,15 @@
 | 收集证据 | `forensics collect` | POST /api/forensics/collect | Forensics页面 |
 | 计算哈希 | `forensics hash` | POST /api/forensics/hash | Forensics Hash按钮 |
 | 验证签名 | `forensics verify` | GET /api/forensics/signature | Forensics Verify按钮 |
+| 验证哈希 | - | GET /api/forensics/verify-hash | ✅ |
+| 检查签名状态 | - | GET /api/forensics/is-signed | ✅ |
+| 生成清单 | - | POST /api/forensics/manifest | ✅ |
+| 内存转储 | - | GET /api/forensics/memory-dump | ✅ |
 | 证据列表 | - | GET /api/forensics/evidence | Forensics证据列表 |
+| 证据详情 | - | GET /api/forensics/evidence/:id | ✅ |
 | 保管链 | - | GET /api/forensics/chain-of-custody | Forensics Chain Modal |
 
-**结论**: ✅ 三端功能基本统一
+**结论**: ⚠️ CLI只有3个子命令(collect/hash/verify)，API有10个端点
 
 ---
 
@@ -214,11 +220,12 @@
 |------|-----|-----|----------|
 | 生成报告 | `report generate` | POST /api/reports | Reports页面 |
 | 查看报告 | - | GET /api/reports/:id | Reports View按钮 |
-| 下载报告 | - | GET /api/reports/export | Reports Download按钮 |
+| 下载报告 | - | GET /api/reports/:id/download | Reports Download按钮 |
 | 报告列表 | - | GET /api/reports | Reports列表 |
 | 报告类型 | `security/alert/timeline/compliance` | ✅ 同 | ✅ 卡片选择 |
 | 输出格式 | `html/json/pdf` | ✅ 同 | ✅ 选择器 |
 | 时间范围 | `--time-range` | `start_time/end_time` | ✅ DateRange选择 |
+| 模板管理 | - | /api/report-templates (5端点) | ✅ 模板页面 |
 
 **结论**: ✅ 三端完全统一
 
@@ -354,6 +361,37 @@
 
 ---
 
+### 2.19 UI 专属 API
+
+| 特性 | API 端点 | 说明 |
+|------|----------|------|
+| 仪表板概览 | GET /api/ui/dashboard | 返回仪表板概览数据 |
+| 告警分组 | GET /api/ui/alerts/groups | 返回按类型分组的告警 |
+| 指标数据 | GET /api/ui/metrics | 返回指标数据 |
+| 事件分布 | GET /api/ui/events/distribution | 返回事件分布统计 |
+
+**结论**: ✅ 仅 Frontend 使用，无 CLI 对应
+
+---
+
+### 2.20 策略管理 API (Policy)
+
+| 特性 | API 端点 | 说明 |
+|------|----------|------|
+| 策略模板列表 | GET /api/policy-templates | 列出策略模板 |
+| 策略模板详情 | GET /api/policy-templates/:name | 获取特定模板 |
+| 实例化模板 | POST /api/policy-templates | 实例化策略模板 |
+| 应用模板 | POST /api/policy-templates/apply | 应用策略模板 |
+| 删除策略 | DELETE /api/policy-templates/:name | 删除策略 |
+| 策略实例列表 | GET /api/policy-instances | 列出策略实例 |
+| 删除实例 | DELETE /api/policy-instances/:key | 删除策略实例 |
+| 创建自定义策略 | POST /api/policies | 创建自定义策略 |
+| 删除自定义策略 | DELETE /api/policies/:name | 删除自定义策略 |
+
+**结论**: ✅ Frontend 使用，无 CLI 对应
+
+---
+
 ## 3. 发现的不一致
 
 ### 3.1 CLI 独有的功能
@@ -370,9 +408,26 @@
 | 模块 | 缺失项 | 状态 | 根因 | 修复方案 |
 |------|--------|------|------|----------|
 | ~~CLI~~ | ~~`export timeline`~~ | ❌ 文档错误 | 命令已存在于 `report.go:186` | 无需修复 |
+| ~~Reports~~ | ~~`/api/reports/export`~~ | ❌ 文档错误 | 应为 `/api/reports/:id/download` | 已修正 |
 | API | `/api/ueba/baseline` | ✅ 确认缺失 | UEBA baseline 存储在内存中，API handler 未暴露管理接口 | 为 `UEBAHandler` 添加 GetBaseline/LearnBaseline/ClearBaseline 方法 |
 | API | `/api/alerts/export` | ✅ 确认缺失 | `AlertHandler` 只有 ListAlerts，缺少导出端点 | 为 `AlertHandler` 添加 ExportAlerts 方法 |
 | Frontend | Persistence SSE | ✅ 确认缺失 | 后端已实现 SSE 端点，前端未调用 | 在 `gui/src/api/index.ts` 添加 detectStream 方法 |
+
+### 3.3 发现遗漏的 API 端点 (代码中有但文档未记录)
+
+| 模块 | 遗漏的 API 端点 | 说明 |
+|------|----------------|------|
+| Alerts | `GET /api/alerts/trend` | 告警趋势数据 |
+| Forensics | `GET /api/forensics/verify-hash` | 验证文件哈希 |
+| Forensics | `GET /api/forensics/is-signed` | 检查文件签名状态 |
+| Forensics | `POST /api/forensics/manifest` | 生成证据清单 |
+| Forensics | `GET /api/forensics/memory-dump` | 内存转储 |
+| Forensics | `GET /api/forensics/evidence/:id` | 获取特定证据详情 |
+| UI | `GET /api/ui/dashboard` | 仪表板概览 |
+| UI | `GET /api/ui/alerts/groups` | 告警分组数据 |
+| UI | `GET /api/ui/metrics` | 指标数据 |
+| UI | `GET /api/ui/events/distribution` | 事件分布 |
+| Policy | 9个端点 | 策略模板和实例管理 |
 
 ---
 
@@ -382,20 +437,23 @@
 
 | 评估项 | 当前状态 | 修复后预期 |
 |--------|----------|------------|
-| 功能覆盖完整性 | 98% (2%为CLI专属功能) | 100% |
-| API与Frontend一致性 | 100% | 100% |
+| 功能覆盖完整性 | 95% (含遗漏API端点) | 100% |
+| API与Frontend一致性 | 90% (遗漏UI/Policy API) | 100% |
 | CLI与API一致性 | 95% | 100% |
+| 文档准确性 | ⚠️ 需修正 | ✅ 准确 |
 | 三端统一性 | ✅ 良好 | ✅ 优秀 |
 
 ### 4.2 统计数据
 
-| 类别 | 数量 |
-|------|------|
-| CLI命令 | 26个主命令 + ~35个子命令 |
-| API端点 | ~80个端点 |
-| Frontend页面 | 21个页面 |
-| 完全匹配的功能模块 | 21个 |
-| CLI专属功能 | 4个 |
+| 类别 | 数量 | 备注 |
+|------|------|------|
+| CLI主命令 | 26个 | 包含 persistence (Windows) |
+| CLI子命令 | ~40个 | 各模块的子命令 |
+| API端点 | ~90个 | 含UI/Policy专属端点 |
+| Frontend页面 | 21个页面 | |
+| 完全匹配的功能模块 | 18个 | |
+| CLI专属功能 | 5个 | tui, serve, db, verify |
+| 文档遗漏API端点 | 16个 | 需补充到文档 |
 
 ### 4.3 详细修复方案
 
@@ -471,4 +529,5 @@
 
 ---
 
-*报告生成时间: 2026-04-17*
+*报告生成时间: 2026-04-18*
+*最后更新: 补充遗漏 API 端点、修正 Forensics 统计、添加 UI/Policy API 文档*
