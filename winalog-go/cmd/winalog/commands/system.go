@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -510,6 +511,10 @@ var dbCmd = &cobra.Command{
 	Long:  `Manage the SQLite database.`,
 }
 
+var dbCleanFlags struct {
+	days int
+}
+
 func init() {
 	dbCmd.AddCommand(&cobra.Command{
 		Use:   "status",
@@ -521,11 +526,13 @@ func init() {
 		Short: "Optimize database",
 		RunE:  runDBVacuum,
 	})
-	dbCmd.AddCommand(&cobra.Command{
+	dbCleanCmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Clean old data",
 		RunE:  runDBClean,
-	})
+	}
+	dbCleanCmd.Flags().IntVar(&dbCleanFlags.days, "days", 90, "Number of days to retain")
+	dbCmd.AddCommand(dbCleanCmd)
 }
 
 func runDBStatus(cmd *cobra.Command, args []string) error {
@@ -578,8 +585,8 @@ func runDBClean(cmd *cobra.Command, args []string) error {
 	}
 	defer db.Close()
 
-	fmt.Println("Cleaning old events (older than 90 days)...")
-	result, err := db.Exec("DELETE FROM events WHERE timestamp < datetime('now', '-90 days')")
+	fmt.Printf("Cleaning old events (older than %d days)...\n", dbCleanFlags.days)
+	result, err := db.Exec(fmt.Sprintf("DELETE FROM events WHERE timestamp < datetime('now', '-%d days')", dbCleanFlags.days))
 	if err != nil {
 		return fmt.Errorf("failed to clean events: %w", err)
 	}
@@ -589,7 +596,6 @@ func runDBClean(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("Running VACUUM to reclaim space...")
 	db.Exec("VACUUM")
-
 	fmt.Println("Cleanup complete.")
 	return nil
 }
@@ -675,8 +681,17 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Cannot set unknown config key: %s\n", key)
 	}
 
+	savePath := globalConfigPath
+	if savePath == "" {
+		savePath = os.Getenv("WINALOG_CONFIG_PATH")
+	}
+	if savePath == "" {
+		home, _ := os.UserHomeDir()
+		savePath = filepath.Join(home, ".winalog", "config.yaml")
+	}
+
 	loader := config.NewLoader()
-	if err := loader.Save(cfg, globalConfigPath); err != nil {
+	if err := loader.Save(cfg, savePath); err != nil {
 		fmt.Printf("Warning: Failed to save config: %v\n", err)
 		fmt.Println("Changes are only applied to the current session.")
 	} else {
