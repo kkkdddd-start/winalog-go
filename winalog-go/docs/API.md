@@ -926,6 +926,28 @@ curl http://localhost:8080/api/reports/report_security_summary_1234567890
 
 ---
 
+### GET /api/reports/:id/download
+Download a generated report file.
+
+**Path Parameters:**
+- `id` - Report ID
+
+**Response:**
+- Returns the report file download
+- Content-Type varies by format (application/pdf, text/html, application/json)
+
+**Response Codes:**
+- `200` - Report ready for download
+- `400` - Report not ready (still generating)
+- `404` - Report not found
+
+**Example Request:**
+```bash
+curl -O http://localhost:8080/api/reports/report_security_summary_1234567890/download
+```
+
+---
+
 ### GET /api/reports/export
 Export data in various formats.
 
@@ -2650,12 +2672,53 @@ curl http://localhost:8080/api/health
 
 ## Appendix B: Report Types
 
-| Type | Description |
-|------|-------------|
-| security_summary | Comprehensive security summary |
-| alert_report | Alert details report |
-| event_report | Raw events report |
-| timeline_report | Timeline visualization |
+| Type | Aliases | Description |
+|------|---------|-------------|
+| security_summary | security | Comprehensive security summary with executive overview, threat landscape, and recommendations |
+| alert_report | alert | Alert details report with MITRE ATT&CK mapping |
+| event_report | event | Raw events report with filtering and statistics |
+| timeline_report | timeline | Timeline visualization of security events and alerts |
+
+**Report Response Structure:**
+
+Each report type returns a JSON structure with the following components:
+
+```json
+{
+  "generated_at": "2026-04-17T10:00:00Z",
+  "title": "Report Title",
+  "time_range": {
+    "start": "2026-04-01T00:00:00Z",
+    "end": "2026-04-17T23:59:59Z"
+  },
+  "summary": {
+    "total_events": 5000,
+    "total_alerts": 150,
+    "critical_events": 10,
+    "high_alerts": 45
+  },
+  "stats": { ... },
+  "top_alerts": [ ... ],
+  "top_events": [ ... ],
+  "event_distribution": { ... },
+  "login_stats": { ... },
+  "iocs": { ... },
+  "mitre_distribution": { ... },
+  "executive_summary": { ... },
+  "timeline_analysis": { ... },
+  "threat_landscape": { ... },
+  "recommendations": [ ... ],
+  "attack_patterns": [ ... ],
+  "compliance_status": { ... },
+  "timeline": [ ... ]
+}
+```
+
+**Note:** Not all fields are present in every report type. Each report type includes different subsets:
+- `security_summary`: All fields
+- `alert_report`: summary, top_alerts, mitre_distribution
+- `event_report`: summary, stats, top_events
+- `timeline_report`: summary, stats, timeline, timeline_analysis
 
 ---
 
