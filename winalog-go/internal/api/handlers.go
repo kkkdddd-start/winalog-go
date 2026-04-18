@@ -607,6 +607,61 @@ func (h *AlertHandler) BatchAlertAction(c *gin.Context) {
 	})
 }
 
+func (h *AlertHandler) ExportAlerts(c *gin.Context) {
+	var req struct {
+		Format   string `form:"format"`
+		Severity string `form:"severity"`
+	}
+
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
+		return
+	}
+
+	format := req.Format
+	if format == "" {
+		format = "json"
+	}
+
+	filter := &storage.AlertQuery{
+		Page:     1,
+		PageSize: 100000,
+	}
+	if req.Severity != "" {
+		filter.Severity = req.Severity
+	}
+
+	alerts, _, err := h.db.AlertRepo().List(filter)
+	if err != nil {
+		c.JSON(500, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	switch format {
+	case "csv":
+		c.Header("Content-Type", "text/csv")
+		c.Header("Content-Disposition", "attachment; filename=alerts.csv")
+		c.Writer.Write([]byte("ID,RuleName,Severity,Message,Count,FirstSeen,LastSeen,Resolved\n"))
+		for _, a := range alerts {
+			resolved := "false"
+			if a.Resolved {
+				resolved = "true"
+			}
+			line := fmt.Sprintf("%d,%s,%s,%s,%d,%s,%s,%s\n",
+				a.ID, a.RuleName, a.Severity, a.Message, a.Count,
+				a.FirstSeen.Format(time.RFC3339), a.LastSeen.Format(time.RFC3339), resolved)
+			c.Writer.Write([]byte(line))
+		}
+	default:
+		c.Header("Content-Type", "application/json")
+		c.Header("Content-Disposition", "attachment; filename=alerts.json")
+		c.JSON(200, gin.H{
+			"alerts": alerts,
+			"total":  len(alerts),
+		})
+	}
+}
+
 func parseTime(s string) (*time.Time, error) {
 	if s == "" {
 		return nil, nil

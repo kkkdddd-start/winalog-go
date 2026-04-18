@@ -145,6 +145,98 @@ func (h *UEBAHandler) GetAnomalyDetails(c *gin.Context) {
 	})
 }
 
+func (h *UEBAHandler) GetBaseline(c *gin.Context) {
+	profiles := h.engine.GetUserActivity()
+
+	profileList := make([]map[string]interface{}, 0)
+	for user, baseline := range profiles {
+		typicalHours := make([]int, 0)
+		for hour := range baseline.TypicalHours {
+			typicalHours = append(typicalHours, hour)
+		}
+
+		typicalComputers := make([]string, 0)
+		for computer := range baseline.TypicalComputers {
+			typicalComputers = append(typicalComputers, computer)
+		}
+
+		profileList = append(profileList, map[string]interface{}{
+			"user":               user,
+			"login_count":        baseline.LoginCount,
+			"last_updated":       baseline.LastUpdated,
+			"avg_events_per_day": baseline.AvgEventsPerDay,
+			"typical_hours":      typicalHours,
+			"typical_computers":  typicalComputers,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"baseline": profileList,
+		"total":    len(profileList),
+	})
+}
+
+func (h *UEBAHandler) LearnBaseline(c *gin.Context) {
+	var req UEBARequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		req = UEBARequest{}
+	}
+
+	hours := req.Hours
+	if hours <= 0 {
+		hours = 168
+	}
+
+	endTime := time.Now()
+	start := endTime.Add(-time.Duration(hours) * time.Hour)
+
+	if req.StartTime != "" {
+		if t, err := time.Parse(time.RFC3339, req.StartTime); err == nil {
+			start = t
+		}
+	}
+	if req.EndTime != "" {
+		if t, err := time.Parse(time.RFC3339, req.EndTime); err == nil {
+			endTime = t
+		}
+	}
+
+	filter := &storage.EventFilter{
+		StartTime: &start,
+		EndTime:   &endTime,
+		Limit:     100000,
+	}
+
+	events, _, err := h.db.ListEvents(filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch events"})
+		return
+	}
+
+	if len(events) < 10 {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "insufficient events for baseline learning (minimum 10)"})
+		return
+	}
+
+	if err := h.engine.Learn(events); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to learn baseline"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "baseline learned successfully",
+		"events":    len(events),
+		"time_span": time.Since(start).String(),
+	})
+}
+
+func (h *UEBAHandler) ClearBaseline(c *gin.Context) {
+	h.engine.Clear()
+	c.JSON(http.StatusOK, gin.H{
+		"message": "baseline cleared successfully",
+	})
+}
+
 func getAnomalyDescription(anomalyType string) string {
 	descriptions := map[string]string{
 		"impossible_travel":    "Detects when a user logs in from two geographically distant locations in an impossibly short time period",
@@ -169,5 +261,8 @@ func SetupUEBARoutes(r *gin.Engine, uebaHandler *UEBAHandler) {
 		ueba.POST("/analyze", uebaHandler.Analyze)
 		ueba.GET("/profiles", uebaHandler.GetProfiles)
 		ueba.GET("/anomaly/:type", uebaHandler.GetAnomalyDetails)
+		ueba.GET("/baseline", uebaHandler.GetBaseline)
+		ueba.POST("/baseline/learn", uebaHandler.LearnBaseline)
+		ueba.DELETE("/baseline", uebaHandler.ClearBaseline)
 	}
 }

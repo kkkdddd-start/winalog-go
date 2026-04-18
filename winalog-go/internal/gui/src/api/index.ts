@@ -293,6 +293,25 @@ export const settingsAPI = {
 export const persistenceAPI = {
   detect: () =>
     api.get('/persistence/detect'),
+  detectStream: (onDetection: (data: any) => void, onError?: (err: any) => void) => {
+    const eventSource = new EventSource('/api/persistence/detect/stream')
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        onDetection(data)
+      } catch (e) {
+        console.error('Failed to parse SSE data:', e)
+      }
+    }
+    
+    eventSource.onerror = (err) => {
+      console.error('SSE error:', err)
+      onError?.(err)
+    }
+    
+    return eventSource
+  },
   listCategories: () =>
     api.get('/persistence/categories'),
   listTechniques: () =>

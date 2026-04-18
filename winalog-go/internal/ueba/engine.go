@@ -37,6 +37,10 @@ func (e *Engine) GetUserActivity() map[string]*UserBaseline {
 	return e.baseline.GetUserActivity()
 }
 
+func (e *Engine) Clear() {
+	e.baseline.Clear()
+}
+
 func (e *Engine) DetectAnomalies(events []*types.Event) []*AnomalyResult {
 	results := make([]*AnomalyResult, 0)
 
