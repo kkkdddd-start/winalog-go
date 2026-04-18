@@ -26,6 +26,13 @@ func NewDB(path string) (*DB, error) {
 		return nil, fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
+	dir := filepath.Dir(absPath)
+	if dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create database directory: %w", err)
+		}
+	}
+
 	dsn := absPath + "?_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL"
 	conn, err := sql.Open("sqlite", dsn)
 	if err != nil {

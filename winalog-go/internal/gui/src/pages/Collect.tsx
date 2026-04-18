@@ -11,6 +11,12 @@ interface CollectOptions {
   includeRegistry: boolean
   includeTasks: boolean
   includeSystemInfo: boolean
+  includeProcesses: boolean
+  includeNetwork: boolean
+  includeDlls: boolean
+  includeDrivers: boolean
+  includeUsers: boolean
+  includeSysInfo: boolean
   compress: boolean
   calculateHash: boolean
 }
@@ -71,6 +77,12 @@ function Collect() {
     includeRegistry: false,
     includeTasks: false,
     includeSystemInfo: true,
+    includeProcesses: true,
+    includeNetwork: true,
+    includeDlls: false,
+    includeDrivers: false,
+    includeUsers: true,
+    includeSysInfo: true,
     compress: true,
     calculateHash: true,
   })
@@ -100,6 +112,20 @@ function Collect() {
       const response = await collectAPI.collect({
         sources: enabledSources,
         options: {
+          workers: threads,
+          include_prefetch: options.includePrefetch,
+          include_registry: options.includeRegistry,
+          include_system_info: options.includeSystemInfo,
+          include_shimcache: options.includeShimcache,
+          include_amcache: options.includeAmcache,
+          include_userassist: options.includeUserassist,
+          include_tasks: options.includeTasks,
+          include_logs: options.includeLogs,
+          include_processes: options.includeProcesses,
+          include_network: options.includeNetwork,
+          include_dlls: options.includeDlls,
+          include_drivers: options.includeDrivers,
+          include_users: options.includeUsers,
           compress: options.compress,
           calculate_hash: options.calculateHash,
         },
@@ -149,6 +175,90 @@ function Collect() {
     setLoading(false)
   }
 
+  const handleImportWithAlert = async () => {
+    setLoading(true)
+    setStatus(t('collect.importing') + ' ' + t('collect.withAlert'))
+    
+    try {
+      const customPathsList = customPaths
+        .split('\n')
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+      
+      if (customPathsList.length === 0) {
+        setStatus(t('collect.noFilesSelected'))
+        setLoading(false)
+        return
+      }
+      
+      const response = await importAPI.importLogsWithAlert(customPathsList)
+      
+      if (response.data.status === 'completed') {
+        let statusMsg = `${t('collect.importDone')}\nImported: ${response.data.imported}\nFailed: ${response.data.failed}\nEvents: ${response.data.total_events}`
+        if (response.data.alerts_generated !== undefined) {
+          statusMsg += `\nAlerts: ${response.data.alerts_generated}`
+        }
+        if (response.data.alert_error) {
+          statusMsg += `\nAlert Error: ${response.data.alert_error}`
+        }
+        setStatus(statusMsg)
+      } else {
+        setStatus(`${t('collect.failed')}: ${response.data.message || 'Unknown error'}`)
+      }
+    } catch (error) {
+      setStatus(`${t('collect.failed')}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+    
+    setLoading(false)
+  }
+
+  const handleEvtx2Csv = async () => {
+    setLoading(true)
+    setStatus(t('collect.evtx2csvConverting') || 'Converting EVTX to CSV...')
+    
+    try {
+      const customPathsList = customPaths
+        .split('\n')
+        .map(p => p.trim())
+        .filter(p => p.length > 0)
+      
+      if (customPathsList.length === 0) {
+        setStatus(t('collect.noFilesSelected'))
+        setLoading(false)
+        return
+      }
+      
+      const response = await collectAPI.evtx2csv(customPathsList)
+      
+      if (response.data) {
+        let statusMsg = `${t('collect.evtx2csvDone') || 'Conversion completed'}\n`
+        statusMsg += `Total Events: ${response.data.total_events}\n`
+        statusMsg += `Successful: ${response.data.total_files - response.data.failed_files}\n`
+        statusMsg += `Failed: ${response.data.failed_files}\n`
+        if (response.data.results && response.data.results.length > 0) {
+          statusMsg += '\nFiles:\n'
+          response.data.results.forEach((r: any) => {
+            if (r.error) {
+              statusMsg += `- ${r.input_path}: ERROR - ${r.error}\n`
+            } else {
+              statusMsg += `- ${r.input_path} -> ${r.output_path} (${r.event_count} events)\n`
+            }
+          })
+        }
+        if (response.data.errors && response.data.errors.length > 0) {
+          statusMsg += '\nErrors:\n' + response.data.errors.join('\n')
+        }
+        setStatus(statusMsg)
+      } else {
+        setStatus(`${t('collect.failed')}: Unknown error`)
+      }
+    } catch (error) {
+      setStatus(`${t('collect.failed')}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+    
+    setLoading(false)
+  }
+
   const groupedSources = logSources.reduce((acc, src) => {
     if (!acc[src.category]) acc[src.category] = []
     acc[src.category].push(src)
@@ -183,6 +293,74 @@ function Collect() {
               />
               <span className="toggle-text">{t('collect.systemInfo')}</span>
             </label>
+            {options.includeSystemInfo && (
+              <div className="sub-options">
+                <label className="toggle-label sub">
+                  <input
+                    type="checkbox"
+                    checked={options.includeSysInfo}
+                    onChange={() => handleOptionChange('includeSysInfo')}
+                  />
+                  <span className="toggle-text">{t('collect.systemInfo')}</span>
+                </label>
+                <label className="toggle-label sub">
+                  <input
+                    type="checkbox"
+                    checked={options.includeProcesses}
+                    onChange={() => handleOptionChange('includeProcesses')}
+                  />
+                  <span className="toggle-text">{t('collect.systemProcesses')}</span>
+                </label>
+                <label className="toggle-label sub">
+                  <input
+                    type="checkbox"
+                    checked={options.includeNetwork}
+                    onChange={() => handleOptionChange('includeNetwork')}
+                  />
+                  <span className="toggle-text">{t('collect.systemNetwork')}</span>
+                </label>
+                <label className="toggle-label sub">
+                  <input
+                    type="checkbox"
+                    checked={options.includeDlls}
+                    onChange={() => handleOptionChange('includeDlls')}
+                  />
+                  <span className="toggle-text">{t('collect.systemDlls')}</span>
+                </label>
+                <label className="toggle-label sub">
+                  <input
+                    type="checkbox"
+                    checked={options.includeDrivers}
+                    onChange={() => handleOptionChange('includeDrivers')}
+                  />
+                  <span className="toggle-text">{t('collect.systemDrivers')}</span>
+                </label>
+                <label className="toggle-label sub">
+                  <input
+                    type="checkbox"
+                    checked={options.includeUsers}
+                    onChange={() => handleOptionChange('includeUsers')}
+                  />
+                  <span className="toggle-text">{t('collect.systemUsers')}</span>
+                </label>
+                <label className="toggle-label sub">
+                  <input
+                    type="checkbox"
+                    checked={options.includeRegistry}
+                    onChange={() => handleOptionChange('includeRegistry')}
+                  />
+                  <span className="toggle-text">{t('collect.systemRegistry')}</span>
+                </label>
+                <label className="toggle-label sub">
+                  <input
+                    type="checkbox"
+                    checked={options.includeTasks}
+                    onChange={() => handleOptionChange('includeTasks')}
+                  />
+                  <span className="toggle-text">{t('collect.systemTasks')}</span>
+                </label>
+              </div>
+            )}
             <label className="toggle-label">
               <input
                 type="checkbox"
@@ -261,6 +439,20 @@ function Collect() {
               className="btn-secondary"
             >
               {t('collect.importLogsBtn')}
+            </button>
+            <button 
+              onClick={handleImportWithAlert} 
+              disabled={loading} 
+              className="btn-secondary btn-import-alert"
+            >
+              {t('collect.importWithAlertBtn')}
+            </button>
+            <button 
+              onClick={handleEvtx2Csv} 
+              disabled={loading} 
+              className="btn-secondary btn-evtx2csv"
+            >
+              {t('collect.evtx2csvBtn')}
             </button>
           </div>
         </div>

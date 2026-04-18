@@ -100,7 +100,8 @@ function Analyze() {
     setLoading(true)
     setError('')
     try {
-      const res = await analyzeAPI.run(selectedAnalyzer, { hours })
+      const analyzerType = selectedAnalyzer.replace(/_/g, '-')
+      const res = await analyzeAPI.run(analyzerType, { hours })
       setResult(res.data)
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to run analyzer')

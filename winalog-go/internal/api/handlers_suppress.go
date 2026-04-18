@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -63,7 +64,7 @@ func (h *SuppressHandler) ListSuppressRules(c *gin.Context) {
 	for rows.Next() {
 		var r SuppressRuleResponse
 		var conditionsJSON string
-		var expiresAt, createdAt string
+		var expiresAt, createdAt sql.NullString
 
 		if err := rows.Scan(&r.ID, &r.Name, &conditionsJSON, &r.Duration, &r.Scope, &r.Enabled, &expiresAt, &createdAt); err != nil {
 			continue
@@ -72,8 +73,8 @@ func (h *SuppressHandler) ListSuppressRules(c *gin.Context) {
 		if conditionsJSON != "" {
 			parseConditions(conditionsJSON, &r.Conditions)
 		}
-		r.ExpiresAt = expiresAt
-		r.CreatedAt = createdAt
+		r.ExpiresAt = expiresAt.String
+		r.CreatedAt = createdAt.String
 
 		rules = append(rules, r)
 	}
@@ -216,7 +217,7 @@ func (h *SuppressHandler) GetSuppressRule(c *gin.Context) {
 
 	var r SuppressRuleResponse
 	var conditionsJSON string
-	var expiresAt, createdAt string
+	var expiresAt, createdAt sql.NullString
 
 	err := h.db.QueryRow(`
 		SELECT id, name, conditions, duration, scope, enabled, expires_at, created_at
@@ -231,8 +232,8 @@ func (h *SuppressHandler) GetSuppressRule(c *gin.Context) {
 	if conditionsJSON != "" {
 		parseConditions(conditionsJSON, &r.Conditions)
 	}
-	r.ExpiresAt = expiresAt
-	r.CreatedAt = createdAt
+	r.ExpiresAt = expiresAt.String
+	r.CreatedAt = createdAt.String
 
 	c.JSON(http.StatusOK, r)
 }
@@ -381,7 +382,8 @@ func (h *SuppressHandler) loadRulesToEngine() {
 
 	for rows.Next() {
 		var id int64
-		var name, conditionsJSON, scope, expiresAt, createdAt string
+		var name, conditionsJSON, scope string
+		var expiresAt, createdAt sql.NullString
 		var duration int
 		var enabled bool
 
@@ -400,8 +402,8 @@ func (h *SuppressHandler) loadRulesToEngine() {
 			Enabled:  enabled,
 		}
 
-		if expiresAt != "" {
-			if t, err := time.Parse(time.RFC3339, expiresAt); err == nil {
+		if expiresAt.Valid && expiresAt.String != "" {
+			if t, err := time.Parse(time.RFC3339, expiresAt.String); err == nil {
 				rule.ExpiresAt = t
 			}
 		}

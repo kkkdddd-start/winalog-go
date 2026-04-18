@@ -41,7 +41,7 @@ function Query() {
     const startTime = performance.now()
 
     try {
-      const res = await queryAPI.execute({ sql, limit: 100 })
+      const res = await queryAPI.execute({ query: sql, limit: 100 })
       const duration = ((performance.now() - startTime) / 1000).toFixed(2)
       setExecutionTime(duration)
       setResult(res.data)

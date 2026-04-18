@@ -19,6 +19,7 @@ type ProcessInfoCollector struct {
 
 type Process struct {
 	PID     int
+	PPID    int
 	Name    string
 	Path    string
 	Command string
@@ -204,9 +205,17 @@ func ListProcesses() ([]Process, error) {
 	}
 
 	for {
+		pid := int(entry.ProcessID)
+		ppid := int(entry.ParentProcessID)
+		exePath := getProcessPath(uint32(pid))
+
 		processes = append(processes, Process{
-			PID:  int(entry.ProcessID),
-			Name: windows.UTF16ToString(entry.ExeFile[:]),
+			PID:     pid,
+			PPID:    ppid,
+			Name:    windows.UTF16ToString(entry.ExeFile[:]),
+			Path:    exePath,
+			Command: getCommandLine(uint32(pid)),
+			User:    getProcessUser(uint32(pid)),
 		})
 
 		err = windows.Process32Next(snapshot, &entry)

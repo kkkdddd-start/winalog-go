@@ -22,6 +22,7 @@ import UEBA from './pages/UEBA'
 import Suppress from './pages/Suppress'
 import Live from './pages/Live'
 import Collect from './pages/Collect'
+import Logs from './pages/Logs'
 import './App.css'
 
 function Navigation() {
@@ -49,6 +50,7 @@ function Navigation() {
         <li><Link to="/system-info">{t('nav.systemInfo')}</Link></li>
         <li><Link to="/rules">{t('nav.rules')}</Link></li>
         <li><Link to="/metrics">{t('nav.metrics')}</Link></li>
+        <li><Link to="/logs">{t('nav.logs')}</Link></li>
         <li><Link to="/settings">{t('nav.settings')}</Link></li>
       </ul>
     </nav>
@@ -83,6 +85,7 @@ function AppContent() {
           <Route path="/rules" element={<Rules />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/metrics" element={<Metrics />} />
+          <Route path="/logs" element={<Logs />} />
         </Routes>
       </main>
     </>

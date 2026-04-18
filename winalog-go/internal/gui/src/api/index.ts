@@ -92,8 +92,23 @@ export interface CollectParams {
   sources?: string[]
   excludes?: string[]
   options?: {
+    workers?: number
+    include_prefetch?: boolean
+    include_registry?: boolean
+    include_system_info?: boolean
+    include_shimcache?: boolean
+    include_amcache?: boolean
+    include_userassist?: boolean
+    include_tasks?: boolean
+    include_logs?: boolean
+    include_processes?: boolean
+    include_network?: boolean
+    include_dlls?: boolean
+    include_drivers?: boolean
+    include_users?: boolean
     compress?: boolean
     calculate_hash?: boolean
+    output_path?: string
   }
 }
 
@@ -102,11 +117,15 @@ export const collectAPI = {
     api.post('/collect', params),
   getStatus: () =>
     api.get('/collect/status'),
+  evtx2csv: (filePaths: string[], outputDir?: string, limit?: number) =>
+    api.post('/collect/evtx2csv', { file_paths: filePaths, output_dir: outputDir, limit }),
 }
 
 export const importAPI = {
   importLogs: (filePaths: string[]) =>
     api.post('/import/logs', { files: filePaths }),
+  importLogsWithAlert: (filePaths: string[]) =>
+    api.post('/import/logs', { files: filePaths, alert_on_import: true }),
   getStatus: () =>
     api.get('/import/status'),
 }
@@ -166,7 +185,7 @@ export const rulesAPI = {
   toggle: (name: string, enabled: boolean) =>
     api.post(`/rules/${name}/toggle?enabled=${enabled}`),
   save: (rule: Partial<RuleInfo> & { name: string }) =>
-    api.post('/rules/save', rule),
+    api.post('/rules', rule),
   validate: (rule: Partial<RuleInfo> & { name: string }, content?: string) =>
     api.post('/rules/validate', { rule, content }),
   import: (rules: RuleInfo[]) =>
@@ -190,6 +209,8 @@ export const reportsAPI = {
     api.get(`/reports/${id}`),
   export: (format: 'json' | 'csv' | 'excel' | 'pdf') =>
     api.get(`/reports/export?format=${format}`, { responseType: 'blob' }),
+  download: (id: string) =>
+    api.get(`/reports/${id}/download`, { responseType: 'blob' }),
 }
 
 export interface ReportParams {
@@ -375,6 +396,19 @@ export interface SearchParams {
   sort_order?: string
 }
 
+export interface FilterInfo {
+  event_ids?: number[]
+  levels?: number[]
+  log_names?: string[]
+  sources?: string[]
+  computers?: string[]
+  users?: string[]
+  keywords?: string[]
+  exclude_users?: string[]
+  exclude_computers?: string[]
+  ip_address?: string
+}
+
 export interface RuleInfo {
   id: string
   name: string
@@ -385,6 +419,12 @@ export interface RuleInfo {
   mitre_attack?: string[]
   tags?: string[]
   is_custom?: boolean
+  event_ids?: number[]
+  levels?: number[]
+  filter?: FilterInfo
+  message?: string
+  created_at?: string
+  updated_at?: string
 }
 
 export interface CorrelationParams {
@@ -458,7 +498,7 @@ export const multiAPI = {
 }
 
 export interface QueryParams {
-  sql: string
+  query: string
   limit?: number
   offset?: number
 }

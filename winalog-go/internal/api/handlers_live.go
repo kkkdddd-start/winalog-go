@@ -26,6 +26,7 @@ type LiveEventMessage struct {
 type LiveStats struct {
 	TotalEvents  int64     `json:"total_events"`
 	EventsPerSec float64   `json:"events_per_sec"`
+	Alerts       int64     `json:"alerts"`
 	Uptime       duration  `json:"uptime"`
 	Timestamp    time.Time `json:"timestamp"`
 }
@@ -126,10 +127,12 @@ func (h *LiveHandler) GetLiveStats(c *gin.Context) {
 	defer h.mu.Unlock()
 
 	var totalEvents int64
+	var alertCount int64
 	if h.db != nil {
 		stats, err := h.db.GetStats()
 		if err == nil {
 			totalEvents = stats.EventCount
+			alertCount = stats.AlertCount
 		}
 	}
 
@@ -145,6 +148,7 @@ func (h *LiveHandler) GetLiveStats(c *gin.Context) {
 	stats := &LiveStats{
 		TotalEvents:  totalEvents,
 		EventsPerSec: eventsPerSec,
+		Alerts:       alertCount,
 		Uptime:       duration(uptime),
 		Timestamp:    time.Now(),
 	}

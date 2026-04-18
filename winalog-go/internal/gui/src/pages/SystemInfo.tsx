@@ -354,7 +354,8 @@ function SystemInfo() {
                 <th>PPID</th>
                 <th>Name</th>
                 <th>User</th>
-                <th>Command</th>
+                <th>Path</th>
+                <th>Command Line</th>
               </tr>
             </thead>
             <tbody>
@@ -362,9 +363,10 @@ function SystemInfo() {
                 <tr key={`${proc.pid}-${idx}`}>
                   <td className="mono">{proc.pid}</td>
                   <td className="mono">{proc.ppid}</td>
-                  <td>{proc.name}</td>
-                  <td>{proc.user}</td>
-                  <td className="truncate" title={proc.args}>{proc.args || proc.exe}</td>
+                  <td className="highlight">{proc.name}</td>
+                  <td>{proc.user || '-'}</td>
+                  <td className="truncate mono" title={proc.exe}>{proc.exe || '-'}</td>
+                  <td className="truncate" title={proc.args}>{proc.args || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -447,6 +449,8 @@ function SystemInfo() {
                 <th>PID</th>
                 <th>Process</th>
                 <th>DLL Name</th>
+                <th>Version</th>
+                <th>Signed</th>
                 <th>Path</th>
                 <th>Size</th>
               </tr>
@@ -457,6 +461,12 @@ function SystemInfo() {
                   <td className="mono">{dll.process_id}</td>
                   <td>{dll.process_name}</td>
                   <td className="mono highlight">{dll.name}</td>
+                  <td className="mono">{dll.version || '-'}</td>
+                  <td>
+                    <span className={`signature-badge ${dll.is_signed ? 'signed' : 'unsigned'}`}>
+                      {dll.is_signed ? 'Signed' : 'Unsigned'}
+                    </span>
+                  </td>
                   <td className="truncate" title={dll.path}>{dll.path}</td>
                   <td className="mono">{(dll.size / 1024).toFixed(1)} KB</td>
                 </tr>
@@ -853,6 +863,23 @@ function SystemInfo() {
           padding: 2px 8px;
           border-radius: 4px;
           font-size: 0.8rem;
+        }
+
+        .signature-badge {
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
+        .signature-badge.signed {
+          background: rgba(34, 197, 94, 0.2);
+          color: #22c55e;
+        }
+
+        .signature-badge.unsigned {
+          background: rgba(239, 68, 68, 0.2);
+          color: #ef4444;
         }
       `}</style>
     </div>

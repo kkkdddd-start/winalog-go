@@ -5,6 +5,7 @@ package commands
 import (
 	"os"
 
+	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/spf13/cobra"
 )
 
@@ -44,6 +45,13 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(dashboardCmd)
 	root.AddCommand(whitelistCmd)
 	root.AddCommand(uebaCmd)
+	root.AddCommand(evtx2csvCmd)
+
+	initCLILogging()
+}
+
+func initCLILogging() {
+	observability.InitMetricsLogger()
 }
 
 func init() {

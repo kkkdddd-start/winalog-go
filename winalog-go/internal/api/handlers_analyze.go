@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,7 @@ type AnalyzeHandler struct {
 }
 
 type AnalyzeRequest struct {
-	Type      string `json:"type" binding:"required"`
+	Type      string `json:"type"`
 	StartTime string `json:"start_time"`
 	EndTime   string `json:"end_time"`
 	Hours     int    `json:"hours"`
@@ -70,6 +71,8 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 	if analyzerType == "" {
 		analyzerType = c.DefaultQuery("type", "brute-force")
 	}
+
+	analyzerType = strings.ReplaceAll(analyzerType, "-", "_")
 
 	if h.manager == nil {
 		c.JSON(http.StatusServiceUnavailable, ErrorResponse{

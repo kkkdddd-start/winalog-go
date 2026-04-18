@@ -13,6 +13,7 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/alerts"
 	"github.com/kkkdddd-start/winalog-go/internal/analyzers"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
+	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
 
@@ -53,11 +54,15 @@ type Server struct {
 	queryEng       *QueryHandler
 	policyEng      *PolicyHandler
 	uiEng          *UIHandler
+	logsEng        *LogsHandler
 }
 
 func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Server {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
+
+	initLogFile()
+	observability.InitMetricsLogger()
 
 	engine.Use(recoveryMiddleware())
 	engine.Use(requestLogger())
@@ -113,6 +118,7 @@ func (s *Server) setupHandlers() {
 	s.queryEng = NewQueryHandler(s.db)
 	s.policyEng = NewPolicyHandler(s.alertEngine)
 	s.uiEng = NewUIHandler(s.db)
+	s.logsEng = NewLogsHandler()
 }
 
 func (s *Server) setupRoutes() {
@@ -132,6 +138,7 @@ func (s *Server) setupRoutes() {
 	SetupQueryRoutes(s.engine, s.queryEng)
 	SetupPolicyRoutes(s.engine, s.policyEng)
 	SetupUIRoutes(s.engine, s.uiEng)
+	SetupLogsRoutes(s.engine, s.logsEng)
 
 	setupPersistenceStreamRoutes(s.engine, s.persistenceEng)
 

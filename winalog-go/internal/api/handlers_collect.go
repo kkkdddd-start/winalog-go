@@ -4,11 +4,18 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/alerts"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/kkkdddd-start/winalog-go/internal/engine"
+	"github.com/kkkdddd-start/winalog-go/internal/exporters"
+	"github.com/kkkdddd-start/winalog-go/internal/parsers/evtx"
+	"github.com/kkkdddd-start/winalog-go/internal/rules"
+	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
 
@@ -21,6 +28,7 @@ func SetupCollectRoutes(r *gin.Engine, collectHandler *CollectHandler) {
 	{
 		collect.POST("", collectHandler.StartCollect)
 		collect.POST("/import", collectHandler.ImportLogs)
+		collect.POST("/evtx2csv", collectHandler.Evtx2Csv)
 		collect.GET("/status", collectHandler.GetCollectStatus)
 	}
 }
@@ -43,13 +51,24 @@ type LogCollectOptions struct {
 	IncludePrefetch   bool   `json:"include_prefetch"`
 	IncludeRegistry   bool   `json:"include_registry"`
 	IncludeSystemInfo bool   `json:"include_system_info"`
+	IncludeShimCache  bool   `json:"include_shimcache"`
+	IncludeAmcache    bool   `json:"include_amcache"`
+	IncludeUserassist bool   `json:"include_userassist"`
+	IncludeTasks      bool   `json:"include_tasks"`
+	IncludeLogs       bool   `json:"include_logs"`
+	IncludeProcesses  bool   `json:"include_processes"`
+	IncludeNetwork    bool   `json:"include_network"`
+	IncludeDlls       bool   `json:"include_dlls"`
+	IncludeDrivers    bool   `json:"include_drivers"`
+	IncludeUsers      bool   `json:"include_users"`
 	Compress          bool   `json:"compress"`
 	CalculateHash     bool   `json:"calculate_hash"`
 	OutputPath        string `json:"output_path"`
 }
 
 type LogImportRequest struct {
-	FilePaths []string `json:"file_paths" binding:"required"`
+	FilePaths     []string `json:"file_paths" binding:"required"`
+	AlertOnImport bool     `json:"alert_on_import"`
 }
 
 type CollectStatus struct {
@@ -82,6 +101,7 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 	opts := collectors.CollectOptions{
 		Workers:           4,
 		IncludeSystemInfo: true,
+		IncludeLogs:       true,
 		Compress:          true,
 		CalculateHash:     true,
 	}
@@ -92,6 +112,16 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 	opts.IncludePrefetch = req.Options.IncludePrefetch
 	opts.IncludeRegistry = req.Options.IncludeRegistry
 	opts.IncludeSystemInfo = req.Options.IncludeSystemInfo
+	opts.IncludeShimCache = req.Options.IncludeShimCache
+	opts.IncludeAmcache = req.Options.IncludeAmcache
+	opts.IncludeUserassist = req.Options.IncludeUserassist
+	opts.IncludeTasks = req.Options.IncludeTasks
+	opts.IncludeLogs = req.Options.IncludeLogs
+	opts.IncludeProcessSig = req.Options.IncludeProcesses
+	opts.IncludeNetwork = req.Options.IncludeNetwork
+	opts.IncludeProcessDLLs = req.Options.IncludeDlls
+	opts.IncludeDrivers = req.Options.IncludeDrivers
+	opts.IncludeUsers = req.Options.IncludeUsers
 	opts.Compress = req.Options.Compress
 	opts.CalculateHash = req.Options.CalculateHash
 	if req.Options.OutputPath != "" {
@@ -163,7 +193,7 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response := gin.H{
 		"status":       "completed",
 		"message":      "Import completed successfully",
 		"imported":     result.FilesImported,
@@ -171,7 +201,44 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 		"total_events": result.EventsImported,
 		"duration":     result.Duration.String(),
 		"errors":       result.Errors,
-	})
+	}
+
+	if req.AlertOnImport {
+		alertEngine := alerts.NewEngine(h.db, alerts.EngineConfig{
+			DedupWindow: 5 * time.Minute,
+			StatsWindow: 24 * time.Hour,
+		})
+
+		builtinRules := builtin.GetAlertRules()
+		enabledRules := make([]*rules.AlertRule, 0)
+		for _, r := range builtinRules {
+			if r.Enabled {
+				enabledRules = append(enabledRules, r)
+			}
+		}
+		alertEngine.LoadRules(enabledRules)
+
+		startTime := result.StartTime
+		events, _, _ := h.db.ListEvents(&storage.EventFilter{
+			Limit:     10000,
+			StartTime: &startTime,
+		})
+
+		if len(events) > 0 {
+			alertResult, err := alertEngine.EvaluateBatch(context.Background(), events)
+			if err != nil {
+				response["alert_error"] = err.Error()
+			} else {
+				if err := alertEngine.SaveAlerts(alertResult); err != nil {
+					response["alert_error"] = err.Error()
+				} else {
+					response["alerts_generated"] = len(alertResult)
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *CollectHandler) GetCollectStatus(c *gin.Context) {
@@ -180,4 +247,141 @@ func (h *CollectHandler) GetCollectStatus(c *gin.Context) {
 		Progress: 100,
 		Message:  "Collection service is ready",
 	})
+}
+
+type Evtx2CsvRequest struct {
+	FilePaths []string `json:"file_paths" binding:"required"`
+	OutputDir string   `json:"output_dir"`
+	Limit     int      `json:"limit"`
+}
+
+type Evtx2CsvResponse struct {
+	Success     bool     `json:"success"`
+	Results     []Result `json:"results"`
+	TotalEvents int      `json:"total_events"`
+	TotalFiles  int      `json:"total_files"`
+	FailedFiles int      `json:"failed_files"`
+	Errors      []string `json:"errors,omitempty"`
+}
+
+type Result struct {
+	InputPath  string `json:"input_path"`
+	OutputPath string `json:"output_path"`
+	EventCount int    `json:"event_count"`
+	Error      string `json:"error,omitempty"`
+}
+
+func (h *CollectHandler) Evtx2Csv(c *gin.Context) {
+	var req Evtx2CsvRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: "invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	if len(req.FilePaths) == 0 {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: "no file paths provided",
+		})
+		return
+	}
+
+	outputDir := req.OutputDir
+	if outputDir == "" {
+		outputDir = "."
+	}
+
+	parser := evtx.NewEvtxParser()
+	csvExporter := exporters.NewCsvExporter()
+	results := make([]Result, 0, len(req.FilePaths))
+	totalEvents := 0
+	failedFiles := 0
+	errors := make([]string, 0)
+
+	for _, inputPath := range req.FilePaths {
+		info, err := os.Stat(inputPath)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %v", inputPath, err))
+			failedFiles++
+			results = append(results, Result{
+				InputPath: inputPath,
+				Error:     err.Error(),
+			})
+			continue
+		}
+		if info.IsDir() {
+			errors = append(errors, fmt.Sprintf("%s: is a directory", inputPath))
+			failedFiles++
+			results = append(results, Result{
+				InputPath: inputPath,
+				Error:     "is a directory",
+			})
+			continue
+		}
+
+		events, err := parser.ParseBatch(inputPath)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %v", inputPath, err))
+			failedFiles++
+			results = append(results, Result{
+				InputPath: inputPath,
+				Error:     err.Error(),
+			})
+			continue
+		}
+
+		if req.Limit > 0 && len(events) > req.Limit {
+			events = events[:req.Limit]
+		}
+
+		outputPath := inputPath + ".csv"
+		if outputDir != "." {
+			baseName := inputPath + ".csv"
+			outputPath = outputDir + "/" + baseName
+		}
+
+		outputFile, err := os.Create(outputPath)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: failed to create output: %v", inputPath, err))
+			failedFiles++
+			results = append(results, Result{
+				InputPath: inputPath,
+				Error:     err.Error(),
+			})
+			continue
+		}
+
+		if err := csvExporter.Export(events, outputFile); err != nil {
+			outputFile.Close()
+			errors = append(errors, fmt.Sprintf("%s: failed to export CSV: %v", inputPath, err))
+			failedFiles++
+			results = append(results, Result{
+				InputPath: inputPath,
+				Error:     err.Error(),
+			})
+			continue
+		}
+		outputFile.Close()
+
+		totalEvents += len(events)
+		results = append(results, Result{
+			InputPath:  inputPath,
+			OutputPath: outputPath,
+			EventCount: len(events),
+		})
+	}
+
+	response := Evtx2CsvResponse{
+		Success:     failedFiles == 0,
+		Results:     results,
+		TotalEvents: totalEvents,
+		TotalFiles:  len(req.FilePaths),
+		FailedFiles: failedFiles,
+	}
+	if len(errors) > 0 {
+		response.Errors = errors
+	}
+
+	c.JSON(http.StatusOK, response)
 }

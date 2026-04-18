@@ -45,6 +45,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(dashboardCmd)
 	root.AddCommand(whitelistCmd)
 	root.AddCommand(uebaCmd)
+	root.AddCommand(evtx2csvCmd)
 }
 
 func init() {

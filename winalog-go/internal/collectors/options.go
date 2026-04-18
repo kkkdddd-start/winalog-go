@@ -11,6 +11,11 @@ type CollectOptions struct {
 	IncludeUserassist  bool
 	IncludeUSNJournal  bool
 	IncludeShimCache   bool
+	IncludeTasks       bool
+	IncludeLogs        bool
+	IncludeNetwork     bool
+	IncludeDrivers     bool
+	IncludeUsers       bool
 	DLLCollectionMode  string
 	SelectedPIDs       []int
 	OutputPath         string

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
@@ -37,11 +38,12 @@ func NewSettingsHandler(cfg *config.Config, configPath string) *SettingsHandler 
 }
 
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
+	retentionDays := int(h.cfg.Alerts.StatsRetention.Hours() / 24)
 	c.JSON(http.StatusOK, Settings{
 		DatabasePath:         h.cfg.Database.Path,
 		LogLevel:             h.cfg.Log.Level,
 		MaxEvents:            h.cfg.Search.MaxResults,
-		RetentionDays:        30,
+		RetentionDays:        retentionDays,
 		EnableAlerting:       h.cfg.Alerts.Enabled,
 		EnableLiveCollection: false,
 		EnableAutoUpdate:     h.cfg.TUI.AutoUpdate,
@@ -68,6 +70,7 @@ func (h *SettingsHandler) SaveSettings(c *gin.Context) {
 	h.cfg.Log.Level = settings.LogLevel
 	h.cfg.Search.MaxResults = settings.MaxEvents
 	h.cfg.Alerts.Enabled = settings.EnableAlerting
+	h.cfg.Alerts.StatsRetention = time.Duration(settings.RetentionDays) * 24 * time.Hour
 	h.cfg.TUI.AutoUpdate = settings.EnableAutoUpdate
 	h.cfg.API.Port = settings.APIPort
 	h.cfg.API.Host = settings.APIHost

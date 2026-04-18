@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { rulesAPI, RuleInfo } from '../api'
+import api from '../api'
 
 interface TemplateInfo {
   name: string
@@ -30,6 +31,19 @@ function Rules() {
   const [showValidateModal, setShowValidateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingRule, setEditingRule] = useState<RuleInfo | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addRuleStep, setAddRuleStep] = useState<'choice' | 'custom'>('choice')
+  const [newRule, setNewRule] = useState({
+    name: '',
+    description: '',
+    severity: 'medium',
+    score: 50,
+    mitre_attack: [] as string[],
+    event_ids: [] as number[],
+    message: '',
+  })
   const [templates, setTemplates] = useState<TemplateInfo[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateInfo | null>(null)
   const [templateParams, setTemplateParams] = useState<Record<string, string>>({})
@@ -114,35 +128,87 @@ function Rules() {
       const confirmed = confirm('This is a built-in rule. Changes will be temporary and not persisted after restart. Continue?')
       if (!confirmed) return
     }
-    const newDescription = prompt('Edit rule description:', rule.description)
-    if (newDescription !== null && newDescription !== rule.description) {
-      rulesAPI.save({ ...rule, description: newDescription })
-        .then(() => {
-          setRules(rules.map(r => r.name === rule.name ? { ...r, description: newDescription } : r))
-        })
-        .catch(err => {
-          console.error('Failed to update rule:', err)
-        })
+    setEditingRule({ ...rule })
+    setShowEditModal(true)
+  }
+
+  const handleDeleteRule = (rule: RuleInfo) => {
+    if (!rule.is_custom) {
+      alert('Cannot delete built-in rules')
+      return
     }
+    const confirmed = confirm(`Are you sure you want to delete rule "${rule.name}"?`)
+    if (!confirmed) return
+    api.delete(`/rules/${rule.name}`)
+      .then(() => {
+        fetchRules()
+      })
+      .catch((err: any) => {
+        console.error('Failed to delete rule:', err)
+        alert('Failed to delete rule')
+      })
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingRule) return
+    rulesAPI.save(editingRule)
+      .then(() => {
+        setShowEditModal(false)
+        setEditingRule(null)
+        fetchRules()
+      })
+      .catch(err => {
+        console.error('Failed to update rule:', err)
+        alert('Failed to update rule')
+      })
   }
 
   const handleAddRule = () => {
-    const choice = prompt('Add rule: (1) From template, (2) Custom rule\nEnter 1 or 2:')
-    if (choice === '1') {
-      handleOpenTemplateModal()
-    } else if (choice === '2') {
-      const name = prompt('Enter rule name:')
-      if (!name) return
-      const description = prompt('Enter rule description:') || ''
-      const severity = prompt('Enter severity (critical/high/medium/low):', 'medium') || 'medium'
-      rulesAPI.save({ name, description, severity, enabled: true, score: 50 })
-        .then(() => {
-          fetchRules()
-        })
-        .catch(err => {
-          console.error('Failed to add rule:', err)
-        })
+    setShowAddModal(true)
+    setAddRuleStep('choice')
+    setNewRule({
+      name: '',
+      description: '',
+      severity: 'medium',
+      score: 50,
+      mitre_attack: [],
+      event_ids: [],
+      message: '',
+    })
+  }
+
+  const handleOpenTemplateModalFromAdd = () => {
+    setShowAddModal(false)
+    handleOpenTemplateModal()
+  }
+
+  const handleOpenCustomRuleFromAdd = () => {
+    setAddRuleStep('custom')
+  }
+
+  const handleCreateCustomRule = () => {
+    if (!newRule.name.trim()) {
+      alert('Rule name is required')
+      return
     }
+    rulesAPI.save({
+      name: newRule.name,
+      description: newRule.description,
+      severity: newRule.severity,
+      enabled: true,
+      score: newRule.score,
+      mitre_attack: newRule.mitre_attack,
+      event_ids: newRule.event_ids,
+      message: newRule.message,
+    })
+      .then(() => {
+        setShowAddModal(false)
+        fetchRules()
+      })
+      .catch(err => {
+        console.error('Failed to add rule:', err)
+        alert('Failed to create rule')
+      })
   }
 
   const handleValidate = () => {
@@ -425,6 +491,9 @@ function Rules() {
               <div className="rule-actions">
                 <button className="rule-action" onClick={() => handleViewDetails(rule)}>Details</button>
                 <button className="rule-action" onClick={() => handleEditRule(rule)}>Edit</button>
+                {rule.is_custom && (
+                  <button className="rule-action rule-action-delete" onClick={() => handleDeleteRule(rule)}>Delete</button>
+                )}
               </div>
             </div>
           </div>
@@ -573,6 +642,123 @@ function Rules() {
         </div>
       )}
 
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add New Rule</h3>
+              <button className="close-btn" onClick={() => setShowAddModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              {addRuleStep === 'choice' ? (
+                <div className="add-rule-choice">
+                  <p className="modal-desc">Choose how to create a new rule:</p>
+                  <div className="choice-cards">
+                    <div className="choice-card" onClick={handleOpenTemplateModalFromAdd}>
+                      <div className="choice-icon">📋</div>
+                      <div className="choice-title">From Template</div>
+                      <div className="choice-desc">Create a rule from a pre-defined template with customizable parameters</div>
+                    </div>
+                    <div className="choice-card" onClick={handleOpenCustomRuleFromAdd}>
+                      <div className="choice-icon">✏️</div>
+                      <div className="choice-title">Custom Rule</div>
+                      <div className="choice-desc">Create a custom rule by filling in the rule details manually</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="add-rule-form">
+                  <div className="form-group">
+                    <label>Rule Name <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      value={newRule.name}
+                      onChange={e => setNewRule({...newRule, name: e.target.value})}
+                      placeholder="e.g. suspicious-login-detected"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      value={newRule.description}
+                      onChange={e => setNewRule({...newRule, description: e.target.value})}
+                      rows={3}
+                      placeholder="Describe what this rule detects..."
+                    />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Severity</label>
+                      <select
+                        value={newRule.severity}
+                        onChange={e => setNewRule({...newRule, severity: e.target.value})}
+                      >
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                        <option value="info">Info</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Score (0-100)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={newRule.score}
+                        onChange={e => setNewRule({...newRule, score: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>MITRE ATT&CK (comma-separated)</label>
+                    <input
+                      type="text"
+                      value={newRule.mitre_attack?.join(', ') || ''}
+                      onChange={e => setNewRule({
+                        ...newRule,
+                        mitre_attack: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                      })}
+                      placeholder="T1055, T1056"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Event IDs (comma-separated)</label>
+                    <input
+                      type="text"
+                      value={newRule.event_ids?.join(', ') || ''}
+                      onChange={e => setNewRule({
+                        ...newRule,
+                        event_ids: e.target.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
+                      })}
+                      placeholder="4624, 4625"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Alert Message</label>
+                    <input
+                      type="text"
+                      value={newRule.message}
+                      onChange={e => setNewRule({...newRule, message: e.target.value})}
+                      placeholder="Alert message when rule triggers"
+                    />
+                  </div>
+                  <div className="modal-actions">
+                    <button className="btn-secondary" onClick={() => setAddRuleStep('choice')}>
+                      Back
+                    </button>
+                    <button className="btn-primary" onClick={handleCreateCustomRule}>
+                      Create Rule
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showImportModal && (
         <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -582,6 +768,36 @@ function Rules() {
             </div>
             <div className="modal-body">
               <p className="modal-desc">Select a YAML or JSON file containing rules:</p>
+              <details className="format-example">
+                <summary>View Format Examples</summary>
+                <div className="format-content">
+                  <h5>JSON Format:</h5>
+                  <pre>{`[
+  {
+    "name": "custom-rule-1",
+    "description": "My custom rule",
+    "severity": "high",
+    "enabled": true,
+    "score": 80,
+    "mitre_attack": ["T1055"],
+    "event_ids": [4624, 4625],
+    "message": "Suspicious activity detected"
+  }
+]`}</pre>
+                  <h5>YAML Format:</h5>
+                  <pre>{`- name: custom-rule-1
+  description: My custom rule
+  severity: high
+  enabled: true
+  score: 80
+  mitre_attack:
+    - T1055
+  event_ids:
+    - 4624
+    - 4625
+  message: Suspicious activity detected`}</pre>
+                </div>
+              </details>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -703,6 +919,101 @@ function Rules() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editingRule && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Rule</h3>
+              <button className="close-btn" onClick={() => setShowEditModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Name</label>
+                <input
+                  type="text"
+                  value={editingRule.name}
+                  onChange={e => setEditingRule({...editingRule, name: e.target.value})}
+                  disabled={!editingRule.is_custom}
+                />
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={editingRule.description}
+                  onChange={e => setEditingRule({...editingRule, description: e.target.value})}
+                  rows={3}
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Severity</label>
+                  <select
+                    value={editingRule.severity}
+                    onChange={e => setEditingRule({...editingRule, severity: e.target.value})}
+                  >
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="info">Info</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Score (0-100)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editingRule.score}
+                    onChange={e => setEditingRule({...editingRule, score: parseFloat(e.target.value) || 0})}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>MITRE ATT&CK</label>
+                <input
+                  type="text"
+                  value={editingRule.mitre_attack?.join(', ') || ''}
+                  onChange={e => setEditingRule({
+                    ...editingRule,
+                    mitre_attack: e.target.value.split(',').map(s => s.trim()).filter(s => s)
+                  })}
+                  placeholder="T1234, T5678"
+                />
+              </div>
+              <div className="form-group">
+                <label>Event IDs (comma-separated)</label>
+                <input
+                  type="text"
+                  value={editingRule.event_ids?.join(', ') || ''}
+                  onChange={e => setEditingRule({
+                    ...editingRule,
+                    event_ids: e.target.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
+                  })}
+                  placeholder="4624, 4625"
+                />
+              </div>
+              <div className="form-group">
+                <label>Message</label>
+                <input
+                  type="text"
+                  value={editingRule.message || ''}
+                  onChange={e => setEditingRule({...editingRule, message: e.target.value})}
+                />
+              </div>
+              <div className="modal-actions">
+                <button className="btn-secondary" onClick={() => setShowEditModal(false)}>
+                  Cancel
+                </button>
+                <button className="btn-primary" onClick={handleSaveEdit}>
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1067,6 +1378,142 @@ function Rules() {
         .rule-action:hover {
           border-color: #00d9ff;
           color: #00d9ff;
+        }
+        
+        .rule-action-delete {
+          color: #ef4444;
+          border-color: #ef4444;
+        }
+        
+        .rule-action-delete:hover {
+          background: rgba(239, 68, 68, 0.1);
+          border-color: #ef4444;
+          color: #ef4444;
+        }
+        
+        .form-group {
+          margin-bottom: 16px;
+        }
+        
+        .form-group label {
+          display: block;
+          margin-bottom: 6px;
+          color: #888;
+          font-size: 13px;
+          font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+          width: 100%;
+          padding: 10px 12px;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid #333;
+          border-radius: 6px;
+          color: #eee;
+          font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+          outline: none;
+          border-color: #00d9ff;
+        }
+        
+        .form-group input:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
+        .form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        
+        .format-example {
+          margin-bottom: 16px;
+          padding: 12px;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 6px;
+          border: 1px solid #333;
+        }
+        
+        .format-example summary {
+          cursor: pointer;
+          color: #00d9ff;
+          font-weight: 500;
+        }
+        
+        .format-content h5 {
+          color: #888;
+          margin: 12px 0 8px 0;
+          font-size: 13px;
+        }
+        
+        .format-content pre {
+          background: rgba(0, 0, 0, 0.3);
+          padding: 12px;
+          border-radius: 4px;
+          font-size: 12px;
+          color: #ccc;
+          overflow-x: auto;
+          white-space: pre-wrap;
+          word-break: break-all;
+        }
+        
+        .add-rule-choice {
+          padding: 10px 0;
+        }
+        
+        .add-rule-choice .modal-desc {
+          margin-bottom: 20px;
+        }
+        
+        .choice-cards {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        
+        .choice-card {
+          padding: 24px 20px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 2px solid #333;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-align: center;
+        }
+        
+        .choice-card:hover {
+          border-color: #00d9ff;
+          background: rgba(0, 217, 255, 0.05);
+          transform: translateY(-2px);
+        }
+        
+        .choice-icon {
+          font-size: 36px;
+          margin-bottom: 12px;
+        }
+        
+        .choice-title {
+          font-size: 16px;
+          font-weight: 600;
+          color: #fff;
+          margin-bottom: 8px;
+        }
+        
+        .choice-desc {
+          font-size: 13px;
+          color: #888;
+          line-height: 1.4;
+        }
+        
+        .add-rule-form {
+          padding: 10px 0;
         }
         
         .loading-state, .empty-state {

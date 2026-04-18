@@ -64,7 +64,7 @@ type ListRulesRequest struct {
 
 func NewRulesHandler() *RulesHandler {
 	return &RulesHandler{
-		customManager: rules.NewCustomRuleManager(""),
+		customManager: rules.NewCustomRuleManager("./data/rules"),
 	}
 }
 

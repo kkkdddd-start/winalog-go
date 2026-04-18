@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { settingsAPI } from '../api'
+import { useI18n } from '../locales/I18n'
 
 function Settings() {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState('general')
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -94,8 +96,8 @@ function Settings() {
   return (
     <div className="settings-page">
       <div className="page-header">
-        <h2>Settings</h2>
-        {saved && <span className="save-indicator">✓ Saved</span>}
+        <h2>{t('settings.title')}</h2>
+        {saved && <span className="save-indicator">✓ {t('settings.saved')}</span>}
       </div>
 
       <div className="settings-layout">
@@ -105,35 +107,35 @@ function Settings() {
             onClick={() => setActiveTab('general')}
           >
             <span className="nav-icon">⚙️</span>
-            General
+            {t('settings.general')}
           </button>
           <button 
             className={`nav-item ${activeTab === 'database' ? 'active' : ''}`}
             onClick={() => setActiveTab('database')}
           >
             <span className="nav-icon">💾</span>
-            Database
+            {t('settings.database')}
           </button>
           <button 
             className={`nav-item ${activeTab === 'api' ? 'active' : ''}`}
             onClick={() => setActiveTab('api')}
           >
             <span className="nav-icon">🔌</span>
-            API Server
+            {t('settings.apiServer')}
           </button>
           <button 
             className={`nav-item ${activeTab === 'collection' ? 'active' : ''}`}
             onClick={() => setActiveTab('collection')}
           >
             <span className="nav-icon">📡</span>
-            Collection
+            {t('settings.collection')}
           </button>
           <button 
             className={`nav-item ${activeTab === 'advanced' ? 'active' : ''}`}
             onClick={() => setActiveTab('advanced')}
           >
             <span className="nav-icon">🔧</span>
-            Advanced
+            {t('settings.advanced')}
           </button>
         </div>
 
@@ -141,30 +143,30 @@ function Settings() {
           {activeTab === 'general' && (
             <div className="settings-section">
               <div className="section-header">
-                <h3>General Settings</h3>
-                <p>Configure basic application settings</p>
+                <h3>{t('settings.generalSettings')}</h3>
+                <p>{t('settings.configureBasic')}</p>
               </div>
               
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Log Level</label>
-                  <p>Minimum severity level for logging</p>
+                  <label>{t('settings.logLevel')}</label>
+                  <p>{t('settings.logLevelDesc')}</p>
                 </div>
                 <select 
                   value={settings.logLevel}
                   onChange={e => handleChange('logLevel', e.target.value)}
                 >
-                  <option value="debug">Debug</option>
-                  <option value="info">Info</option>
-                  <option value="warn">Warning</option>
-                  <option value="error">Error</option>
+                  <option value="debug">{t('settings.debug')}</option>
+                  <option value="info">{t('settings.info')}</option>
+                  <option value="warn">{t('settings.warn')}</option>
+                  <option value="error">{t('settings.error')}</option>
                 </select>
               </div>
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Export Directory</label>
-                  <p>Default directory for exported files</p>
+                  <label>{t('settings.exportDirectory')}</label>
+                  <p>{t('settings.exportDirectoryDesc')}</p>
                 </div>
                 <input
                   type="text"
@@ -176,8 +178,8 @@ function Settings() {
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Auto Update Rules</label>
-                  <p>Automatically update detection rules</p>
+                  <label>{t('settings.autoUpdateRules')}</label>
+                  <p>{t('settings.autoUpdateRulesDesc')}</p>
                 </div>
                 <label className="toggle">
                   <input
@@ -194,14 +196,14 @@ function Settings() {
           {activeTab === 'database' && (
             <div className="settings-section">
               <div className="section-header">
-                <h3>Database Settings</h3>
-                <p>Configure database storage and retention</p>
+                <h3>{t('settings.databaseSettings')}</h3>
+                <p>{t('settings.configureDatabase')}</p>
               </div>
               
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Database Path</label>
-                  <p>Path to SQLite database file</p>
+                  <label>{t('settings.databasePath')}</label>
+                  <p>{t('settings.databasePathDesc')}</p>
                 </div>
                 <input
                   type="text"
@@ -213,8 +215,8 @@ function Settings() {
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Event Retention (days)</label>
-                  <p>Automatically delete events older than this</p>
+                  <label>{t('settings.eventRetention')}</label>
+                  <p>{t('settings.eventRetentionDesc')}</p>
                 </div>
                 <input
                   type="number"
@@ -228,8 +230,8 @@ function Settings() {
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Maximum Events</label>
-                  <p>Maximum number of events to store</p>
+                  <label>{t('settings.maxEvents')}</label>
+                  <p>{t('settings.maxEventsDesc')}</p>
                 </div>
                 <input
                   type="number"
@@ -246,14 +248,14 @@ function Settings() {
           {activeTab === 'api' && (
             <div className="settings-section">
               <div className="section-header">
-                <h3>API Server Settings</h3>
-                <p>Configure the HTTP API server</p>
+                <h3>{t('settings.apiServerSettings')}</h3>
+                <p>{t('settings.configureApiServer')}</p>
               </div>
               
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>API Host</label>
-                  <p>Host address to bind the API server</p>
+                  <label>{t('settings.apiHost')}</label>
+                  <p>{t('settings.apiHostDesc')}</p>
                 </div>
                 <input
                   type="text"
@@ -265,8 +267,8 @@ function Settings() {
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>API Port</label>
-                  <p>Port number for the API server</p>
+                  <label>{t('settings.apiPort')}</label>
+                  <p>{t('settings.apiPortDesc')}</p>
                 </div>
                 <input
                   type="number"
@@ -280,8 +282,8 @@ function Settings() {
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Enable CORS</label>
-                  <p>Allow cross-origin requests</p>
+                  <label>{t('settings.enableCors')}</label>
+                  <p>{t('settings.enableCorsDesc')}</p>
                 </div>
                 <label className="toggle">
                   <input
@@ -298,14 +300,14 @@ function Settings() {
           {activeTab === 'collection' && (
             <div className="settings-section">
               <div className="section-header">
-                <h3>Collection Settings</h3>
-                <p>Configure event collection behavior</p>
+                <h3>{t('settings.collectionSettings')}</h3>
+                <p>{t('settings.configureCollection')}</p>
               </div>
               
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Enable Alerting</label>
-                  <p>Generate alerts when rules match</p>
+                  <label>{t('settings.enableAlerting')}</label>
+                  <p>{t('settings.enableAlertingDesc')}</p>
                 </div>
                 <label className="toggle">
                   <input
@@ -319,8 +321,8 @@ function Settings() {
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Enable Live Collection</label>
-                  <p>Continuously monitor Windows Event Logs</p>
+                  <label>{t('settings.enableLiveCollection')}</label>
+                  <p>{t('settings.enableLiveCollectionDesc')}</p>
                 </div>
                 <label className="toggle">
                   <input
@@ -334,8 +336,8 @@ function Settings() {
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Max Import File Size (MB)</label>
-                  <p>Maximum size for imported files</p>
+                  <label>{t('settings.maxImportFileSize')}</label>
+                  <p>{t('settings.maxImportFileSizeDesc')}</p>
                 </div>
                 <input
                   type="number"
@@ -352,19 +354,19 @@ function Settings() {
           {activeTab === 'advanced' && (
             <div className="settings-section">
               <div className="section-header">
-                <h3>Advanced Settings</h3>
-                <p>Expert configuration options</p>
+                <h3>{t('settings.advancedSettings')}</h3>
+                <p>{t('settings.expertConfig')}</p>
               </div>
               
               <div className="info-card">
-                <h4>⚠️ Warning</h4>
-                <p>Advanced settings may affect performance and stability. Only modify if you know what you're doing.</p>
+                <h4>⚠️ {t('settings.warning')}</h4>
+                <p>{t('settings.warningDesc')}</p>
               </div>
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Parser Workers</label>
-                  <p>Number of parallel parsing workers</p>
+                  <label>{t('settings.parserWorkers')}</label>
+                  <p>{t('settings.parserWorkersDesc')}</p>
                 </div>
                 <input
                   type="number"
@@ -378,8 +380,8 @@ function Settings() {
 
               <div className="setting-card">
                 <div className="setting-info">
-                  <label>Memory Limit (MB)</label>
-                  <p>Maximum memory usage for event processing</p>
+                  <label>{t('settings.memoryLimit')}</label>
+                  <p>{t('settings.memoryLimitDesc')}</p>
                 </div>
                 <input
                   type="number"
@@ -396,10 +398,10 @@ function Settings() {
           <div className="settings-actions">
             {error && <span className="error-text">{error}</span>}
             <button onClick={handleSave} className="btn-primary" disabled={loading}>
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? t('settings.saving') : t('settings.saveChanges')}
             </button>
             <button onClick={handleReset} className="btn-secondary" disabled={loading}>
-              Reset to Defaults
+              {t('settings.resetDefaults')}
             </button>
           </div>
         </div>

@@ -226,44 +226,9 @@ func (h *SystemHandler) GetMetrics(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetProcesses(c *gin.Context) {
-	if runtime.GOOS != "windows" {
-		c.JSON(http.StatusOK, ProcessResponse{
-			Processes: []*ProcessInfo{},
-			Total:     0,
-		})
-		return
-	}
-
-	cfg := config.DefaultConfig()
-	defaultLimit := cfg.Search.DefaultProcessLimit
-	maxLimit := cfg.Search.MaxProcessLimit
-
-	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
-	limit, _ := strconv.Atoi(limitStr)
-	if limit <= 0 || limit > maxLimit {
-		limit = defaultLimit
-	}
-
-	processes, err := collectors.ListProcesses()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	result := make([]*ProcessInfo, 0, len(processes))
-	for _, p := range processes {
-		result = append(result, &ProcessInfo{
-			PID:  p.PID,
-			Name: p.Name,
-		})
-		if len(result) >= limit {
-			break
-		}
-	}
-
 	c.JSON(http.StatusOK, ProcessResponse{
-		Processes: result,
-		Total:     len(processes),
+		Processes: []*ProcessInfo{},
+		Total:     0,
 	})
 }
 

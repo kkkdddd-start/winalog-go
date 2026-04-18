@@ -1,11 +1,15 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
+	"github.com/kkkdddd-start/winalog-go/internal/observability"
 )
 
 func requestLogger() gin.HandlerFunc {
@@ -25,14 +29,44 @@ func requestLogger() gin.HandlerFunc {
 			path = path + "?" + raw
 		}
 
-		log.Printf("[API] %3d | %13v | %15s | %-7s %s",
-			statusCode,
-			latency,
-			clientIP,
-			method,
-			path,
-		)
+		logEntry := observability.APILogEntry{
+			Timestamp: start.Format(time.RFC3339),
+			Level:     getLogLevel(statusCode),
+			Message:   "[API]",
+			Status:    statusCode,
+			Latency:   latency.String(),
+			ClientIP:  clientIP,
+			Method:    method,
+			Path:      path,
+		}
+
+		jsonBytes, _ := json.Marshal(logEntry)
+		jsonBytes = append(jsonBytes, '\n')
+		os.Stdout.Write(jsonBytes)
+
+		observability.LogAPIRequest(logEntry)
 	}
+}
+
+func getLogLevel(statusCode int) string {
+	switch {
+	case statusCode >= 500:
+		return "error"
+	case statusCode >= 400:
+		return "warn"
+	default:
+		return "info"
+	}
+}
+
+var logFileInstance *os.File
+
+func getLogFile() *os.File {
+	return logFileInstance
+}
+
+func initLogFile() error {
+	return nil
 }
 
 var defaultAllowedOrigins = []string{
@@ -92,6 +126,29 @@ func recoveryMiddleware() gin.HandlerFunc {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Printf("[PANIC] %v", err)
+
+				panicEntry := struct {
+					Timestamp string `json:"timestamp"`
+					Level     string `json:"level"`
+					Message   string `json:"message"`
+					Error     string `json:"error"`
+					Path      string `json:"path"`
+				}{
+					Timestamp: time.Now().Format(time.RFC3339),
+					Level:     "fatal",
+					Message:   "[PANIC]",
+					Error:     fmt.Sprintf("%v", err),
+					Path:      c.Request.URL.Path,
+				}
+
+				jsonBytes, _ := json.Marshal(panicEntry)
+				jsonBytes = append(jsonBytes, '\n')
+				os.Stdout.Write(jsonBytes)
+
+				if lf := getLogFile(); lf != nil {
+					lf.Write(jsonBytes)
+				}
+
 				c.AbortWithStatusJSON(500, gin.H{
 					"error": "Internal server error",
 				})
