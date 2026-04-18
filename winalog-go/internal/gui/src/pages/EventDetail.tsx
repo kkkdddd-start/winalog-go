@@ -210,46 +210,66 @@ function EventDetail() {
       <div className="detail-panel">
         <h3>Event #{event.id}</h3>
         
-        <div className="detail-grid">
-          <div className="detail-item">
-            <label>Timestamp:</label>
-            <span>{new Date(event.timestamp).toLocaleString()}</span>
+        <div className="detail-layout">
+          <div className="detail-fields">
+            <div className="detail-field">
+              <span className="field-label">Timestamp:</span>
+              <span className="field-value">{new Date(event.timestamp).toLocaleString()}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">Level:</span>
+              <span className="field-value">{formatLevel(event.level)}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">Event ID:</span>
+              <span className="field-value">{event.event_id}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">Source:</span>
+              <span className="field-value">{event.source}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">Log Name:</span>
+              <span className="field-value">{event.log_name}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">Computer:</span>
+              <span className="field-value">{event.computer}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">User:</span>
+              <span className="field-value">{event.user || 'N/A'}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">User SID:</span>
+              <span className="field-value">{event.user_sid || 'N/A'}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">Session ID:</span>
+              <span className="field-value">{event.session_id || 'N/A'}</span>
+            </div>
+            <div className="detail-field">
+              <span className="field-label">IP Address:</span>
+              <span className="field-value">{event.ip_address || 'N/A'}</span>
+            </div>
           </div>
-          <div className="detail-item">
-            <label>Event ID:</label>
-            <span>{event.event_id}</span>
-          </div>
-          <div className="detail-item">
-            <label>Level:</label>
-            <span>{formatLevel(event.level)}</span>
-          </div>
-          <div className="detail-item">
-            <label>Source:</label>
-            <span>{event.source}</span>
-          </div>
-          <div className="detail-item">
-            <label>Log Name:</label>
-            <span>{event.log_name}</span>
-          </div>
-          <div className="detail-item">
-            <label>Computer:</label>
-            <span>{event.computer}</span>
-          </div>
-          <div className="detail-item">
-            <label>User:</label>
-            <span>{event.user || 'N/A'}</span>
-          </div>
-          <div className="detail-item">
-            <label>User SID:</label>
-            <span>{event.user_sid || 'N/A'}</span>
-          </div>
-          <div className="detail-item">
-            <label>Session ID:</label>
-            <span>{event.session_id || 'N/A'}</span>
-          </div>
-          <div className="detail-item">
-            <label>IP Address:</label>
-            <span>{event.ip_address || 'N/A'}</span>
+          <div className="detail-actions">
+            {event.raw_xml && (
+              <button 
+                className="btn-action"
+                onClick={() => setShowRawModal(true)}
+              >
+                View JSON
+              </button>
+            )}
+            {event.raw_xml && (
+              <button 
+                className="btn-action btn-copy"
+                onClick={copyFormattedJson}
+              >
+                Copy JSON
+              </button>
+            )}
           </div>
         </div>
 
@@ -265,7 +285,6 @@ function EventDetail() {
               <div className="raw-json-actions">
                 <button className="btn-small" onClick={handleExpandAll}>Expand All</button>
                 <button className="btn-small" onClick={handleCollapseAll}>Collapse All</button>
-                <button className="btn-small" onClick={copyFormattedJson}>Copy</button>
               </div>
             </div>
             <div className="json-tree">
@@ -280,7 +299,10 @@ function EventDetail() {
           <div className="modal-content modal-large" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <span>Raw JSON - Event #{event.id}</span>
-              <button className="modal-close" onClick={() => setShowRawModal(false)}>×</button>
+              <div className="modal-header-actions">
+                <button className="btn-small" onClick={copyFormattedJson}>Copy</button>
+                <button className="modal-close" onClick={() => setShowRawModal(false)}>×</button>
+              </div>
             </div>
             <div className="modal-body">
               <pre className="json-large">{JSON.stringify(JSON.parse(event.raw_xml), null, 2)}</pre>
@@ -290,19 +312,65 @@ function EventDetail() {
       )}
 
       <style>{`
-        .detail-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-          margin-bottom: 20px;
-        }
-        .detail-item {
+        .detail-layout {
           display: flex;
-          gap: 10px;
+          margin-bottom: 20px;
+          gap: 20px;
         }
-        .detail-item label {
+        .detail-fields {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .detail-field {
+          display: flex;
+          gap: 15px;
+          padding: 8px 0;
+          border-bottom: 1px solid #333;
+        }
+        .field-label {
+          width: 140px;
           font-weight: bold;
           color: #00d9ff;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .field-value {
+          color: #e0e0e0;
+          word-break: break-all;
+        }
+        .detail-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 10px;
+          border-left: 1px solid #333;
+          min-width: 140px;
+        }
+        .btn-action {
+          padding: 10px 20px;
+          background: #1a3d5c;
+          color: #00d9ff;
+          border: 1px solid #00d9ff;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 500;
+          text-align: center;
+        }
+        .btn-action:hover {
+          background: #00d9ff;
+          color: #0a0a1a;
+        }
+        .btn-action.btn-copy {
+          background: #1a4d1a;
+          border-color: #2e7d32;
+          color: #4caf50;
+        }
+        .btn-action.btn-copy:hover {
+          background: #2e7d32;
+          color: #fff;
         }
         .detail-section {
           margin-top: 15px;
