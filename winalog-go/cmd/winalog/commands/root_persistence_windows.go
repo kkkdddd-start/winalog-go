@@ -7,6 +7,8 @@ import (
 )
 
 func RegisterCommands(root *cobra.Command) {
+	root.PersistentFlags().StringVar(&dbPath, "db", "", "Database path")
+
 	root.AddCommand(importCmd)
 	root.AddCommand(searchCmd)
 	root.AddCommand(collectCmd)

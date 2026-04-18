@@ -289,6 +289,8 @@ func (e *Engine) analyzeRule(rule *rules.CorrelationRule) []*types.CorrelationRe
 			continue
 		}
 
+		events = e.matcher.FilterByPattern(events, pattern)
+
 		if pattern.TimeWindow > 0 {
 			events = e.filterByTimeWindow(events, pattern.TimeWindow)
 		}
@@ -311,6 +313,7 @@ func (e *Engine) analyzeRule(rule *rules.CorrelationRule) []*types.CorrelationRe
 			nextEvents := e.findRelatedEventsWithRule(baseEvent, nextPattern, rule)
 
 			if len(nextEvents) > 0 {
+				nextEvents = e.matcher.FilterByPattern(nextEvents, nextPattern)
 				for _, nextEvent := range nextEvents {
 					if !e.matcher.CheckOrderedSequence([]*types.Event{baseEvent, nextEvent}, nextPattern) {
 						continue
@@ -367,6 +370,9 @@ func (e *Engine) findRelatedEvents(base *types.Event, pattern *rules.Pattern) []
 		}
 		filtered := make([]*types.Event, 0)
 		for _, evt := range events {
+			if !evt.Timestamp.After(base.Timestamp) {
+				continue
+			}
 			userMatch := false
 			if evt.User != nil && base.User != nil {
 				userMatch = *evt.User == *base.User
@@ -386,6 +392,9 @@ func (e *Engine) findRelatedEvents(base *types.Event, pattern *rules.Pattern) []
 		}
 		filtered := make([]*types.Event, 0)
 		for _, evt := range events {
+			if !evt.Timestamp.After(base.Timestamp) {
+				continue
+			}
 			if evt.Computer == base.Computer {
 				filtered = append(filtered, evt)
 			}
@@ -399,6 +408,9 @@ func (e *Engine) findRelatedEvents(base *types.Event, pattern *rules.Pattern) []
 		}
 		filtered := make([]*types.Event, 0)
 		for _, evt := range events {
+			if !evt.Timestamp.After(base.Timestamp) {
+				continue
+			}
 			if evt.IPAddress != nil && base.IPAddress != nil && *evt.IPAddress == *base.IPAddress {
 				filtered = append(filtered, evt)
 			}
@@ -406,7 +418,17 @@ func (e *Engine) findRelatedEvents(base *types.Event, pattern *rules.Pattern) []
 		return filtered
 
 	default:
-		return e.index.GetByEventID(pattern.EventID)
+		events = e.index.GetByEventID(pattern.EventID)
+		if events == nil {
+			return nil
+		}
+		filtered := make([]*types.Event, 0)
+		for _, evt := range events {
+			if evt.Timestamp.After(base.Timestamp) {
+				filtered = append(filtered, evt)
+			}
+		}
+		return filtered
 	}
 }
 
@@ -425,6 +447,9 @@ func (e *Engine) findRelatedEventsWithRule(base *types.Event, pattern *rules.Pat
 	case "user":
 		filtered := make([]*types.Event, 0)
 		for _, evt := range events {
+			if !evt.Timestamp.After(base.Timestamp) {
+				continue
+			}
 			userMatch := false
 			if evt.User != nil && base.User != nil {
 				userMatch = *evt.User == *base.User
@@ -440,6 +465,9 @@ func (e *Engine) findRelatedEventsWithRule(base *types.Event, pattern *rules.Pat
 	case "computer":
 		filtered := make([]*types.Event, 0)
 		for _, evt := range events {
+			if !evt.Timestamp.After(base.Timestamp) {
+				continue
+			}
 			if evt.Computer == base.Computer {
 				filtered = append(filtered, evt)
 			}
@@ -452,6 +480,9 @@ func (e *Engine) findRelatedEventsWithRule(base *types.Event, pattern *rules.Pat
 	case "ip":
 		filtered := make([]*types.Event, 0)
 		for _, evt := range events {
+			if !evt.Timestamp.After(base.Timestamp) {
+				continue
+			}
 			if evt.IPAddress != nil && base.IPAddress != nil && *evt.IPAddress == *base.IPAddress {
 				filtered = append(filtered, evt)
 			}
@@ -462,7 +493,13 @@ func (e *Engine) findRelatedEventsWithRule(base *types.Event, pattern *rules.Pat
 		return events
 
 	default:
-		return events
+		filtered := make([]*types.Event, 0)
+		for _, evt := range events {
+			if evt.Timestamp.After(base.Timestamp) {
+				filtered = append(filtered, evt)
+			}
+		}
+		return filtered
 	}
 }
 

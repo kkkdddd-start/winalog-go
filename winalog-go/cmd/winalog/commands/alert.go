@@ -42,6 +42,10 @@ var alertResolveCmd = &cobra.Command{
 	RunE:  runAlertResolve,
 }
 
+var alertResolveFlags struct {
+	comment string
+}
+
 var alertDeleteCmd = &cobra.Command{
 	Use:   "delete <id>",
 	Short: "Delete an alert",
@@ -124,6 +128,8 @@ func init() {
 
 	alertMonitorCmd.Flags().DurationVar(&alertMonitorFlags.interval, "interval", 30*time.Second, "Check interval for monitoring")
 	alertMonitorCmd.Flags().IntVar(&alertMonitorFlags.batchSize, "batch-size", 100, "Batch size per check")
+
+	alertResolveCmd.Flags().StringVar(&alertResolveFlags.comment, "comment", "", "Resolution notes")
 }
 
 func getAlertEngine() *alerts.Engine {
@@ -260,9 +266,11 @@ func runAlertResolve(cmd *cobra.Command, args []string) error {
 	var id int64
 	fmt.Sscanf(args[0], "%d", &id)
 
-	var notes string
-	fmt.Print("Enter resolution notes (optional): ")
-	fmt.Scanln(&notes)
+	notes := alertResolveFlags.comment
+	if notes == "" {
+		fmt.Print("Enter resolution notes (optional): ")
+		fmt.Scanln(&notes)
+	}
 
 	err := engine.ResolveAlert(id, notes)
 	if err != nil {
