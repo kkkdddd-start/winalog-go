@@ -4,6 +4,7 @@ import { eventsAPI, ExportParams, SearchParams } from '../api'
 interface Event {
   id: number
   timestamp: string
+  import_time?: string
   event_id: number
   level: string
   source: string
@@ -50,6 +51,8 @@ function Events() {
   const [logNamesInput, setLogNamesInput] = useState('')
   const [hoveredEvent, setHoveredEvent] = useState<Event | null>(null)
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 })
+  const [hoveredField, setHoveredField] = useState<string | null>(null)
+  const [showImportTime, setShowImportTime] = useState(false)
 
   const [filters, setFilters] = useState<ExportParams['filters']>({
     event_ids: [],
@@ -433,7 +436,25 @@ function Events() {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Timestamp</th>
+                  <th>
+                    <span className="timestamp-header">
+                      <span
+                        className={`timestamp-toggle ${showImportTime ? '' : 'active'}`}
+                        onClick={() => setShowImportTime(false)}
+                        title="Log time"
+                      >
+                        Time
+                      </span>
+                      <span className="timestamp-separator">|</span>
+                      <span
+                        className={`timestamp-toggle ${showImportTime ? 'active' : ''}`}
+                        onClick={() => setShowImportTime(true)}
+                        title="Import time"
+                      >
+                        Import
+                      </span>
+                    </span>
+                  </th>
                   <th>Level</th>
                   <th>Event ID</th>
                   <th>Source</th>
@@ -445,29 +466,59 @@ function Events() {
                 {events.map(event => (
                   <tr key={event.id}>
                     <td className="id-cell">{event.id}</td>
-                    <td className="time-cell">{new Date(event.timestamp).toLocaleString()}</td>
+                    <td className="time-cell">
+                      {showImportTime
+                        ? (event.import_time ? new Date(event.import_time).toLocaleString() : '-')
+                        : new Date(event.timestamp).toLocaleString()
+                      }
+                    </td>
                     <td>
                       <span className={`level-badge ${getLevelClass(event.level)}`}>
                         {getLevelLabel(event.level)}
                       </span>
                     </td>
                     <td className="event-id">{event.event_id}</td>
-                    <td className="source-cell">{event.source || '-'}</td>
+                    <td
+                      className="source-cell"
+                      onMouseEnter={(e) => {
+                        if (event.source && event.source.length > 40) {
+                          setHoveredEvent(event)
+                          setHoveredField('source')
+                          setHoverPosition({ x: e.clientX, y: e.clientY })
+                        }
+                      }}
+                      onMouseMove={(e) => {
+                        if (hoveredEvent?.id === event.id && hoveredField === 'source') {
+                          setHoverPosition({ x: e.clientX, y: e.clientY })
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredEvent(null)
+                        setHoveredField(null)
+                      }}
+                    >
+                      {event.source?.substring(0, 40) || '-'}
+                      {event.source && event.source.length > 40 ? '...' : ''}
+                    </td>
                     <td className="computer-cell">{event.computer || '-'}</td>
                     <td 
                       className="message-cell"
                       onMouseEnter={(e) => {
                         if (event.message && event.message.length > 120) {
                           setHoveredEvent(event)
+                          setHoveredField('message')
                           setHoverPosition({ x: e.clientX, y: e.clientY })
                         }
                       }}
                       onMouseMove={(e) => {
-                        if (hoveredEvent?.id === event.id) {
+                        if (hoveredEvent?.id === event.id && hoveredField === 'message') {
                           setHoverPosition({ x: e.clientX, y: e.clientY })
                         }
                       }}
-                      onMouseLeave={() => setHoveredEvent(null)}
+                      onMouseLeave={() => {
+                        setHoveredEvent(null)
+                        setHoveredField(null)
+                      }}
                     >
                       {event.message?.substring(0, 120)}
                       {event.message && event.message.length > 120 ? '...' : ''}
@@ -485,13 +536,21 @@ function Events() {
                 left: Math.min(hoverPosition.x + 10, window.innerWidth - 620),
                 top: Math.min(hoverPosition.y + 10, window.innerHeight - 420),
               }}
-              onMouseLeave={() => setHoveredEvent(null)}
+              onMouseLeave={() => {
+                setHoveredEvent(null)
+                setHoveredField(null)
+              }}
             >
               <div className="float-panel-header">
-                <span>Full Message</span>
-                <button className="float-panel-close" onClick={() => setHoveredEvent(null)}>x</button>
+                <span>{hoveredField === 'source' ? 'Full Source' : 'Full Message'}</span>
+                <button className="float-panel-close" onClick={() => {
+                  setHoveredEvent(null)
+                  setHoveredField(null)
+                }}>x</button>
               </div>
-              <pre className="float-panel-content">{hoveredEvent.message}</pre>
+              <pre className="float-panel-content">
+                {hoveredField === 'source' ? hoveredEvent.source : hoveredEvent.message}
+              </pre>
             </div>
           )}
 
@@ -939,6 +998,34 @@ function Events() {
           margin: 0;
           font-size: 13px;
           color: #ccc;
+        }
+        
+        .timestamp-header {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        
+        .timestamp-separator {
+          color: #555;
+        }
+        
+        .timestamp-toggle {
+          cursor: pointer;
+          padding: 2px 6px;
+          border-radius: 3px;
+          font-size: 0.85rem;
+          color: #666;
+          transition: all 0.2s;
+        }
+        
+        .timestamp-toggle:hover {
+          color: #00d9ff;
+        }
+        
+        .timestamp-toggle.active {
+          color: #00d9ff;
+          background: rgba(0, 217, 255, 0.1);
         }
         
         .pagination {

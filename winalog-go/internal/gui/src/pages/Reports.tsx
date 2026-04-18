@@ -48,6 +48,18 @@ function Reports() {
       })
       
       setLastGenerated(new Date().toLocaleString())
+      
+      const res = await reportsAPI.list()
+      const newReports = res.data.reports || []
+      setReports(newReports)
+      
+      if (newReports.length > 0) {
+        const latestReport = newReports[0]
+        const downloadNow = confirm(`Report generated successfully!\n\nReport: ${latestReport.name}\nType: ${latestReport.type}\nFormat: ${latestReport.format}\n\nClick OK to download now, or Cancel to view in reports list.`)
+        if (downloadNow) {
+          handleDownload(latestReport)
+        }
+      }
     } catch (error) {
       console.error('Report generation failed:', error)
       setGenerateError('Failed to generate report. Please try again.')

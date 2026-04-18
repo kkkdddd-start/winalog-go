@@ -9,6 +9,15 @@ interface Finding {
   score: number
   rule_name?: string
   mitre_attack?: string[]
+  evidence?: EvidenceItem[]
+}
+
+interface EvidenceItem {
+  event_id: number
+  timestamp: string
+  user: string
+  computer: string
+  message: string
 }
 
 interface AnalyzeResult {
@@ -271,7 +280,28 @@ function Analyze() {
                       <div className="finding-meta">
                         {f.rule_name && <span className="rule-name">{f.rule_name}</span>}
                         <span className="finding-score">Score: {f.score.toFixed(1)}</span>
+                        {f.evidence && f.evidence.length > 0 && (
+                          <span className="evidence-count">{f.evidence.length} events</span>
+                        )}
                       </div>
+                      {f.evidence && f.evidence.length > 0 && (
+                        <div className="evidence-list">
+                          <div className="evidence-header">{t('analyze.relatedEvents')}</div>
+                          {f.evidence.slice(0, 5).map((e, j) => (
+                            <div key={j} className="evidence-item">
+                              <span className="evidence-time">{new Date(e.timestamp).toLocaleString()}</span>
+                              <span className="evidence-user">{e.user || '-'}</span>
+                              <span className="evidence-computer">{e.computer || '-'}</span>
+                              <span className="evidence-msg" title={e.message}>
+                                {e.message?.substring(0, 80)}{e.message && e.message.length > 80 ? '...' : ''}
+                              </span>
+                            </div>
+                          ))}
+                          {f.evidence.length > 5 && (
+                            <div className="evidence-more">+{f.evidence.length - 5} more events</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

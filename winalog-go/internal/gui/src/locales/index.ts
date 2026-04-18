@@ -220,6 +220,7 @@ export const zh = {
     viewAlerts: '查看告警',
     detectPersistence: '持久化检测',
     aboutAnalyzers: '关于分析器',
+    relatedEvents: '相关日志事件',
   },
   correlation: {
     title: '关联分析',
@@ -729,6 +730,7 @@ export const en = {
     viewAlerts: 'View Alerts',
     detectPersistence: 'Detect Persistence',
     aboutAnalyzers: 'About Analyzers',
+    relatedEvents: 'Related Log Events',
   },
   correlation: {
     title: 'Correlation Analysis',

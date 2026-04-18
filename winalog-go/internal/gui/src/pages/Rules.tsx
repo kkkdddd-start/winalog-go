@@ -51,6 +51,10 @@ function Rules() {
   }
 
   const handleEditRule = (rule: RuleInfo) => {
+    if (!rule.is_custom) {
+      const confirmed = confirm('This is a built-in rule. Changes will be temporary and not persisted after restart. Continue?')
+      if (!confirmed) return
+    }
     const newDescription = prompt('Edit rule description:', rule.description)
     if (newDescription !== null && newDescription !== rule.description) {
       rulesAPI.save({ ...rule, description: newDescription })
@@ -340,6 +344,7 @@ function Rules() {
                 {getSeverityIcon(rule.severity)} {rule.severity}
               </span>
               <span className="score-badge">Score: {rule.score}</span>
+              {!rule.is_custom && <span className="builtin-badge">Built-in</span>}
             </div>
             
             <p className="rule-description">{rule.description}</p>
@@ -852,6 +857,15 @@ function Rules() {
           padding: 4px 8px;
           background: rgba(255, 255, 255, 0.05);
           border-radius: 4px;
+        }
+        
+        .builtin-badge {
+          font-size: 11px;
+          color: #f59e0b;
+          padding: 4px 8px;
+          background: rgba(245, 158, 11, 0.1);
+          border-radius: 4px;
+          border: 1px solid rgba(245, 158, 11, 0.3);
         }
         
         .rule-description {

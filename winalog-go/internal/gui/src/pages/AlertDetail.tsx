@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { alertsAPI } from '../api'
 
 interface Alert {
@@ -21,6 +21,7 @@ interface Alert {
 
 function AlertDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [alert, setAlert] = useState<Alert | null>(null)
   const [loading, setLoading] = useState(true)
   const [notes, setNotes] = useState('')
@@ -62,6 +63,23 @@ function AlertDetail() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSearchRelatedEvents = () => {
+    const params = new URLSearchParams()
+    if (alert.message) {
+      params.set('keywords', alert.message.substring(0, 100))
+    }
+    if (alert.first_seen) {
+      params.set('start_time', alert.first_seen)
+    }
+    if (alert.last_seen) {
+      params.set('end_time', alert.last_seen)
+    }
+    if (alert.log_name) {
+      params.set('log_names', alert.log_name)
+    }
+    navigate(`/events?${params.toString()}`)
   }
 
   if (loading) return <div>Loading...</div>
@@ -156,6 +174,9 @@ function AlertDetail() {
               </button>
               <button onClick={handleMarkFalsePositive} disabled={saving} style={{background: '#6c757d'}}>
                 Mark as False Positive
+              </button>
+              <button onClick={handleSearchRelatedEvents} style={{background: '#00d9ff', color: '#000'}}>
+                Search Related Events
               </button>
             </div>
           </div>

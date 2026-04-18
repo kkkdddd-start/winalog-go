@@ -31,6 +31,15 @@ type AnalyzeFinding struct {
 	RuleName    string                 `json:"rule_name,omitempty"`
 	MitreAttack []string               `json:"mitre_attack,omitempty"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Evidence    []EvidenceItem         `json:"evidence,omitempty"`
+}
+
+type EvidenceItem struct {
+	EventID   int32  `json:"event_id"`
+	Timestamp string `json:"timestamp"`
+	User      string `json:"user"`
+	Computer  string `json:"computer"`
+	Message   string `json:"message"`
 }
 
 type Pagination struct {
@@ -145,6 +154,16 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 		if f.MitreAttack != "" {
 			mitre = []string{f.MitreAttack}
 		}
+		evidence := make([]EvidenceItem, 0)
+		for _, e := range f.Evidence {
+			evidence = append(evidence, EvidenceItem{
+				EventID:   e.EventID,
+				Timestamp: e.Timestamp,
+				User:      e.User,
+				Computer:  e.Computer,
+				Message:   e.Message,
+			})
+		}
 		response.Findings[i] = AnalyzeFinding{
 			Description: f.Description,
 			Severity:    f.Severity,
@@ -152,6 +171,7 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 			RuleName:    f.RuleName,
 			MitreAttack: mitre,
 			Metadata:    f.Metadata,
+			Evidence:    evidence,
 		}
 	}
 

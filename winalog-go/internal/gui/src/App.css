@@ -1719,6 +1719,63 @@ button:disabled {
   color: #888;
 }
 
+.evidence-count {
+  color: #22c55e;
+  font-weight: 500;
+}
+
+.evidence-list {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.evidence-header {
+  font-size: 0.8rem;
+  color: #00d9ff;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.evidence-item {
+  display: grid;
+  grid-template-columns: 160px 100px 100px 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+}
+
+.evidence-item:last-child {
+  border-bottom: none;
+}
+
+.evidence-time {
+  color: #888;
+  white-space: nowrap;
+}
+
+.evidence-user, .evidence-computer {
+  color: #00d9ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.evidence-msg {
+  color: #ccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evidence-more {
+  text-align: center;
+  padding: 6px;
+  color: #666;
+  font-size: 0.8rem;
+}
+
 .analyzer-info {
   background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
   border-radius: 12px;

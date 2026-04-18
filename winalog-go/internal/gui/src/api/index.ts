@@ -344,6 +344,7 @@ export interface RuleInfo {
   score: number
   mitre_attack?: string[]
   tags?: string[]
+  is_custom?: boolean
 }
 
 export interface CorrelationParams {
