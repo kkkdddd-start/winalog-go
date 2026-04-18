@@ -554,13 +554,7 @@ function Events() {
                     <td className="event-id">{event.event_id}</td>
                     <td 
                       className="source-cell"
-                      onMouseEnter={(e) => {
-                        if (event.source) {
-                          setHoveredEvent(event)
-                          setHoverPosition({ x: e.clientX + 10, y: e.clientY + 10 })
-                        }
-                      }}
-                      onMouseLeave={() => setHoveredEvent(null)}
+                      title={event.source || ''}
                     >
                       <span className="cell-content">{event.source || '-'}</span>
                       <button 
@@ -578,11 +572,7 @@ function Events() {
                     <td className="computer-cell">{event.computer || '-'}</td>
                     <td 
                       className="message-cell"
-                      onMouseEnter={(e) => {
-                        setHoveredEvent(event)
-                        setHoverPosition({ x: e.clientX + 10, y: e.clientY + 10 })
-                      }}
-                      onMouseLeave={() => setHoveredEvent(null)}
+                      title={event.message || ''}
                     >
                       <span className="cell-content" style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>
                         {event.message ? (event.message.length > 50 ? event.message.substring(0, 50) + '...' : event.message) : '-'}
@@ -1168,54 +1158,10 @@ function Events() {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          position: relative;
         }
         
         .message-cell {
           max-width: 400px;
-          position: relative;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          color: #aaa;
-          cursor: default;
-        }
-        
-        .action-cell {
-          text-align: center;
-          white-space: nowrap;
-        }
-        
-        .action-copy-btn {
-          background: #2563eb;
-          border: none;
-          color: #fff;
-          cursor: pointer;
-          font-size: 11px;
-          padding: 3px 10px;
-          border-radius: 3px;
-          margin-right: 4px;
-        }
-        
-        .action-copy-btn:hover {
-          background: #3b82f6;
-        }
-        
-        .action-detail-btn {
-          background: #333;
-          border: 1px solid #555;
-          color: #888;
-          cursor: pointer;
-          font-size: 14px;
-          padding: 3px 8px;
-          border-radius: 3px;
-          font-weight: bold;
-        }
-        
-        .action-detail-btn:hover {
-          background: #00d9ff;
-          color: #0a0a1a;
-          border-color: #00d9ff;
         }
         
         .cell-btn {
@@ -1227,13 +1173,6 @@ function Events() {
           font-weight: bold;
           padding: 0 4px;
           margin-left: 4px;
-          opacity: 0;
-          transition: opacity 0.2s;
-        }
-        
-        .source-cell:hover .cell-btn,
-        .message-cell:hover .cell-btn {
-          opacity: 1;
         }
         
         .cell-btn:hover {
