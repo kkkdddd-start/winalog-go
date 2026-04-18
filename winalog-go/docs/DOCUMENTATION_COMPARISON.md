@@ -409,9 +409,9 @@
 |------|--------|------|------|----------|
 | ~~CLI~~ | ~~`export timeline`~~ | ❌ 文档错误 | 命令已存在于 `report.go:186` | 无需修复 |
 | ~~Reports~~ | ~~`/api/reports/export`~~ | ❌ 文档错误 | 应为 `/api/reports/:id/download` | 已修正 |
-| API | `/api/ueba/baseline` | ✅ 确认缺失 | UEBA baseline 存储在内存中，API handler 未暴露管理接口 | 为 `UEBAHandler` 添加 GetBaseline/LearnBaseline/ClearBaseline 方法 |
-| API | `/api/alerts/export` | ✅ 确认缺失 | `AlertHandler` 只有 ListAlerts，缺少导出端点 | 为 `AlertHandler` 添加 ExportAlerts 方法 |
-| Frontend | Persistence SSE | ✅ 确认缺失 | 后端已实现 SSE 端点，前端未调用 | 在 `gui/src/api/index.ts` 添加 detectStream 方法 |
+| API | `/api/ueba/baseline` | ✅ 已修复 (33e6db7) | UEBA baseline 存储在内存中，API handler 未暴露管理接口 | 为 `UEBAHandler` 添加 GetBaseline/LearnBaseline/ClearBaseline 方法 |
+| API | `/api/alerts/export` | ✅ 已修复 (33e6db7) | `AlertHandler` 只有 ListAlerts，缺少导出端点 | 为 `AlertHandler` 添加 ExportAlerts 方法 |
+| Frontend | Persistence SSE | ✅ 已修复 (33e6db7) | 后端已实现 SSE 端点，前端未调用 | 在 `gui/src/api/index.ts` 添加 detectStream 方法 |
 
 ### 3.3 发现遗漏的 API 端点 (代码中有但文档未记录)
 
@@ -442,6 +442,7 @@
 | CLI与API一致性 | 95% | 100% |
 | 文档准确性 | ⚠️ 需修正 | ✅ 准确 |
 | 三端统一性 | ✅ 良好 | ✅ 优秀 |
+| 缺失功能修复 | ❌ 3项待修复 | ✅ 全部修复完成 |
 
 ### 4.2 统计数据
 
@@ -517,17 +518,19 @@
 
 ### 4.4 建议优先级
 
-| 优先级 | 任务 | 工作量 |
-|--------|------|--------|
-| P1 | `/api/ueba/baseline` API 端点 | 中等 |
-| P1 | `/api/alerts/export` API 端点 | 小 |
-| P2 | Persistence SSE 前端实现 | 中等 |
+| 优先级 | 任务 | 工作量 | 状态 |
+|--------|------|--------|--------|
+| P1 | `/api/ueba/baseline` API 端点 | 中等 | ✅ 已完成 |
+| P1 | `/api/alerts/export` API 端点 | 小 | ✅ 已完成 |
+| P2 | Persistence SSE 前端实现 | 中等 | ✅ 已完成 |
 
 ### 4.5 修复后预期
 
 修复完成后，功能覆盖将达 100%，三端（CLI/API/Frontend）完全统一。
 
+**修复完成日期: 2026-04-18 (commit 33e6db7)**
+
 ---
 
-*报告生成时间: 2026-04-18*
-*最后更新: 补充遗漏 API 端点、修正 Forensics 统计、添加 UI/Policy API 文档*
+*报告生成时间: 2026-04-17*
+*最后更新: 2026-04-18 - 全部3项修复完成并标记*
