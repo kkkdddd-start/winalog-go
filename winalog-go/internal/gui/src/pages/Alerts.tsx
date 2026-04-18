@@ -77,7 +77,7 @@ function Alerts() {
   }
 
   const handleDelete = (id: number) => {
-    if (!confirm('Are you sure you want to delete this alert?')) return
+    if (!confirm(t('alerts.confirmDelete'))) return
     alertsAPI.delete(id)
       .then(() => {
         setAlerts(alerts.filter(a => a.id !== id))
@@ -253,10 +253,10 @@ function Alerts() {
                 {t('alerts.resolveSelected')}
               </button>
               <button className="btn-batch-falsepositive" onClick={() => handleBatchAction('false-positive')}>
-                Mark False Positive
+                {t('alerts.markFalsePositive')}
               </button>
               <button className="btn-batch-delete" onClick={() => handleBatchAction('delete')}>
-                Delete
+                {t('common.delete')}
               </button>
             </div>
           )}
@@ -315,30 +315,30 @@ function Alerts() {
                   </td>
                   <td className="actions-col">
                     <button 
-                      className="btn-detail"
+                      className="btn-action btn-detail"
                       onClick={() => navigate(`/alerts/${alert.id}`)}
                     >
-                      Detail
+                      {t('alerts.detail')}
                     </button>
                     {!alert.resolved && (
                       <button 
-                        className="btn-resolve"
+                        className="btn-action btn-resolve"
                         onClick={() => handleResolve(alert.id)}
                       >
                         {t('alerts.resolve')}
                       </button>
                     )}
                     <button 
-                      className="btn-falsepositive"
+                      className="btn-action btn-falsepositive"
                       onClick={() => handleMarkFalsePositive(alert.id)}
                     >
-                      False Positive
+                      {t('alerts.falsePositive')}
                     </button>
                     <button 
-                      className="btn-delete"
+                      className="btn-action btn-delete"
                       onClick={() => handleDelete(alert.id)}
                     >
-                      Delete
+                      {t('common.delete')}
                     </button>
                   </td>
                 </tr>

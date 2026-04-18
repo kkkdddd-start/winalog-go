@@ -10,7 +10,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
-	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
 const (
@@ -145,7 +144,7 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 }
 
 func exportDetectionsToCSV(detections []*persistence.Detection) string {
-	return utils.ExportDetectionsToCSVString(detections)
+	return persistence.ExportDetectionsToCSVString(detections)
 }
 
 func (h *PersistenceHandler) ListCategories(c *gin.Context) {

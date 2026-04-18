@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
-	"github.com/kkkdddd-start/winalog-go/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -246,7 +245,7 @@ func writeOutput(result *persistence.DetectionResult, outputPath, format string)
 }
 
 func exportToCSV(detections []*persistence.Detection) ([]byte, error) {
-	return utils.ExportDetectionsToCSV(detections)
+	return persistence.ExportDetectionsToCSV(detections)
 }
 
 var detectCmd = &cobra.Command{
