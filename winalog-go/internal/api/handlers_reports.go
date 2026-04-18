@@ -18,6 +18,40 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
+func parseReportTimeString(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
+	}
+
+	monotonicIdx := strings.Index(s, " m=")
+	if monotonicIdx > 0 {
+		s = s[:monotonicIdx]
+	}
+
+	formats := []string{
+		"2006-01-02T15:04:05.999999999Z07:00",
+		"2006-01-02T15:04:05.999999999Z07:00:00",
+		"2006-01-02T15:04:05.999999999 -0700",
+		"2006-01-02T15:04:05.999999999 -0700 UTC",
+		"2006-01-02T15:04:05 -0700",
+		"2006-01-02T15:04:05 -0700 UTC",
+		"2006-01-02T15:04:05Z",
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, s); err == nil {
+			return t
+		}
+	}
+
+	return time.Time{}
+}
+
 type ReportsHandler struct {
 	db  *storage.DB
 	svc *reports.ReportService
@@ -143,14 +177,10 @@ func (h *ReportsHandler) ListReports(c *gin.Context) {
 			r.Description = description.String
 		}
 		if generatedAtStr.Valid {
-			if t, err := time.Parse(time.RFC3339, generatedAtStr.String); err == nil {
-				r.GeneratedAt = t
-			}
+			r.GeneratedAt = parseReportTimeString(generatedAtStr.String)
 		}
 		if completedAtStr.Valid {
-			if t, err := time.Parse(time.RFC3339, completedAtStr.String); err == nil {
-				r.CompletedAt = t
-			}
+			r.CompletedAt = parseReportTimeString(completedAtStr.String)
 		}
 		if filePath.Valid {
 			r.FilePath = filePath.String
@@ -322,14 +352,10 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 		report.Description = description.String
 	}
 	if generatedAtStr.Valid {
-		if t, err := time.Parse(time.RFC3339, generatedAtStr.String); err == nil {
-			report.GeneratedAt = t
-		}
+		report.GeneratedAt = parseReportTimeString(generatedAtStr.String)
 	}
 	if completedAtStr.Valid {
-		if t, err := time.Parse(time.RFC3339, completedAtStr.String); err == nil {
-			report.CompletedAt = t
-		}
+		report.CompletedAt = parseReportTimeString(completedAtStr.String)
 	}
 	if filePath.Valid {
 		report.FilePath = filePath.String
@@ -427,12 +453,16 @@ func (h *ReportsHandler) GetTemplate(c *gin.Context) {
 	name := c.Param("name")
 	tmplMgr := reporttemplate.GetManager()
 
-	if tmpl, ok := tmplMgr.GetTemplate(name); ok {
+	if _, ok := tmplMgr.GetTemplate(name); ok {
+		isCustom := tmplMgr.IsCustomTemplate(name)
+		isBuiltIn := tmplMgr.IsBuiltInTemplate(name)
+
 		c.JSON(200, gin.H{
-			"name":      name,
-			"content":   "",
-			"template":  tmpl.Root,
-			"is_custom": tmplMgr.IsCustomTemplate(name),
+			"name":        name,
+			"content":     "",
+			"template":    "",
+			"is_custom":   isCustom,
+			"is_built_in": isBuiltIn,
 		})
 		return
 	}

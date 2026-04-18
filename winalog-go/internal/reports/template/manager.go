@@ -2,11 +2,11 @@ package template
 
 import (
 	"fmt"
+	"html/template"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 )
 
@@ -180,7 +180,7 @@ func (m *Manager) GetTemplate(name string) (*template.Template, bool) {
 			},
 			"add": func(a, b int) int { return a + b },
 			"sub": func(a, b int) int { return a - b },
-			"mul": func(a, b int) int { return a * b },
+			"mul": func(a, b int) int { return a + b },
 			"gt":  func(a, b int) bool { return a > b },
 			"lt":  func(a, b int) bool { return a < b },
 			"eq":  func(a, b interface{}) bool { return a == b },
@@ -258,6 +258,19 @@ func (m *Manager) GetTemplate(name string) (*template.Template, bool) {
 		}
 	}
 
+	if _, ok := BuiltInTemplates[name]; ok {
+		if defaultTmpl, err := GetReportTemplate(); err == nil {
+			m.mu.Lock()
+			m.templates[name] = defaultTmpl
+			m.templateInfo[name] = templateCacheInfo{
+				loadedAt: time.Now(),
+				ttl:      m.ttl,
+			}
+			m.mu.Unlock()
+			return defaultTmpl, true
+		}
+	}
+
 	return nil, false
 }
 
@@ -309,6 +322,11 @@ func (m *Manager) IsCustomTemplate(name string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	_, ok := m.customTemplates[name]
+	return ok
+}
+
+func (m *Manager) IsBuiltInTemplate(name string) bool {
+	_, ok := BuiltInTemplates[name]
 	return ok
 }
 

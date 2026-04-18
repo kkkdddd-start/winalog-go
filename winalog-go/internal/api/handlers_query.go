@@ -15,7 +15,7 @@ type QueryHandler struct {
 }
 
 type QueryRequest struct {
-	SQL    string `json:"sql" binding:"required"`
+	Query  string `json:"query" binding:"required"`
 	Limit  int    `json:"limit"`
 	Offset int    `json:"offset"`
 }
@@ -96,7 +96,7 @@ func (h *QueryHandler) Execute(c *gin.Context) {
 		return
 	}
 
-	if err := validateSQL(req.SQL); err != nil {
+	if err := validateSQL(req.Query); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: err.Error(),
 			Code:  types.ErrCodeInvalidQuery,
@@ -111,7 +111,7 @@ func (h *QueryHandler) Execute(c *gin.Context) {
 		req.Limit = 1000
 	}
 
-	rows, err := h.db.Query(req.SQL)
+	rows, err := h.db.Query(req.Query)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: "query failed: " + err.Error(),
