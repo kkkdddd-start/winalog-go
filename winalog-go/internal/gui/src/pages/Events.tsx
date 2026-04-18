@@ -552,26 +552,13 @@ function Events() {
                       </span>
                     </td>
                     <td className="event-id">{event.event_id}</td>
-                    <td 
-                      className="source-cell"
-                      onMouseEnter={(e) => {
-                        if (event.source) {
-                          setHoveredEvent(event)
-                          setHoverPosition({ x: e.clientX + 10, y: e.clientY + 10 })
-                        }
-                      }}
-                      onMouseLeave={() => setHoveredEvent(null)}
-                    >
+                    <td className="source-cell">
                       {event.source || '-'}
                     </td>
                     <td className="computer-cell">{event.computer || '-'}</td>
                     <td 
                       className="message-cell"
-                      onMouseEnter={(e) => {
-                        setHoveredEvent(event)
-                        setHoverPosition({ x: e.clientX + 10, y: e.clientY + 10 })
-                      }}
-                      onMouseLeave={() => setHoveredEvent(null)}
+                      style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     >
                       {event.message ? (event.message.length > 50 ? event.message.substring(0, 50) + '...' : event.message) : '-'}
                     </td>
@@ -584,6 +571,16 @@ function Events() {
                         title="Copy all event data"
                       >
                         Copy
+                      </button>
+                      <button 
+                        className="action-detail-btn" 
+                        onClick={(e) => {
+                          setHoveredEvent(event)
+                          setHoverPosition({ x: e.clientX - 200, y: e.clientY + 20 })
+                        }}
+                        title="View details"
+                      >
+                        ...
                       </button>
                     </td>
                   </tr>
@@ -1147,6 +1144,7 @@ function Events() {
         
         .action-cell {
           text-align: center;
+          white-space: nowrap;
         }
         
         .action-copy-btn {
@@ -1157,16 +1155,34 @@ function Events() {
           font-size: 11px;
           padding: 3px 10px;
           border-radius: 3px;
+          margin-right: 4px;
         }
         
         .action-copy-btn:hover {
           background: #3b82f6;
         }
         
+        .action-detail-btn {
+          background: #333;
+          border: 1px solid #555;
+          color: #888;
+          cursor: pointer;
+          font-size: 14px;
+          padding: 3px 8px;
+          border-radius: 3px;
+          font-weight: bold;
+        }
+        
+        .action-detail-btn:hover {
+          background: #00d9ff;
+          color: #0a0a1a;
+          border-color: #00d9ff;
+        }
+        
         .message-float-panel {
           position: fixed;
-          max-width: 800px;
-          max-height: 600px;
+          width: 400px;
+          max-height: 500px;
           overflow: hidden;
           background: #0a0a1a;
           border: 1px solid #00d9ff;
