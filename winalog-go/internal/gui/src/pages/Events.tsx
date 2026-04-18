@@ -53,6 +53,7 @@ function Events() {
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 })
   const [hoveredField, setHoveredField] = useState<string | null>(null)
   const [showImportTime, setShowImportTime] = useState(false)
+  const [keywordMode, setKeywordMode] = useState<'AND' | 'OR'>('AND')
 
   const [filters, setFilters] = useState<ExportParams['filters']>({
     event_ids: [],
@@ -101,6 +102,7 @@ function Events() {
 
     const searchParams: SearchParams = {
       keywords: filters?.keywords || '',
+      keyword_mode: keywordMode,
       regex: useRegex,
       page: pageNum,
       page_size: 50,
@@ -166,6 +168,7 @@ function Events() {
     setEventIdsInput('')
     setLogNamesInput('')
     setSearchMode(false)
+    setKeywordMode('AND')
     setPage(1)
   }
 
@@ -267,6 +270,23 @@ function Events() {
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
           />
           <button className="search-btn" onClick={handleSearch}>Search</button>
+        </div>
+        <div className="keyword-mode-toggle">
+          <span className="mode-label">Keywords:</span>
+          <button
+            className={`mode-btn ${keywordMode === 'AND' ? 'active' : ''}`}
+            onClick={() => setKeywordMode('AND')}
+            title="All keywords must match"
+          >
+            AND
+          </button>
+          <button
+            className={`mode-btn ${keywordMode === 'OR' ? 'active' : ''}`}
+            onClick={() => setKeywordMode('OR')}
+            title="Any keyword can match"
+          >
+            OR
+          </button>
         </div>
       </div>
 
@@ -698,6 +718,41 @@ function Events() {
           color: #000;
           font-weight: 600;
           cursor: pointer;
+        }
+        
+        .keyword-mode-toggle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-left: 12px;
+        }
+        
+        .mode-label {
+          color: #888;
+          font-size: 13px;
+        }
+        
+        .mode-btn {
+          padding: 6px 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid #333;
+          border-radius: 4px;
+          color: #888;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .mode-btn:hover {
+          border-color: #00d9ff;
+          color: #00d9ff;
+        }
+        
+        .mode-btn.active {
+          background: rgba(0, 217, 255, 0.1);
+          border-color: #00d9ff;
+          color: #00d9ff;
         }
         
         .filters-panel {

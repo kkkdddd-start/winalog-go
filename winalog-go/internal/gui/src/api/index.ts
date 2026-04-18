@@ -326,6 +326,7 @@ export const persistenceAPI = {
 
 export interface SearchParams {
   keywords?: string
+  keyword_mode?: 'AND' | 'OR'
   regex?: boolean
   event_ids?: number[]
   levels?: number[]
