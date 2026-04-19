@@ -69,6 +69,19 @@ interface Detector {
   category: string
 }
 
+interface DetectorRule {
+  name: string
+  enabled: boolean
+  description: string
+  technique: string
+  category: string
+  registry_paths?: string[]
+  suspicious_indicators: string[]
+  system_paths?: string[]
+  whitelist: string[]
+  severity_mapping?: Record<string, string>
+}
+
 function Persistence() {
   const { t } = useI18n()
   const [detections, setDetections] = useState<Detection[]>([])
@@ -82,8 +95,11 @@ function Persistence() {
     technique?: string
   }>({})
   const [showDetectorConfig, setShowDetectorConfig] = useState(false)
+  const [showRuleEditor, setShowRuleEditor] = useState(false)
   const [detectors, setDetectors] = useState<Detector[]>([])
   const [detectorLoading, setDetectorLoading] = useState(false)
+  const [editingRule, setEditingRule] = useState<DetectorRule | null>(null)
+  const [ruleLoading, setRuleLoading] = useState(false)
 
   useEffect(() => {
     fetchDetections()
@@ -122,6 +138,93 @@ function Persistence() {
   const handleShowDetectorConfig = () => {
     fetchDetectors()
     setShowDetectorConfig(true)
+  }
+
+  const handleShowRuleEditor = async (detectorName?: string) => {
+    setRuleLoading(true)
+    try {
+      if (detectorName) {
+        const response = await persistenceAPI.getRule(detectorName)
+        const rule = response.data.detector
+        setEditingRule({
+          ...rule,
+          suspicious_indicators: rule.suspicious_indicators || [],
+          whitelist: rule.whitelist || [],
+        })
+      } else {
+        const response = await persistenceAPI.listRules()
+        const rule = response.data.rules[0]
+        setEditingRule({
+          ...rule,
+          suspicious_indicators: rule.suspicious_indicators || [],
+          whitelist: rule.whitelist || [],
+        })
+      }
+      setShowRuleEditor(true)
+    } catch (err) {
+      console.error('Failed to fetch rule details:', err)
+    } finally {
+      setRuleLoading(false)
+    }
+  }
+
+  const handleSaveRule = async () => {
+    if (!editingRule) return
+    try {
+      await persistenceAPI.updateRule({
+        name: editingRule.name,
+        enabled: editingRule.enabled,
+        suspicious_indicators: editingRule.suspicious_indicators,
+        whitelist: editingRule.whitelist,
+      })
+      setShowRuleEditor(false)
+      setEditingRule(null)
+    } catch (err) {
+      console.error('Failed to save rule:', err)
+      alert('Failed to save rule configuration')
+    }
+  }
+
+  const handleIndicatorChange = (index: number, value: string) => {
+    if (!editingRule) return
+    const newIndicators = [...editingRule.suspicious_indicators]
+    newIndicators[index] = value
+    setEditingRule({ ...editingRule, suspicious_indicators: newIndicators })
+  }
+
+  const handleAddIndicator = () => {
+    if (!editingRule) return
+    setEditingRule({
+      ...editingRule,
+      suspicious_indicators: [...editingRule.suspicious_indicators, ''],
+    })
+  }
+
+  const handleRemoveIndicator = (index: number) => {
+    if (!editingRule) return
+    const newIndicators = editingRule.suspicious_indicators.filter((_, i) => i !== index)
+    setEditingRule({ ...editingRule, suspicious_indicators: newIndicators })
+  }
+
+  const handleWhitelistChange = (index: number, value: string) => {
+    if (!editingRule) return
+    const newWhitelist = [...editingRule.whitelist]
+    newWhitelist[index] = value
+    setEditingRule({ ...editingRule, whitelist: newWhitelist })
+  }
+
+  const handleAddWhitelist = () => {
+    if (!editingRule) return
+    setEditingRule({
+      ...editingRule,
+      whitelist: [...editingRule.whitelist, ''],
+    })
+  }
+
+  const handleRemoveWhitelist = (index: number) => {
+    if (!editingRule) return
+    const newWhitelist = editingRule.whitelist.filter((_, i) => i !== index)
+    setEditingRule({ ...editingRule, whitelist: newWhitelist })
   }
 
   const fetchDetections = async () => {
@@ -251,6 +354,16 @@ function Persistence() {
                       </label>
                       <span className="detector-technique">{detector.technique}</span>
                       <span className="detector-description">{detector.description}</span>
+                      <button
+                        className="edit-rule-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowDetectorConfig(false)
+                          handleShowRuleEditor(detector.name)
+                        }}
+                      >
+                        {t('persistence.editRule') || 'Edit Rule'}
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -418,6 +531,115 @@ function Persistence() {
                 <p>{selectedDetection.real_case}</p>
               </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRuleEditor && editingRule && (
+        <div className="modal-overlay" onClick={() => setShowRuleEditor(false)}>
+          <div className="modal-content rule-editor-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('persistence.ruleEditor') || 'Rule Editor'}</h2>
+              <button className="close-btn" onClick={() => setShowRuleEditor(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              {ruleLoading ? (
+                <div className="loading">{t('common.loading')}</div>
+              ) : (
+                <>
+                  <div className="rule-editor-header">
+                    <div className="rule-info">
+                      <h3>{editingRule.name.replace(/_/g, ' ')}</h3>
+                      <p>{editingRule.description}</p>
+                      <span className="technique-tag">{editingRule.technique}</span>
+                    </div>
+                    <label className="rule-enabled-toggle">
+                      <input
+                        type="checkbox"
+                        checked={editingRule.enabled}
+                        onChange={(e) => setEditingRule({ ...editingRule, enabled: e.target.checked })}
+                      />
+                      <span>{editingRule.enabled ? t('persistence.enabled') || 'Enabled' : t('persistence.disabled') || 'Disabled'}</span>
+                    </label>
+                  </div>
+
+                  {editingRule.registry_paths && editingRule.registry_paths.length > 0 && (
+                    <div className="rule-section">
+                      <h4>{t('persistence.registryPaths') || 'Registry Paths'}</h4>
+                      <div className="paths-list">
+                        {editingRule.registry_paths.map((path, idx) => (
+                          <div key={idx} className="path-item">{path}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rule-section">
+                    <h4>{t('persistence.suspiciousIndicators') || 'Suspicious Indicators'}</h4>
+                    <p className="section-desc">
+                      {t('persistence.indicatorDesc') || 'Keywords that trigger detection when found in the target'}
+                    </p>
+                    <div className="indicators-list">
+                      {editingRule.suspicious_indicators.map((indicator, idx) => (
+                        <div key={idx} className="indicator-item">
+                          <input
+                            type="text"
+                            value={indicator}
+                            onChange={(e) => handleIndicatorChange(idx, e.target.value)}
+                            placeholder="Enter indicator..."
+                          />
+                          <button
+                            className="remove-btn"
+                            onClick={() => handleRemoveIndicator(idx)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button className="add-btn" onClick={handleAddIndicator}>
+                        + {t('persistence.addIndicator') || 'Add Indicator'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rule-section">
+                    <h4>{t('persistence.whitelistEntries') || 'Whitelist Entries'}</h4>
+                    <p className="section-desc">
+                      {t('persistence.whitelistDesc') || 'Entries that will not trigger detection'}
+                    </p>
+                    <div className="whitelist-list">
+                      {editingRule.whitelist.map((entry, idx) => (
+                        <div key={idx} className="whitelist-item">
+                          <input
+                            type="text"
+                            value={entry}
+                            onChange={(e) => handleWhitelistChange(idx, e.target.value)}
+                            placeholder="Enter whitelist entry..."
+                          />
+                          <button
+                            className="remove-btn"
+                            onClick={() => handleRemoveWhitelist(idx)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button className="add-btn" onClick={handleAddWhitelist}>
+                        + {t('persistence.addWhitelist') || 'Add Whitelist Entry'}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+              <div className="modal-actions">
+                <button onClick={() => setShowRuleEditor(false)} className="btn btn-secondary">
+                  {t('common.cancel') || 'Cancel'}
+                </button>
+                <button onClick={handleSaveRule} className="btn btn-primary">
+                  {t('common.save') || 'Save'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

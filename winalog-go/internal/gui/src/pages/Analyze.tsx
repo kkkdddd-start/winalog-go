@@ -37,6 +37,17 @@ interface Analyzer {
   recommended: boolean
 }
 
+interface AnalyzerRule {
+  name: string
+  description: string
+  technique: string
+  category: string
+  enabled: boolean
+  thresholds?: Record<string, number>
+  patterns: string[]
+  whitelist: string[]
+}
+
 const analyzerIcons: Record<string, string> = {
   'brute-force': '🔐',
   'login': '🔑',
@@ -48,6 +59,7 @@ const analyzerIcons: Record<string, string> = {
   'privilege-escalation': '⬆️',
   'malware': '🦠',
   'anomaly': '🔍',
+  'domain-controller': '🏢',
 }
 
 const findingDescMap: Record<string, Record<string, string>> = {
@@ -74,6 +86,7 @@ const analyzerCategories = [
   { id: 'lateral-movement', name: 'Lateral Movement' },
   { id: 'persistence', name: 'Persistence' },
   { id: 'collection', name: 'Collection' },
+  { id: 'domain-services', name: 'Domain Services' },
 ]
 
 function Analyze() {
@@ -84,6 +97,9 @@ function Analyze() {
   const [selectedAnalyzer, setSelectedAnalyzer] = useState('brute-force')
   const [hours, setHours] = useState(24)
   const [error, setError] = useState('')
+  const [showRuleEditor, setShowRuleEditor] = useState(false)
+  const [editingRule, setEditingRule] = useState<AnalyzerRule | null>(null)
+  const [ruleLoading, setRuleLoading] = useState(false)
 
   const analyzers: Analyzer[] = [
     { id: 'brute_force', name: t('analyze.bruteForce'), desc: t('analyze.bruteForceDesc'), icon: analyzerIcons['brute-force'], category: 'authentication', recommended: true },
@@ -94,6 +110,7 @@ function Analyze() {
     { id: 'data_exfiltration', name: t('analyze.dataExfil'), desc: t('analyze.dataExfilDesc'), icon: analyzerIcons['data-exfil'], category: 'collection', recommended: false },
     { id: 'persistence', name: t('analyze.persistence'), desc: t('analyze.persistenceDesc'), icon: analyzerIcons['persistence'], category: 'persistence', recommended: false },
     { id: 'privilege_escalation', name: t('analyze.privilegeEscalation'), desc: t('analyze.privilegeEscalationDesc'), icon: analyzerIcons['privilege-escalation'], category: 'privilege-escalation', recommended: false },
+    { id: 'domain_controller', name: t('analyze.domainController'), desc: t('analyze.domainControllerDesc'), icon: analyzerIcons['domain-controller'], category: 'domain-services', recommended: false },
   ]
 
   const handleRun = async () => {
@@ -108,6 +125,79 @@ function Analyze() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleShowRuleEditor = async (analyzerId: string) => {
+    setRuleLoading(true)
+    try {
+      const res = await analyzeAPI.getRule(analyzerId)
+      setEditingRule(res.data.rule)
+      setShowRuleEditor(true)
+    } catch (err) {
+      console.error('Failed to fetch rule:', err)
+    } finally {
+      setRuleLoading(false)
+    }
+  }
+
+  const handleSaveRule = async () => {
+    if (!editingRule) return
+    try {
+      await analyzeAPI.updateRule({
+        name: editingRule.name,
+        enabled: editingRule.enabled,
+        thresholds: editingRule.thresholds,
+        patterns: editingRule.patterns,
+        whitelist: editingRule.whitelist,
+      })
+      setShowRuleEditor(false)
+      setEditingRule(null)
+    } catch (err) {
+      console.error('Failed to save rule:', err)
+      alert('Failed to save rule configuration')
+    }
+  }
+
+  const handlePatternChange = (index: number, value: string) => {
+    if (!editingRule) return
+    const newPatterns = [...editingRule.patterns]
+    newPatterns[index] = value
+    setEditingRule({ ...editingRule, patterns: newPatterns })
+  }
+
+  const handleAddPattern = () => {
+    if (!editingRule) return
+    setEditingRule({
+      ...editingRule,
+      patterns: [...editingRule.patterns, ''],
+    })
+  }
+
+  const handleRemovePattern = (index: number) => {
+    if (!editingRule) return
+    const newPatterns = editingRule.patterns.filter((_, i) => i !== index)
+    setEditingRule({ ...editingRule, patterns: newPatterns })
+  }
+
+  const handleWhitelistChange = (index: number, value: string) => {
+    if (!editingRule) return
+    const newWhitelist = [...editingRule.whitelist]
+    newWhitelist[index] = value
+    setEditingRule({ ...editingRule, whitelist: newWhitelist })
+  }
+
+  const handleAddWhitelist = () => {
+    if (!editingRule) return
+    setEditingRule({
+      ...editingRule,
+      whitelist: [...editingRule.whitelist, ''],
+    })
+  }
+
+  const handleRemoveWhitelist = (index: number) => {
+    if (!editingRule) return
+    const newWhitelist = editingRule.whitelist.filter((_, i) => i !== index)
+    setEditingRule({ ...editingRule, whitelist: newWhitelist })
   }
 
   const groupedAnalyzers = analyzers.reduce((acc, analyzer) => {
@@ -219,6 +309,13 @@ function Analyze() {
                   {t('analyze.runAnalyzer')}
                 </>
               )}
+            </button>
+
+            <button
+              onClick={() => handleShowRuleEditor(selectedAnalyzer)}
+              className="btn-secondary btn-edit-rule"
+            >
+              {t('analyze.editRule') || 'Edit Rule'}
             </button>
           </div>
 
@@ -346,6 +443,153 @@ function Analyze() {
           ))}
         </div>
       </div>
+
+      {showRuleEditor && editingRule && (
+        <div className="modal-overlay" onClick={() => setShowRuleEditor(false)}>
+          <div className="modal-content rule-editor-modal" onClick={e => e.stopPropagation()}>
+            <div className="rule-editor-header">
+              <div className="rule-info">
+                <h3>{editingRule.name.replace(/_/g, ' ')}</h3>
+                <p>{editingRule.description}</p>
+                <span className="technique-tag">{editingRule.technique}</span>
+              </div>
+              <label className="rule-enabled-toggle">
+                <input
+                  type="checkbox"
+                  checked={editingRule.enabled}
+                  onChange={(e) => setEditingRule({ ...editingRule, enabled: e.target.checked })}
+                />
+                <span className={editingRule.enabled ? 'enabled' : 'disabled'}>
+                  {editingRule.enabled ? t('persistence.enabled') || 'Enabled' : t('persistence.disabled') || 'Disabled'}
+                </span>
+              </label>
+            </div>
+            <div className="modal-body">
+              {ruleLoading ? (
+                <div className="loading">{t('common.loading')}</div>
+              ) : (
+                <>
+                  {editingRule.thresholds && Object.keys(editingRule.thresholds).length > 0 && (
+                    <div className="rule-section">
+                      <h4>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 20V10M18 20V4M6 20v-4"/>
+                        </svg>
+                        {t('analyze.thresholds') || 'Thresholds'}
+                      </h4>
+                      <div className="thresholds-list">
+                        {Object.entries(editingRule.thresholds).map(([key, value]) => (
+                          <div key={key} className="threshold-item">
+                            <span className="threshold-key">{key.replace(/_/g, ' ')}</span>
+                            <input
+                              type="number"
+                              value={value}
+                              onChange={(e) => setEditingRule({
+                                ...editingRule,
+                                thresholds: { ...editingRule.thresholds!, [key]: parseInt(e.target.value) || 0 }
+                              })}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rule-section">
+                    <h4>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                      </svg>
+                      {t('analyze.patterns') || 'Detection Patterns'}
+                    </h4>
+                    <p className="section-desc">
+                      {t('analyze.patternsDesc') || 'Keywords or patterns that trigger detection'}
+                    </p>
+                    <div className="patterns-list">
+                      {editingRule.patterns.map((pattern, idx) => (
+                        <div key={idx} className="pattern-item">
+                          <input
+                            type="text"
+                            value={pattern}
+                            onChange={(e) => handlePatternChange(idx, e.target.value)}
+                            placeholder="Enter pattern..."
+                          />
+                          <button
+                            className="remove-btn"
+                            onClick={() => handleRemovePattern(idx)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button className="add-btn" onClick={handleAddPattern}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        {t('analyze.addPattern') || 'Add Pattern'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rule-section">
+                    <h4>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9 12l2 2 4-4"/>
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                      </svg>
+                      {t('analyze.whitelist') || 'Whitelist'}
+                    </h4>
+                    <p className="section-desc">
+                      {t('analyze.whitelistDesc') || 'Entries that will not trigger detection'}
+                    </p>
+                    <div className="whitelist-list">
+                      {editingRule.whitelist.map((entry, idx) => (
+                        <div key={idx} className="whitelist-item">
+                          <input
+                            type="text"
+                            value={entry}
+                            onChange={(e) => handleWhitelistChange(idx, e.target.value)}
+                            placeholder="Enter whitelist entry..."
+                          />
+                          <button
+                            className="remove-btn"
+                            onClick={() => handleRemoveWhitelist(idx)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button className="add-btn" onClick={handleAddWhitelist}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        {t('analyze.addWhitelist') || 'Add Whitelist Entry'}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+              <div className="modal-actions">
+                <button onClick={() => setShowRuleEditor(false)} className="btn btn-secondary">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                  {t('common.cancel') || 'Cancel'}
+                </button>
+                <button onClick={handleSaveRule} className="btn btn-primary">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                    <polyline points="17,21 17,13 7,13 7,21"/>
+                    <polyline points="7,3 7,8 15,8"/>
+                  </svg>
+                  {t('common.save') || 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
