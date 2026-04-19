@@ -15,7 +15,7 @@ type QueryHandler struct {
 }
 
 type QueryRequest struct {
-	Query  string `json:"query" binding:"required"`
+	SQL    string `json:"sql" binding:"required"`
 	Limit  int    `json:"limit"`
 	Offset int    `json:"offset"`
 }
@@ -53,7 +53,7 @@ func validateSQL(sql string) error {
 	sql = strings.TrimSpace(sql)
 
 	if sql == "" {
-		return types.NewValidationError("sql", "sql query is required", nil)
+		return types.NewValidationError("sql", "sql field is required", nil)
 	}
 
 	if len(sql) > 10000 {
@@ -96,7 +96,7 @@ func (h *QueryHandler) Execute(c *gin.Context) {
 		return
 	}
 
-	if err := validateSQL(req.Query); err != nil {
+	if err := validateSQL(req.SQL); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: err.Error(),
 			Code:  types.ErrCodeInvalidQuery,
@@ -111,7 +111,7 @@ func (h *QueryHandler) Execute(c *gin.Context) {
 		req.Limit = 1000
 	}
 
-	rows, err := h.db.Query(req.Query)
+	rows, err := h.db.Query(req.SQL)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: "query failed: " + err.Error(),

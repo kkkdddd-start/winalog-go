@@ -341,6 +341,10 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 		&generatedAtStr, &completedAtStr, &filePath, &fileSize, &queryParams)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "report not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "GetReport query/scan error: " + err.Error()})
 		return
 	}
@@ -380,7 +384,11 @@ func (h *ReportsHandler) DownloadReport(c *gin.Context) {
 	`, reportID).Scan(&filePath, &format, &status)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: "Report not found"})
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "report not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "GetReport query/scan error: " + err.Error()})
 		return
 	}
 

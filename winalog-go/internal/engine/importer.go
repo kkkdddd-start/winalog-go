@@ -168,7 +168,7 @@ type lockfd struct {
 }
 
 func fioctlLock(f *os.File) (*lockfd, error) {
-	return nil, fmt.Errorf("not implemented")
+	return tryLockFile(f)
 }
 
 func (im *Importer) GetFileInfo(path string, calcHash bool) (*FileInfo, error) {

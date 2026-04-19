@@ -29,6 +29,15 @@ func setupTestDB(t *testing.T) (*DB, func()) {
 	return db, cleanup
 }
 
+func createTestImportLog(t *testing.T, db *DB, importID int64) int64 {
+	id, err := db.InsertImportLog("test.evtx", "abc123", 1, 100, "completed", "")
+	if err != nil {
+		t.Fatalf("Failed to create test import log: %v", err)
+	}
+	_ = importID // suppress unused warning
+	return id
+}
+
 func TestNewDB(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -129,6 +138,8 @@ func TestEventRepoInsert(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
+
 	user := "testuser"
 	event := &types.Event{
 		Timestamp:  time.Now(),
@@ -140,7 +151,7 @@ func TestEventRepoInsert(t *testing.T) {
 		User:       &user,
 		Message:    "An account was successfully logged on",
 		ImportTime: time.Now(),
-		ImportID:   1,
+		ImportID:   importID,
 	}
 
 	if err := repo.Insert(event); err != nil {
@@ -153,6 +164,8 @@ func TestEventRepoInsertBatch(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
+
 	events := []*types.Event{
 		{
 			Timestamp:  time.Now(),
@@ -163,7 +176,7 @@ func TestEventRepoInsertBatch(t *testing.T) {
 			Computer:   "WORKSTATION1",
 			Message:    "Login 1",
 			ImportTime: time.Now(),
-			ImportID:   1,
+			ImportID:   importID,
 		},
 		{
 			Timestamp:  time.Now(),
@@ -174,7 +187,7 @@ func TestEventRepoInsertBatch(t *testing.T) {
 			Computer:   "WORKSTATION1",
 			Message:    "Login 2",
 			ImportTime: time.Now(),
-			ImportID:   1,
+			ImportID:   importID,
 		},
 	}
 
@@ -199,6 +212,8 @@ func TestEventRepoGetByID(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
+
 	event := &types.Event{
 		Timestamp:  time.Now(),
 		EventID:    4624,
@@ -208,7 +223,7 @@ func TestEventRepoGetByID(t *testing.T) {
 		Computer:   "WORKSTATION1",
 		Message:    "Test event",
 		ImportTime: time.Now(),
-		ImportID:   1,
+		ImportID:   importID,
 	}
 
 	if err := repo.Insert(event); err != nil {
@@ -230,6 +245,7 @@ func TestEventRepoSearch(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
 
 	for i := 0; i < 5; i++ {
 		event := &types.Event{
@@ -241,7 +257,7 @@ func TestEventRepoSearch(t *testing.T) {
 			Computer:   "WORKSTATION1",
 			Message:    "Test event",
 			ImportTime: time.Now(),
-			ImportID:   1,
+			ImportID:   importID,
 		}
 		if err := repo.Insert(event); err != nil {
 			t.Fatalf("Insert failed: %v", err)
@@ -271,6 +287,7 @@ func TestEventRepoSearchByKeywords(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
 
 	event := &types.Event{
 		Timestamp:  time.Now(),
@@ -281,7 +298,7 @@ func TestEventRepoSearchByKeywords(t *testing.T) {
 		Computer:   "WORKSTATION1",
 		Message:    "User login success",
 		ImportTime: time.Now(),
-		ImportID:   1,
+		ImportID:   importID,
 	}
 	if err := repo.Insert(event); err != nil {
 		t.Fatalf("Insert failed: %v", err)
@@ -308,6 +325,7 @@ func TestEventRepoSearchByEventIDs(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
 
 	for _, eventID := range []int32{4624, 4625, 4626} {
 		event := &types.Event{
@@ -319,7 +337,7 @@ func TestEventRepoSearchByEventIDs(t *testing.T) {
 			Computer:   "WORKSTATION1",
 			Message:    "Test event",
 			ImportTime: time.Now(),
-			ImportID:   1,
+			ImportID:   importID,
 		}
 		if err := repo.Insert(event); err != nil {
 			t.Fatalf("Insert failed: %v", err)
@@ -347,6 +365,7 @@ func TestEventRepoDeleteByImportID(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
 
 	event := &types.Event{
 		Timestamp:  time.Now(),
@@ -357,13 +376,13 @@ func TestEventRepoDeleteByImportID(t *testing.T) {
 		Computer:   "WORKSTATION1",
 		Message:    "Test event",
 		ImportTime: time.Now(),
-		ImportID:   999,
+		ImportID:   importID,
 	}
 	if err := repo.Insert(event); err != nil {
 		t.Fatalf("Insert failed: %v", err)
 	}
 
-	if err := repo.DeleteByImportID(999); err != nil {
+	if err := repo.DeleteByImportID(importID); err != nil {
 		t.Fatalf("DeleteByImportID failed: %v", err)
 	}
 
@@ -378,6 +397,7 @@ func TestEventRepoGetByTimeRange(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
 
 	now := time.Now()
 	event := &types.Event{
@@ -389,7 +409,7 @@ func TestEventRepoGetByTimeRange(t *testing.T) {
 		Computer:   "WORKSTATION1",
 		Message:    "Test event",
 		ImportTime: now,
-		ImportID:   1,
+		ImportID:   importID,
 	}
 	if err := repo.Insert(event); err != nil {
 		t.Fatalf("Insert failed: %v", err)
@@ -413,6 +433,7 @@ func TestEventRepoGetEventIDsByImportID(t *testing.T) {
 	defer cleanup()
 
 	repo := NewEventRepo(db)
+	importID := createTestImportLog(t, db, 0)
 
 	for i := 0; i < 3; i++ {
 		event := &types.Event{
@@ -424,14 +445,14 @@ func TestEventRepoGetEventIDsByImportID(t *testing.T) {
 			Computer:   "WORKSTATION1",
 			Message:    "Test event",
 			ImportTime: time.Now(),
-			ImportID:   100,
+			ImportID:   importID,
 		}
 		if err := repo.Insert(event); err != nil {
 			t.Fatalf("Insert failed: %v", err)
 		}
 	}
 
-	ids, err := repo.GetEventIDsByImportID(100)
+	ids, err := repo.GetEventIDsByImportID(importID)
 	if err != nil {
 		t.Fatalf("GetEventIDsByImportID failed: %v", err)
 	}

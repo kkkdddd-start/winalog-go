@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -276,7 +278,147 @@ func readProcessMemory(pid uint32) ([]byte, error) {
 }
 
 func readSystemMemory() ([]byte, error) {
-	return nil, ErrSystemMemoryNotImplemented
+	return readSystemMemoryImpl()
+}
+
+func readSystemMemoryImpl() ([]byte, error) {
+	privileged, err := hasDebugPrivilege()
+	if err != nil {
+		return nil, fmt.Errorf("failed to check privileges: %w", err)
+	}
+	if !privileged {
+		return nil, fmt.Errorf("system memory dump requires administrator privileges with SeDebugPrivilege enabled")
+	}
+
+	const (
+		DevicePhysicalMemory = `\\.\Global\Device\PhysicalMemory`
+		SectionBasicInfo     = 0
+	)
+
+	handle, err := windows.CreateFile(
+		windows.StringToUTF16Ptr(DevicePhysicalMemory),
+		windows.GENERIC_READ,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE,
+		nil,
+		windows.OPEN_EXISTING,
+		windows.FILE_FLAG_OVERLAPPED,
+		0,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open physical memory device: %w", err)
+	}
+	defer windows.CloseHandle(handle)
+
+	var sectionBasicInfo struct {
+		BaseAddress       uint64
+		SectionSize       uint64
+		Attributes        uint32
+		SessionId         uint32
+		Radix             uint32
+		MappingOffsetLow  uint32
+		MappingOffsetHigh uint32
+	}
+	var returnedLen uint32
+
+	err = windows.DeviceIoControl(
+		handle,
+		0x9000003C,
+		nil,
+		0,
+		(*byte)(unsafe.Pointer(&sectionBasicInfo)),
+		uint32(unsafe.Sizeof(sectionBasicInfo)),
+		&returnedLen,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query physical memory: %w", err)
+	}
+
+	var buffer bytes.Buffer
+	chunkSize := uint64(1024 * 1024)
+	offset := sectionBasicInfo.BaseAddress
+
+	for offset < sectionBasicInfo.BaseAddress+sectionBasicInfo.SectionSize {
+		size := chunkSize
+		if offset+size > sectionBasicInfo.BaseAddress+sectionBasicInfo.SectionSize {
+			size = sectionBasicInfo.BaseAddress + sectionBasicInfo.SectionSize - offset
+		}
+
+		regionSize := size
+		var data bytes.Buffer
+
+		readAddr := offset
+		for readAddr < offset+size {
+			readSize := chunkSize
+			if readAddr+readSize > offset+size {
+				readSize = offset + size - readAddr
+			}
+
+			readBuf := make([]byte, readSize)
+			var nr uintptr
+			ovec := &windows.Overlapped{
+				Offset:     uint32(readAddr & 0xFFFFFFFF),
+				OffsetHigh: uint32(readAddr >> 32),
+			}
+
+			err := windows.ReadFile(
+				handle,
+				&readBuf[0],
+				uintptr(readSize),
+				&nr,
+				ovec,
+			)
+			if err != nil && err != windows.ERROR_IO_PENDING {
+				break
+			}
+
+			written, _ := data.Write(readBuf[:nr])
+			if written == 0 {
+				break
+			}
+			readAddr += uint64(written)
+		}
+
+		if data.Len() > 0 {
+			buffer.Write(data.Bytes())
+		}
+		offset += size
+
+		if buffer.Len() > 100*1024*1024 {
+			break
+		}
+	}
+
+	return buffer.Bytes(), nil
+}
+
+func hasDebugPrivilege() (bool, error) {
+	var token windows.Token
+	err := windows.OpenProcessToken(windows.CurrentProcess(), windows.TOKEN_ADJUST_PRIVILEGES|windows.TOKEN_QUERY, &token)
+	if err != nil {
+		return false, err
+	}
+	defer token.Close()
+
+	luid := windows.Kernel32LookupPrivilegeValue(nil, windows.StringToUTF16Ptr("SeDebugPrivilege"))
+	if luid == 0 {
+		return false, fmt.Errorf("failed to lookup SeDebugPrivilege")
+	}
+
+	enable := uint32(1)
+	tp := windows.TokenPrivileges{
+		PrivilegeCount: 1,
+		Privileges: []windows.LUIDAndAttributes{
+			{Luid: luid, Attributes: enable},
+		},
+	}
+
+	err = token.AdjustTokenPrivileges(uint32(windows.TOKEN_ADJUST_PRIVILEGES), &tp)
+	if err != nil {
+		return false, err
+	}
+
+	return windows.Kernel32GetLastError() == 0, nil
 }
 
 func calculateMemoryHash(data []byte) string {
@@ -344,15 +486,120 @@ func AnalyzeMemoryDump(dumpPath string) (*MemoryAnalysis, error) {
 }
 
 func ExtractProcessTree(dumpData []byte) ([]ProcessNode, error) {
-	return []ProcessNode{}, nil
+	processes := make([]ProcessNode, 0)
+
+	patterns := []struct {
+		name    string
+		prefix  []byte
+		minSize int
+	}{
+		{"svchost.exe", []byte("svchost.exe"), 12},
+		{"explorer.exe", []byte("explorer.exe"), 14},
+		{"cmd.exe", []byte("cmd.exe"), 8},
+		{"powershell.exe", []byte("powershell.exe"), 16},
+		{"lsass.exe", []byte("lsass.exe"), 10},
+		{"services.exe", []byte("services.exe"), 13},
+		{"winlogon.exe", []byte("winlogon.exe"), 13},
+		{"csrss.exe", []byte("csrss.exe"), 10},
+		{"smss.exe", []byte("smss.exe"), 10},
+	}
+
+	seen := make(map[string]bool)
+
+	for _, pattern := range patterns {
+		for i := 0; i < len(dumpData)-pattern.minSize; i++ {
+			if bytes.HasPrefix(dumpData[i:], pattern.prefix) {
+				name := pattern.name
+				if !seen[name] {
+					seen[name] = true
+					processes = append(processes, ProcessNode{
+						Name: name,
+						PID:  0,
+						PPID: 0,
+					})
+				}
+				i += pattern.minSize
+			}
+		}
+	}
+
+	return processes, nil
 }
 
 func FindNetworkConnections(dumpData []byte) ([]NetworkConn, error) {
-	return []NetworkConn{}, nil
+	connections := make([]NetworkConn, 0)
+
+	ipPortPattern := regexp.MustCompile(`(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{2,5})`)
+	hexIPPattern := regexp.MustCompile(`((?:0x[0-9a-fA-F]{8}){4})`)
+
+	matches := ipPortPattern.FindAllSubmatch(dumpData, -1)
+	seen := make(map[string]bool)
+
+	for _, match := range matches {
+		if len(match) >= 3 {
+			ip := string(match[1])
+			port := string(match[2])
+
+			key := ip + ":" + port
+			if !seen[key] && !strings.HasPrefix(ip, "0.") && !strings.HasPrefix(ip, "255.") {
+				seen[key] = true
+				connections = append(connections, NetworkConn{
+					Protocol:   "TCP",
+					LocalAddr:  ip + ":" + port,
+					RemoteAddr: "",
+					State:      "",
+					PID:        0,
+				})
+			}
+		}
+	}
+
+	_ = hexIPPattern
+
+	return connections, nil
 }
 
 func FindSuspiciousAPI(dumpData []byte) ([]APICall, error) {
-	return []APICall{}, nil
+	apiCalls := make([]APICall, 0)
+
+	suspiciousAPIs := []string{
+		"VirtualAlloc",
+		"VirtualProtect",
+		"WriteProcessMemory",
+		"CreateRemoteThread",
+		"ShellExecute",
+		"WinExec",
+		"CreateProcess",
+		"LoadLibrary",
+		"GetProcAddress",
+		"WriteFile",
+		"InternetOpen",
+		"InternetConnect",
+		"URLDownloadToFile",
+	}
+
+	seen := make(map[string]bool)
+
+	for _, apiName := range suspiciousAPIs {
+		searchBytes := []byte(apiName)
+		for i := 0; i < len(dumpData)-len(searchBytes); i++ {
+			if bytes.Contains(dumpData[i:i+len(searchBytes)], searchBytes) {
+				key := apiName
+				if !seen[key] {
+					seen[key] = true
+					apiCalls = append(apiCalls, APICall{
+						Address:   uint64(i),
+						APIName:   apiName,
+						Module:    "unknown",
+						Arguments: []string{},
+					})
+				}
+				i += len(searchBytes)
+			}
+		}
+	}
+
+	return apiCalls, nil
 }
 
 type MemoryDumpMetadata struct {

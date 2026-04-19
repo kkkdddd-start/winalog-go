@@ -3,8 +3,11 @@
 package poll
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -145,7 +148,63 @@ func (dp *DNSPoller) getDNSCache() map[string]*DNSEntry {
 }
 
 func (dp *DNSPoller) queryDNSCache() ([]*DNSEntry, error) {
-	return nil, fmt.Errorf("DNS cache query not implemented - requires iphlpapi.dll")
+	cmd := exec.Command("ipconfig", "/displaydns")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to execute ipconfig: %w", err)
+	}
+
+	return parseDNSOutput(out.String()), nil
+}
+
+var (
+	recordNameRegex = regexp.MustCompile(`Record Name\s+.\s+(.+)`)
+	recordTypeRegex = regexp.MustCompile(`Record Type\s+.\s+(\d+)`)
+	dataRegex       = regexp.MustCompile(`Data Length\s+.\s+(\d+)\s+.*\n.*IP Address\s+.\s+(.+)`)
+)
+
+func parseDNSOutput(output string) []*DNSEntry {
+	entries := make([]*DNSEntry, 0)
+	lines := strings.Split(output, "\n")
+
+	var currentName string
+	var currentType uint16
+
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+
+		if matches := recordNameRegex.FindStringSubmatch(line); len(matches) == 2 {
+			currentName = matches[1]
+			continue
+		}
+
+		if matches := recordTypeRegex.FindStringSubmatch(line); len(matches) == 2 {
+			fmt.Sscanf(matches[1], "%d", &currentType)
+			continue
+		}
+
+		if strings.Contains(line, "No DNS Records") {
+			continue
+		}
+
+		if strings.Contains(line, "IP Address") && currentName != "" {
+			if ipMatch := strings.Split(line, ":"); len(ipMatch) >= 2 {
+				ip := strings.TrimSpace(ipMatch[len(ipMatch)-1])
+				if ip != "" && ip != "::" && !strings.Contains(ip, "::") {
+					entries = append(entries, &DNSEntry{
+						Name:     currentName,
+						Type:     currentType,
+						Data:     ip,
+						TTL:      0,
+						TimeSeen: time.Now(),
+					})
+				}
+			}
+		}
+	}
+
+	return entries
 }
 
 func (dp *DNSPoller) createDNSEvent(entry *DNSEntry) *monitor.MonitorEvent {

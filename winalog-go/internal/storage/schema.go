@@ -282,7 +282,7 @@ var TableDefinitions = map[string]TableDefinition{
 			{Name: "session_id", Type: "TEXT"},
 			{Name: "ip_address", Type: "TEXT"},
 			{Name: "import_time", Type: "TEXT", NotNull: true},
-			{Name: "import_id", Type: "INTEGER", Default: "0"},
+			{Name: "import_id", Type: "INTEGER", Default: "NULL"},
 		},
 		Indexes: []IndexDefinition{
 			{Name: "idx_timestamp", Columns: []string{"timestamp"}},
