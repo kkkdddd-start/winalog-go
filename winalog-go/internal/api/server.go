@@ -13,6 +13,8 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/alerts"
 	"github.com/kkkdddd-start/winalog-go/internal/analyzers"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
+	"github.com/kkkdddd-start/winalog-go/internal/monitor"
+	monitorApi "github.com/kkkdddd-start/winalog-go/internal/monitor/api"
 	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
@@ -55,6 +57,7 @@ type Server struct {
 	policyEng      *PolicyHandler
 	uiEng          *UIHandler
 	logsEng        *LogsHandler
+	monitorEng     *monitorApi.MonitorHandler
 }
 
 func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Server {
@@ -119,6 +122,11 @@ func (s *Server) setupHandlers() {
 	s.policyEng = NewPolicyHandler(s.alertEngine)
 	s.uiEng = NewUIHandler(s.db)
 	s.logsEng = NewLogsHandler()
+
+	monitorEngine, err := monitor.NewMonitorEngine("monitor-config.json")
+	if err == nil {
+		s.monitorEng = monitorApi.NewMonitorHandler(monitorEngine)
+	}
 }
 
 func (s *Server) setupRoutes() {
@@ -139,6 +147,9 @@ func (s *Server) setupRoutes() {
 	SetupPolicyRoutes(s.engine, s.policyEng)
 	SetupUIRoutes(s.engine, s.uiEng)
 	SetupLogsRoutes(s.engine, s.logsEng)
+	if s.monitorEng != nil {
+		monitorApi.SetupMonitorRoutes(s.engine, s.monitorEng)
+	}
 
 	setupPersistenceStreamRoutes(s.engine, s.persistenceEng)
 

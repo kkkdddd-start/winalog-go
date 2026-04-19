@@ -322,6 +322,18 @@ export const analyzeAPI = {
     api.get('/analyzers'),
   info: (analyzerType: string) =>
     api.get(`/analyzers/${analyzerType}`),
+  listRules: () =>
+    api.get('/analyzer-rules'),
+  getRule: (analyzerType: string) =>
+    api.get(`/analyzer-rules/${analyzerType}`),
+  updateRule: (rule: {
+    name: string
+    enabled: boolean
+    thresholds?: Record<string, number>
+    patterns?: string[]
+    whitelist?: string[]
+  }) =>
+    api.put(`/analyzer-rules/${rule.name}`, rule),
 }
 
 export interface Settings {
@@ -380,6 +392,17 @@ export const persistenceAPI = {
     api.get('/persistence/detectors'),
   updateDetectors: (detectors: { name: string, enabled: boolean }[]) =>
     api.post('/persistence/detectors/config', { detectors }),
+  listRules: () =>
+    api.get('/persistence/rules'),
+  getRule: (name: string) =>
+    api.get(`/persistence/rules/${name}`),
+  updateRule: (rule: {
+    name: string
+    enabled: boolean
+    suspicious_indicators?: string[]
+    whitelist?: string[]
+  }) =>
+    api.put('/persistence/rules', rule),
 }
 
 export interface SearchParams {
@@ -567,6 +590,80 @@ export interface UserProfile {
 export const uebaAPI = {
   analyze: (params?: { hours?: number }) => api.post('/ueba/analyze', params || {}),
   profiles: () => api.get('/ueba/profiles'),
+}
+
+export interface MonitorStats {
+  is_running: boolean
+  process_enabled: boolean
+  network_enabled: boolean
+  dns_enabled: boolean
+  process_count: number
+  network_count: number
+  dns_count: number
+  alert_count: number
+  start_time?: string
+}
+
+export interface MonitorEvent {
+  id: string
+  type: 'process' | 'network' | 'dns'
+  timestamp: string
+  severity: string
+  data: Record<string, any>
+}
+
+export interface MonitorConfig {
+  process_enabled?: boolean
+  network_enabled?: boolean
+  dns_enabled?: boolean
+  poll_interval?: number
+}
+
+export const monitorAPI = {
+  getStats: () =>
+    api.get('/monitor/stats'),
+  getEvents: (filter?: {
+    type?: string
+    severity?: string
+    limit?: number
+    offset?: number
+    start_time?: string
+    end_time?: string
+  }) => {
+    let url = '/monitor/events?'
+    if (filter) {
+      if (filter.type) url += `type=${filter.type}&`
+      if (filter.severity) url += `severity=${filter.severity}&`
+      if (filter.limit) url += `limit=${filter.limit}&`
+      if (filter.offset) url += `offset=${filter.offset}&`
+      if (filter.start_time) url += `start_time=${encodeURIComponent(filter.start_time)}&`
+      if (filter.end_time) url += `end_time=${encodeURIComponent(filter.end_time)}&`
+    }
+    return api.get(url)
+  },
+  updateConfig: (config: MonitorConfig) =>
+    api.post('/monitor/config', config),
+  startStop: (action: 'start' | 'stop') =>
+    api.post('/monitor/action', { action }),
+  streamEvents: (onEvent: (data: MonitorEvent) => void, onError?: (err: any) => void) => {
+    const eventSource = new EventSource('/api/monitor/events/stream')
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        onEvent(data)
+      } catch (e) {
+        console.error('Failed to parse SSE data:', e)
+      }
+    }
+    
+    eventSource.onerror = (err) => {
+      console.error('SSE error:', err)
+      onError?.(err)
+    }
+    
+    return eventSource
+  },
 }
 
 export default api

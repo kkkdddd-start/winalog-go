@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/0xrawsec/golang-evtx v1.2.9
+	github.com/StackExchange/wmi v1.2.1
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/fsnotify/fsnotify v1.9.0
