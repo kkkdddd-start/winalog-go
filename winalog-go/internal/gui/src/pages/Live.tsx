@@ -29,8 +29,11 @@ function Live() {
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
+  const [reconnectAttempts, setReconnectAttempts] = useState(0)
   const eventSourceRef = useRef<EventSource | null>(null)
   const eventsContainerRef = useRef<HTMLDivElement>(null)
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const maxReconnectAttempts = 5
 
   useEffect(() => {
     connectToStream()
@@ -38,6 +41,9 @@ function Live() {
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close()
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
       }
     }
   }, [])
@@ -60,6 +66,7 @@ function Live() {
           }
           return newEvents
         })
+        setReconnectAttempts(0)
       },
       (statsData) => {
         setStats({
@@ -74,6 +81,7 @@ function Live() {
         setIsConnected(false)
         if (err.type === 'error') {
           setError('Connection lost. Reconnecting...')
+          handleReconnect()
         }
       }
     )
@@ -91,12 +99,39 @@ function Live() {
       eventSourceRef.current.close()
       eventSourceRef.current = null
     }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
     setIsConnected(false)
+    setReconnectAttempts(0)
   }
 
   const reconnect = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
     disconnect()
     connectToStream()
+  }
+
+  const handleReconnect = () => {
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      setError('Max reconnection attempts reached. Please click Connect to retry.')
+      return
+    }
+    
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
+    setReconnectAttempts(prev => prev + 1)
+    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+    }
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnect()
+    }, delay)
   }
 
   const clearEvents = () => {
@@ -168,6 +203,11 @@ function Live() {
       {error && (
         <div className="error-banner">
           {error}
+          {reconnectAttempts > 0 && reconnectAttempts < maxReconnectAttempts && (
+            <span className="reconnect-info">
+              {' '}Reconnecting in {Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000) / 1000}s... (Attempt {reconnectAttempts}/{maxReconnectAttempts})
+            </span>
+          )}
         </div>
       )}
 
@@ -360,6 +400,12 @@ function Live() {
           color: #ef4444;
           margin-bottom: 16px;
           text-align: center;
+        }
+        
+        .reconnect-info {
+          color: #888;
+          font-size: 0.85rem;
+          margin-left: 8px;
         }
         
         .stats-bar {

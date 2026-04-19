@@ -2,9 +2,11 @@ package live
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
@@ -94,6 +96,7 @@ func (lc *LiveCollector) collect() {
 		results, err := collector.Collect(ctx)
 		if err != nil {
 			lc.stats.RecordError(err)
+			observability.LogServiceError("live_collector", fmt.Sprintf("%s: %v", collector.Name(), err))
 			continue
 		}
 

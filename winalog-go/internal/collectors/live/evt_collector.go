@@ -4,11 +4,13 @@ package live
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
 	"unsafe"
 
+	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"golang.org/x/sys/windows"
 )
@@ -135,6 +137,7 @@ func (c *EvtLiveCollector) subscribe() error {
 	)
 
 	if ret == 0 {
+		observability.LogServiceError("evt_live_collector", fmt.Sprintf("EvtSubscribe failed for channel %s: %v", c.channelName, err))
 		return err
 	}
 
@@ -237,6 +240,7 @@ func (c *EvtLiveCollector) fetchNext(timeout uint32) ([]*types.Event, error) {
 	)
 
 	if ret == 0 && err != nil && err != windows.ERROR_NO_MORE_ITEMS {
+		observability.LogServiceError("evt_live_collector", fmt.Sprintf("EvtNext failed: %v", err))
 		return nil, err
 	}
 
