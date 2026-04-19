@@ -41,6 +41,9 @@ interface Detection {
   }
   recommended_action: string
   false_positive_risk: string
+  explanation?: string
+  recommendation?: string
+  real_case?: string
 }
 
 interface DetectionStats {
@@ -58,6 +61,14 @@ interface DetectionStats {
   by_technique: Record<string, number>
 }
 
+interface Detector {
+  name: string
+  enabled: boolean
+  description: string
+  technique: string
+  category: string
+}
+
 function Persistence() {
   const { t } = useI18n()
   const [detections, setDetections] = useState<Detection[]>([])
@@ -70,15 +81,56 @@ function Persistence() {
     category?: string
     technique?: string
   }>({})
+  const [showDetectorConfig, setShowDetectorConfig] = useState(false)
+  const [detectors, setDetectors] = useState<Detector[]>([])
+  const [detectorLoading, setDetectorLoading] = useState(false)
 
   useEffect(() => {
     fetchDetections()
   }, [])
 
+  const fetchDetectors = async () => {
+    try {
+      setDetectorLoading(true)
+      const response = await persistenceAPI.listDetectors()
+      setDetectors(response.data.detectors || [])
+    } catch (err) {
+      console.error('Failed to fetch detectors:', err)
+    } finally {
+      setDetectorLoading(false)
+    }
+  }
+
+  const toggleDetector = (name: string) => {
+    setDetectors(detectors.map(d => 
+      d.name === name ? { ...d, enabled: !d.enabled } : d
+    ))
+  }
+
+  const saveDetectorConfig = async () => {
+    try {
+      await persistenceAPI.updateDetectors(
+        detectors.map(d => ({ name: d.name, enabled: d.enabled }))
+      )
+      setShowDetectorConfig(false)
+    } catch (err) {
+      console.error('Failed to save detector config:', err)
+      alert('Failed to save configuration')
+    }
+  }
+
+  const handleShowDetectorConfig = () => {
+    fetchDetectors()
+    setShowDetectorConfig(true)
+  }
+
   const fetchDetections = async () => {
     try {
       setLoading(true)
-      const response = await persistenceAPI.detect()
+      const params = new URLSearchParams()
+      if (filter.category) params.append('category', filter.category)
+      if (filter.technique) params.append('technique', filter.technique)
+      const response = await persistenceAPI.detect(params.toString() ? `?${params.toString()}` : '')
       const data = response.data
       setDetections(data.detections || [])
       setStats(calculateStats(data.detections || []))
@@ -167,7 +219,54 @@ function Persistence() {
         <button onClick={fetchDetections} className="btn btn-primary">
           {t('persistence.rescan')}
         </button>
+        <button onClick={handleShowDetectorConfig} className="btn btn-secondary">
+          {t('persistence.detectorConfig') || 'Detector Config'}
+        </button>
       </div>
+
+      {showDetectorConfig && (
+        <div className="modal-overlay" onClick={() => setShowDetectorConfig(false)}>
+          <div className="modal-content detector-config-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('persistence.detectorConfig') || 'Detector Configuration'}</h2>
+              <button className="close-btn" onClick={() => setShowDetectorConfig(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p className="config-description">
+                {t('persistence.detectorConfigDesc') || 'Enable or disable individual detectors. Changes will take effect on next scan.'}
+              </p>
+              {detectorLoading ? (
+                <div className="loading">{t('common.loading')}</div>
+              ) : (
+                <div className="detectors-list">
+                  {detectors.map(detector => (
+                    <div key={detector.name} className="detector-item">
+                      <label className="detector-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={detector.enabled}
+                          onChange={() => toggleDetector(detector.name)}
+                        />
+                        <span className="detector-name">{detector.name.replace(/_/g, ' ')}</span>
+                      </label>
+                      <span className="detector-technique">{detector.technique}</span>
+                      <span className="detector-description">{detector.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="modal-actions">
+                <button onClick={saveDetectorConfig} className="btn btn-primary">
+                  {t('common.save') || 'Save'}
+                </button>
+                <button onClick={() => setShowDetectorConfig(false)} className="btn btn-secondary">
+                  {t('common.cancel') || 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {stats && (
         <div className="stats-grid">
@@ -226,6 +325,22 @@ function Persistence() {
           <option value="medium">{t('persistence.medium')}</option>
           <option value="low">{t('persistence.low')}</option>
         </select>
+        <select
+          value={filter.category || ''}
+          onChange={e => setFilter({ ...filter, category: e.target.value || undefined })}
+        >
+          <option value="">{t('persistence.allCategories')}</option>
+          <option value="Registry">注册表</option>
+          <option value="ScheduledTask">计划任务</option>
+          <option value="Service">服务</option>
+          <option value="WMI">WMI</option>
+          <option value="COM">COM</option>
+          <option value="BITS">BITS</option>
+          <option value="Accessibility">辅助功能</option>
+        </select>
+        <button onClick={fetchDetections} className="btn btn-secondary">
+          {t('persistence.rescan')}
+        </button>
       </div>
 
       <div className="detections-table-container">
@@ -281,14 +396,28 @@ function Persistence() {
                 <p><strong>{t('persistence.technique')}:</strong> {selectedDetection.technique}</p>
                 <p><strong>{t('persistence.time')}:</strong> {new Date(selectedDetection.time).toLocaleString()}</p>
               </div>
+              {selectedDetection.explanation && (
+              <div className="detail-section">
+                <h4>{t('persistence.explanation') || '规则解读'}</h4>
+                <p>{selectedDetection.explanation}</p>
+              </div>
+              )}
               <div className="detail-section">
                 <h4>{t('persistence.description')}</h4>
                 <p>{selectedDetection.description}</p>
               </div>
+              {selectedDetection.recommendation && (
               <div className="detail-section">
-                <h4>{t('persistence.recommendedAction')}</h4>
-                <p>{selectedDetection.recommended_action}</p>
+                <h4>{t('persistence.recommendation') || '处置建议'}</h4>
+                <p style={{ whiteSpace: 'pre-wrap' }}>{selectedDetection.recommendation}</p>
               </div>
+              )}
+              {selectedDetection.real_case && selectedDetection.real_case !== '暂无真实案例' && (
+              <div className="detail-section">
+                <h4>{t('persistence.realCase') || '真实案例'}</h4>
+                <p>{selectedDetection.real_case}</p>
+              </div>
+              )}
             </div>
           </div>
         </div>

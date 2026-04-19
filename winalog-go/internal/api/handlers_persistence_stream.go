@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
 )
 
@@ -58,6 +59,7 @@ func (h *PersistenceHandler) DetectStream(c *gin.Context) {
 		"message": "Detection started",
 		"timeout": timeout.String(),
 	})
+	observability.LogServiceError("persistence_stream", "SSE detection started")
 	c.Writer.Flush()
 
 	for {
@@ -78,18 +80,25 @@ func (h *PersistenceHandler) DetectStream(c *gin.Context) {
 			c.Writer.Flush()
 		case result, ok := <-doneChan:
 			if ok {
+				if result.ErrorCount > 0 {
+					for _, errMsg := range result.Errors {
+						observability.LogServiceError("persistence_stream", errMsg)
+					}
+				}
 				c.SSEvent("result", map[string]interface{}{
-					"detections":  result.Detections,
+					"detections":  enrichDetections(result.Detections),
 					"summary":     result.Summary(),
 					"duration":    result.Duration.String(),
 					"total_count": result.TotalCount,
 					"error_count": result.ErrorCount,
 				})
+				observability.LogServiceError("persistence_stream", "Detection completed")
 				c.Writer.Flush()
 			}
 			return
 		case <-clientGone:
 			cancel()
+			observability.LogServiceError("persistence_stream", "Detection cancelled by client")
 			c.SSEvent("cancelled", map[string]interface{}{
 				"message": "Detection cancelled by client",
 			})

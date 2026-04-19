@@ -351,8 +351,8 @@ export const settingsAPI = {
 }
 
 export const persistenceAPI = {
-  detect: () =>
-    api.get('/persistence/detect'),
+  detect: (query?: string) =>
+    api.get(`/persistence/detect${query || ''}`),
   detectStream: (onDetection: (data: any) => void, onError?: (err: any) => void) => {
     const eventSource = new EventSource('/api/persistence/detect/stream')
     
@@ -376,6 +376,10 @@ export const persistenceAPI = {
     api.get('/persistence/categories'),
   listTechniques: () =>
     api.get('/persistence/techniques'),
+  listDetectors: () =>
+    api.get('/persistence/detectors'),
+  updateDetectors: (detectors: { name: string, enabled: boolean }[]) =>
+    api.post('/persistence/detectors/config', { detectors }),
 }
 
 export interface SearchParams {

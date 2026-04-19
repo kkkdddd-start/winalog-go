@@ -225,13 +225,6 @@ func (h *SystemHandler) GetMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, metrics)
 }
 
-func (h *SystemHandler) GetProcesses(c *gin.Context) {
-	c.JSON(http.StatusOK, ProcessResponse{
-		Processes: []*ProcessInfo{},
-		Total:     0,
-	})
-}
-
 func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusOK, NetworkConnectionResponse{

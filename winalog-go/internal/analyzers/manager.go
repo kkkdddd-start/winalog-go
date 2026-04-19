@@ -10,5 +10,6 @@ func NewDefaultManager() *AnalyzerManager {
 	mgr.Register(NewLateralMovementAnalyzer())
 	mgr.Register(NewPersistenceAnalyzer())
 	mgr.Register(NewPrivilegeEscalationAnalyzer())
+	mgr.Register(NewDCAnalyzer())
 	return mgr
 }
