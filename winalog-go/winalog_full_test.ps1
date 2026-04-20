@@ -66,6 +66,63 @@ function Get-WinalogVersion {
     }
 }
 
+function Find-EvtxFiles {
+    $searchPaths = @(
+        "$env:USERPROFILE\Desktop\*.evtx",
+        "$env:USERPROFILE\Documents\*.evtx",
+        "$env:USERPROFILE\Downloads\*.evtx",
+        ".\*.evtx",
+        ".\test_data\*.evtx",
+        ".\test_files\*.evtx",
+        ".\data\*.evtx",
+        "$env:SystemRoot\System32\winevt\Logs\*.evtx"
+    )
+    
+    $foundFiles = @()
+    
+    foreach ($path in $searchPaths) {
+        $files = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer }
+        if ($files) {
+            $foundFiles += $files
+        }
+    }
+    
+    if ($foundFiles.Count -gt 0) {
+        $sortedFiles = $foundFiles | Sort-Object LastWriteTime -Descending
+        return $sortedFiles[0].FullName
+    }
+    
+    return $null
+}
+
+function Find-AllEvtxFiles {
+    $searchPaths = @(
+        "$env:USERPROFILE\Desktop\*.evtx",
+        "$env:USERPROFILE\Documents\*.evtx",
+        "$env:USERPROFILE\Downloads\*.evtx",
+        ".\*.evtx",
+        ".\test_data\*.evtx",
+        ".\test_files\*.evtx",
+        ".\data\*.evtx",
+        "$env:SystemRoot\System32\winevt\Logs\*.evtx"
+    )
+    
+    $foundFiles = @()
+    
+    foreach ($path in $searchPaths) {
+        $files = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer }
+        if ($files) {
+            $foundFiles += $files
+        }
+    }
+    
+    if ($foundFiles.Count -gt 0) {
+        return ($foundFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 10)
+    }
+    
+    return $null
+}
+
 function Test-WinalogCommand {
     param(
         [string]$CommandName,
@@ -270,12 +327,28 @@ Write-Log "========================================" "INFO"
 Write-Log "Part 7: Import Function" "INFO"
 Write-Log "========================================" "INFO"
 
-if ($TestImport -and $TestEvtxFile -and (Test-Path $TestEvtxFile)) {
-    Write-Log "Using test file: $TestEvtxFile" "INFO"
-    Test-WinalogCommand -CommandName "import" -Arguments "import `"$TestEvtxFile`" --log-name TestImport --workers 4" -Description "Import EVTX file"
-    Test-WinalogCommand -CommandName "search_after_import" -Arguments "search --log-name TestImport --limit 50" -Description "Search imported events"
+if ($TestImport) {
+    if (-not $TestEvtxFile) {
+        Write-Log "Auto-searching for EVTX files..." "INFO"
+        $foundFile = Find-EvtxFiles
+        if ($foundFile) {
+            $TestEvtxFile = $foundFile
+            Write-Log "Found EVTX file: $TestEvtxFile" "SUCCESS"
+        } else {
+            Write-Log "No EVTX files found in search paths" "WARN"
+        }
+    }
+    
+    if ($TestEvtxFile -and (Test-Path $TestEvtxFile)) {
+        Write-Log "Using test file: $TestEvtxFile" "INFO"
+        Test-WinalogCommand -CommandName "import" -Arguments "import `"$TestEvtxFile`" --log-name TestImport --workers 4" -Description "Import EVTX file"
+        Test-WinalogCommand -CommandName "search_after_import" -Arguments "search --log-name TestImport --limit 50" -Description "Search imported events"
+    } else {
+        Write-Log "Skipping import test (no valid EVTX file)" "WARN"
+        Write-Log "Tip: Use -TestEvtxFile to specify a file manually" "INFO"
+    }
 } else {
-    Write-Log "Skipping import test (requires -TestImport flag and valid EVTX file)" "WARN"
+    Write-Log "Skipping import test (use -TestImport to enable)" "WARN"
 }
 
 Write-Log "========================================" "INFO"
@@ -458,16 +531,27 @@ Write-Log "========================================" "INFO"
 Write-Log "Part 24: EVTX Conversion" "INFO"
 Write-Log "========================================" "INFO"
 
-if (-not $SkipEvtxConversion -and $TestEvtxFile -and (Test-Path $TestEvtxFile)) {
-    Write-Log "Testing EVTX to CSV: $TestEvtxFile" "INFO"
-    Test-WinalogCommand -CommandName "evtx2csv" -Arguments "evtx2csv `"$TestEvtxFile`" `"$OutputDir\exports\converted.csv`" --limit 500" -Description "EVTX to CSV"
-    
-    if (Test-Path "$OutputDir\exports\converted.csv") {
-        $csvInfo = Get-Content "$OutputDir\exports\converted.csv" -TotalCount 10
-        Write-Log "CSV Preview: $csvInfo" "INFO"
+if (-not $SkipEvtxConversion) {
+    if (-not $TestEvtxFile) {
+        Write-Log "Auto-searching for EVTX files for conversion test..." "INFO"
+        $foundFile = Find-EvtxFiles
+        if ($foundFile) {
+            $TestEvtxFile = $foundFile
+            Write-Log "Found EVTX file: $TestEvtxFile" "SUCCESS"
+        }
     }
-} else {
-    Write-Log "Skipping EVTX conversion test" "WARN"
+    
+    if ($TestEvtxFile -and (Test-Path $TestEvtxFile)) {
+        Write-Log "Testing EVTX to CSV: $TestEvtxFile" "INFO"
+        Test-WinalogCommand -CommandName "evtx2csv" -Arguments "evtx2csv `"$TestEvtxFile`" `"$OutputDir\exports\converted.csv`" --limit 500" -Description "EVTX to CSV"
+        
+        if (Test-Path "$OutputDir\exports\converted.csv") {
+            $csvInfo = Get-Content "$OutputDir\exports\converted.csv" -TotalCount 10
+            Write-Log "CSV Preview: $csvInfo" "INFO"
+        }
+    } else {
+        Write-Log "Skipping EVTX conversion test (no valid file)" "WARN"
+    }
 }
 
 Write-Log "========================================" "INFO"

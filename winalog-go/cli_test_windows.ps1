@@ -105,6 +105,63 @@ function Test-Command {
     }
 }
 
+function Find-EvtxFiles {
+    $searchPaths = @(
+        "$env:USERPROFILE\Desktop\*.evtx",
+        "$env:USERPROFILE\Documents\*.evtx",
+        "$env:USERPROFILE\Downloads\*.evtx",
+        ".\*.evtx",
+        ".\test_data\*.evtx",
+        ".\test_files\*.evtx",
+        ".\data\*.evtx",
+        "$env:SystemRoot\System32\winevt\Logs\*.evtx"
+    )
+    
+    $foundFiles = @()
+    
+    foreach ($path in $searchPaths) {
+        $files = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer }
+        if ($files) {
+            $foundFiles += $files
+        }
+    }
+    
+    if ($foundFiles.Count -gt 0) {
+        $sortedFiles = $foundFiles | Sort-Object LastWriteTime -Descending
+        return $sortedFiles[0].FullName
+    }
+    
+    return $null
+}
+
+function Find-AllEvtxFiles {
+    $searchPaths = @(
+        "$env:USERPROFILE\Desktop\*.evtx",
+        "$env:USERPROFILE\Documents\*.evtx",
+        "$env:USERPROFILE\Downloads\*.evtx",
+        ".\*.evtx",
+        ".\test_data\*.evtx",
+        ".\test_files\*.evtx",
+        ".\data\*.evtx",
+        "$env:SystemRoot\System32\winevt\Logs\*.evtx"
+    )
+    
+    $foundFiles = @()
+    
+    foreach ($path in $searchPaths) {
+        $files = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer }
+        if ($files) {
+            $foundFiles += $files
+        }
+    }
+    
+    if ($foundFiles.Count -gt 0) {
+        return ($foundFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 10)
+    }
+    
+    return $null
+}
+
 if (-not (Test-Path $OutputDir)) {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 }
@@ -113,6 +170,19 @@ Write-TestLog "========================================" "INFO"
 Write-TestLog "WinLogAnalyzer-Go CLI Test" "INFO"
 Write-TestLog "========================================" "INFO"
 Write-TestLog "Start Time: $Script:TestStartTime" "INFO"
+
+if (-not $SkipImport) {
+    if (-not $TestEvtxFile) {
+        Write-TestLog "Auto-searching for EVTX files..." "INFO"
+        $foundFile = Find-EvtxFiles
+        if ($foundFile) {
+            $TestEvtxFile = $foundFile
+            Write-TestLog "Found EVTX file: $TestEvtxFile" "SUCCESS"
+        } else {
+            Write-TestLog "No EVTX files found in search paths" "WARN"
+        }
+    }
+}
 
 if (-not (Test-Path $WinalogPath)) {
     Write-TestLog "Error: Cannot find winalog.exe at $WinalogPath" "ERROR"
