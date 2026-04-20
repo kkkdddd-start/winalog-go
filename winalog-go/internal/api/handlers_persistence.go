@@ -366,6 +366,71 @@ func (h *PersistenceHandler) UpdateDetectorConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Detector configuration updated"})
 }
 
+type PersistenceRuleInfo struct {
+	Name                 string   `json:"name"`
+	Enabled              bool     `json:"enabled"`
+	Technique            string   `json:"technique"`
+	Category             string   `json:"category"`
+	Description          string   `json:"description"`
+	Severity             string   `json:"severity"`
+	SuspiciousIndicators []string `json:"suspicious_indicators,omitempty"`
+	Whitelist            []string `json:"whitelist,omitempty"`
+}
+
+func (h *PersistenceHandler) ListRules(c *gin.Context) {
+	rules := []PersistenceRuleInfo{
+		{Name: "run_key_detector", Enabled: true, Technique: "T1547.001", Category: "Registry", Description: "Run Key Persistence", Severity: "high", SuspiciousIndicators: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		{Name: "user_init_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "UserInit MPR Logon", Severity: "medium"},
+		{Name: "startup_folder_detector", Enabled: true, Technique: "T1547.016", Category: "Registry", Description: "Startup Folder Persistence", Severity: "high"},
+		{Name: "accessibility_detector", Enabled: true, Technique: "T1546.001", Category: "Accessibility", Description: "Accessibility Features Backdoor", Severity: "critical"},
+		{Name: "com_hijack_detector", Enabled: true, Technique: "T1546.015", Category: "COM", Description: "COM Hijacking", Severity: "high"},
+		{Name: "ifeo_detector", Enabled: true, Technique: "T1546.012", Category: "Registry", Description: "IFEO Injection", Severity: "high"},
+		{Name: "appinit_detector", Enabled: true, Technique: "T1546.010", Category: "Registry", Description: "AppInit DLLs", Severity: "medium"},
+		{Name: "wmi_persistence_detector", Enabled: true, Technique: "T1546.003", Category: "WMI", Description: "WMI Event Subscription", Severity: "high"},
+		{Name: "service_persistence_detector", Enabled: true, Technique: "T1543.003", Category: "Service", Description: "Service Persistence", Severity: "critical"},
+		{Name: "lsa_persistence_detector", Enabled: true, Technique: "T1546.008", Category: "Registry", Description: "LSA Authentication Package", Severity: "critical"},
+		{Name: "winsock_detector", Enabled: true, Technique: "T1546.007", Category: "Registry", Description: "Winsock Helper DLL", Severity: "high"},
+		{Name: "bho_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "Browser Helper Object", Severity: "medium"},
+		{Name: "print_monitor_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "Print Monitor", Severity: "medium"},
+		{Name: "boot_execute_detector", Enabled: true, Technique: "T1053", Category: "ScheduledTask", Description: "Boot Execute", Severity: "high"},
+		{Name: "etw_detector", Enabled: true, Technique: "T1546.006", Category: "Registry", Description: "ETW Manipulation", Severity: "medium"},
+	}
+	c.JSON(http.StatusOK, gin.H{"rules": rules})
+}
+
+func (h *PersistenceHandler) GetRule(c *gin.Context) {
+	ruleName := c.Param("name")
+	if ruleName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "rule name is required"})
+		return
+	}
+
+	defaultRules := map[string]PersistenceRuleInfo{
+		"run_key_detector":             {Name: "run_key_detector", Enabled: true, Technique: "T1547.001", Category: "Registry", Description: "Run Key Persistence", Severity: "high", SuspiciousIndicators: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		"user_init_detector":           {Name: "user_init_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "UserInit MPR Logon", Severity: "medium"},
+		"startup_folder_detector":      {Name: "startup_folder_detector", Enabled: true, Technique: "T1547.016", Category: "Registry", Description: "Startup Folder Persistence", Severity: "high"},
+		"accessibility_detector":       {Name: "accessibility_detector", Enabled: true, Technique: "T1546.001", Category: "Accessibility", Description: "Accessibility Features Backdoor", Severity: "critical"},
+		"com_hijack_detector":          {Name: "com_hijack_detector", Enabled: true, Technique: "T1546.015", Category: "COM", Description: "COM Hijacking", Severity: "high"},
+		"ifeo_detector":                {Name: "ifeo_detector", Enabled: true, Technique: "T1546.012", Category: "Registry", Description: "IFEO Injection", Severity: "high"},
+		"appinit_detector":             {Name: "appinit_detector", Enabled: true, Technique: "T1546.010", Category: "Registry", Description: "AppInit DLLs", Severity: "medium"},
+		"wmi_persistence_detector":     {Name: "wmi_persistence_detector", Enabled: true, Technique: "T1546.003", Category: "WMI", Description: "WMI Event Subscription", Severity: "high"},
+		"service_persistence_detector": {Name: "service_persistence_detector", Enabled: true, Technique: "T1543.003", Category: "Service", Description: "Service Persistence", Severity: "critical"},
+		"lsa_persistence_detector":     {Name: "lsa_persistence_detector", Enabled: true, Technique: "T1546.008", Category: "Registry", Description: "LSA Authentication Package", Severity: "critical"},
+		"winsock_detector":             {Name: "winsock_detector", Enabled: true, Technique: "T1546.007", Category: "Registry", Description: "Winsock Helper DLL", Severity: "high"},
+		"bho_detector":                 {Name: "bho_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "Browser Helper Object", Severity: "medium"},
+		"print_monitor_detector":       {Name: "print_monitor_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "Print Monitor", Severity: "medium"},
+		"boot_execute_detector":        {Name: "boot_execute_detector", Enabled: true, Technique: "T1053", Category: "ScheduledTask", Description: "Boot Execute", Severity: "high"},
+		"etw_detector":                 {Name: "etw_detector", Enabled: true, Technique: "T1546.006", Category: "Registry", Description: "ETW Manipulation", Severity: "medium"},
+	}
+
+	if rule, ok := defaultRules[ruleName]; ok {
+		c.JSON(http.StatusOK, rule)
+		return
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": "rule not found: " + ruleName})
+}
+
 func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandler) {
 	persistenceGroup := r.Group("/api/persistence")
 	{
@@ -374,5 +439,7 @@ func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandle
 		persistenceGroup.GET("/techniques", persistenceHandler.ListTechniques)
 		persistenceGroup.GET("/detectors", persistenceHandler.ListDetectors)
 		persistenceGroup.POST("/detectors/config", persistenceHandler.UpdateDetectorConfig)
+		persistenceGroup.GET("/rules", persistenceHandler.ListRules)
+		persistenceGroup.GET("/rules/:name", persistenceHandler.GetRule)
 	}
 }

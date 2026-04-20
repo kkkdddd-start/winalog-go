@@ -42,6 +42,7 @@ function Collect() {
   const [threads, setThreads] = useState(2)
   const [customPaths, setCustomPaths] = useState('')
   const [customExclude, setCustomExclude] = useState('')
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   const [logSources, setLogSources] = useState<LogSource[]>([
     { id: 'security', name: 'Security', enabled: true, category: 'Windows Event Logs' },
@@ -101,6 +102,31 @@ function Collect() {
 
   const handleOptionChange = (key: keyof CollectOptions) => {
     setOptions(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files)
+      setSelectedFiles(prev => [...prev, ...files])
+      const newPaths = files.map(f => f.path || f.name).join('\n')
+      setCustomPaths(prev => prev ? prev + '\n' + newPaths : newPaths)
+    }
+  }
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => {
+      const newFiles = [...prev]
+      newFiles.splice(index, 1)
+      const pathsToRemove = new Set()
+      newFiles.forEach(f => pathsToRemove.add(f.path || f.name))
+      setCustomPaths(prev => prev.split('\n').filter(p => pathsToRemove.has(p)).join('\n'))
+      return newFiles
+    })
+  }
+
+  const handleClearFiles = () => {
+    setSelectedFiles([])
+    setCustomPaths('')
   }
 
   const handleCollect = async () => {
@@ -521,6 +547,42 @@ function Collect() {
           
           <div className="custom-path-section">
             <label>{t('collect.customPathsLabel')}</label>
+            <div className="file-selector">
+              <input
+                type="file"
+                id="file-input"
+                multiple
+                accept=".evtx,.etl,.csv,.log"
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="file-input" className="file-select-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                {t('collect.selectFiles') || 'Select Files'}
+              </label>
+              {selectedFiles.length > 0 && (
+                <div className="selected-files">
+                  <div className="selected-files-header">
+                    <span>{selectedFiles.length} {t('collect.filesSelected') || 'files selected'}</span>
+                    <button onClick={handleClearFiles} className="clear-files-btn">
+                      {t('collect.clearAll') || 'Clear All'}
+                    </button>
+                  </div>
+                  <ul className="file-list">
+                    {selectedFiles.map((file, index) => (
+                      <li key={index} className="file-item">
+                        <span className="file-name">{file.name}</span>
+                        <button onClick={() => handleRemoveFile(index)} className="remove-file-btn">×</button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
             <textarea
               value={customPaths}
               onChange={e => setCustomPaths(e.target.value)}

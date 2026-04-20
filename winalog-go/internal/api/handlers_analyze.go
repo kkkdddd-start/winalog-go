@@ -229,6 +229,63 @@ func (h *AnalyzeHandler) GetAnalyzerInfo(c *gin.Context) {
 	})
 }
 
+type AnalyzerRuleInfo struct {
+	Name        string         `json:"name"`
+	Type        string         `json:"type"`
+	Enabled     bool           `json:"enabled"`
+	Description string         `json:"description"`
+	Severity    string         `json:"severity"`
+	Score       float64        `json:"score"`
+	MitreAttack []string       `json:"mitre_attack,omitempty"`
+	Thresholds  map[string]int `json:"thresholds,omitempty"`
+	Patterns    []string       `json:"patterns,omitempty"`
+	Whitelist   []string       `json:"whitelist,omitempty"`
+}
+
+func (h *AnalyzeHandler) ListRules(c *gin.Context) {
+	rules := []AnalyzerRuleInfo{
+		{Name: "brute_force", Type: "brute_force", Enabled: true, Description: "Brute force login detection", Severity: "high", Score: 80, MitreAttack: []string{"T1110"}, Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1}},
+		{Name: "login", Type: "login", Enabled: true, Description: "Login analysis", Severity: "medium", Score: 50, MitreAttack: []string{"T1078"}},
+		{Name: "kerberos", Type: "kerberos", Enabled: true, Description: "Kerberos authentication analysis", Severity: "high", Score: 70, MitreAttack: []string{"T1558"}},
+		{Name: "powershell", Type: "powershell", Enabled: true, Description: "PowerShell command detection", Severity: "high", Score: 75, MitreAttack: []string{"T1059.001"}},
+		{Name: "data_exfiltration", Type: "data_exfiltration", Enabled: true, Description: "Data exfiltration detection", Severity: "critical", Score: 90, MitreAttack: []string{"T1041"}},
+		{Name: "lateral_movement", Type: "lateral_movement", Enabled: true, Description: "Lateral movement detection", Severity: "high", Score: 85, MitreAttack: []string{"T1021"}},
+		{Name: "persistence", Type: "persistence", Enabled: true, Description: "Persistence mechanism detection", Severity: "high", Score: 80, MitreAttack: []string{"T1547"}},
+		{Name: "privilege_escalation", Type: "privilege_escalation", Enabled: true, Description: "Privilege escalation detection", Severity: "high", Score: 75, MitreAttack: []string{"T1068"}},
+		{Name: "dc", Type: "dc", Enabled: true, Description: "Domain controller analysis", Severity: "high", Score: 80, MitreAttack: []string{"T1207"}},
+	}
+	c.JSON(http.StatusOK, gin.H{"rules": rules})
+}
+
+func (h *AnalyzeHandler) GetRule(c *gin.Context) {
+	ruleName := c.Param("type")
+	if ruleName == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "rule type is required"})
+		return
+	}
+
+	ruleName = strings.ReplaceAll(ruleName, "-", "_")
+
+	defaultRules := map[string]AnalyzerRuleInfo{
+		"brute_force":          {Name: "brute_force", Type: "brute_force", Enabled: true, Description: "Brute force login detection", Severity: "high", Score: 80, MitreAttack: []string{"T1110"}, Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1}},
+		"login":                {Name: "login", Type: "login", Enabled: true, Description: "Login analysis", Severity: "medium", Score: 50, MitreAttack: []string{"T1078"}},
+		"kerberos":             {Name: "kerberos", Type: "kerberos", Enabled: true, Description: "Kerberos authentication analysis", Severity: "high", Score: 70, MitreAttack: []string{"T1558"}},
+		"powershell":           {Name: "powershell", Type: "powershell", Enabled: true, Description: "PowerShell command detection", Severity: "high", Score: 75, MitreAttack: []string{"T1059.001"}},
+		"data_exfiltration":    {Name: "data_exfiltration", Type: "data_exfiltration", Enabled: true, Description: "Data exfiltration detection", Severity: "critical", Score: 90, MitreAttack: []string{"T1041"}},
+		"lateral_movement":     {Name: "lateral_movement", Type: "lateral_movement", Enabled: true, Description: "Lateral movement detection", Severity: "high", Score: 85, MitreAttack: []string{"T1021"}},
+		"persistence":          {Name: "persistence", Type: "persistence", Enabled: true, Description: "Persistence mechanism detection", Severity: "high", Score: 80, MitreAttack: []string{"T1547"}},
+		"privilege_escalation": {Name: "privilege_escalation", Type: "privilege_escalation", Enabled: true, Description: "Privilege escalation detection", Severity: "high", Score: 75, MitreAttack: []string{"T1068"}},
+		"dc":                   {Name: "dc", Type: "dc", Enabled: true, Description: "Domain controller analysis", Severity: "high", Score: 80, MitreAttack: []string{"T1207"}},
+	}
+
+	if rule, ok := defaultRules[ruleName]; ok {
+		c.JSON(http.StatusOK, rule)
+		return
+	}
+
+	c.JSON(http.StatusNotFound, ErrorResponse{Error: "rule not found: " + ruleName})
+}
+
 func SetupAnalyzeRoutes(r *gin.Engine, analyzeHandler *AnalyzeHandler) {
 	analyze := r.Group("/api/analyze")
 	{
@@ -239,5 +296,11 @@ func SetupAnalyzeRoutes(r *gin.Engine, analyzeHandler *AnalyzeHandler) {
 	{
 		analyzers.GET("", analyzeHandler.ListAnalyzers)
 		analyzers.GET("/:type", analyzeHandler.GetAnalyzerInfo)
+	}
+
+	analyzerRules := r.Group("/api/analyzer-rules")
+	{
+		analyzerRules.GET("", analyzeHandler.ListRules)
+		analyzerRules.GET("/:type", analyzeHandler.GetRule)
 	}
 }
