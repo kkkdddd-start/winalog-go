@@ -151,7 +151,7 @@ function Rules() {
 
   const handleSaveEdit = () => {
     if (!editingRule) return
-    rulesAPI.save(editingRule)
+    rulesAPI.update(editingRule.name, editingRule)
       .then(() => {
         setShowEditModal(false)
         setEditingRule(null)

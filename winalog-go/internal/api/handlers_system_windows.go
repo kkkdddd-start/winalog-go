@@ -21,7 +21,8 @@ func (h *SystemHandler) GetProcesses(c *gin.Context) {
 		limit = defaultLimit
 	}
 
-	processes, err := collectors.ListProcesses()
+	collector := collectors.NewProcessInfoCollector()
+	processes, err := collector.CollectProcessInfoWithSignature()
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -29,14 +30,29 @@ func (h *SystemHandler) GetProcesses(c *gin.Context) {
 
 	result := make([]*ProcessInfo, 0, len(processes))
 	for _, p := range processes {
+		var sigInfo *SignatureInfo
+		if p.Signature != nil {
+			sigInfo = &SignatureInfo{
+				Status:     p.Signature.Status,
+				Issuer:     p.Signature.Issuer,
+				Subject:    p.Signature.Subject,
+				ValidFrom:  p.Signature.ValidFrom,
+				ValidTo:    p.Signature.ValidTo,
+				Thumbprint: p.Signature.Thumbprint,
+			}
+		}
 		result = append(result, &ProcessInfo{
-			PID:    p.PID,
-			PPID:   p.PPID,
-			Name:   p.Name,
-			Exe:    p.Path,
-			Args:   p.Command,
-			User:   p.User,
-			Status: "",
+			PID:         p.PID,
+			PPID:        p.PPID,
+			Name:        p.Name,
+			Exe:         p.Path,
+			Args:        p.CommandLine,
+			User:        p.User,
+			Status:      "",
+			Path:        p.Path,
+			CommandLine: p.CommandLine,
+			IsSigned:    p.IsSigned,
+			Signature:   sigInfo,
 		})
 		if len(result) >= limit {
 			break

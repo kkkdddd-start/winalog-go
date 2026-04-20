@@ -47,23 +47,24 @@ type LogCollectRequest struct {
 }
 
 type LogCollectOptions struct {
-	Workers           int    `json:"workers"`
-	IncludePrefetch   bool   `json:"include_prefetch"`
-	IncludeRegistry   bool   `json:"include_registry"`
-	IncludeSystemInfo bool   `json:"include_system_info"`
-	IncludeShimCache  bool   `json:"include_shimcache"`
-	IncludeAmcache    bool   `json:"include_amcache"`
-	IncludeUserassist bool   `json:"include_userassist"`
-	IncludeTasks      bool   `json:"include_tasks"`
-	IncludeLogs       bool   `json:"include_logs"`
-	IncludeProcesses  bool   `json:"include_processes"`
-	IncludeNetwork    bool   `json:"include_network"`
-	IncludeDlls       bool   `json:"include_dlls"`
-	IncludeDrivers    bool   `json:"include_drivers"`
-	IncludeUsers      bool   `json:"include_users"`
-	Compress          bool   `json:"compress"`
-	CalculateHash     bool   `json:"calculate_hash"`
-	OutputPath        string `json:"output_path"`
+	Workers           int      `json:"workers"`
+	IncludePrefetch   bool     `json:"include_prefetch"`
+	IncludeRegistry   bool     `json:"include_registry"`
+	IncludeSystemInfo bool     `json:"include_system_info"`
+	IncludeShimCache  bool     `json:"include_shimcache"`
+	IncludeAmcache    bool     `json:"include_amcache"`
+	IncludeUserassist bool     `json:"include_userassist"`
+	IncludeTasks      bool     `json:"include_tasks"`
+	IncludeLogs       bool     `json:"include_logs"`
+	IncludeProcesses  bool     `json:"include_processes"`
+	IncludeNetwork    bool     `json:"include_network"`
+	IncludeDlls       bool     `json:"include_dlls"`
+	IncludeDrivers    bool     `json:"include_drivers"`
+	IncludeUsers      bool     `json:"include_users"`
+	Compress          bool     `json:"compress"`
+	CalculateHash     bool     `json:"calculate_hash"`
+	OutputPath        string   `json:"output_path"`
+	Sources           []string `json:"sources"`
 }
 
 type LogImportRequest struct {
@@ -126,6 +127,9 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 	opts.CalculateHash = req.Options.CalculateHash
 	if req.Options.OutputPath != "" {
 		opts.OutputPath = req.Options.OutputPath
+	}
+	if len(req.Options.Sources) > 0 {
+		opts.SelectedSources = req.Options.Sources
 	}
 
 	ctx := context.Background()

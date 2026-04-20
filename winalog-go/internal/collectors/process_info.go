@@ -112,6 +112,10 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 	return processes, nil
 }
 
+func (c *ProcessInfoCollector) CollectProcessInfoWithSignature() ([]*types.ProcessInfo, error) {
+	return c.collectProcessInfo()
+}
+
 func getProcessPath(pid uint32) string {
 	defer func() {
 		if r := recover(); r != nil {

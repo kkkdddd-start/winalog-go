@@ -26,6 +26,17 @@ interface ProcessInfo {
   args: string
   user: string
   status: string
+  path: string
+  command_line: string
+  is_signed: boolean
+  signature?: {
+    status: string
+    issuer: string
+    subject: string
+    valid_from: string
+    valid_to: string
+    thumbprint: string
+  }
 }
 
 interface NetworkConnInfo {
@@ -41,15 +52,28 @@ interface NetworkConnInfo {
 
 function SystemInfo() {
   const { t } = useI18n()
-  const [activeTab, setActiveTab] = useState<'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers'>('system')
+  const [activeTab, setActiveTab] = useState<'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'tasks'>('system')
   const [info, setInfo] = useState<SystemInfoData | null>(null)
   const [processes, setProcesses] = useState<ProcessInfo[]>([])
   const [networkConnections, setNetworkConnections] = useState<NetworkConnInfo[]>([])
   const [envVars, setEnvVars] = useState<any[]>([])
   const [dlls, setDlls] = useState<any[]>([])
   const [drivers, setDrivers] = useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
+  const [selectedDllPid, setSelectedDllPid] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
+    processes: true,
+    network: true,
+    dlls: true,
+    drivers: true,
+    env: false,
+    users: true,
+    registry: true,
+    tasks: true,
+  })
+  const [showUnsignedOnly, setShowUnsignedOnly] = useState(false)
 
   useEffect(() => {
     fetchSystemInfo()
@@ -101,15 +125,24 @@ function SystemInfo() {
       .catch(() => setLoading(false))
   }
 
-  const fetchDlls = () => {
-    if (dlls.length > 0) return
+  const fetchDlls = (pid?: number) => {
     setLoading(true)
-    systemAPI.getLoadedDLLs(100)
-      .then(res => {
-        setDlls(res.data.modules || [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    if (pid) {
+      setSelectedDllPid(pid)
+      systemAPI.getProcessDLLs(pid)
+        .then(res => {
+          setDlls(res.data.dlls || [])
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    } else {
+      systemAPI.getLoadedDLLs(100)
+        .then(res => {
+          setDlls(res.data.modules || [])
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    }
   }
 
   const fetchDrivers = () => {
@@ -123,13 +156,32 @@ function SystemInfo() {
       .catch(() => setLoading(false))
   }
 
-  const handleTabChange = (tab: 'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers') => {
+  const fetchUsers = () => {
+    if (users.length > 0) return
+    setLoading(true)
+    systemAPI.getUsers()
+      .then(res => {
+        setUsers(res.data.users || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  const handleTabChange = (tab: 'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'tasks') => {
     setActiveTab(tab)
     if (tab === 'processes') fetchProcesses()
     if (tab === 'network') fetchNetwork()
     if (tab === 'env') fetchEnvVars()
-    if (tab === 'dlls') fetchDlls()
+    if (tab === 'dlls') {
+      if (processes.length > 0 && !selectedDllPid) {
+      } else if (selectedDllPid) {
+        fetchDlls(selectedDllPid)
+      } else {
+        fetchDlls()
+      }
+    }
     if (tab === 'drivers') fetchDrivers()
+    if (tab === 'users') fetchUsers()
   }
 
   const formatUptime = (seconds: number) => {
@@ -188,31 +240,97 @@ function SystemInfo() {
           className={`tab-btn ${activeTab === 'processes' ? 'active' : ''}`}
           onClick={() => handleTabChange('processes')}
         >
-          Processes ({processes.length || '...'})
+          <span className="tab-label">Processes ({processes.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.processes}
+              onChange={() => setEnabledModules(m => ({...m, processes: !m.processes}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </button>
         <button
           className={`tab-btn ${activeTab === 'network' ? 'active' : ''}`}
           onClick={() => handleTabChange('network')}
         >
-          Network ({networkConnections.length || '...'})
+          <span className="tab-label">Network ({networkConnections.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.network}
+              onChange={() => setEnabledModules(m => ({...m, network: !m.network}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </button>
         <button
           className={`tab-btn ${activeTab === 'env' ? 'active' : ''}`}
           onClick={() => handleTabChange('env')}
         >
-          Env ({envVars.length || '...'})
+          <span className="tab-label">Env ({envVars.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.env}
+              onChange={() => setEnabledModules(m => ({...m, env: !m.env}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </button>
         <button
           className={`tab-btn ${activeTab === 'dlls' ? 'active' : ''}`}
           onClick={() => handleTabChange('dlls')}
         >
-          DLLs ({dlls.length || '...'})
+          <span className="tab-label">DLLs ({dlls.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.dlls}
+              onChange={() => setEnabledModules(m => ({...m, dlls: !m.dlls}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </button>
         <button
           className={`tab-btn ${activeTab === 'drivers' ? 'active' : ''}`}
           onClick={() => handleTabChange('drivers')}
         >
-          Drivers ({drivers.length || '...'})
+          <span className="tab-label">Drivers ({drivers.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.drivers}
+              onChange={() => setEnabledModules(m => ({...m, drivers: !m.drivers}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => handleTabChange('users')}
+        >
+          <span className="tab-label">Users ({users.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.users}
+              onChange={() => setEnabledModules(m => ({...m, users: !m.users}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'registry' ? 'active' : ''}`}
+          onClick={() => handleTabChange('registry')}
+        >
+          <span className="tab-label">Registry</span>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
+          onClick={() => handleTabChange('tasks')}
+        >
+          <span className="tab-label">Tasks</span>
         </button>
       </div>
 
@@ -347,6 +465,26 @@ function SystemInfo() {
 
       {activeTab === 'processes' && (
         <div className="data-table-container">
+          <div className="table-toolbar">
+            <label className="unsigned-filter">
+              <input
+                type="checkbox"
+                checked={showUnsignedOnly}
+                onChange={() => setShowUnsignedOnly(!showUnsignedOnly)}
+              />
+              <span>Show unsigned only (highlighted in yellow)</span>
+            </label>
+            <span className="process-count">
+              {showUnsignedOnly 
+                ? processes.filter(p => !p.is_signed).length 
+                : processes.length} processes
+              {!showUnsignedOnly && processes.filter(p => !p.is_signed).length > 0 && (
+                <span className="unsigned-count">
+                  ({processes.filter(p => !p.is_signed).length} unsigned)
+                </span>
+              )}
+            </span>
+          </div>
           <table className="data-table">
             <thead>
               <tr>
@@ -354,19 +492,31 @@ function SystemInfo() {
                 <th>PPID</th>
                 <th>Name</th>
                 <th>User</th>
+                <th>Signature</th>
                 <th>Path</th>
                 <th>Command Line</th>
               </tr>
             </thead>
             <tbody>
-              {processes.map((proc, idx) => (
-                <tr key={`${proc.pid}-${idx}`}>
+              {(showUnsignedOnly ? processes.filter(p => !p.is_signed) : processes).map((proc, idx) => (
+                <tr key={`${proc.pid}-${idx}`} className={!proc.is_signed ? 'unsigned-process' : ''}>
                   <td className="mono">{proc.pid}</td>
                   <td className="mono">{proc.ppid}</td>
                   <td className="highlight">{proc.name}</td>
                   <td>{proc.user || '-'}</td>
-                  <td className="truncate mono" title={proc.exe}>{proc.exe || '-'}</td>
-                  <td className="truncate" title={proc.args}>{proc.args || '-'}</td>
+                  <td>
+                    {proc.is_signed ? (
+                      <span className="signature-badge valid" title={`Issuer: ${proc.signature?.issuer || 'N/A'}\nThumbprint: ${proc.signature?.thumbprint || 'N/A'}`}>
+                        ✓ Signed
+                      </span>
+                    ) : (
+                      <span className="signature-badge unsigned">
+                        ✗ Unsigned
+                      </span>
+                    )}
+                  </td>
+                  <td className="truncate mono" title={proc.exe || proc.path}>{proc.exe || proc.path || '-'}</td>
+                  <td className="truncate" title={proc.args || proc.command_line}>{(proc.args || proc.command_line) || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -496,10 +646,10 @@ function SystemInfo() {
                 <tr key={`${driver.name}-${idx}`}>
                   <td className="mono highlight">{driver.name}</td>
                   <td>{driver.display_name || driver.name}</td>
-                  <td className="truncate" title={driver.description}>{driver.description || '-'}</td>
+                  <td className="truncate">{driver.description || '-'}</td>
                   <td>
-                    <span className={`status-badge ${driver.status?.toLowerCase()}`}>
-                      {driver.status}
+                    <span className={`status-badge ${driver.status?.toLowerCase() === 'running' ? 'running' : 'stopped'}`}>
+                      {driver.status || 'Unknown'}
                     </span>
                   </td>
                   <td className="truncate mono" title={driver.path}>{driver.path || '-'}</td>
@@ -510,6 +660,54 @@ function SystemInfo() {
           {drivers.length === 0 && !loading && (
             <div className="empty-state">No driver information available</div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div className="data-table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Full Name</th>
+                <th>SID</th>
+                <th>Type</th>
+                <th>Enabled</th>
+                <th>Home Directory</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user, idx) => (
+                <tr key={`${user.name}-${idx}`}>
+                  <td className="highlight">{user.name}</td>
+                  <td>{user.full_name || '-'}</td>
+                  <td className="mono">{user.sid || '-'}</td>
+                  <td>{user.type || 'User'}</td>
+                  <td>
+                    <span className={`status-badge ${user.enabled ? 'running' : 'stopped'}`}>
+                      {user.enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </td>
+                  <td className="truncate">{user.home_dir || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {users.length === 0 && !loading && (
+            <div className="empty-state">No user information available</div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'registry' && (
+        <div className="data-table-container">
+          <div className="empty-state">Registry persistence detection requires live data collection.<br/>Use the Persistence page for detection results.</div>
+        </div>
+      )}
+
+      {activeTab === 'tasks' && (
+        <div className="data-table-container">
+          <div className="empty-state">Scheduled task information requires live data collection.<br/>Use the Forensics page for scheduled task analysis.</div>
         </div>
       )}
 

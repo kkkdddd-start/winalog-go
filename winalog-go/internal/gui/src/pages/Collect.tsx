@@ -108,7 +108,7 @@ function Collect() {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files)
       setSelectedFiles(prev => [...prev, ...files])
-      const newPaths = files.map(f => f.path || f.name).join('\n')
+      const newPaths = files.map(f => (f as any).path || f.name).join('\n')
       setCustomPaths(prev => prev ? prev + '\n' + newPaths : newPaths)
     }
   }
@@ -118,7 +118,7 @@ function Collect() {
       const newFiles = [...prev]
       newFiles.splice(index, 1)
       const pathsToRemove = new Set()
-      newFiles.forEach(f => pathsToRemove.add(f.path || f.name))
+      newFiles.forEach(f => pathsToRemove.add((f as any).path || f.name))
       setCustomPaths(prev => prev.split('\n').filter(p => pathsToRemove.has(p)).join('\n'))
       return newFiles
     })

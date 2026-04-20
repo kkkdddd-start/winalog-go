@@ -173,8 +173,12 @@ export const systemAPI = {
     api.get('/system/env'),
   getLoadedDLLs: (limit = 100) =>
     api.get(`/system/dlls?limit=${limit}`),
+  getProcessDLLs: (pid: number) =>
+    api.get(`/system/process/${pid}/dlls`),
   getDrivers: () =>
     api.get('/system/drivers'),
+  getUsers: () =>
+    api.get('/system/users'),
 }
 
 export const rulesAPI = {
@@ -186,6 +190,8 @@ export const rulesAPI = {
     api.post(`/rules/${name}/toggle?enabled=${enabled}`),
   save: (rule: Partial<RuleInfo> & { name: string }) =>
     api.post('/rules', rule),
+  update: (name: string, rule: Partial<RuleInfo> & { name: string }) =>
+    api.put(`/rules/${name}`, rule),
   validate: (rule: Partial<RuleInfo> & { name: string }, content?: string) =>
     api.post('/rules/validate', { rule, content }),
   import: (rules: RuleInfo[]) =>

@@ -236,10 +236,12 @@ type AnalyzerRuleInfo struct {
 	Description string         `json:"description"`
 	Severity    string         `json:"severity"`
 	Score       float64        `json:"score"`
-	MitreAttack []string       `json:"mitre_attack,omitempty"`
-	Thresholds  map[string]int `json:"thresholds,omitempty"`
-	Patterns    []string       `json:"patterns,omitempty"`
-	Whitelist   []string       `json:"whitelist,omitempty"`
+	MitreAttack []string       `json:"mitre_attack"`
+	Thresholds  map[string]int `json:"thresholds"`
+	Patterns    []string       `json:"patterns"`
+	Whitelist   []string       `json:"whitelist"`
+	Technique   string         `json:"technique"`
+	Category    string         `json:"category"`
 }
 
 func (h *AnalyzeHandler) ListRules(c *gin.Context) {
@@ -267,19 +269,19 @@ func (h *AnalyzeHandler) GetRule(c *gin.Context) {
 	ruleName = strings.ReplaceAll(ruleName, "-", "_")
 
 	defaultRules := map[string]AnalyzerRuleInfo{
-		"brute_force":          {Name: "brute_force", Type: "brute_force", Enabled: true, Description: "Brute force login detection", Severity: "high", Score: 80, MitreAttack: []string{"T1110"}, Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1}},
-		"login":                {Name: "login", Type: "login", Enabled: true, Description: "Login analysis", Severity: "medium", Score: 50, MitreAttack: []string{"T1078"}},
-		"kerberos":             {Name: "kerberos", Type: "kerberos", Enabled: true, Description: "Kerberos authentication analysis", Severity: "high", Score: 70, MitreAttack: []string{"T1558"}},
-		"powershell":           {Name: "powershell", Type: "powershell", Enabled: true, Description: "PowerShell command detection", Severity: "high", Score: 75, MitreAttack: []string{"T1059.001"}},
-		"data_exfiltration":    {Name: "data_exfiltration", Type: "data_exfiltration", Enabled: true, Description: "Data exfiltration detection", Severity: "critical", Score: 90, MitreAttack: []string{"T1041"}},
-		"lateral_movement":     {Name: "lateral_movement", Type: "lateral_movement", Enabled: true, Description: "Lateral movement detection", Severity: "high", Score: 85, MitreAttack: []string{"T1021"}},
-		"persistence":          {Name: "persistence", Type: "persistence", Enabled: true, Description: "Persistence mechanism detection", Severity: "high", Score: 80, MitreAttack: []string{"T1547"}},
-		"privilege_escalation": {Name: "privilege_escalation", Type: "privilege_escalation", Enabled: true, Description: "Privilege escalation detection", Severity: "high", Score: 75, MitreAttack: []string{"T1068"}},
-		"dc":                   {Name: "dc", Type: "dc", Enabled: true, Description: "Domain controller analysis", Severity: "high", Score: 80, MitreAttack: []string{"T1207"}},
+		"brute_force":          {Name: "brute_force", Type: "brute_force", Enabled: true, Description: "Brute force login detection", Severity: "high", Score: 80, MitreAttack: []string{"T1110"}, Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1110", Category: "authentication"},
+		"login":                {Name: "login", Type: "login", Enabled: true, Description: "Login analysis", Severity: "medium", Score: 50, MitreAttack: []string{"T1078"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1078", Category: "authentication"},
+		"kerberos":             {Name: "kerberos", Type: "kerberos", Enabled: true, Description: "Kerberos authentication analysis", Severity: "high", Score: 70, MitreAttack: []string{"T1558"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1558", Category: "authentication"},
+		"powershell":           {Name: "powershell", Type: "powershell", Enabled: true, Description: "PowerShell command detection", Severity: "high", Score: 75, MitreAttack: []string{"T1059.001"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1059.001", Category: "execution"},
+		"data_exfiltration":    {Name: "data_exfiltration", Type: "data_exfiltration", Enabled: true, Description: "Data exfiltration detection", Severity: "critical", Score: 90, MitreAttack: []string{"T1041"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1041", Category: "exfiltration"},
+		"lateral_movement":     {Name: "lateral_movement", Type: "lateral_movement", Enabled: true, Description: "Lateral movement detection", Severity: "high", Score: 85, MitreAttack: []string{"T1021"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1021", Category: "lateral_movement"},
+		"persistence":          {Name: "persistence", Type: "persistence", Enabled: true, Description: "Persistence mechanism detection", Severity: "high", Score: 80, MitreAttack: []string{"T1547"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1547", Category: "persistence"},
+		"privilege_escalation": {Name: "privilege_escalation", Type: "privilege_escalation", Enabled: true, Description: "Privilege escalation detection", Severity: "high", Score: 75, MitreAttack: []string{"T1068"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1068", Category: "privilege_escalation"},
+		"dc":                   {Name: "dc", Type: "dc", Enabled: true, Description: "Domain controller analysis", Severity: "high", Score: 80, MitreAttack: []string{"T1207"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1207", Category: "defense_evasion"},
 	}
 
 	if rule, ok := defaultRules[ruleName]; ok {
-		c.JSON(http.StatusOK, rule)
+		c.JSON(http.StatusOK, gin.H{"rule": rule})
 		return
 	}
 

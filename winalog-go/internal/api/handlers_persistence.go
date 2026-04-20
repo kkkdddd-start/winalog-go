@@ -423,7 +423,16 @@ func (h *PersistenceHandler) GetRule(c *gin.Context) {
 	}
 
 	if rule, ok := defaultRules[ruleName]; ok {
-		c.JSON(http.StatusOK, rule)
+		if override, hasOverride := h.ruleConfig.Get(ruleName); hasOverride {
+			rule.Enabled = override.Enabled
+			rule.Patterns = override.SuspiciousIndicators
+			rule.Whitelist = override.Whitelist
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"detector":              rule,
+			"suspicious_indicators": rule.Patterns,
+			"whitelist":             rule.Whitelist,
+		})
 		return
 	}
 

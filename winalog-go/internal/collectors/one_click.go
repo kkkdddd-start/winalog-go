@@ -126,8 +126,13 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	}
 
 	if c.cfg.OutputPath == "" {
+		execPath, err := os.Executable()
+		workDir := "."
+		if err == nil {
+			workDir = filepath.Dir(execPath)
+		}
 		timestamp := time.Now().Format("20060102_150405")
-		c.cfg.OutputPath = filepath.Join(os.TempDir(), fmt.Sprintf("winalog_collect_%s", timestamp))
+		c.cfg.OutputPath = filepath.Join(workDir, fmt.Sprintf("winalog_collect_%s", timestamp))
 	}
 
 	tempDir := c.cfg.OutputPath + "_temp"
@@ -139,16 +144,37 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	defer os.RemoveAll(tempDir)
 
 	var allErrors []string
+	var collectedItems = make(map[string]int)
 
 	if c.cfg.IncludeSystemInfo {
 		if err := c.collectSystemInfoTo(tempDir); err != nil {
-			allErrors = append(allErrors, err.Error())
+			allErrors = append(allErrors, fmt.Sprintf("systemInfo: %v", err))
+		} else {
+			collectedItems["systemInfo"] = 1
 		}
 	}
 
 	if c.cfg.IncludeRegistry {
 		if err := c.CollectRegistry(ctx, tempDir); err != nil {
-			allErrors = append(allErrors, err.Error())
+			allErrors = append(allErrors, fmt.Sprintf("registry: %v", err))
+		} else {
+			collectedItems["registry"] = 1
+		}
+	}
+
+	if c.cfg.IncludeTasks {
+		if err := c.CollectScheduledTasks(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, fmt.Sprintf("scheduledTasks: %v", err))
+		} else {
+			collectedItems["scheduledTasks"] = 1
+		}
+	}
+
+	if c.cfg.IncludeUsers {
+		if err := c.CollectLocalUsers(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, fmt.Sprintf("localUsers: %v", err))
+		} else {
+			collectedItems["localUsers"] = 1
 		}
 	}
 
@@ -190,7 +216,25 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 
 	if c.cfg.IncludeShimCache {
 		if err := c.CollectShimCache(ctx, tempDir); err != nil {
-			allErrors = append(allErrors, err.Error())
+			allErrors = append(allErrors, fmt.Sprintf("shimCache: %v", err))
+		} else {
+			collectedItems["shimCache"] = 1
+		}
+	}
+
+	if c.cfg.IncludeNetwork {
+		if err := c.CollectNetworkConnections(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, fmt.Sprintf("networkConnections: %v", err))
+		} else {
+			collectedItems["networkConnections"] = 1
+		}
+	}
+
+	if c.cfg.IncludeDrivers {
+		if err := c.CollectDrivers(ctx, tempDir); err != nil {
+			allErrors = append(allErrors, fmt.Sprintf("drivers: %v", err))
+		} else {
+			collectedItems["drivers"] = 1
 		}
 	}
 
@@ -217,6 +261,7 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	result.OutputPath = c.cfg.OutputPath
 	result.Duration = time.Since(startTime)
 	result.Errors = allErrors
+	result.CollectedItems = collectedItems
 	if len(allErrors) > 0 {
 		result.Success = false
 	}
@@ -225,7 +270,21 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 }
 
 func (c *OneClickCollector) FullCollectWithCallback(ctx context.Context, callback CollectProgressCallback) (*OneClickResult, error) {
-	stages := []string{"systemInfo", "registry", "prefetch", "eventLogs", "processInfo", "amcache", "userassist", "usnjournal", "shimcache"}
+	stages := []string{
+		"systemInfo",
+		"registry",
+		"scheduledTasks",
+		"localUsers",
+		"prefetch",
+		"eventLogs",
+		"processInfo",
+		"amcache",
+		"userassist",
+		"usnjournal",
+		"shimCache",
+		"networkConnections",
+		"drivers",
+	}
 	total := len(stages)
 
 	if callback != nil {
@@ -355,17 +414,45 @@ func (c *OneClickCollector) CollectEvtxLogs(ctx context.Context, outputDir strin
 		return err
 	}
 
-	logPaths := []string{
-		`C:\Windows\System32\winevt\Logs\Security.evtx`,
-		`C:\Windows\System32\winevt\Logs\System.evtx`,
-		`C:\Windows\System32\winevt\Logs\Application.evtx`,
+	var logSources []string
+	if len(c.cfg.SelectedSources) > 0 {
+		logSources = c.cfg.SelectedSources
+	} else {
+		logSources = []string{
+			"Security",
+			"System",
+			"Application",
+			"Microsoft-Windows-Sysmon/Operational",
+			"Microsoft-Windows-PowerShell/Operational",
+		}
 	}
 
-	for _, logPath := range logPaths {
-		if _, err := os.Stat(logPath); err == nil {
-			dst := filepath.Join(evtxDir, filepath.Base(logPath))
-			c.CopyFileWithRetry(logPath, dst, 3)
+	for _, source := range logSources {
+		var evtxPath string
+		if strings.HasPrefix(source, "Microsoft-") {
+			evtxPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".evtx")
+		} else {
+			evtxPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".evtx")
 		}
+
+		if _, err := os.Stat(evtxPath); err == nil {
+			dst := filepath.Join(evtxDir, filepath.Base(evtxPath))
+			if err := c.CopyFileWithRetry(evtxPath, dst, 3); err == nil {
+				continue
+			}
+		}
+
+		exportPath := filepath.Join(evtxDir, source+".evtx")
+		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]] 2>nul`,
+			source, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
+		utils.RunPowerShell(exportCmd)
+
+		if _, err := os.Stat(exportPath); err == nil {
+			continue
+		}
+
+		exportCmd2 := fmt.Sprintf(`wevtutil epl "%s" "%s" 2>nul`, source, exportPath)
+		utils.RunPowerShell(exportCmd2)
 	}
 
 	return nil
@@ -714,4 +801,68 @@ func GetUSNJournal(drive string) ([]USNJournalEntry, error) {
 
 func GetShimCache() ([]ShimCacheEntry, error) {
 	return []ShimCacheEntry{}, nil
+}
+
+func (c *OneClickCollector) CollectScheduledTasks(ctx context.Context, outputDir string) error {
+	tasksDir := filepath.Join(outputDir, "scheduled_tasks")
+	if err := os.MkdirAll(tasksDir, 0755); err != nil {
+		return err
+	}
+
+	collector := NewTaskInfoCollector()
+	tasks, err := collector.collectTaskInfo()
+	if err != nil {
+		return err
+	}
+
+	data, _ := json.MarshalIndent(tasks, "", "  ")
+	return os.WriteFile(filepath.Join(tasksDir, "scheduled_tasks.json"), data, 0600)
+}
+
+func (c *OneClickCollector) CollectLocalUsers(ctx context.Context, outputDir string) error {
+	usersDir := filepath.Join(outputDir, "local_users")
+	if err := os.MkdirAll(usersDir, 0755); err != nil {
+		return err
+	}
+
+	collector := NewUserInfoCollector()
+	users, err := collector.collectUserInfo()
+	if err != nil {
+		return err
+	}
+
+	data, _ := json.MarshalIndent(users, "", "  ")
+	return os.WriteFile(filepath.Join(usersDir, "local_users.json"), data, 0600)
+}
+
+func (c *OneClickCollector) CollectNetworkConnections(ctx context.Context, outputDir string) error {
+	netDir := filepath.Join(outputDir, "network_connections")
+	if err := os.MkdirAll(netDir, 0755); err != nil {
+		return err
+	}
+
+	collector := NewNetworkInfoCollector()
+	connections, err := collector.collectNetworkInfo()
+	if err != nil {
+		return err
+	}
+
+	data, _ := json.MarshalIndent(connections, "", "  ")
+	return os.WriteFile(filepath.Join(netDir, "network_connections.json"), data, 0600)
+}
+
+func (c *OneClickCollector) CollectDrivers(ctx context.Context, outputDir string) error {
+	driversDir := filepath.Join(outputDir, "drivers")
+	if err := os.MkdirAll(driversDir, 0755); err != nil {
+		return err
+	}
+
+	collector := NewDriverInfoCollector()
+	drivers, err := collector.collectDriverInfo()
+	if err != nil {
+		return err
+	}
+
+	data, _ := json.MarshalIndent(drivers, "", "  ")
+	return os.WriteFile(filepath.Join(driversDir, "drivers.json"), data, 0600)
 }

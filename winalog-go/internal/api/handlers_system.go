@@ -53,13 +53,26 @@ type ProcessResponse struct {
 }
 
 type ProcessInfo struct {
-	PID    int    `json:"pid"`
-	PPID   int    `json:"ppid"`
-	Name   string `json:"name"`
-	Exe    string `json:"exe"`
-	Args   string `json:"args"`
-	User   string `json:"user"`
-	Status string `json:"status"`
+	PID         int32          `json:"pid"`
+	PPID        int32          `json:"ppid"`
+	Name        string         `json:"name"`
+	Exe         string         `json:"exe"`
+	Args        string         `json:"args"`
+	User        string         `json:"user"`
+	Status      string         `json:"status"`
+	Path        string         `json:"path"`
+	CommandLine string         `json:"command_line"`
+	IsSigned    bool           `json:"is_signed"`
+	Signature   *SignatureInfo `json:"signature,omitempty"`
+}
+
+type SignatureInfo struct {
+	Status     string `json:"status"`
+	Issuer     string `json:"issuer"`
+	Subject    string `json:"subject"`
+	ValidFrom  string `json:"valid_from"`
+	ValidTo    string `json:"valid_to"`
+	Thumbprint string `json:"thumbprint"`
 }
 
 type NetworkConnectionResponse struct {

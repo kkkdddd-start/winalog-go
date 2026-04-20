@@ -148,7 +148,7 @@ function Persistence() {
         const rule = response.data.detector
         setEditingRule({
           ...rule,
-          suspicious_indicators: rule.suspicious_indicators || [],
+          suspicious_indicators: rule.patterns || [],
           whitelist: rule.whitelist || [],
         })
       } else {
@@ -156,7 +156,7 @@ function Persistence() {
         const rule = response.data.rules[0]
         setEditingRule({
           ...rule,
-          suspicious_indicators: rule.suspicious_indicators || [],
+          suspicious_indicators: rule.patterns || [],
           whitelist: rule.whitelist || [],
         })
       }

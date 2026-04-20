@@ -76,3 +76,13 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Instructions:
   - 首次对话时必须检查 `.gitmodules` 是否存在
   - 若存在，执行 `git submodule update --init --recursive --depth 1`
+
+### 服务管理
+
+[服务管理]
+- Date: 2026-04-20
+- Context: 停止后台服务时
+- Category: 构建方法
+- Instructions:
+  - 禁止使用 `pkill` 命令停止服务
+  - 使用 `kill` 命令替代，如 `kill $(pgrep -f winalog)` 或 `ps aux | grep winalog` 查找进程后再 kill
