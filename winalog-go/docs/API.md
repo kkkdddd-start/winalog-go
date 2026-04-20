@@ -1824,10 +1824,17 @@ Execute a raw query.
 **Request Body:**
 ```json
 {
-  "query": "SELECT * FROM events WHERE event_id = 4624 LIMIT 100",
-  "params": []
+  "sql": "SELECT * FROM events WHERE event_id = 4624 LIMIT 100",
+  "limit": 100,
+  "offset": 0
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| sql | string | Yes | SQL query (SELECT, PRAGMA, EXPLAIN, WITH only) |
+| limit | int | No | Max rows to return (default: 100, max: 1000) |
+| offset | int | No | Offset for pagination |
 
 **Response (200):**
 ```json
@@ -1836,8 +1843,8 @@ Execute a raw query.
   "rows": [
     [1, "2026-04-17T10:00:00Z", 4624, "Info", "An account was successfully logged on"]
   ],
-  "total": 1,
-  "query_time": 15
+  "count": 1,
+  "total": 1
 }
 ```
 
@@ -1845,12 +1852,196 @@ Execute a raw query.
 ```bash
 curl -X POST http://localhost:8080/api/query/execute \
   -H "Content-Type: application/json" \
-  -d '{"query": "SELECT COUNT(*) FROM events"}'
+  -d '{"sql": "SELECT COUNT(*) FROM events"}'
 ```
 
 ---
 
-## 16. Policy API
+## 16. Monitor API
+
+Real-time system monitoring API for process, network, and DNS monitoring.
+
+### GET /api/monitor/stats
+Get monitoring statistics.
+
+**Response (200):**
+```json
+{
+  "stats": {
+    "running": true,
+    "process_count": 150,
+    "network_connections": 45,
+    "dns_queries": 12,
+    "start_time": "2026-04-17T10:00:00Z"
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8080/api/monitor/stats
+```
+
+---
+
+### GET /api/monitor/events
+List monitoring events with filters.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| type | string | "" | Event type (process, network, dns) |
+| severity | string | "" | Severity (info, low, medium, high, critical) |
+| limit | int | 50 | Max events to return |
+| offset | int | 0 | Offset for pagination |
+| start_time | string | "" | Start time (RFC3339) |
+| end_time | string | "" | End time (RFC3339) |
+
+**Response (200):**
+```json
+{
+  "events": [
+    {
+      "id": "process-1234-1609456000000000000",
+      "type": "process",
+      "timestamp": "2026-04-17T10:00:00Z",
+      "severity": "info",
+      "data": {
+        "pid": 1234,
+        "process_name": "notepad.exe",
+        "action": "created"
+      }
+    }
+  ],
+  "total": 100,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Example Request:**
+```bash
+curl "http://localhost:8080/api/monitor/events?type=process&limit=50"
+```
+
+---
+
+### POST /api/monitor/config
+Update monitoring configuration.
+
+**Request Body:**
+```json
+{
+  "process_monitoring": {
+    "enabled": true,
+    "interval_ms": 5000
+  },
+  "network_monitoring": {
+    "enabled": true,
+    "interval_ms": 10000
+  },
+  "dns_monitoring": {
+    "enabled": false,
+    "interval_ms": 30000
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| process_monitoring.enabled | bool | No | Enable process monitoring |
+| process_monitoring.interval_ms | int | No | Polling interval in milliseconds |
+| network_monitoring.enabled | bool | No | Enable network monitoring |
+| network_monitoring.interval_ms | int | No | Polling interval in milliseconds |
+| dns_monitoring.enabled | bool | No | Enable DNS monitoring |
+| dns_monitoring.interval_ms | int | No | Polling interval in milliseconds |
+
+**Response (200):**
+```json
+{
+  "message": "Configuration updated successfully",
+  "stats": {
+    "running": true,
+    "process_count": 150,
+    "network_connections": 45,
+    "dns_queries": 12
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8080/api/monitor/config \
+  -H "Content-Type: application/json" \
+  -d '{"process_monitoring": {"enabled": true, "interval_ms": 5000}}'
+```
+
+---
+
+### POST /api/monitor/action
+Start or stop monitoring.
+
+**Request Body:**
+```json
+{
+  "action": "start"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| action | string | Yes | Action: "start" or "stop" |
+
+**Response (200):**
+```json
+{
+  "message": "Monitor start successfully",
+  "stats": {
+    "running": true,
+    "process_count": 150,
+    "network_connections": 45
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8080/api/monitor/action \
+  -H "Content-Type: application/json" \
+  -d '{"action": "start"}'
+```
+
+---
+
+### GET /api/monitor/events/stream
+Server-Sent Events stream for real-time monitoring events.
+
+**Response:**
+Server-Sent Events stream with monitoring events.
+
+**Event Format:**
+```json
+{
+  "id": "process-1234-1609456000000000000",
+  "type": "process",
+  "timestamp": "2026-04-17T10:00:00Z",
+  "severity": "info",
+  "data": {
+    "pid": 1234,
+    "process_name": "notepad.exe",
+    "action": "created"
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -N http://localhost:8080/api/monitor/events/stream
+```
+
+---
+
+## 17. Policy API
 
 ### GET /api/policy-templates
 List available policy templates.
@@ -2002,7 +2193,7 @@ Delete a policy.
 
 ---
 
-## 17. Settings API
+## 18. Settings API
 
 ### GET /api/settings
 Get current application settings.
@@ -2058,7 +2249,7 @@ Reset settings to defaults.
 
 ---
 
-## 18. Persistence API
+## 19. Persistence API
 
 ### GET /api/persistence/detect
 Detect persistence mechanisms on the system.
@@ -2136,7 +2327,7 @@ Get MITRE ATT&CK persistence techniques.
 
 ---
 
-## 19. Forensics API
+## 20. Forensics API
 
 ### POST /api/forensics/hash
 Calculate file hashes.
@@ -2377,7 +2568,7 @@ Get memory dump information.
 
 ---
 
-## 20. Analyze API
+## 21. Analyze API
 
 ### POST /api/analyze/:type
 Run specific analysis by type.
@@ -2451,7 +2642,7 @@ Get analyzer details.
 
 ---
 
-## 21. Collect API
+## 22. Collect API
 
 ### POST /api/collect
 Start a new collection task.
@@ -2522,7 +2713,7 @@ Get collection task status.
 
 ---
 
-## 22. UI API
+## 23. UI API
 
 ### GET /api/ui/dashboard
 Get dashboard data for UI.
@@ -2620,7 +2811,7 @@ Get event distribution for UI.
 
 ---
 
-## 23. Health Check
+## 24. Health Check
 
 ### GET /api/health
 Health check endpoint.
@@ -2645,7 +2836,7 @@ curl http://localhost:8080/api/health
 
 ---
 
-## 24. Error Codes
+## 25. Error Codes
 
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
