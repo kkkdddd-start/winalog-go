@@ -8,7 +8,12 @@ param(
     [string]$TestEvtxFile = "",
     [switch]$SkipLiveTests,
     [switch]$SkipImportTests,
-    [switch]$FullTest
+    [switch]$FullTest,
+    [int]$MaxRetries = 3,
+    [int]$RetryDelayMs = 1000,
+    [switch]$EnableSSE,
+    [switch]$EnableValidation,
+    [switch]$EnablePerformance
 )
 
 $ErrorActionPreference = "Continue"
@@ -16,6 +21,9 @@ $Script:TestResults = New-Object System.Collections.ArrayList
 $Script:TestStartTime = Get-Date
 $Script:BaseUrl = $BaseUrl
 $Script:PreparedData = @{}
+$Script:PerformanceData = @{}
+$Script:RetryCount = $MaxRetries
+$Script:RetryDelay = $RetryDelayMs
 
 function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
@@ -97,7 +105,8 @@ function Test-ApiRequest {
         [string]$Description = "",
         [int]$ExpectedStatus = 200,
         [switch]$AllowRedirect,
-        [switch]$SaveResponse
+        [switch]$SaveResponse,
+        [switch]$SkipRetry
     )
     
     $result = @{
@@ -110,6 +119,7 @@ function Test-ApiRequest {
         Duration = 0
         Status = "NOT_RUN"
         Timestamp = Get-Date
+        RetryCount = 0
     }
     
     $outputFile = "$OutputDir\$($Name -replace '[^\w]', '_').json"
@@ -119,50 +129,79 @@ function Test-ApiRequest {
     if ($Description) { Write-Log "Desc: $Description" "INFO" }
     
     $startTime = Get-Date
+    $attempt = 0
+    $success = $false
     
-    try {
-        $headers = @{"Content-Type" = "application/json"}
-        
-        $params = @{
-            Uri = "$Script:BaseUrl$Endpoint"
-            Method = $Method
-            Headers = $headers
-            TimeoutSec = 60
+    while ($attempt -lt $Script:RetryCount -and -not $success -and -not $SkipRetry) {
+        $attempt++
+        if ($attempt -gt 1) {
+            Write-Log "Retry $attempt/$Script:RetryCount after $($Script:RetryDelay)ms..." "WARN"
+            Start-Sleep -Milliseconds $Script:RetryDelay
         }
         
-        if ($Body) {
-            $params.Body = $Body
+        $result.RetryCount = $attempt - 1
+        
+        try {
+            $headers = @{"Content-Type" = "application/json"}
+            
+            $params = @{
+                Uri = "$Script:BaseUrl$Endpoint"
+                Method = $Method
+                Headers = $headers
+                TimeoutSec = 60
+            }
+            
+            if ($Body) {
+                $params.Body = $Body
+            }
+            
+            if ($AllowRedirect) {
+                $params.AllowRedirect = $true
+            }
+            
+            $response = Invoke-WebRequest @params -ErrorAction SilentlyContinue
+            
+            $result.StatusCode = $response.StatusCode
+            $result.Duration = (Get-Date) - $startTime
+            
+            $content = $response.Content
+            $result.Response = $content
+            
+            if ($SaveResponse) {
+                $content | Out-File -FilePath $outputFile -Encoding UTF8
+            }
+            
+            if ($result.StatusCode -eq $ExpectedStatus -or ($ExpectedStatus -eq 0 -and $result.StatusCode -gt 0)) {
+                $result.Status = "PASS"
+                Write-Log "Status: PASS (HTTP $($result.StatusCode), Duration: $($result.Duration.TotalSeconds)s)" "SUCCESS"
+                $success = $true
+            } else {
+                if ($attempt -lt $Script:RetryCount) {
+                    Write-Log "Status: RETRY (HTTP $($result.StatusCode), Expected: $ExpectedStatus)" "WARN"
+                } else {
+                    $result.Status = "FAIL"
+                    Write-Log "Status: FAIL (HTTP $($result.StatusCode), Expected: $ExpectedStatus)" "ERROR"
+                }
+            }
         }
-        
-        if ($AllowRedirect) {
-            $params.AllowRedirect = $true
-        }
-        
-        $response = Invoke-WebRequest @params -ErrorAction SilentlyContinue
-        
-        $result.StatusCode = $response.StatusCode
-        $result.Duration = (Get-Date) - $startTime
-        
-        $content = $response.Content
-        $result.Response = $content
-        
-        if ($SaveResponse) {
-            $content | Out-File -FilePath $outputFile -Encoding UTF8
-        }
-        
-        if ($result.StatusCode -eq $ExpectedStatus -or ($ExpectedStatus -eq 0 -and $result.StatusCode -gt 0)) {
-            $result.Status = "PASS"
-            Write-Log "Status: PASS (HTTP $($result.StatusCode), Duration: $($result.Duration.TotalSeconds)s)" "SUCCESS"
-        } else {
-            $result.Status = "FAIL"
-            Write-Log "Status: FAIL (HTTP $($result.StatusCode), Expected: $ExpectedStatus)" "ERROR"
+        catch {
+            if ($attempt -lt $Script:RetryCount) {
+                Write-Log "Retry on exception: $($_.Exception.Message)" "WARN"
+            } else {
+                $result.Status = "ERROR"
+                $result.Response = $_.Exception.Message
+                $result.Duration = (Get-Date) - $startTime
+                Write-Log "Error: $($_.Exception.Message)" "ERROR"
+            }
         }
     }
-    catch {
-        $result.Status = "ERROR"
-        $result.Response = $_.Exception.Message
-        $result.Duration = (Get-Date) - $startTime
-        Write-Log "Error: $($_.Exception.Message)" "ERROR"
+    
+    if ($EnablePerformance) {
+        $Script:PerformanceData[$Name] = @{
+            Duration = $result.Duration.TotalSeconds
+            StatusCode = $result.StatusCode
+            RetryCount = $result.RetryCount
+        }
     }
     
     $script:TestResults.Add($result) | Out-Null
@@ -178,36 +217,113 @@ function Test-ApiJsonPost {
         [hashtable]$JsonBody,
         [string]$Description = "",
         [int]$ExpectedStatus = 200,
-        [switch]$SaveResponse
+        [switch]$SaveResponse,
+        [switch]$SkipRetry
     )
     
     $body = $JsonBody | ConvertTo-Json -Compress
-    return Test-ApiRequest -Name $Name -Method "POST" -Endpoint $Endpoint -Body $body -Description $Description -ExpectedStatus $ExpectedStatus -SaveResponse:$SaveResponse
+    return Test-ApiRequest -Name $Name -Method "POST" -Endpoint $Endpoint -Body $body -Description $Description -ExpectedStatus $ExpectedStatus -SaveResponse:$SaveResponse -SkipRetry:$SkipRetry
 }
 
-function Invoke-WaitForTask {
+function Validate-JsonResponse {
     param(
-        [string]$TaskName,
-        [scriptblock]$CheckBlock,
-        [int]$MaxWaitSeconds = 60,
-        [int]$IntervalSeconds = 2
+        [string]$Name,
+        [string]$Response,
+        [string[]]$RequiredFields,
+        [switch]$IsArray
     )
     
-    Write-Log "Waiting for $TaskName (max ${MaxWaitSeconds}s)..." "INFO"
-    $elapsed = 0
-    while ($elapsed -lt $MaxWaitSeconds) {
-        Start-Sleep -Seconds $IntervalSeconds
-        $elapsed += $IntervalSeconds
+    if (-not $EnableValidation) { return $true }
+    
+    Write-Log "Validating response for: $Name" "INFO"
+    
+    try {
+        $data = $Response | ConvertFrom-Json
         
-        $result = & $CheckBlock
-        if ($result) {
-            Write-Log "$TaskName completed" "SUCCESS"
-            return $true
+        if ($IsArray) {
+            if ($data.Count -eq 0) {
+                Write-Log "Warning: Response is empty array" "WARN"
+                return $false
+            }
+            $item = $data[0]
+        } else {
+            $item = $data
         }
-        Write-Log "  $elapsed s elapsed..." "INFO"
+        
+        foreach ($field in $RequiredFields) {
+            if (-not $item.PSObject.Properties[$field]) {
+                Write-Log "Missing required field: $field" "ERROR"
+                return $false
+            }
+        }
+        
+        Write-Log "Validation PASSED" "SUCCESS"
+        return $true
     }
-    Write-Log "$TaskName timeout after ${MaxWaitSeconds}s" "WARN"
-    return $false
+    catch {
+        Write-Log "Validation error: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+function Test-SseStream {
+    param(
+        [string]$Name,
+        [string]$Endpoint,
+        [int]$TimeoutSeconds = 10
+    )
+    
+    if (-not $EnableSSE) {
+        Write-Log "SSE tests disabled (use -EnableSSE to enable)" "WARN"
+        return $null
+    }
+    
+    Write-Log "Testing SSE stream: $Name" "INFO"
+    Write-Log "Endpoint: $Endpoint" "INFO"
+    
+    $result = @{
+        Name = $Name
+        Endpoint = $Endpoint
+        Status = "NOT_RUN"
+        EventsReceived = 0
+        Duration = 0
+        Error = ""
+    }
+    
+    $startTime = Get-Date
+    
+    try {
+        $params = @{
+            Uri = "$Script:BaseUrl$Endpoint"
+            Method = "GET"
+            TimeoutSec = $TimeoutSeconds
+        }
+        
+        $response = Invoke-WebRequest @params -DisableKeepAlive -UseBasicParsing
+        
+        $result.Duration = (Get-Date) - $startTime
+        
+        if ($response.StatusCode -eq 200) {
+            $content = $response.Content
+            $lines = $content -split "`n"
+            $eventLines = $lines | Where-Object { $_ -match "^data:" }
+            $result.EventsReceived = $eventLines.Count
+            $result.Status = "PASS"
+            Write-Log "SSE PASS: Received $($result.EventsReceived) events in $($result.Duration.TotalSeconds)s" "SUCCESS"
+        } else {
+            $result.Status = "FAIL"
+            Write-Log "SSE FAIL: HTTP $($response.StatusCode)" "ERROR"
+        }
+    }
+    catch {
+        $result.Status = "ERROR"
+        $result.Error = $_.Exception.Message
+        $result.Duration = (Get-Date) - $startTime
+        Write-Log "SSE ERROR: $($_.Exception.Message)" "ERROR"
+    }
+    
+    $script:TestResults.Add($result) | Out-Null
+    return $result
 }
 
 if (-not (Test-Path $OutputDir)) {
@@ -219,6 +335,11 @@ Write-Log "WinLogAnalyzer-Go API Test Suite" "INFO"
 Write-Log "========================================" "INFO"
 Write-Log "Base URL: $BaseUrl" "INFO"
 Write-Log "Start Time: $Script:TestStartTime" "INFO"
+Write-Log "Max Retries: $MaxRetries" "INFO"
+Write-Log "Retry Delay: ${RetryDelayMs}ms" "INFO"
+Write-Log "SSE Enabled: $EnableSSE" "INFO"
+Write-Log "Validation Enabled: $EnableValidation" "INFO"
+Write-Log "Performance Enabled: $EnablePerformance" "INFO"
 
 if (-not $SkipImportTests) {
     if ($TestEvtxFile) {
@@ -240,10 +361,6 @@ if (-not $SkipImportTests) {
             Write-Log "Found EVTX file: $TestEvtxFile" "SUCCESS"
         } else {
             Write-Log "No EVTX files found in search paths" "WARN"
-            $allFound = Find-AllEvtxFiles
-            if ($allFound) {
-                Write-Log "Files found (not usable): $($allFound.Count)" "WARN"
-            }
         }
     }
 }
@@ -286,6 +403,20 @@ Test-ApiRequest -Name "events_search_lognames" -Method "POST" -Endpoint "/events
 Test-ApiRequest -Name "events_search_sort" -Method "POST" -Endpoint "/events/search" -Body '{"sort_by":"timestamp","sort_order":"desc","page_size":10}' -Description "Sorted search"
 Test-ApiRequest -Name "events_export_csv" -Method "POST" -Endpoint "/events/export" -Body '{"format":"csv","filters":{"limit":100}}' -Description "Export events as CSV"
 Test-ApiRequest -Name "events_export_json" -Method "POST" -Endpoint "/events/export" -Body '{"format":"json","filters":{"limit":100}}' -Description "Export events as JSON"
+
+$eventsResponse = Test-ApiRequest -Name "events_list_first" -Method "GET" -Endpoint "/events?page=1&page_size=1" -Description "Get first event for ID test"
+if ($eventsResponse.Status -eq "PASS" -and $eventsResponse.Response) {
+    try {
+        $eventData = $eventsResponse.Response | ConvertFrom-Json
+        if ($eventData.events -and $eventData.events.Count -gt 0) {
+            $firstEventId = $eventData.events[0].id
+            Write-Log "Testing event get by ID: $firstEventId" "INFO"
+            Test-ApiRequest -Name "events_get_by_id" -Method "GET" -Endpoint "/events/$firstEventId" -Description "Get event by ID" -SaveResponse
+        }
+    } catch {
+        Write-Log "Could not parse events response for ID extraction: $($_.Exception.Message)" "WARN"
+    }
+}
 
 Write-Log "========================================" "INFO"
 Write-Log "Step 0.2: Run Alert Analysis" "INFO"
@@ -333,6 +464,20 @@ if ($alertsResponse.Status -eq "PASS" -and $alertsResponse.Response) {
 Test-ApiJsonPost -Name "alerts_batch_resolve" -Endpoint "/alerts/batch" -JsonBody @{ids=@(1,2,3);action="resolve";notes="Batch test"} -Description "Batch resolve alerts"
 Test-ApiJsonPost -Name "alerts_batch_delete" -Endpoint "/alerts/batch" -JsonBody @{ids=@(999999);action="delete"} -Description "Batch delete (non-existent)"
 
+$alertForDelete = Test-ApiRequest -Name "alerts_list_for_delete" -Method "GET" -Endpoint "/alerts?page=1&page_size=1" -Description "Get alert for delete test"
+if ($alertForDelete.Status -eq "PASS" -and $alertForDelete.Response) {
+    try {
+        $alertData = $alertForDelete.Response | ConvertFrom-Json
+        if ($alertData.alerts -and $alertData.alerts.Count -gt 0) {
+            $alertIdToDelete = $alertData.alerts[0].id
+            Write-Log "Testing alert DELETE on ID: $alertIdToDelete" "INFO"
+            Test-ApiRequest -Name "alerts_delete" -Method "DELETE" -Endpoint "/alerts/$alertIdToDelete" -Description "Delete alert"
+        }
+    } catch {
+        Write-Log "Could not parse alerts response for delete test: $($_.Exception.Message)" "WARN"
+    }
+}
+
 Write-Log "========================================" "INFO"
 Write-Log "Part 3: Timeline API" "INFO"
 Write-Log "========================================" "INFO"
@@ -343,6 +488,20 @@ Test-ApiRequest -Name "timeline_chains" -Method "GET" -Endpoint "/timeline/chain
 Test-ApiRequest -Name "timeline_export_json" -Method "GET" -Endpoint "/timeline/export?format=json" -Description "Export timeline as JSON"
 Test-ApiRequest -Name "timeline_export_csv" -Method "GET" -Endpoint "/timeline/export?format=csv" -Description "Export timeline as CSV"
 Test-ApiRequest -Name "timeline_with_time" -Method "GET" -Endpoint "/timeline?start_time=2024-01-01T00:00:00Z&end_time=2024-12-31T23:59:59Z" -Description "Timeline with time filter"
+
+$alertsResponse = Test-ApiRequest -Name "alerts_list_for_timeline_delete" -Method "GET" -Endpoint "/alerts?page=1&page_size=1" -Description "Get alert for timeline delete test"
+if ($alertsResponse.Status -eq "PASS" -and $alertsResponse.Response) {
+    try {
+        $alertData = $alertsResponse.Response | ConvertFrom-Json
+        if ($alertData.alerts -and $alertData.alerts.Count -gt 0) {
+            $alertIdToDelete = $alertData.alerts[0].id
+            Write-Log "Testing timeline alert DELETE on ID: $alertIdToDelete" "INFO"
+            Test-ApiRequest -Name "timeline_alert_delete" -Method "DELETE" -Endpoint "/timeline/alerts/$alertIdToDelete" -Description "Delete alert from timeline"
+        }
+    } catch {
+        Write-Log "Could not parse alerts response for timeline delete: $($_.Exception.Message)" "WARN"
+    }
+}
 
 Write-Log "========================================" "INFO"
 Write-Log "Part 4: Dashboard API" "INFO"
@@ -371,11 +530,17 @@ if ($rulesResponse.Status -eq "PASS" -and $rulesResponse.Response) {
             
             Test-ApiRequest -Name "rules_get" -Method "GET" -Endpoint "/rules/$firstRuleName" -Description "Get specific rule"
             Test-ApiRequest -Name "rules_toggle" -Method "POST" -Endpoint "/rules/$firstRuleName/toggle" -Description "Toggle rule"
+            Test-ApiRequest -Name "rules_update" -Method "PUT" -Endpoint "/rules/$firstRuleName" -Body '{"description":"Updated description","severity":"low"}' -Description "Update rule"
+            Test-ApiJsonPost -Name "rules_create" -Endpoint "/rules" -JsonBody @{name="APITestRule";description="Test rule from API";event_type="single";enabled=$false;severity="medium";conditions=@()} -Description "Create new rule"
+            Test-ApiRequest -Name "rules_delete" -Method "DELETE" -Endpoint "/rules/APITestRule" -Description "Delete test rule"
         }
     } catch {
         Write-Log "Could not parse rules response: $($_.Exception.Message)" "WARN"
     }
 }
+
+Test-ApiJsonPost -Name "rules_import" -Endpoint "/rules/import" -JsonBody @{file_path="test_rules.json"} -Description "Import rules from file"
+Test-ApiJsonPost -Name "rules_templates_instantiate" -Endpoint "/rules/templates/powershell_detection/instantiate" -JsonBody @{name="APITestPowerShellRule";parameters=@{event_id=4103}} -Description "Instantiate rule from template"
 
 Write-Log "========================================" "INFO"
 Write-Log "Part 6: System API" "INFO"
@@ -391,6 +556,20 @@ Test-ApiRequest -Name "system_dlls" -Method "GET" -Endpoint "/system/dlls?page_s
 Test-ApiRequest -Name "system_drivers" -Method "GET" -Endpoint "/system/drivers" -Description "Get kernel drivers"
 Test-ApiRequest -Name "system_env" -Method "GET" -Endpoint "/system/env" -Description "Get environment variables"
 Test-ApiRequest -Name "system_registry" -Method "GET" -Endpoint "/system/registry" -Description "Get registry stats"
+
+$processesResponse = Test-ApiRequest -Name "system_processes_first" -Method "GET" -Endpoint "/system/processes?page=1&page_size=1" -Description "Get first process for DLL test"
+if ($processesResponse.Status -eq "PASS" -and $processesResponse.Response) {
+    try {
+        $procData = $processesResponse.Response | ConvertFrom-Json
+        if ($procData.processes -and $procData.processes.Count -gt 0) {
+            $firstPid = $procData.processes[0].pid
+            Write-Log "Testing process DLLs for PID: $firstPid" "INFO"
+            Test-ApiRequest -Name "system_process_dlls" -Method "GET" -Endpoint "/system/process/$firstPid/dlls" -Description "Get DLLs for specific process"
+        }
+    } catch {
+        Write-Log "Could not parse processes response: $($_.Exception.Message)" "WARN"
+    }
+}
 
 Write-Log "========================================" "INFO"
 Write-Log "Step 0.3: Collect Forensic Data" "INFO"
@@ -415,6 +594,20 @@ Test-ApiRequest -Name "forensics_chain_custody" -Method "GET" -Endpoint "/forens
 Test-ApiRequest -Name "forensics_memory_dump" -Method "GET" -Endpoint "/forensics/memory-dump" -Description "Get memory dump info"
 Test-ApiRequest -Name "forensics_verify_hash" -Method "GET" -Endpoint "/forensics/verify-hash?hash=a1b2c3d4e5f6" -Description "Verify hash (expect not found)"
 
+$evidenceResponse = Test-ApiRequest -Name "forensics_evidence_first" -Method "GET" -Endpoint "/forensics/evidence?page=1&page_size=1" -Description "Get first evidence for detail test"
+if ($evidenceResponse.Status -eq "PASS" -and $evidenceResponse.Response) {
+    try {
+        $evidenceData = $evidenceResponse.Response | ConvertFrom-Json
+        if ($evidenceData.evidence -and $evidenceData.evidence.Count -gt 0) {
+            $firstEvidenceId = $evidenceData.evidence[0].id
+            Write-Log "Testing forensics evidence detail for ID: $firstEvidenceId" "INFO"
+            Test-ApiRequest -Name "forensics_evidence_detail" -Method "GET" -Endpoint "/forensics/evidence/$firstEvidenceId" -Description "Get evidence details"
+        }
+    } catch {
+        Write-Log "Could not parse evidence response: $($_.Exception.Message)" "WARN"
+    }
+}
+
 Write-Log "========================================" "INFO"
 Write-Log "Step 0.4: Start Monitor" "INFO"
 Write-Log "========================================" "INFO"
@@ -436,6 +629,14 @@ Test-ApiRequest -Name "monitor_events_network" -Method "GET" -Endpoint "/monitor
 Test-ApiRequest -Name "monitor_events_dns" -Method "GET" -Endpoint "/monitor/events?type=dns&limit=10" -Description "List DNS events"
 Test-ApiRequest -Name "monitor_events_severity" -Method "GET" -Endpoint "/monitor/events?severity=high&limit=10" -Description "List high severity events"
 Test-ApiJsonPost -Name "monitor_action_stop" -Endpoint "/monitor/action" -JsonBody @{action="stop"} -Description "Stop monitoring"
+
+if ($EnableSSE) {
+    Write-Log "========================================" "INFO"
+    Write-Log "Part 8.5: SSE Stream Tests" "INFO"
+    Write-Log "========================================" "INFO"
+    
+    Test-SseStream -Name "monitor_events_stream" -Endpoint "/monitor/events/stream" -TimeoutSeconds 10
+}
 
 Write-Log "========================================" "INFO"
 Write-Log "Part 9: Reports API" "INFO"
@@ -465,6 +666,25 @@ Test-ApiJsonPost -Name "reports_generate_event" -Endpoint "/reports" -JsonBody @
 Test-ApiJsonPost -Name "reports_generate_timeline" -Endpoint "/reports" -JsonBody @{type="timeline_report";format="json"} -Description "Generate timeline report"
 Test-ApiRequest -Name "reports_export_json" -Method "GET" -Endpoint "/reports/export?format=json" -Description "Export reports as JSON"
 Test-ApiRequest -Name "reports_export_csv" -Method "GET" -Endpoint "/reports/export?format=csv" -Description "Export reports as CSV"
+
+Test-ApiRequest -Name "report_templates_alert" -Method "GET" -Endpoint "/report-templates/alert_details" -Description "Get alert details template"
+Test-ApiJsonPost -Name "report_templates_create" -Endpoint "/report-templates" -JsonBody @{name="custom_test_report";description="Custom test report";content="<html>Test</html>"} -Description "Create custom report template"
+Test-ApiRequest -Name "report_templates_get_new" -Method "GET" -Endpoint "/report-templates/custom_test_report" -Description "Get newly created template"
+Test-ApiRequest -Name "report_templates_delete" -Method "DELETE" -Endpoint "/report-templates/custom_test_report" -Description "Delete custom template"
+
+$reportsListResponse = Test-ApiRequest -Name "reports_list_first" -Method "GET" -Endpoint "/reports?page=1&page_size=1" -Description "Get first report for download test"
+if ($reportsListResponse.Status -eq "PASS" -and $reportsListResponse.Response) {
+    try {
+        $reportsData = $reportsListResponse.Response | ConvertFrom-Json
+        if ($reportsData.reports -and $reportsData.reports.Count -gt 0) {
+            $firstReportId = $reportsData.reports[0].id
+            Write-Log "Testing report download for ID: $firstReportId" "INFO"
+            Test-ApiRequest -Name "reports_download" -Method "GET" -Endpoint "/reports/$firstReportId/download" -Description "Download report file" -AllowRedirect
+        }
+    } catch {
+        Write-Log "Could not parse reports response for download test: $($_.Exception.Message)" "WARN"
+    }
+}
 
 Write-Log "========================================" "INFO"
 Write-Log "Part 10: UEBA API" "INFO"
@@ -508,6 +728,10 @@ Test-ApiRequest -Name "persistence_detect_runkey" -Method "GET" -Endpoint "/pers
 Test-ApiRequest -Name "persistence_detect_service" -Method "GET" -Endpoint "/persistence/detect?category=service" -Description "Detect service persistence"
 Test-ApiRequest -Name "persistence_detect_scheduled" -Method "GET" -Endpoint "/persistence/detect?category=scheduled_task" -Description "Detect scheduled task persistence"
 Test-ApiRequest -Name "persistence_detect_wmi" -Method "GET" -Endpoint "/persistence/detect?category=wmi" -Description "Detect WMI persistence"
+
+if ($EnableSSE) {
+    Test-SseStream -Name "persistence_detect_stream" -Endpoint "/persistence/detect/stream" -TimeoutSeconds 10
+}
 
 Write-Log "========================================" "INFO"
 Write-Log "Part 14: Analyze API" "INFO"
@@ -587,6 +811,10 @@ Write-Log "========================================" "INFO"
 
 if (-not $SkipLiveTests) {
     Test-ApiRequest -Name "live_stats" -Method "GET" -Endpoint "/live/stats" -Description "Get live stats"
+    
+    if ($EnableSSE) {
+        Test-SseStream -Name "live_events_stream" -Endpoint "/live/events" -TimeoutSeconds 10
+    }
 } else {
     Write-Log "Skipping live events tests (use -FullTest to enable)" "WARN"
 }
@@ -599,6 +827,38 @@ Test-ApiRequest -Name "policy_templates_list" -Method "GET" -Endpoint "/policy-t
 Test-ApiRequest -Name "policy_instances_list" -Method "GET" -Endpoint "/policy-instances" -Description "List policy instances"
 Test-ApiJsonPost -Name "policy_create" -Endpoint "/policies" -JsonBody @{name="APITestPolicy";rules=@();settings=@{}} -Description "Create policy"
 Test-ApiRequest -Name "policy_delete" -Method "DELETE" -Endpoint "/policies/APITestPolicy" -Description "Delete policy"
+
+$policyTemplatesResponse = Test-ApiRequest -Name "policy_templates_first" -Method "GET" -Endpoint "/policy-templates?page=1&page_size=1" -Description "Get first policy template"
+if ($policyTemplatesResponse.Status -eq "PASS" -and $policyTemplatesResponse.Response) {
+    try {
+        $templateData = $policyTemplatesResponse.Response | ConvertFrom-Json
+        if ($templateData.templates -and $templateData.templates.Count -gt 0) {
+            $firstTemplateName = $templateData.templates[0].name
+            Write-Log "Testing policy template detail for: $firstTemplateName" "INFO"
+            Test-ApiRequest -Name "policy_templates_get" -Method "GET" -Endpoint "/policy-templates/$firstTemplateName" -Description "Get policy template details"
+        }
+    } catch {
+        Write-Log "Could not parse policy templates response: $($_.Exception.Message)" "WARN"
+    }
+}
+
+Test-ApiJsonPost -Name "policy_templates_create" -Endpoint "/policy-templates" -JsonBody @{name="APITestPolicyTemplate";description="Test template";rules=@("rule1");settings=@{}} -Description "Create policy template"
+Test-ApiJsonPost -Name "policy_templates_apply" -Endpoint "/policy-templates/apply" -JsonBody @{template_name="baseline_policy";targets=@("localhost")} -Description "Apply policy template"
+Test-ApiRequest -Name "policy_templates_delete" -Method "DELETE" -Endpoint "/policy-templates/APITestPolicyTemplate" -Description "Delete policy template"
+
+$policyInstancesResponse = Test-ApiRequest -Name "policy_instances_first" -Method "GET" -Endpoint "/policy-instances?page=1&page_size=1" -Description "Get first policy instance"
+if ($policyInstancesResponse.Status -eq "PASS" -and $policyInstancesResponse.Response) {
+    try {
+        $instanceData = $policyInstancesResponse.Response | ConvertFrom-Json
+        if ($instanceData.instances -and $instanceData.instances.Count -gt 0) {
+            $firstInstanceKey = $instanceData.instances[0].key
+            Write-Log "Testing policy instance delete for key: $firstInstanceKey" "INFO"
+            Test-ApiRequest -Name "policy_instances_delete" -Method "DELETE" -Endpoint "/policy-instances/$firstInstanceKey" -Description "Delete policy instance"
+        }
+    } catch {
+        Write-Log "Could not parse policy instances response: $($_.Exception.Message)" "WARN"
+    }
+}
 
 Write-Log "========================================" "INFO"
 Write-Log "Part 22: UI API" "INFO"
@@ -615,6 +875,25 @@ Test-ApiRequest -Name "ui_metrics_7d" -Method "GET" -Endpoint "/ui/metrics?perio
 Test-ApiRequest -Name "ui_events_dist_level" -Method "GET" -Endpoint "/ui/events/distribution?field=level&limit=10" -Description "Get event distribution by level"
 Test-ApiRequest -Name "ui_events_dist_source" -Method "GET" -Endpoint "/ui/events/distribution?field=source&limit=10" -Description "Get event distribution by source"
 Test-ApiRequest -Name "ui_events_dist_logname" -Method "GET" -Endpoint "/ui/events/distribution?field=log_name&limit=10" -Description "Get event distribution by log name"
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 23: Error Input Tests (Negative Tests)" "INFO"
+Write-Log "========================================" "INFO"
+
+Test-ApiRequest -Name "error_invalid_event_id" -Method "GET" -Endpoint "/events/invalid_id" -Description "Invalid event ID" -ExpectedStatus 404
+Test-ApiRequest -Name "error_invalid_alert_id" -Method "GET" -Endpoint "/alerts/999999999" -Description "Non-existent alert ID" -ExpectedStatus 404
+Test-ApiRequest -Name "error_invalid_rule_name" -Method "GET" -Endpoint "/rules/NonExistentRule12345" -Description "Non-existent rule" -ExpectedStatus 404
+Test-ApiRequest -Name "error_invalid_report_id" -Method "GET" -Endpoint "/reports/nonexistent_report_12345" -Description "Non-existent report" -ExpectedStatus 404
+Test-ApiRequest -Name "error_invalid_suppress_id" -Method "GET" -Endpoint "/suppress/999999999" -Description "Non-existent suppression rule" -ExpectedStatus 404
+Test-ApiRequest -Name "error_invalid_settings_path" -Method "GET" -Endpoint "/settings/nonexistent" -Description "Invalid settings path" -ExpectedStatus 404
+Test-ApiRequest -Name "error_invalid_query_sql" -Method "POST" -Endpoint "/query/execute" -Body '{"sql":"DROP TABLE events"}' -Description "SQL injection attempt (DROP)" -ExpectedStatus 400 -SkipRetry
+Test-ApiRequest -Name "error_invalid_query_syntax" -Method "POST" -Endpoint "/query/execute" -Body '{"sql":"SELECT * FROM"}' -Description "Invalid SQL syntax" -ExpectedStatus 400 -SkipRetry
+Test-ApiRequest -Name "error_missing_required_field" -Method "POST" -Endpoint "/query/execute" -Body '{"limit":10}' -Description "Missing SQL field" -ExpectedStatus 400 -SkipRetry
+Test-ApiRequest -Name "error_invalid_page_size" -Method "GET" -Endpoint "/events?page_size=999999" -Description "Invalid page size" -ExpectedStatus 400 -SkipRetry
+Test-ApiRequest -Name "error_invalid_severity" -Method "GET" -Endpoint "/alerts?severity=invalid" -Description "Invalid severity value" -ExpectedStatus 400 -SkipRetry
+Test-ApiRequest -Name "error_negative_page" -Method "GET" -Endpoint "/events?page=-1" -Description "Negative page number" -ExpectedStatus 400 -SkipRetry
+Test-ApiRequest -Name "error_future_time_range" -Method "GET" -Endpoint "/timeline?start_time=2099-01-01T00:00:00Z" -Description "Future time range (should return empty)" -ExpectedStatus 200 -SkipRetry
+Test-ApiRequest -Name "error_empty_import" -Method "POST" -Endpoint "/import/logs" -Body '{"files":[]}' -Description "Import with empty files array" -ExpectedStatus 400 -SkipRetry
 
 Write-Log "========================================" "INFO"
 Write-Log "Test Complete - Generating Report" "INFO"
@@ -635,7 +914,13 @@ $summary = @{
     SuccessRate = if ($totalCount -gt 0) { [math]::Round($passCount/$totalCount*100, 2) } else { 0 }
     BaseUrl = $Script:BaseUrl
     TestEvtxFile = $TestEvtxFile
+    MaxRetries = $MaxRetries
+    RetryDelayMs = $RetryDelayMs
+    EnableSSE = $EnableSSE
+    EnableValidation = $EnableValidation
+    EnablePerformance = $EnablePerformance
     PreparedData = $Script:PreparedData
+    PerformanceData = $Script:PerformanceData
     TestResults = $Script:TestResults
 } | ConvertTo-Json -Depth 10
 
@@ -650,10 +935,24 @@ $resultsCsv = $Script:TestResults | ForEach-Object {
         StatusCode = $_.StatusCode
         DurationSeconds = [math]::Round($_.Duration.TotalSeconds, 3)
         Status = $_.Status
+        RetryCount = $_.RetryCount
         Timestamp = $_.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
     }
 }
 $resultsCsv | Export-Csv -Path "$OutputDir\test_results.csv" -NoTypeInformation -Encoding UTF8
+
+if ($EnablePerformance -and $Script:PerformanceData.Count -gt 0) {
+    $perfData = @()
+    foreach ($key in $Script:PerformanceData.Keys) {
+        $perfData += [PSCustomObject]@{
+            TestName = $key
+            DurationSeconds = [math]::Round($Script:PerformanceData[$key].Duration, 3)
+            StatusCode = $Script:PerformanceData[$key].StatusCode
+            RetryCount = $Script:PerformanceData[$key].RetryCount
+        }
+    }
+    $perfData | Sort-Object DurationSeconds -Descending | Export-Csv -Path "$OutputDir\performance.csv" -NoTypeInformation -Encoding UTF8
+}
 
 Write-Log "========================================" "INFO"
 Write-Log "Test Results Summary" "INFO"
@@ -688,6 +987,9 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Output Dir: $OutputDir" -ForegroundColor Yellow
 Write-Host "Summary: $OutputDir\test_summary.json" -ForegroundColor Yellow
 Write-Host "CSV: $OutputDir\test_results.csv" -ForegroundColor Yellow
+if ($EnablePerformance) {
+    Write-Host "Performance: $OutputDir\performance.csv" -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "Result: $passCount/$totalCount passed" -ForegroundColor $(if ($failCount -eq 0) { "Green" } else { "Yellow" })
 
