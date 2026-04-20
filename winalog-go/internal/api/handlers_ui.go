@@ -2,10 +2,12 @@ package api
 
 import (
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type UIHandler struct {
@@ -62,17 +64,152 @@ func NewUIHandler(db *storage.DB) *UIHandler {
 }
 
 func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
-	overview := &DashboardOverview{}
 	ctx := c.Request.Context()
 
-	stats, err := h.db.GetStatsWithContext(ctx)
-	if err == nil {
+	var (
+		wg           sync.WaitGroup
+		statsMu      sync.Mutex
+		alertStatsMu sync.Mutex
+		sourcesMu    sync.Mutex
+		events24hMu  sync.Mutex
+		alerts24hMu  sync.Mutex
+		alertsMu     sync.Mutex
+		listEventsMu sync.Mutex
+
+		stats         *storage.DBStats
+		alertStats    *types.AlertStatsData
+		eventsLast24h int64
+		alertsLast24h int64
+		sources       = make(map[string]int64)
+		topAlerts     []*AlertSummary
+		recentEvents  []*EventSummary
+	)
+
+	now := time.Now()
+	last24h := now.Add(-24 * time.Hour)
+
+	wg.Add(7)
+
+	go func() {
+		defer wg.Done()
+		if s, err := h.db.GetStatsWithContext(ctx); err == nil {
+			statsMu.Lock()
+			stats = s
+			statsMu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if as, err := h.db.AlertRepo().GetStatsWithContext(ctx); err == nil {
+			alertStatsMu.Lock()
+			alertStats = as
+			alertStatsMu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var count int64
+		row := h.db.QueryRowWithContext(ctx, `SELECT COUNT(*) FROM events WHERE timestamp >= ?`, last24h.Format(time.RFC3339))
+		if row != nil {
+			row.Scan(&count)
+		}
+		events24hMu.Lock()
+		eventsLast24h = count
+		events24hMu.Unlock()
+	}()
+
+	go func() {
+		defer wg.Done()
+		var count int64
+		row := h.db.QueryRowWithContext(ctx, `SELECT COUNT(*) FROM alerts WHERE first_seen >= ?`, last24h.Format(time.RFC3339))
+		if row != nil {
+			row.Scan(&count)
+		}
+		alerts24hMu.Lock()
+		alertsLast24h = count
+		alerts24hMu.Unlock()
+	}()
+
+	go func() {
+		defer wg.Done()
+		rows, err := h.db.QueryWithContext(ctx, `
+			SELECT log_name, COUNT(*) as count
+			FROM events
+			GROUP BY log_name
+			ORDER BY count DESC
+			LIMIT 8
+		`)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var logName string
+				var count int64
+				if err := rows.Scan(&logName, &count); err == nil {
+					sourcesMu.Lock()
+					sources[logName] = count
+					sourcesMu.Unlock()
+				}
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		alerts, err := h.db.AlertRepo().QueryWithContext(ctx, &storage.AlertFilter{Limit: 10})
+		if err == nil {
+			summary := make([]*AlertSummary, 0, len(alerts))
+			for _, alert := range alerts {
+				summary = append(summary, &AlertSummary{
+					ID:         alert.ID,
+					RuleName:   alert.RuleName,
+					Severity:   string(alert.Severity),
+					Message:    alert.Message,
+					Count:      alert.Count,
+					FirstSeen:  alert.FirstSeen,
+					LastSeen:   alert.LastSeen,
+					IsResolved: alert.Resolved,
+				})
+			}
+			alertsMu.Lock()
+			topAlerts = summary
+			alertsMu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		events, _, err := h.db.ListEventsWithContext(ctx, &storage.EventFilter{Limit: 10})
+		if err == nil {
+			summary := make([]*EventSummary, 0, len(events))
+			for _, event := range events {
+				summary = append(summary, &EventSummary{
+					ID:        event.ID,
+					EventID:   event.EventID,
+					Timestamp: event.Timestamp,
+					Source:    event.Source,
+					Computer:  event.Computer,
+					Level:     event.Level.String(),
+					Message:   event.Message,
+				})
+			}
+			listEventsMu.Lock()
+			recentEvents = summary
+			listEventsMu.Unlock()
+		}
+	}()
+
+	wg.Wait()
+
+	overview := &DashboardOverview{}
+
+	if stats != nil {
 		overview.TotalEvents = stats.EventCount
 		overview.DatabaseSize = formatBytes(stats.DatabaseSize)
 	}
 
-	alertStats, err := h.db.AlertRepo().GetStatsWithContext(ctx)
-	if err == nil {
+	if alertStats != nil {
 		overview.TotalAlerts = alertStats.TotalCount
 		if bySev, ok := alertStats.BySeverity["critical"]; ok {
 			overview.CriticalAlerts = bySev
@@ -96,85 +233,11 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 		overview.RiskScore = float64(overview.UnresolvedAlerts) / float64(overview.TotalAlerts) * 100
 	}
 
-	now := time.Now()
-	last24h := now.Add(-24 * time.Hour)
-
-	rows, err := h.db.QueryWithContext(ctx, `
-		SELECT COUNT(*) FROM events WHERE timestamp >= ?
-	`, last24h.Format(time.RFC3339))
-	if err == nil {
-		defer rows.Close()
-		if rows.Next() {
-			rows.Scan(&overview.EventsLast24h)
-		}
-	}
-
-	alertRows, err := h.db.QueryWithContext(ctx, `
-		SELECT COUNT(*) FROM alerts WHERE first_seen >= ?
-	`, last24h.Format(time.RFC3339))
-	if err == nil {
-		defer alertRows.Close()
-		if alertRows.Next() {
-			alertRows.Scan(&overview.AlertsLast24h)
-		}
-	}
-
-	sources := make(map[string]int64)
-	sourceRows, err := h.db.QueryWithContext(ctx, `
-		SELECT log_name, COUNT(*) as count
-		FROM events
-		GROUP BY log_name
-		ORDER BY count DESC
-		LIMIT 8
-	`)
-	if err == nil {
-		defer sourceRows.Close()
-		for sourceRows.Next() {
-			var logName string
-			var count int64
-			if err := sourceRows.Scan(&logName, &count); err == nil {
-				sources[logName] = count
-			}
-		}
-	}
+	overview.EventsLast24h = eventsLast24h
+	overview.AlertsLast24h = alertsLast24h
 	overview.EventSources = sources
-
-	alertFilter := &storage.AlertFilter{
-		Limit: 10,
-	}
-	alerts, err := h.db.AlertRepo().QueryWithContext(ctx, alertFilter)
-	if err == nil {
-		for _, alert := range alerts {
-			overview.TopAlerts = append(overview.TopAlerts, &AlertSummary{
-				ID:         alert.ID,
-				RuleName:   alert.RuleName,
-				Severity:   string(alert.Severity),
-				Message:    alert.Message,
-				Count:      alert.Count,
-				FirstSeen:  alert.FirstSeen,
-				LastSeen:   alert.LastSeen,
-				IsResolved: alert.Resolved,
-			})
-		}
-	}
-
-	eventFilter := &storage.EventFilter{
-		Limit: 10,
-	}
-	events, _, err := h.db.ListEventsWithContext(ctx, eventFilter)
-	if err == nil {
-		for _, event := range events {
-			overview.RecentEvents = append(overview.RecentEvents, &EventSummary{
-				ID:        event.ID,
-				EventID:   event.EventID,
-				Timestamp: event.Timestamp,
-				Source:    event.Source,
-				Computer:  event.Computer,
-				Level:     event.Level.String(),
-				Message:   event.Message,
-			})
-		}
-	}
+	overview.TopAlerts = topAlerts
+	overview.RecentEvents = recentEvents
 
 	c.JSON(http.StatusOK, overview)
 }
