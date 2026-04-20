@@ -1,0 +1,1972 @@
+Microsoft Windows [版本 10.0.14393]
+(c) 2016 Microsoft Corporation。保留所有权利。
+
+C:\Users\admin\Desktop\winalog-windows-package>winalog.exe serve
+Starting HTTP API server on 127.0.0.1:8080
+API documentation available at http://127.0.0.1:8080/api/health
+2026/04/20 15:17:30 Starting HTTP API server on 127.0.0.1:8080
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/health"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"27.8165ms","client_ip":"127.0.0.1","method":"POST","path":"/api/import/logs"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/events?page=1\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/events?page=2\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"1.1768ms","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"822.1µs","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"15.5551ms","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"698.6µs","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"1.0084ms","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"611.3µs","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"924.2µs","client_ip":"127.0.0.1","method":"POST","path":"/api/events/search"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"239.7µs","client_ip":"127.0.0.1","method":"POST","path":"/api/events/export"}
+{"timestamp":"2026-04-20T15:17:50+08:00","level":"info","message":"[API]","status":200,"latency":"5.8397ms","client_ip":"127.0.0.1","method":"POST","path":"/api/events/export"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/events?page=1\u0026page_size=1"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"519.6µs","client_ip":"127.0.0.1","method":"POST","path":"/api/alerts/run-analysis"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"1.0635ms","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?page=1\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"13.8473ms","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?severity=high\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"10.6835ms","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?severity=medium\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"558.9µs","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?severity=low\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"633.3µs","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?resolved=false\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"328.1µs","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?resolved=true\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"2.0035ms","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts/trend?days=7"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"13.187ms","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts/trend?days=30"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?page=1\u0026page_size=1"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"807µs","client_ip":"127.0.0.1","method":"POST","path":"/api/alerts/batch"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/alerts/batch"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"592.3µs","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?page=1\u0026page_size=1"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"2.654ms","client_ip":"127.0.0.1","method":"GET","path":"/api/timeline?limit=50"}
+{"timestamp":"2026-04-20T15:17:51+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/timeline/stats"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/timeline/chains"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/timeline/export?format=json"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/timeline/export?format=csv"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"325.3µs","client_ip":"127.0.0.1","method":"GET","path":"/api/timeline?start_time=2024-01-01T00:00:00Z\u0026end_time=2024-12-31T23:59:59Z"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"10.4281ms","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts?page=1\u0026page_size=1"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"614.3µs","client_ip":"127.0.0.1","method":"GET","path":"/api/rules?page=1\u0026page_size=20"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"2.0509ms","client_ip":"127.0.0.1","method":"GET","path":"/api/rules?enabled=true\u0026page_size=20"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/rules/templates"}
+{"timestamp":"2026-04-20T15:17:52+08:00","level":"warn","message":"[API]","status":404,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/rules/templates/powershell_detection"}
+{"timestamp":"2026-04-20T15:17:53+08:00","level":"warn","message":"[API]","status":404,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/rules/templates/powershell_detection"}
+{"timestamp":"2026-04-20T15:17:54+08:00","level":"warn","message":"[API]","status":404,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/rules/templates/powershell_detection"}
+{"timestamp":"2026-04-20T15:17:54+08:00","level":"info","message":"[API]","status":200,"latency":"537.6µs","client_ip":"127.0.0.1","method":"POST","path":"/api/rules/validate"}
+{"timestamp":"2026-04-20T15:17:54+08:00","level":"info","message":"[API]","status":200,"latency":"850.9µs","client_ip":"127.0.0.1","method":"GET","path":"/api/rules/export?format=json"}
+{"timestamp":"2026-04-20T15:17:54+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/rules?page=1\u0026page_size=1"}
+{"timestamp":"2026-04-20T15:17:54+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/rules/failed-login-threshold"}
+{"timestamp":"2026-04-20T15:17:54+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/rules/failed-login-threshold/toggle"}
+{"timestamp":"2026-04-20T15:17:54+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"PUT","path":"/api/rules/failed-login-threshold"}
+{"timestamp":"2026-04-20T15:17:55+08:00","level":"info","message":"[API]","status":201,"latency":"3.6909ms","client_ip":"127.0.0.1","method":"POST","path":"/api/rules"}
+{"timestamp":"2026-04-20T15:17:56+08:00","level":"warn","message":"[API]","status":409,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/rules"}
+{"timestamp":"2026-04-20T15:17:57+08:00","level":"warn","message":"[API]","status":409,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/rules"}
+{"timestamp":"2026-04-20T15:17:57+08:00","level":"info","message":"[API]","status":200,"latency":"1.0582ms","client_ip":"127.0.0.1","method":"DELETE","path":"/api/rules/APITestRule"}
+{"timestamp":"2026-04-20T15:17:57+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/rules/import"}
+{"timestamp":"2026-04-20T15:17:57+08:00","level":"error","message":"[API]","status":500,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/rules/templates/powershell_detection/instantiate"}
+{"timestamp":"2026-04-20T15:17:58+08:00","level":"error","message":"[API]","status":500,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/rules/templates/powershell_detection/instantiate"}
+{"timestamp":"2026-04-20T15:17:59+08:00","level":"error","message":"[API]","status":500,"latency":"1.9358ms","client_ip":"127.0.0.1","method":"POST","path":"/api/rules/templates/powershell_detection/instantiate"}
+{"timestamp":"2026-04-20T15:17:59+08:00","level":"info","message":"[API]","status":200,"latency":"11.2393ms","client_ip":"127.0.0.1","method":"GET","path":"/api/system/info"}
+{"timestamp":"2026-04-20T15:17:59+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/system/metrics"}
+{"timestamp":"2026-04-20T15:17:59+08:00","level":"info","message":"[API]","status":200,"latency":"7.1835ms","client_ip":"127.0.0.1","method":"GET","path":"/api/system/processes?page=1\u0026page_size=10"}
+{"timestamp":"2026-04-20T15:17:59+08:00","level":"info","message":"[API]","status":200,"latency":"998.0246ms","client_ip":"127.0.0.1","method":"GET","path":"/api/system/network"}
+{"timestamp":"2026-04-20T15:18:00+08:00","level":"info","message":"[API]","status":200,"latency":"703.8205ms","client_ip":"127.0.0.1","method":"GET","path":"/api/system/users"}
+{"timestamp":"2026-04-20T15:18:01+08:00","level":"info","message":"[API]","status":200,"latency":"500.0323ms","client_ip":"127.0.0.1","method":"GET","path":"/api/system/tasks"}
+{"timestamp":"2026-04-20T15:18:05+08:00","level":"info","message":"[API]","status":200,"latency":"995.4µs","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T15:18:05+08:00","level":"info","message":"[API]","status":200,"latency":"1.2645ms","client_ip":"127.0.0.1","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T15:18:05+08:00","level":"warn","message":"[API]","status":404,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/favicon.ico"}
+{"timestamp":"2026-04-20T15:18:05+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T15:18:09+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/"}
+{"timestamp":"2026-04-20T15:18:09+08:00","level":"info","message":"[API]","status":200,"latency":"6.1179ms","client_ip":"127.0.0.1","method":"GET","path":"/assets/index-BrwPbm9A.js"}
+{"timestamp":"2026-04-20T15:18:09+08:00","level":"info","message":"[API]","status":200,"latency":"2.6281ms","client_ip":"127.0.0.1","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T15:18:09+08:00","level":"warn","message":"[API]","status":404,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/favicon.ico"}
+{"timestamp":"2026-04-20T15:18:09+08:00","level":"info","message":"[API]","status":200,"latency":"1.3842ms","client_ip":"127.0.0.1","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T15:18:09+08:00","level":"info","message":"[API]","status":200,"latency":"1.3842ms","client_ip":"127.0.0.1","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T15:18:09+08:00","level":"info","message":"[API]","status":200,"latency":"1.3842ms","client_ip":"127.0.0.1","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T15:18:11+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/monitor/events?limit=100\u0026"}
+{"timestamp":"2026-04-20T15:18:11+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/monitor/stats"}
+{"timestamp":"2026-04-20T15:18:12+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"POST","path":"/api/monitor/action"}
+{"timestamp":"2026-04-20T15:18:12+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/monitor/events?limit=100\u0026"}
+{"timestamp":"2026-04-20T15:18:12+08:00","level":"info","message":"[API]","status":200,"latency":"2.2056ms","client_ip":"127.0.0.1","method":"GET","path":"/api/monitor/stats"}
+{"timestamp":"2026-04-20T15:18:11+08:00","level":"info","message":"[API]","status":200,"latency":"2.397962s","client_ip":"127.0.0.1","method":"GET","path":"/api/persistence/detect"}
+{"timestamp":"2026-04-20T15:18:15+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/monitor/events?type=process\u0026limit=100\u0026"}
+{"timestamp":"2026-04-20T15:18:15+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/monitor/events?type=network\u0026limit=100\u0026"}
+{"timestamp":"2026-04-20T15:18:16+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/monitor/events?type=dns\u0026limit=100\u0026"}
+{"timestamp":"2026-04-20T15:18:16+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/monitor/stats"}
+{"timestamp":"2026-04-20T15:18:20+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/system/info"}
+{"timestamp":"2026-04-20T15:18:22+08:00","level":"info","message":"[API]","status":200,"latency":"13.2589ms","client_ip":"127.0.0.1","method":"GET","path":"/api/system/processes?limit=50"}
+{"timestamp":"2026-04-20T15:18:24+08:00","level":"info","message":"[API]","status":200,"latency":"812.3µs","client_ip":"127.0.0.1","method":"GET","path":"/api/system/env"}
+{"timestamp":"2026-04-20T15:18:24+08:00","level":"info","message":"[API]","status":200,"latency":"1.3253742s","client_ip":"127.0.0.1","method":"GET","path":"/api/system/network?limit=50"}
+{"timestamp":"2026-04-20T15:18:28+08:00","level":"info","message":"[API]","status":200,"latency":"2.0126723s","client_ip":"127.0.0.1","method":"GET","path":"/api/system/drivers"}
+{"timestamp":"2026-04-20T15:18:30+08:00","level":"info","message":"[API]","status":200,"latency":"2.0123ms","client_ip":"127.0.0.1","method":"GET","path":"/api/system/info"}
+{"timestamp":"2026-04-20T15:18:50+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/forensics/chain-of-custody"}
+{"timestamp":"2026-04-20T15:18:50+08:00","level":"info","message":"[API]","status":200,"latency":"999µs","client_ip":"127.0.0.1","method":"GET","path":"/api/forensics/evidence"}
+{"timestamp":"2026-04-20T15:18:51+08:00","level":"info","message":"[API]","status":200,"latency":"37.845ms","client_ip":"127.0.0.1","method":"POST","path":"/api/forensics/collect"}
+{"timestamp":"2026-04-20T15:18:52+08:00","level":"info","message":"[API]","status":200,"latency":"59.0425ms","client_ip":"127.0.0.1","method":"POST","path":"/api/forensics/collect"}
+{"timestamp":"2026-04-20T15:18:52+08:00","level":"info","message":"[API]","status":200,"latency":"44.1706ms","client_ip":"127.0.0.1","method":"POST","path":"/api/forensics/collect"}
+{"timestamp":"2026-04-20T15:18:52+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/forensics/chain-of-custody"}
+{"timestamp":"2026-04-20T15:18:52+08:00","level":"info","message":"[API]","status":200,"latency":"956.8µs","client_ip":"127.0.0.1","method":"GET","path":"/api/forensics/evidence"}
+{"timestamp":"2026-04-20T15:18:59+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/rules"}
+{"timestamp":"2026-04-20T15:19:06+08:00","level":"info","message":"[API]","status":200,"latency":"0s","client_ip":"127.0.0.1","method":"GET","path":"/api/system/info"}
+Exception 0xc0000005 0x1 0x0 0x7ffddac8c61a
+PC=0x7ffddac8c61a
+
+runtime.cgocall(0x7ff72b033e80, 0xc00067e358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000408a90 sp=0xc000408a28 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x0?, 0x0?, {0xc000408b08?, 0x7ff72d1bb1f0?, 0xc000408ac0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000408ab0 sp=0xc000408a90 pc=0x7ff72b014e4e
+syscall.SyscallN(0x7ff72d1bb1e0?, {0xc000408b08?, 0x0?, 0xc000408b58?})
+        /usr/local/go/src/runtime/syscall_windows.go:500 +0x1e fp=0xc000408ae8 sp=0xc000408ab0 pc=0x7ff72b02e5de
+golang.org/x/sys/windows.GetProcessTimes(0x3f8, 0xf38?, 0x7ff72c6171d8?, 0xc000408b98?, 0xc0007f1769?)
+        /go/pkg/mod/golang.org/x/sys@v0.42.0/windows/zsyscall_windows.go:2605 +0xb4 fp=0xc000408b68 sp=0xc000408ae8 pc=0x7ff72b22e4d4
+github.com/kkkdddd-start/winalog-go/internal/collectors.getProcessStartTime(0x408ca4?)
+        /workspace/winalog-go/internal/collectors/process_info.go:181 +0x89 fp=0xc000408bf8 sp=0xc000408b68 pc=0x7ff72b66b0c9
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*ProcessInfoCollector).collectProcessInfo(0xc000618000?)
+        /workspace/winalog-go/internal/collectors/process_info.go:82 +0x245 fp=0xc000408f70 sp=0xc000408bf8 pc=0x7ff72b66a445
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*OneClickCollector).collectProcessInfoWithSignaturesAndDLLs(0xc000409480, {0xc0000d3ae0?, 0xc0000001ed?})
+        /workspace/winalog-go/internal/collectors/one_click.go:263 +0x12a fp=0xc0004091b8 sp=0xc000408f70 pc=0x7ff72b666f4a
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*OneClickCollector).FullCollect(0xc000409480, {0x7ff72c62df10, 0x7ff72d2613e0})
+        /workspace/winalog-go/internal/collectors/one_click.go:168 +0x7f9 fp=0xc000409390 sp=0xc0004091b8 pc=0x7ff72b666459
+github.com/kkkdddd-start/winalog-go/internal/collectors.RunOneClickCollection({0x7ff72c62df10?, 0x7ff72d2613e0?}, {0x7ff72c243080?, 0xc0004095b0?})
+        /workspace/winalog-go/internal/collectors/one_click.go:110 +0x2cb fp=0xc000409520 sp=0xc000409390 pc=0x7ff72b665b4b
+github.com/kkkdddd-start/winalog-go/internal/api.(*CollectHandler).StartCollect(0xc000511770?, 0xc000651d00)
+        /workspace/winalog-go/internal/api/handlers_collect.go:132 +0x215 fp=0xc000409698 sp=0xc000409520 pc=0x7ff72beb7355
+github.com/kkkdddd-start/winalog-go/internal/api.(*CollectHandler).StartCollect-fm(0xc00009ca80?)
+        <autogenerated>:1 +0x26 fp=0xc0004096b8 sp=0xc000409698 pc=0x7ff72beed126
+github.com/gin-gonic/gin.(*Context).Next(0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0004096d8 sp=0xc0004096b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc000651d00)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc000409750 sp=0xc0004096d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000409770 sp=0xc000409750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc000651d00)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0004098f8 sp=0xc000409770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000409918 sp=0xc0004098f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0x2?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc000409950 sp=0xc000409918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000409970 sp=0xc000409950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc000409b18 sp=0xc000409970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc000442000}, 0xc000334500)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc000409b60 sp=0xc000409b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0x7ff72c628730?}, {0x7ff72c62c770?, 0xc000442000?}, 0x6?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc000409b90 sp=0xc000409b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc0000cbd40, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc000409fb8 sp=0xc000409b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc000409fe0 sp=0xc000409fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000409fe8 sp=0xc000409fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 1 gp=0xc0000021c0 m=nil [IO wait]:
+runtime.gopark(0x0?, 0xc00037f5f8?, 0x44?, 0x2?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00037f570 sp=0xc00037f550 pc=0x7ff72b02a10e
+runtime.netpollblock(0x7ff72b014e4e?, 0x2b033e80?, 0xf7?)
+        /usr/local/go/src/runtime/netpoll.go:575 +0xf7 fp=0xc00037f5a8 sp=0xc00037f570 pc=0x7ff72afef637
+internal/poll.runtime_pollWait(0x149fd554400, 0x72)
+        /usr/local/go/src/runtime/netpoll.go:351 +0x85 fp=0xc00037f5c8 sp=0xc00037f5a8 pc=0x7ff72b0292a5
+internal/poll.(*pollDesc).wait(0x128?, 0x7ff72afc0d66?, 0x0)
+        /usr/local/go/src/internal/poll/fd_poll_runtime.go:84 +0x27 fp=0xc00037f5f0 sp=0xc00037f5c8 pc=0x7ff72b0bc867
+internal/poll.waitIO(0x7ff72afd41d6?)
+        /usr/local/go/src/internal/poll/fd_windows.go:187 +0x65 fp=0xc00037f638 sp=0xc00037f5f0 pc=0x7ff72b0bdca5
+internal/poll.execIO(0xc000115ba0, 0xc00037f6d8)
+        /usr/local/go/src/internal/poll/fd_windows.go:240 +0x13a fp=0xc00037f6a8 sp=0xc00037f638 pc=0x7ff72b0be01a
+internal/poll.(*FD).acceptOne(0xc000115b88, 0x244, {0xc000374000?, 0xc00037f780?, 0x7ff72afcaa74?}, 0xc0000e1808?)
+        /usr/local/go/src/internal/poll/fd_windows.go:1063 +0x65 fp=0xc00037f708 sp=0xc00037f6a8 pc=0x7ff72b0c2945
+internal/poll.(*FD).Accept(0xc000115b88, 0xc00037f8b8)
+        /usr/local/go/src/internal/poll/fd_windows.go:1097 +0x1b6 fp=0xc00037f7c0 sp=0xc00037f708 pc=0x7ff72b0c2c76
+net.(*netFD).accept(0xc000115b88)
+        /usr/local/go/src/net/fd_windows.go:202 +0x4b fp=0xc00037f8d8 sp=0xc00037f7c0 pc=0x7ff72b200b2b
+net.(*TCPListener).accept(0xc0002fb3c0)
+        /usr/local/go/src/net/tcpsock_posix.go:159 +0x1b fp=0xc00037f928 sp=0xc00037f8d8 pc=0x7ff72b21697b
+net.(*TCPListener).Accept(0xc0002fb3c0)
+        /usr/local/go/src/net/tcpsock.go:380 +0x30 fp=0xc00037f958 sp=0xc00037f928 pc=0x7ff72b215a30
+net/http.(*onceCloseListener).Accept(0xc000628090?)
+        <autogenerated>:1 +0x24 fp=0xc00037f970 sp=0xc00037f958 pc=0x7ff72b57c264
+net/http.(*Server).Serve(0xc000131500, {0x7ff72c62c500, 0xc0002fb3c0})
+        /usr/local/go/src/net/http/server.go:3463 +0x30c fp=0xc00037faa0 sp=0xc00037f970 pc=0x7ff72b5685ac
+net/http.(*Server).ListenAndServe(0xc000131500)
+        /usr/local/go/src/net/http/server.go:3389 +0x72 fp=0xc00037fad0 sp=0xc00037faa0 pc=0x7ff72b568192
+github.com/kkkdddd-start/winalog-go/internal/api.(*Server).Start(0xc000131300)
+        /workspace/winalog-go/internal/api/server.go:210 +0x155 fp=0xc00037fb68 sp=0xc00037fad0 pc=0x7ff72bee9455
+github.com/kkkdddd-start/winalog-go/cmd/winalog/commands.runServe(0xc0000d7400?, {0x7ff72c27cd70?, 0x4?, 0x7ff72c27cd50?})
+        /workspace/winalog-go/cmd/winalog/commands/system.go:881 +0x3b2 fp=0xc00037fc60 sp=0xc00037fb68 pc=0x7ff72bf6dfd2
+github.com/spf13/cobra.(*Command).execute(0x7ff72d1ee900, {0x7ff72d2613e0, 0x0, 0x0})
+        /go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1015 +0xb02 fp=0xc00037fe08 sp=0xc00037fc60 pc=0x7ff72b623a02
+github.com/spf13/cobra.(*Command).ExecuteC(0x7ff72d1e8a20)
+        /go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1148 +0x465 fp=0xc00037fef8 sp=0xc00037fe08 pc=0x7ff72b624345
+github.com/spf13/cobra.(*Command).Execute(...)
+        /go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1071
+main.main()
+        /workspace/winalog-go/cmd/winalog/main.go:35 +0x26 fp=0xc00037ff50 sp=0xc00037fef8 pc=0x7ff72bf73d26
+runtime.main()
+        /usr/local/go/src/runtime/proc.go:285 +0x27d fp=0xc00037ffe0 sp=0xc00037ff50 pc=0x7ff72aff869d
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00037ffe8 sp=0xc00037ffe0 pc=0x7ff72b032641
+
+goroutine 2 gp=0xc0000028c0 m=nil [force gc (idle), 2 minutes]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005bfa8 sp=0xc00005bf88 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.forcegchelper()
+        /usr/local/go/src/runtime/proc.go:373 +0xb8 fp=0xc00005bfe0 sp=0xc00005bfa8 pc=0x7ff72aff89b8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005bfe8 sp=0xc00005bfe0 pc=0x7ff72b032641
+created by runtime.init.7 in goroutine 1
+        /usr/local/go/src/runtime/proc.go:361 +0x1a
+
+goroutine 3 gp=0xc000002c40 m=nil [GC sweep wait]:
+runtime.gopark(0x1?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005df80 sp=0xc00005df60 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.bgsweep(0xc00006a000)
+        /usr/local/go/src/runtime/mgcsweep.go:323 +0xdf fp=0xc00005dfc8 sp=0xc00005df80 pc=0x7ff72afdfedf
+runtime.gcenable.gowrap1()
+        /usr/local/go/src/runtime/mgc.go:212 +0x25 fp=0xc00005dfe0 sp=0xc00005dfc8 pc=0x7ff72afd3e25
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005dfe8 sp=0xc00005dfe0 pc=0x7ff72b032641
+created by runtime.gcenable in goroutine 1
+        /usr/local/go/src/runtime/mgc.go:212 +0x66
+
+goroutine 4 gp=0xc000002e00 m=nil [GC scavenge wait]:
+runtime.gopark(0x3c361bb8?, 0x3b9aca00?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000071f78 sp=0xc000071f58 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.(*scavengerState).park(0x7ff72d2177e0)
+        /usr/local/go/src/runtime/mgcscavenge.go:425 +0x49 fp=0xc000071fa8 sp=0xc000071f78 pc=0x7ff72afdd949
+runtime.bgscavenge(0xc00006a000)
+        /usr/local/go/src/runtime/mgcscavenge.go:658 +0x59 fp=0xc000071fc8 sp=0xc000071fa8 pc=0x7ff72afddef9
+runtime.gcenable.gowrap2()
+        /usr/local/go/src/runtime/mgc.go:213 +0x25 fp=0xc000071fe0 sp=0xc000071fc8 pc=0x7ff72afd3dc5
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000071fe8 sp=0xc000071fe0 pc=0x7ff72b032641
+created by runtime.gcenable in goroutine 1
+        /usr/local/go/src/runtime/mgc.go:213 +0xa5
+
+goroutine 5 gp=0xc000003180 m=nil [GOMAXPROCS updater (idle), 2 minutes]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000073f88 sp=0xc000073f68 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.updateMaxProcsGoroutine()
+        /usr/local/go/src/runtime/proc.go:6720 +0xe7 fp=0xc000073fe0 sp=0xc000073f88 pc=0x7ff72b0063a7
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000073fe8 sp=0xc000073fe0 pc=0x7ff72b032641
+created by runtime.defaultGOMAXPROCSUpdateEnable in goroutine 1
+        /usr/local/go/src/runtime/proc.go:6708 +0x37
+
+goroutine 6 gp=0xc000003340 m=nil [finalizer wait, 2 minutes]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00006de20 sp=0xc00006de00 pc=0x7ff72b02a10e
+runtime.runFinalizers()
+        /usr/local/go/src/runtime/mfinal.go:210 +0x107 fp=0xc00006dfe0 sp=0xc00006de20 pc=0x7ff72afd2d67
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00006dfe8 sp=0xc00006dfe0 pc=0x7ff72b032641
+created by runtime.createfing in goroutine 1
+        /usr/local/go/src/runtime/mfinal.go:172 +0x3d
+
+goroutine 7 gp=0xc0001b6000 m=nil [cleanup wait, 2 minutes]:
+runtime.gopark(0x0?, 0x101000000000000?, 0xfc?, 0x0?, 0x2?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005ff68 sp=0xc00005ff48 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.(*cleanupQueue).dequeue(0x7ff72d217ba0)
+        /usr/local/go/src/runtime/mcleanup.go:439 +0xc5 fp=0xc00005ffa0 sp=0xc00005ff68 pc=0x7ff72afcfc25
+runtime.runCleanups()
+        /usr/local/go/src/runtime/mcleanup.go:635 +0x45 fp=0xc00005ffe0 sp=0xc00005ffa0 pc=0x7ff72afd02e5
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005ffe8 sp=0xc00005ffe0 pc=0x7ff72b032641
+created by runtime.(*cleanupQueue).createGs in goroutine 1
+        /usr/local/go/src/runtime/mcleanup.go:589 +0xa5
+
+goroutine 18 gp=0xc0001b6540 m=nil [select, 2 minutes]:
+runtime.gopark(0xc00006ff88?, 0x2?, 0xa5?, 0xb4?, 0xc00006ff84?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00006fe10 sp=0xc00006fdf0 pc=0x7ff72b02a10e
+runtime.selectgo(0xc00006ff88, 0xc00006ff80, 0x0?, 0x0, 0xc000000000?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc00006ff50 sp=0xc00006fe10 pc=0x7ff72b00a485
+database/sql.(*DB).connectionOpener(0xc000384820, {0x7ff72c62dfb8, 0xc0000a4460})
+        /usr/local/go/src/database/sql/sql.go:1261 +0x87 fp=0xc00006ffb8 sp=0xc00006ff50 pc=0x7ff72b125447
+database/sql.OpenDB.gowrap1()
+        /usr/local/go/src/database/sql/sql.go:841 +0x28 fp=0xc00006ffe0 sp=0xc00006ffb8 pc=0x7ff72b1236e8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00006ffe8 sp=0xc00006ffe0 pc=0x7ff72b032641
+created by database/sql.OpenDB in goroutine 1
+        /usr/local/go/src/database/sql/sql.go:841 +0x130
+
+goroutine 19 gp=0xc0000861c0 m=nil [select, 2 minutes]:
+runtime.gopark(0xc0003a1f90?, 0x2?, 0xe0?, 0xf?, 0xc0003a1f5c?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc0003a1de8 sp=0xc0003a1dc8 pc=0x7ff72b02a10e
+runtime.selectgo(0xc0003a1f90, 0xc0003a1f58, 0x0?, 0x0, 0x0?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc0003a1f28 sp=0xc0003a1de8 pc=0x7ff72b00a485
+database/sql.(*DB).connectionCleaner(0xc000384820, 0x0?)
+        /usr/local/go/src/database/sql/sql.go:1104 +0x9c fp=0xc0003a1fc0 sp=0xc0003a1f28 pc=0x7ff72b12493c
+database/sql.(*DB).startCleanerLocked.gowrap1()
+        /usr/local/go/src/database/sql/sql.go:1091 +0x25 fp=0xc0003a1fe0 sp=0xc0003a1fc0 pc=0x7ff72b124865
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0003a1fe8 sp=0xc0003a1fe0 pc=0x7ff72b032641
+created by database/sql.(*DB).startCleanerLocked in goroutine 1
+        /usr/local/go/src/database/sql/sql.go:1091 +0x105
+
+goroutine 20 gp=0xc000086540 m=nil [select]:
+runtime.gopark(0xc0003f1fb0?, 0x2?, 0x1?, 0x0?, 0xc0003f1fa4?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000555e30 sp=0xc000555e10 pc=0x7ff72b02a10e
+runtime.selectgo(0xc000555fb0, 0xc0003f1fa0, 0x0?, 0x0, 0x0?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc000555f70 sp=0xc000555e30 pc=0x7ff72b00a485
+github.com/kkkdddd-start/winalog-go/internal/observability.(*MetricsLogger).Start.func1()
+        /workspace/winalog-go/internal/observability/metrics_logger.go:76 +0x6c fp=0xc000555fe0 sp=0xc000555f70 pc=0x7ff72be992ec
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000555fe8 sp=0xc000555fe0 pc=0x7ff72b032641
+created by github.com/kkkdddd-start/winalog-go/internal/observability.(*MetricsLogger).Start in goroutine 1
+        /workspace/winalog-go/internal/observability/metrics_logger.go:73 +0x98
+
+goroutine 10 gp=0xc0001b6a80 m=nil [select]:
+runtime.gopark(0xc00039ff78?, 0x2?, 0xe0?, 0xf?, 0xc00039ff5c?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00039fde0 sp=0xc00039fdc0 pc=0x7ff72b02a10e
+runtime.selectgo(0xc00039ff78, 0xc00039ff58, 0x0?, 0x0, 0x0?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc00039ff20 sp=0xc00039fde0 pc=0x7ff72b00a485
+github.com/kkkdddd-start/winalog-go/internal/alerts.(*DedupCache).cleanupLoop(0xc0002faa00)
+        /workspace/winalog-go/internal/alerts/dedup.go:106 +0xf2 fp=0xc00039ffc8 sp=0xc00039ff20 pc=0x7ff72b5cc012
+github.com/kkkdddd-start/winalog-go/internal/alerts.NewDedupCache.gowrap1()
+        /workspace/winalog-go/internal/alerts/dedup.go:34 +0x25 fp=0xc00039ffe0 sp=0xc00039ffc8 pc=0x7ff72b5cb965
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00039ffe8 sp=0xc00039ffe0 pc=0x7ff72b032641
+created by github.com/kkkdddd-start/winalog-go/internal/alerts.NewDedupCache in goroutine 1
+        /workspace/winalog-go/internal/alerts/dedup.go:34 +0xd6
+
+goroutine 11 gp=0xc0001b6c40 m=nil [select]:
+runtime.gopark(0xc0003a3f60?, 0x2?, 0xe0?, 0xf?, 0xc0003a3ebc?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc0003a3d40 sp=0xc0003a3d20 pc=0x7ff72b02a10e
+runtime.selectgo(0xc0003a3f60, 0xc0003a3eb8, 0xc0003a3ee8?, 0x0, 0x0?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc0003a3e80 sp=0xc0003a3d40 pc=0x7ff72b00a485
+github.com/kkkdddd-start/winalog-go/internal/alerts.(*Evaluator).cleanupExpiredEntries(0xc000348ea0)
+        /workspace/winalog-go/internal/alerts/evaluator.go:50 +0xdc fp=0xc0003a3fc8 sp=0xc0003a3e80 pc=0x7ff72b5ce57c
+github.com/kkkdddd-start/winalog-go/internal/alerts.NewEvaluator.gowrap1()
+        /workspace/winalog-go/internal/alerts/evaluator.go:38 +0x25 fp=0xc0003a3fe0 sp=0xc0003a3fc8 pc=0x7ff72b5ce465
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0003a3fe8 sp=0xc0003a3fe0 pc=0x7ff72b032641
+created by github.com/kkkdddd-start/winalog-go/internal/alerts.NewEvaluator in goroutine 1
+        /workspace/winalog-go/internal/alerts/evaluator.go:38 +0xcc
+
+goroutine 12 gp=0xc0001b6e00 m=3 mp=0xc000065008 [syscall]:
+runtime.cgocall(0x7ff72b033e80, 0xc000065358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000404948 sp=0xc0004048e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72b1d71ed?, 0xc00095b740?, {0xc000404990?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000404968 sp=0xc000404948 pc=0x7ff72b014e4e
+syscall.Syscall(0x39?, 0x3?, 0x3?, 0x1?, 0x2?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc0004049b8 sp=0xc000404968 pc=0x7ff72b02e3a9
+syscall.WaitForSingleObject(0x358, 0xffffffff)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1159 +0x5a fp=0xc000404a00 sp=0xc0004049b8 pc=0x7ff72b0939da
+os.(*Process).wait(0xc0008c4a00)
+        /usr/local/go/src/os/exec_windows.go:28 +0x89 fp=0xc000404a90 sp=0xc000404a00 pc=0x7ff72b0ca9e9
+os.(*Process).Wait(...)
+        /usr/local/go/src/os/exec.go:340
+os/exec.(*Cmd).Wait(0xc00096c600)
+        /usr/local/go/src/os/exec/exec.go:922 +0x45 fp=0xc000404af0 sp=0xc000404a90 pc=0x7ff72b1d7bc5
+os/exec.(*Cmd).Run(0xc00096c600)
+        /usr/local/go/src/os/exec/exec.go:626 +0x2d fp=0xc000404b08 sp=0xc000404af0 pc=0x7ff72b1d680d
+github.com/kkkdddd-start/winalog-go/internal/utils.RunPowerShell({0xc000648990?, 0x65?})
+        /workspace/winalog-go/internal/utils/powershell.go:42 +0x14d fp=0xc000404be0 sp=0xc000404b08 pc=0x7ff72b57fced
+github.com/kkkdddd-start/winalog-go/internal/collectors.GetDLLVersion({0xc000a05110?, 0x7ffdd43f0000?})
+        /workspace/winalog-go/internal/collectors/dll_info.go:166 +0x7b fp=0xc000404c38 sp=0xc000404be0 pc=0x7ff72b66465b
+github.com/kkkdddd-start/winalog-go/internal/collectors.enumProcessModules(0xc00040524c?)
+        /workspace/winalog-go/internal/collectors/dll_info.go:148 +0x413 fp=0xc0004051c8 sp=0xc000404c38 pc=0x7ff72b6643f3
+github.com/kkkdddd-start/winalog-go/internal/collectors.ListLoadedDLLs()
+        /workspace/winalog-go/internal/collectors/dll_info.go:96 +0x1fb fp=0xc000405548 sp=0xc0004051c8 pc=0x7ff72b663cbb
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs(0xc000293890?, 0xc0003ba000)
+        /workspace/winalog-go/internal/api/handlers_system.go:400 +0xa9 fp=0xc000405698 sp=0xc000405548 pc=0x7ff72bede6c9
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs-fm(0xc00025c8e0?)
+        <autogenerated>:1 +0x26 fp=0xc0004056b8 sp=0xc000405698 pc=0x7ff72beeb6e6
+github.com/gin-gonic/gin.(*Context).Next(0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0004056d8 sp=0xc0004056b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc0003ba000)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc000405750 sp=0xc0004056d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000405770 sp=0xc000405750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc0003ba000)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0004058f8 sp=0xc000405770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000405918 sp=0xc0004058f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0xc000405968?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc000405950 sp=0xc000405918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000405970 sp=0xc000405950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc000405b18 sp=0xc000405970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc0002a4000}, 0xc0002783c0)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc000405b60 sp=0xc000405b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0xc0002fb400?}, {0x7ff72c62c770?, 0xc0002a4000?}, 0x1?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc000405b90 sp=0xc000405b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc000128870, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc000405fb8 sp=0xc000405b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc000405fe0 sp=0xc000405fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000405fe8 sp=0xc000405fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 145 gp=0xc0001b6fc0 m=6 mp=0xc000360008 [syscall]:
+runtime.cgocall(0x7ff72b033e80, 0xc000360358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000046948 sp=0xc0000468e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72b1d71ed?, 0xc000a85c40?, {0xc000046990?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000046968 sp=0xc000046948 pc=0x7ff72b014e4e
+syscall.Syscall(0x39?, 0x3?, 0x3?, 0x1?, 0x2?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc0000469b8 sp=0xc000046968 pc=0x7ff72b02e3a9
+syscall.WaitForSingleObject(0x3ac, 0xffffffff)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1159 +0x5a fp=0xc000046a00 sp=0xc0000469b8 pc=0x7ff72b0939da
+os.(*Process).wait(0xc000aa63c0)
+        /usr/local/go/src/os/exec_windows.go:28 +0x89 fp=0xc000046a90 sp=0xc000046a00 pc=0x7ff72b0ca9e9
+os.(*Process).Wait(...)
+        /usr/local/go/src/os/exec.go:340
+os/exec.(*Cmd).Wait(0xc000a11b00)
+        /usr/local/go/src/os/exec/exec.go:922 +0x45 fp=0xc000046af0 sp=0xc000046a90 pc=0x7ff72b1d7bc5
+os/exec.(*Cmd).Run(0xc000a11b00)
+        /usr/local/go/src/os/exec/exec.go:626 +0x2d fp=0xc000046b08 sp=0xc000046af0 pc=0x7ff72b1d680d
+github.com/kkkdddd-start/winalog-go/internal/utils.RunPowerShell({0xc000b20000?, 0x65?})
+        /workspace/winalog-go/internal/utils/powershell.go:42 +0x14d fp=0xc000046be0 sp=0xc000046b08 pc=0x7ff72b57fced
+github.com/kkkdddd-start/winalog-go/internal/collectors.GetDLLVersion({0xc000a7bba0?, 0x7ffddd8c0000?})
+        /workspace/winalog-go/internal/collectors/dll_info.go:166 +0x7b fp=0xc000046c38 sp=0xc000046be0 pc=0x7ff72b66465b
+github.com/kkkdddd-start/winalog-go/internal/collectors.enumProcessModules(0xc00004724c?)
+        /workspace/winalog-go/internal/collectors/dll_info.go:148 +0x413 fp=0xc0000471c8 sp=0xc000046c38 pc=0x7ff72b6643f3
+github.com/kkkdddd-start/winalog-go/internal/collectors.ListLoadedDLLs()
+        /workspace/winalog-go/internal/collectors/dll_info.go:96 +0x1fb fp=0xc000047548 sp=0xc0000471c8 pc=0x7ff72b663cbb
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs(0xc000545470?, 0xc000661b00)
+        /workspace/winalog-go/internal/api/handlers_system.go:400 +0xa9 fp=0xc000047698 sp=0xc000047548 pc=0x7ff72bede6c9
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs-fm(0xc00009c290?)
+        <autogenerated>:1 +0x26 fp=0xc0000476b8 sp=0xc000047698 pc=0x7ff72beeb6e6
+github.com/gin-gonic/gin.(*Context).Next(0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0000476d8 sp=0xc0000476b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc000661b00)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc000047750 sp=0xc0000476d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000047770 sp=0xc000047750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc000661b00)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0000478f8 sp=0xc000047770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000047918 sp=0xc0000478f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0x149fd553ab8?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc000047950 sp=0xc000047918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000047970 sp=0xc000047950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc000047b18 sp=0xc000047970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc0002a40f0}, 0xc000334000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc000047b60 sp=0xc000047b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0xc0004ae600?}, {0x7ff72c62c770?, 0xc0002a40f0?}, 0x6?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc000047b90 sp=0xc000047b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc00059c000, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc000047fb8 sp=0xc000047b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc000047fe0 sp=0xc000047fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000047fe8 sp=0xc000047fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 2167 gp=0xc0001b7180 m=5 mp=0xc000080008 [syscall]:
+runtime.cgocall(0x7ff72b033e80, 0xc000080358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc00039dab8 sp=0xc00039da50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d236a18?, 0x149f80eca20?, {0xc00039db00?, 0xc00039db30?, 0x7ff72afdcd05?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc00039dad8 sp=0xc00039dab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd5666a0?, 0x41?, 0xc00039db68?, 0x7ff72afd41d6?, 0x7ff72d264320?, 0xc00039dbc0?, 0x7ff72afca71b?, 0x149f80e0108?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc00039db40 sp=0xc00039dad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x28c, {0xc000bcd200?, 0x200, 0x7ff72b027b05?}, 0x7ff72b026ede?, 0xc00039dbf8?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc00039dbb0 sp=0xc00039db40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc00039dc60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc00039dbf0 sp=0xc00039dbb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0x0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc00039dc60 sp=0xc00039dbf0 pc=0x7ff72b0bdf87
+runtime.exitsyscallfast(0xc0001b7180?)
+        /usr/local/go/src/runtime/proc.go:4898 +0x145 fp=0xc00039dca8 sp=0xc00039dc60 pc=0x7ff72b002045
+runtime.exitsyscall()
+        /usr/local/go/src/runtime/proc.go:4844 +0x159 fp=0xc00039dd18 sp=0xc00039dca8 pc=0x7ff72b02a659
+runtime.cgocall(0x7ff72b033e80, 0xc000080358)
+        /usr/local/go/src/runtime/cgocall.go:198 +0xd0 fp=0xc00039dd80 sp=0xc00039dd18 pc=0x7ff72b026f70
+runtime.syscall_syscalln(0x490?, 0x149fd7b2280?, {0x7ff72b030677?, 0xc00039de98?, 0x7ff72afd353a?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc00039dda0 sp=0xc00039dd80 pc=0x7ff72b014e4e
+syscall.Syscall(0xc00039de01?, 0xc0009b4ee0?, 0xc00039de50?, 0x7ff72b0cc26f?, 0x7ff72c622f20?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc00039ddf0 sp=0xc00039dda0 pc=0x7ff72b02e3a9
+runtime: g 2206: unexpected return pc for syscall.Syscall called from 0x7ff72c252520
+stack: frame={sp:0xc00039dda0, fp:0xc00039ddf0} stack=[0xc00039c000,0xc00039e000)
+0x000000c00039dca0:  0x00007ff72b02a659 <runtime.exitsyscall+0x0000000000000159>  0x0000000000000000
+0x000000c00039dcb0:  0x0000000000000000  0x0000000000000200
+0x000000c00039dcc0:  0x0000000000000200  0x000000c000c85800
+0x000000c00039dcd0:  0x00007ff72b0bee40 <internal/poll.(*FD).Read.deferwrap1+0x0000000000000000>  0x000000c000cae508
+0x000000c00039dce0:  0x000000c00039dcd0  0x0000000000000000
+0x000000c00039dcf0:  0x000000c00039dd30  0x00007ff72b0cba8f <os.(*File).Read+0x000000000000004f>
+0x000000c00039dd00:  0x000000c000c58f08  0x000000c000c56600
+0x000000c00039dd10:  0x0000000000000200  0x0000000000000200
+0x000000c00039dd20:  0x000000c0001a5b58  0x0000000000000000
+0x000000c00039dd30:  0x000000c00039dd88  0x00007ff72b0f6078 <bytes.(*Buffer).ReadFrom+0x0000000000000098>
+0x000000c00039dd40:  0x000000c0009b5060  0x000000c000c56600
+0x000000c00039dd50:  0x0000000000000001  0x0000000000000000
+0x000000c00039dd60:  0x0000000000000000  0x000000c0001a5808
+0x000000c00039dd70:  0x000100c00039dd90  0x0000000000000000
+0x000000c00039dd80:  0x00000149f80e05a0  0x000000c00039de00
+0x000000c00039dd90:  0x00007ff72b080071 <io.copyBuffer+0x0000000000000151>  0x000000c000c689c0
+0x000000c00039dda0: <0x00007ff72c622e20  0x000000c0009b5148
+0x000000c00039ddb0:  0x0000000000000008  0x00007ff72c252520
+0x000000c00039ddc0:  0x00007ff72afd353a <runtime.SetFinalizer+0x000000000000031a>  0x000000c00039de48
+0x000000c00039ddd0:  0x000000c00039de00  0x00007ff72afc77a5 <runtime.convT+0x0000000000000045>
+0x000000c00039dde0:  0x0000000000000008  0x00007ff72c252520
+0x000000c00039ddf0: >0x000000c00039de01  0x000000c000bb0970
+0x000000c00039de00:  0x000000c00039de50  0x00007ff72b0cc26f <os.genericWriteTo+0x000000000000004f>
+0x000000c00039de10:  0x00007ff72c622f20  0x000000c000ce4ed0
+0x000000c00039de20:  0x00007ff72c622e20  0x000000c000bb0970
+0x000000c00039de30:  0x0000000000000000  0x0000000000000000
+0x000000c00039de40:  0x0000000000000000  0x000000c000bb0a30
+0x000000c00039de50:  0x000000c00039de78  0x00007ff72b0cc1a9 <os.(*File).WriteTo+0x0000000000000049>
+0x000000c00039de60:  0x0000000000000000  0x00007ff72c622f20
+0x000000c00039de70:  0x000000c000d010b0  0x000000c00039def0
+0x000000c00039de80:  0x00007ff72b07ffbd <io.copyBuffer+0x000000000000009d>  0x00007ff72d1a0d30
+0x000000c00039de90:  0x00007ff72c622f20  0x000000c000d010b0
+0x000000c00039dea0:  0x00007ff72b0ce27b <os.(*file).close+0x000000000000017b>  0x000000c0001b7180
+0x000000c00039deb0:  0x000000c00039df20  0x00007ff72afc20de <runtime.chansend+0x00000000000004fe>
+0x000000c00039dec0:  0x0000000000000000  0x0000000000000000
+0x000000c00039ded0:  0x000000c00039df90  0x0000000000000000
+0x000000c00039dee0:  0x0000000000000003  0x00007ff72b00b336 <runtime.readyWithTime+0x0000000000000076>
+created by os/exec.(*Cmd).Start in goroutine 966
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 2059 gp=0xc0001b7880 m=nil [IO wait]:
+runtime.gopark(0x7ff72b033e80?, 0x7ff72d21c470?, 0x0?, 0x0?, 0x2b026ede?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000379d18 sp=0xc000379cf8 pc=0x7ff72b02a10e
+runtime.netpollblock(0x1?, 0x2d1b68e0?, 0xf7?)
+        /usr/local/go/src/runtime/netpoll.go:575 +0xf7 fp=0xc000379d50 sp=0xc000379d18 pc=0x7ff72afef637
+internal/poll.runtime_pollWait(0x149fd553600, 0x72)
+        /usr/local/go/src/runtime/netpoll.go:351 +0x85 fp=0xc000379d70 sp=0xc000379d50 pc=0x7ff72b0292a5
+internal/poll.(*pollDesc).wait(0x3f0?, 0x7ff72afc0d66?, 0x0)
+        /usr/local/go/src/internal/poll/fd_poll_runtime.go:84 +0x27 fp=0xc000379d98 sp=0xc000379d70 pc=0x7ff72b0bc867
+internal/poll.waitIO(0xc000379e20?)
+        /usr/local/go/src/internal/poll/fd_windows.go:187 +0x65 fp=0xc000379de0 sp=0xc000379d98 pc=0x7ff72b0bdca5
+internal/poll.execIO(0xc0009e11a0, 0x7ff72c40b948)
+        /usr/local/go/src/internal/poll/fd_windows.go:240 +0x13a fp=0xc000379e50 sp=0xc000379de0 pc=0x7ff72b0be01a
+internal/poll.(*FD).Read(0xc0009e1188, {0xc00097d1e1, 0x1, 0x1})
+        /usr/local/go/src/internal/poll/fd_windows.go:537 +0x1ee fp=0xc000379ef0 sp=0xc000379e50 pc=0x7ff72b0beace
+net.(*netFD).Read(0xc0009e1188, {0xc00097d1e1?, 0x1?, 0xc000379fb8?})
+        /usr/local/go/src/net/fd_posix.go:68 +0x25 fp=0xc000379f38 sp=0xc000379ef0 pc=0x7ff72b1feb25
+net.(*conn).Read(0xc0009b4238, {0xc00097d1e1?, 0x0?, 0x0?})
+        /usr/local/go/src/net/net.go:196 +0x45 fp=0xc000379f80 sp=0xc000379f38 pc=0x7ff72b20df85
+net/http.(*connReader).backgroundRead(0xc00097d1c0)
+        /usr/local/go/src/net/http/server.go:702 +0x33 fp=0xc000379fc8 sp=0xc000379f80 pc=0x7ff72b55d173
+net/http.(*connReader).startBackgroundRead.gowrap2()
+        /usr/local/go/src/net/http/server.go:698 +0x25 fp=0xc000379fe0 sp=0xc000379fc8 pc=0x7ff72b55d0a5
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000379fe8 sp=0xc000379fe0 pc=0x7ff72b032641
+created by net/http.(*connReader).startBackgroundRead in goroutine 2058
+        /usr/local/go/src/net/http/server.go:698 +0xb6
+
+goroutine 2315 gp=0xc0001b7c00 m=22 mp=0xc000d0a008 [syscall]:
+runtime.cgocall(0x7ff72b033e80, 0xc000d0a358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000427ab8 sp=0xc000427a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2360f0?, 0x149fd7b70d0?, {0xc000427b00?, 0xc000427b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000427ad8 sp=0xc000427ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd7bd4d0?, 0xc0004bbe35?, 0x1000c000107bd8?, 0x149fd7bd4d0?, 0x35?, 0xc000427bc0?, 0x7ff72afca71b?, 0x149f80e0108?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000427b40 sp=0xc000427ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x414, {0xc000e07200?, 0x200, 0x7ff72b027b05?}, 0x7ff72b026ede?, 0xc000427bf8?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000427bb0 sp=0xc000427b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000427c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000427bf0 sp=0xc000427bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0x0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000427c60 sp=0xc000427bf0 pc=0x7ff72b0bdf87
+runtime.exitsyscallfast(0xc0001b7c00?)
+        /usr/local/go/src/runtime/proc.go:4898 +0x145 fp=0xc000427ca8 sp=0xc000427c60 pc=0x7ff72b002045
+runtime.exitsyscall()
+        /usr/local/go/src/runtime/proc.go:4844 +0x159 fp=0xc000427d18 sp=0xc000427ca8 pc=0x7ff72b02a659
+runtime.cgocall(0x7ff72b033e80, 0xc0001a5b58)
+        /usr/local/go/src/runtime/cgocall.go:198 +0xd0 fp=0xc000427d80 sp=0xc000427d18 pc=0x7ff72b026f70
+runtime.syscall_syscalln(0x490?, 0x149fd7bccb0?, {0x7ff72b030677?, 0xc000427e98?, 0x7ff72afd353a?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000427da0 sp=0xc000427d80 pc=0x7ff72b014e4e
+syscall.Syscall(0xc000427e01?, 0xc0009b5cb8?, 0xc000427e50?, 0x7ff72b0cc26f?, 0x7ff72c622f20?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc000427df0 sp=0xc000427da0 pc=0x7ff72b02e3a9
+runtime: g 2370: unexpected return pc for syscall.Syscall called from 0x7ff72c252520
+stack: frame={sp:0xc000427da0, fp:0xc000427df0} stack=[0xc000426000,0xc000428000)
+0x000000c000427ca0:  0x00000000000003d8  0x0000000000000000
+0x000000c000427cb0:  0x0000000200000003  0x0000000000000200
+0x000000c000427cc0:  0x0000000000000200  0x000000c000e49e00
+0x000000c000427cd0:  0x00007ff72b0bee40 <internal/poll.(*FD).Read.deferwrap1+0x0000000000000000>  0x000000c000e63688
+0x000000c000427ce0:  0x000000c000427cd0  0x0000000000000000
+0x000000c000427cf0:  0x000000c000427d30  0x00007ff72b0cba8f <os.(*File).Read+0x000000000000004f>
+0x000000c000427d00:  0x000000c000e71188  0x000000c000ed8400
+0x000000c000427d10:  0x0000000000000200  0x0000000000000200
+0x000000c000427d20:  0x000000c00067fb58  0x0000000000000000
+0x000000c000427d30:  0x000000c000427d88  0x00007ff72b0f6078 <bytes.(*Buffer).ReadFrom+0x0000000000000098>
+0x000000c000427d40:  0x000000c0009b5e70  0x000000c000ec6c28
+0x000000c000427d50:  0x0000000000000001  0x0000000000000000
+0x000000c000427d60:  0x0000000000000000  0x000000c00067f808
+0x000000c000427d70:  0x000100c000427d90  0x0000000000000000
+0x000000c000427d80:  0x00000149f80e05a0  0x000000c000427e00
+0x000000c000427d90:  0x00007ff72b080071 <io.copyBuffer+0x0000000000000151>  0x000000c000eea960
+0x000000c000427da0: <0x00007ff72c622e20  0x000000c000bb14f8
+0x000000c000427db0:  0x00007ff72b030677 <runtime.systemstack+0x0000000000000037>  0x000000c000427e98
+0x000000c000427dc0:  0x00007ff72afd353a <runtime.SetFinalizer+0x000000000000031a>  0x000000c000427e48
+0x000000c000427dd0:  0x0000000000000000  0x0000000000000000
+0x000000c000427de0:  0x000000c000427e20  0x00007ff72b0906ef <syscall.CloseHandle+0x000000000000004f>
+0x000000c000427df0: >0x000000c000427e08  0x000000c000427e20
+0x000000c000427e00:  0x00007ff72b02b9d8 <internal/poll.runtime_Semrelease+0x0000000000000018>  0x0000000000000008
+0x000000c000427e10:  0x00007ff72c08ffc0  0x00007ff72d1b50e0
+0x000000c000427e20:  0x000000c000427e48  0x00007ff72b0be7af <internal/poll.(*FD).destroy+0x00000000000000cf>
+0x000000c000427e30:  0x000000c000427e68  0x00007ff72b02b7e5 <internal/poll.runtime_Semacquire+0x0000000000000025>
+0x000000c000427e40:  0x00007ff72c0dfa60  0x00007ff72afd3980 <runtime.SetFinalizer.func1+0x0000000000000000>
+0x000000c000427e50:  0x000000c000427ea8  0x000000c000ee3b88
+0x000000c000427e60:  0x0000000000000000  0x000000c000427e98
+0x000000c000427e70:  0x00007ff72b0be87f <internal/poll.(*FD).Close+0x000000000000007f>  0x000000000000016c
+0x000000c000427e80:  0x00007ff72b07ffbd <io.copyBuffer+0x000000000000009d>  0x00007ff72b0282ff <runtime.typedmemmove+0x000000000000005f>
+0x000000c000427e90:  0x0000000000000000  0x000000c000427ef0
+0x000000c000427ea0:  0x00007ff72b0ce27b <os.(*file).close+0x000000000000017b>  0x000000c0001b7c00
+0x000000c000427eb0:  0x000000c000427f20  0x00007ff72afc20de <runtime.chansend+0x00000000000004fe>
+0x000000c000427ec0:  0x0000000000000000  0x0000000000000000
+0x000000c000427ed0:  0x000000c000427f00  0x0000000000000000
+0x000000c000427ee0:  0x000000c000427f10  0x00007ff72b00b336 <runtime.readyWithTime+0x0000000000000076>
+created by os/exec.(*Cmd).Start in goroutine 2018
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 53 gp=0xc000086700 m=nil [GC worker (idle)]:
+runtime.gopark(0x69b897c28a8?, 0xc0003d2800?, 0x1c?, 0xa?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000423f38 sp=0xc000423f18 pc=0x7ff72b02a10e
+runtime.gcBgMarkWorker(0xc0003983f0)
+        /usr/local/go/src/runtime/mgc.go:1463 +0xeb fp=0xc000423fc8 sp=0xc000423f38 pc=0x7ff72afd65ab
+runtime.gcBgMarkStartWorkers.gowrap1()
+        /usr/local/go/src/runtime/mgc.go:1373 +0x25 fp=0xc000423fe0 sp=0xc000423fc8 pc=0x7ff72afd6485
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000423fe8 sp=0xc000423fe0 pc=0x7ff72b032641
+created by runtime.gcBgMarkStartWorkers in goroutine 12
+        /usr/local/go/src/runtime/mgc.go:1373 +0x105
+
+goroutine 52 gp=0xc0000868c0 m=nil [GC worker (idle), 1 minutes]:
+runtime.gopark(0x69731aa6238?, 0xc0003d2600?, 0x1c?, 0xa?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000437f38 sp=0xc000437f18 pc=0x7ff72b02a10e
+runtime.gcBgMarkWorker(0xc0003983f0)
+        /usr/local/go/src/runtime/mgc.go:1463 +0xeb fp=0xc000437fc8 sp=0xc000437f38 pc=0x7ff72afd65ab
+runtime.gcBgMarkStartWorkers.gowrap1()
+        /usr/local/go/src/runtime/mgc.go:1373 +0x25 fp=0xc000437fe0 sp=0xc000437fc8 pc=0x7ff72afd6485
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000437fe8 sp=0xc000437fe0 pc=0x7ff72b032641
+created by runtime.gcBgMarkStartWorkers in goroutine 12
+        /usr/local/go/src/runtime/mgc.go:1373 +0x105
+
+goroutine 2461 gp=0xc000086a80 m=15 mp=0xc0002c2808 [syscall]:
+runtime.cgocall(0x7ff72b033e80, 0xc0002c2b58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000439ab8 sp=0xc000439a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2360f0?, 0x149fd7ae9a0?, {0xc000439b00?, 0xc000439b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000439ad8 sp=0xc000439ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd7ad960?, 0x7ff72b57ff35?, 0x1000c000109b68?, 0x149fd7ad960?, 0x35?, 0xc000439bc0?, 0x7ff72afca71b?, 0x149f80e0108?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000439b40 sp=0xc000439ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x320, {0xc001016400?, 0x200, 0x7ff72b027b05?}, 0xc000439d08?, 0x10?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000439bb0 sp=0xc000439b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000439c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000439bf0 sp=0xc000439bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc0010147a0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000439c60 sp=0xc000439bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc00102bb88, {0xc001017400, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc000439d00 sp=0xc000439c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc000f12e08, {0xc001017400?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc000439d40 sp=0xc000439d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc001046fc0, {0x7ff72c622e20, 0xc000f12fa8})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc000439d98 sp=0xc000439d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc001046fc0}, {0x7ff72c622e20, 0xc000f12fa8}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc000439e10 sp=0xc000439d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc001061500})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc000439e60 sp=0xc000439e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc00107a7e0?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc000439e88 sp=0xc000439e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc00107a7e0}, {0x7ff72c622ce0, 0xc000f13190}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc000439f00 sp=0xc000439e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc000439f60 sp=0xc000439f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0xc0004ae340?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc000439fc8 sp=0xc000439f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc000439fe0 sp=0xc000439fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000439fe8 sp=0xc000439fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 12
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 245 gp=0xc000087340 m=nil [chan receive, 2 minutes]:
+runtime.gopark(0x7ff72b00b380?, 0xc0001b6fc0?, 0x4?, 0x0?, 0xc00045bf50?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00045bef8 sp=0xc00045bed8 pc=0x7ff72b02a10e
+runtime.chanrecv(0xc0000f1b90, 0xc00045bfb0, 0x1)
+        /usr/local/go/src/runtime/chan.go:667 +0x473 fp=0xc00045bf70 sp=0xc00045bef8 pc=0x7ff72afc2fb3
+runtime.chanrecv2(0xc00045bf50?, 0x0?)
+        /usr/local/go/src/runtime/chan.go:514 +0x12 fp=0xc00045bf98 sp=0xc00045bf70 pc=0x7ff72afc2b32
+github.com/kkkdddd-start/winalog-go/internal/monitor.(*MonitorEngine).processEvents(0xc000128750)
+        /workspace/winalog-go/internal/monitor/monitor.go:136 +0x5b fp=0xc00045bfc8 sp=0xc00045bf98 pc=0x7ff72bea9e3b
+github.com/kkkdddd-start/winalog-go/internal/monitor.(*MonitorEngine).Start.gowrap2()
+        /workspace/winalog-go/internal/monitor/monitor.go:93 +0x25 fp=0xc00045bfe0 sp=0xc00045bfc8 pc=0x7ff72bea9b45
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00045bfe8 sp=0xc00045bfe0 pc=0x7ff72b032641
+created by github.com/kkkdddd-start/winalog-go/internal/monitor.(*MonitorEngine).Start in goroutine 145
+        /workspace/winalog-go/internal/monitor/monitor.go:93 +0x2c9
+
+goroutine 966 gp=0xc000087dc0 m=12 mp=0xc0002c2008 [syscall]:
+runtime.cgocall(0x7ff72b033e80, 0xc0002c2358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc0005a2948 sp=0xc0005a28e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72b1d71ed?, 0xc001100740?, {0xc0005a2990?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc0005a2968 sp=0xc0005a2948 pc=0x7ff72b014e4e
+syscall.Syscall(0x39?, 0x3?, 0x3?, 0x1?, 0x2?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc0005a29b8 sp=0xc0005a2968 pc=0x7ff72b02e3a9
+syscall.WaitForSingleObject(0x278, 0xffffffff)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1159 +0x5a fp=0xc0005a2a00 sp=0xc0005a29b8 pc=0x7ff72b0939da
+os.(*Process).wait(0xc001120140)
+        /usr/local/go/src/os/exec_windows.go:28 +0x89 fp=0xc0005a2a90 sp=0xc0005a2a00 pc=0x7ff72b0ca9e9
+os.(*Process).Wait(...)
+        /usr/local/go/src/os/exec.go:340
+os/exec.(*Cmd).Wait(0xc0010eaa80)
+        /usr/local/go/src/os/exec/exec.go:922 +0x45 fp=0xc0005a2af0 sp=0xc0005a2a90 pc=0x7ff72b1d7bc5
+os/exec.(*Cmd).Run(0xc0010eaa80)
+        /usr/local/go/src/os/exec/exec.go:626 +0x2d fp=0xc0005a2b08 sp=0xc0005a2af0 pc=0x7ff72b1d680d
+github.com/kkkdddd-start/winalog-go/internal/utils.RunPowerShell({0xc0010f1480?, 0x65?})
+        /workspace/winalog-go/internal/utils/powershell.go:42 +0x14d fp=0xc0005a2be0 sp=0xc0005a2b08 pc=0x7ff72b57fced
+github.com/kkkdddd-start/winalog-go/internal/collectors.GetDLLVersion({0xc001124da0?, 0x7ffdcdb20000?})
+        /workspace/winalog-go/internal/collectors/dll_info.go:166 +0x7b fp=0xc0005a2c38 sp=0xc0005a2be0 pc=0x7ff72b66465b
+github.com/kkkdddd-start/winalog-go/internal/collectors.enumProcessModules(0xc0005a324c?)
+        /workspace/winalog-go/internal/collectors/dll_info.go:148 +0x413 fp=0xc0005a31c8 sp=0xc0005a2c38 pc=0x7ff72b6643f3
+github.com/kkkdddd-start/winalog-go/internal/collectors.ListLoadedDLLs()
+        /workspace/winalog-go/internal/collectors/dll_info.go:96 +0x1fb fp=0xc0005a3548 sp=0xc0005a31c8 pc=0x7ff72b663cbb
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs(0xc0005447e0?, 0xc000660b00)
+        /workspace/winalog-go/internal/api/handlers_system.go:400 +0xa9 fp=0xc0005a3698 sp=0xc0005a3548 pc=0x7ff72bede6c9
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs-fm(0xc0004862f0?)
+        <autogenerated>:1 +0x26 fp=0xc0005a36b8 sp=0xc0005a3698 pc=0x7ff72beeb6e6
+github.com/gin-gonic/gin.(*Context).Next(0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a36d8 sp=0xc0005a36b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc000660b00)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc0005a3750 sp=0xc0005a36d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a3770 sp=0xc0005a3750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc000660b00)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0005a38f8 sp=0xc0005a3770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a3918 sp=0xc0005a38f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0x149fd5538b8?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc0005a3950 sp=0xc0005a3918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a3970 sp=0xc0005a3950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc0005a3b18 sp=0xc0005a3970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc0002a41e0}, 0xc000224000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc0005a3b60 sp=0xc0005a3b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0xc0004f43c0?}, {0x7ff72c62c770?, 0xc0002a41e0?}, 0x1?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc0005a3b90 sp=0xc0005a3b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc000628090, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc0005a3fb8 sp=0xc0005a3b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc0005a3fe0 sp=0xc0005a3fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0005a3fe8 sp=0xc0005a3fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 2616 gp=0xc000002000 m=16 mp=0xc0002c3008 [syscall]:
+runtime.cgocall(0x7ff72b033e80, 0xc0002c3358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc00018bab8 sp=0xc00018ba50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2369f0?, 0x149fd7ba4b0?, {0xc00018bb00?, 0xc00018bb30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc00018bad8 sp=0xc00018bab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd7b9790?, 0x7ff72c61ef41?, 0x800c00008bb68?, 0x149fd7b9790?, 0x41?, 0xc00018bbc0?, 0x7ff72afca71b?, 0x149f80e05a0?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc00018bb40 sp=0xc00018bad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x414, {0xc001215000?, 0x200, 0x7ff72b027b05?}, 0x7ff72afce271?, 0xc00018bbf8?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc00018bbb0 sp=0xc00018bb40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc00018bc60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc00018bbf0 sp=0xc00018bbb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc0012502a0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc00018bc60 sp=0xc00018bbf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc001250288, {0xc001284400, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc00018bd00 sp=0xc00018bc60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0x1, {0xc00125e200?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc00018bd40 sp=0xc00018bd00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc00128b260, {0x7ff72c622e20, 0xc00121a368})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc00018bd98 sp=0xc00018bd40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc00128b260}, {0x7ff72c622e20, 0x7ff72b0be7af}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc00018be10 sp=0xc00018bd98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc001265620})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc00018be60 sp=0xc00018be10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72b0282ff?, {0x0?, 0xc00018bef0?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc00018be88 sp=0xc00018be60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0xc00012f338, 0xc00012f3a8}, {0x7ff72c622ce0, 0xc00121a428}, {0xc00018bf50, 0x7ff72afc1bd7, 0xc00012f2d0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc00018bf00 sp=0xc00018be88 pc=0x7ff72b07ffbd
+fatal error: unexpected signal during runtime execution
+{"timestamp":"2026-04-20T15:20:15+08:00","level":"info","message":"[API]","status":200,"latency":"29.7291ms","client_ip":"127.0.0.1","method":"GET","path":"/api/system/info"}
+[signal 0xc0000005 code=0x0 addr=0xe0 pc=0x7ff72b018a45]
+
+runtime stack:
+runtime.throw({0x7ff72c2cf09a?, 0xe?})
+        /usr/local/go/src/runtime/panic.go:1094 +0x4d fp=0x3bb6bfe158 sp=0x3bb6bfe128 pc=0x7ff72b029fed
+runtime.sigpanic()
+        /usr/local/go/src/runtime/signal_windows.go:387 +0x265 fp=0x3bb6bfe1a0 sp=0x3bb6bfe158 pc=0x7ff72b00d045
+runtime.(*unwinder).next(0x3bb6bfe568)
+        /usr/local/go/src/runtime/traceback.go:458 +0x105 fp=0x3bb6bfe218 sp=0x3bb6bfe1a0 pc=0x7ff72b018a45
+runtime.traceback2(0x3bb6bfe568, 0x0, 0x0, 0x22)
+        /usr/local/go/src/runtime/traceback.go:967 +0x105 fp=0x3bb6bfe478 sp=0x3bb6bfe218 pc=0x7ff72b01a265
+runtime.traceback1.func1(0x0)
+        /usr/local/go/src/runtime/traceback.go:903 +0x65 fp=0x3bb6bfe540 sp=0x3bb6bfe478 pc=0x7ff72b01a025
+runtime.traceback1(0xc000002000?, 0x7ff72c617100?, 0x7ff700000001?, 0xc000002000, 0x85?)
+        /usr/local/go/src/runtime/traceback.go:926 +0x20f fp=0x3bb6bfe748 sp=0x3bb6bfe540 pc=0x7ff72b019e8f
+runtime.traceback(...)
+        /usr/local/go/src/runtime/traceback.go:803
+runtime.tracebacksomeothers.func1(0xc000002000)
+        /usr/local/go/src/runtime/traceback.go:1306 +0x105 fp=0x3bb6bfe788 sp=0x3bb6bfe748 pc=0x7ff72b01ba45
+runtime.forEachGRace(0x3bb6bfe7f0)
+        /usr/local/go/src/runtime/proc.go:745 +0x45 fp=0x3bb6bfe7b8 sp=0x3bb6bfe788 pc=0x7ff72aff93e5
+runtime.tracebacksomeothers(0x7ff72c27b850?, 0x170?)
+        /usr/local/go/src/runtime/traceback.go:1292 +0xe5 fp=0x3bb6bfe828 sp=0x3bb6bfe7b8 pc=0x7ff72b01b905
+runtime.tracebackothers(...)
+        /usr/local/go/src/runtime/traceback.go:1271
+runtime.winthrow(0x3bb6bff6b0, 0x3bb6bff1c0, 0xc000473180)
+        /usr/local/go/src/runtime/signal_windows.go:373 +0x237 fp=0x3bb6bfe890 sp=0x3bb6bfe828 pc=0x7ff72b00cd97
+runtime.lastcontinuehandler(0x0?, 0x3bb6bfebc0?, 0x0?)
+        /usr/local/go/src/runtime/signal_windows.go:334 +0x27 fp=0x3bb6bfe8b8 sp=0x3bb6bfe890 pc=0x7ff72b00cb47
+runtime.sigtrampgo(0x3bb6bfea60, 0x0?)
+        /usr/local/go/src/runtime/signal_windows.go:176 +0xb4 fp=0x3bb6bfe918 sp=0x3bb6bfe8b8 pc=0x7ff72b00c654
+sigtramp()
+        /usr/local/go/src/runtime/sys_windows_amd64.s:127 +0xaa fp=0x3bb6bfea20 sp=0x3bb6bfe918 pc=0x7ff72b033dca
+runtime: g 0: unexpected return pc for sigtramp called from 0x7ffddd92aac0
+stack: frame={sp:0x3bb6bfe918, fp:0x3bb6bfea20} stack=[0x0,0x3bb6bffb30)
+0x0000003bb6bfe818:  0x0000003bb6bfe880  0x00007ff72b00cd97 <runtime.winthrow+0x0000000000000237>
+0x0000003bb6bfe828:  0x00007ff72c27b850  0x0000000000000170
+0x0000003bb6bfe838:  0x0000003bb6bfe870  0x00007ff72aff269b <runtime.stdcall+0x000000000000007b>
+0x0000003bb6bfe848:  0x000000042b033e80  0x00007ffddac8c61a
+0x0000003bb6bfe858:  0x0000000000000000  0x0000000000000001
+0x0000003bb6bfe868:  0x00000000c0000005  0x000000c000473180
+0x0000003bb6bfe878:  0x000000c000087a40  0x0000003bb6bfe8a8
+0x0000003bb6bfe888:  0x00007ff72b00cb47 <runtime.lastcontinuehandler+0x0000000000000027>  0x0000003bb6bff6b0
+0x0000003bb6bfe898:  0x0000003bb6bff1c0  0x000000c000473180
+0x0000003bb6bfe8a8:  0x0000003bb6bfe908  0x00007ff72b00c654 <runtime.sigtrampgo+0x00000000000000b4>
+0x0000003bb6bfe8b8:  0x0000000000000000  0x0000003bb6bfebc0
+0x0000003bb6bfe8c8:  0x0000000000000000  0x00000000b6bfe8e8
+0x0000003bb6bfe8d8:  0x000000c000473180  0x0000000000000000
+0x0000003bb6bfe8e8:  0x000000c000409fd0  0x00007ff72afb0000
+0x0000003bb6bfe8f8:  0x0000003bb6bfebc0  0x000000c000087a40
+0x0000003bb6bfe908:  0x0000003bb6bfea10  0x00007ff72b033dca <sigtramp+0x00000000000000aa>
+0x0000003bb6bfe918: <0x0000003bb6bfea60  0x0000000000000000
+0x0000003bb6bfe928:  0x00000149f7fd3af0  0x00000149f7fd3af0
+0x0000003bb6bfe938:  0x0000003bb6bfea10  0x0000000000000000
+0x0000003bb6bfe948:  0x00007ffddda0c600  0x0000000000000000
+0x0000003bb6bfe958:  0x00007ff72b033fc0 <runtime.lastcontinuetramp+0x0000000000000000>  0x00000149f7fd3b00
+0x0000003bb6bfe968:  0x000000c00047f2c0  0x000000c00047f360
+0x0000003bb6bfe978:  0x000000c00047f400  0x000000c00047f4a0
+0x0000003bb6bfe988:  0x000000c00047f540  0x000000c00047f5e0
+0x0000003bb6bfe998:  0x000000c00047f720  0x000000c00047f7c0
+0x0000003bb6bfe9a8:  0x000000c00047f860  0x000000c00047f900
+0x0000003bb6bfe9b8:  0x000000c00047f9a0  0x000000c00047fa40
+0x0000003bb6bfe9c8:  0x000000c00047fae0  0x000000c00047fb80
+0x0000003bb6bfe9d8:  0x000000c00047fc20  0x000000c00047fcc0
+0x0000003bb6bfe9e8:  0x000000c00047fd60  0x000000c00047fe00
+0x0000003bb6bfe9f8:  0x0000000000000000  0x0000000000000000
+0x0000003bb6bfea08:  0x0000000000000246  0x00007ffddda0c5f8
+0x0000003bb6bfea18:  0x00007ffddd92aac0 >0x000000c000000000
+0x0000003bb6bfea28:  0x000000c00047fcc0  0x000000c00047fd60
+0x0000003bb6bfea38:  0x00000149f7fd3d20  0x0000000000000000
+0x0000003bb6bfea48:  0x0000000000000000  0x0000000000000003
+0x0000003bb6bfea58:  0x0000003bb2fc2000  0x0000003bb6bff6b0
+0x0000003bb6bfea68:  0x0000003bb6bff1c0  0x0000003bb6bff090
+0x0000003bb6bfea78:  0x00007ff72b032641 <runtime.goexit+0x0000000000000001>  0x0000003bb6bffae0
+0x0000003bb6bfea88:  0x00007ff72afb0000  0x0000003bb6bff6b0
+0x0000003bb6bfea98:  0x0000000000000000  0x0000003bb6bff1c0
+0x0000003bb6bfeaa8:  0x0000003bb6bfebc0  0x0000000000000000
+0x0000003bb6bfeab8:  0x00007ffddd908b4e  0x0000003bb6bff6b0
+0x0000003bb6bfeac8:  0x0000003bb6bff1c0  0x0000003bb6bfea00
+0x0000003bb6bfead8:  0x00000000d729ac88  0x0000000000000036
+0x0000003bb6bfeae8:  0x0000000000000000  0x00000000b6bfede0
+0x0000003bb6bfeaf8:  0x0000000000000000  0x0000000200000000
+0x0000003bb6bfeb08:  0x00007ff72d2790e0  0x0000000000000000
+0x0000003bb6bfeb18:  0x0000000000000000
+
+goroutine 141 gp=0xc000087a40 m=18 mp=0xc00067e008 [syscall]:
+runtime.cgocall(0x7ff72b033e80, 0xc00067e358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000408a90 sp=0xc000408a28 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x0?, 0x0?, {0xc000408b08?, 0x7ff72d1bb1f0?, 0xc000408ac0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000408ab0 sp=0xc000408a90 pc=0x7ff72b014e4e
+syscall.SyscallN(0x7ff72d1bb1e0?, {0xc000408b08?, 0x0?, 0xc000408b58?})
+        /usr/local/go/src/runtime/syscall_windows.go:500 +0x1e fp=0xc000408ae8 sp=0xc000408ab0 pc=0x7ff72b02e5de
+golang.org/x/sys/windows.GetProcessTimes(0x3f8, 0xf38?, 0x7ff72c6171d8?, 0xc000408b98?, 0xc0007f1769?)
+        /go/pkg/mod/golang.org/x/sys@v0.42.0/windows/zsyscall_windows.go:2605 +0xb4 fp=0xc000408b68 sp=0xc000408ae8 pc=0x7ff72b22e4d4
+github.com/kkkdddd-start/winalog-go/internal/collectors.getProcessStartTime(0x408ca4?)
+        /workspace/winalog-go/internal/collectors/process_info.go:181 +0x89 fp=0xc000408bf8 sp=0xc000408b68 pc=0x7ff72b66b0c9
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*ProcessInfoCollector).collectProcessInfo(0xc000618000?)
+        /workspace/winalog-go/internal/collectors/process_info.go:82 +0x245 fp=0xc000408f70 sp=0xc000408bf8 pc=0x7ff72b66a445
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*OneClickCollector).collectProcessInfoWithSignaturesAndDLLs(0xc000409480, {0xc0000d3ae0?, 0xc0000001ed?})
+        /workspace/winalog-go/internal/collectors/one_click.go:263 +0x12a fp=0xc0004091b8 sp=0xc000408f70 pc=0x7ff72b666f4a
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*OneClickCollector).FullCollect(0xc000409480, {0x7ff72c62df10, 0x7ff72d2613e0})
+        /workspace/winalog-go/internal/collectors/one_click.go:168 +0x7f9 fp=0xc000409390 sp=0xc0004091b8 pc=0x7ff72b666459
+github.com/kkkdddd-start/winalog-go/internal/collectors.RunOneClickCollection({0x7ff72c62df10?, 0x7ff72d2613e0?}, {0x7ff72c243080?, 0xc0004095b0?})
+        /workspace/winalog-go/internal/collectors/one_click.go:110 +0x2cb fp=0xc000409520 sp=0xc000409390 pc=0x7ff72b665b4b
+github.com/kkkdddd-start/winalog-go/internal/api.(*CollectHandler).StartCollect(0xc000511770?, 0xc000651d00)
+        /workspace/winalog-go/internal/api/handlers_collect.go:132 +0x215 fp=0xc000409698 sp=0xc000409520 pc=0x7ff72beb7355
+github.com/kkkdddd-start/winalog-go/internal/api.(*CollectHandler).StartCollect-fm(0xc00009ca80?)
+        <autogenerated>:1 +0x26 fp=0xc0004096b8 sp=0xc000409698 pc=0x7ff72beed126
+github.com/gin-gonic/gin.(*Context).Next(0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0004096d8 sp=0xc0004096b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc000651d00)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc000409750 sp=0xc0004096d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000409770 sp=0xc000409750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc000651d00)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0004098f8 sp=0xc000409770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000409918 sp=0xc0004098f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0x2?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc000409950 sp=0xc000409918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000409970 sp=0xc000409950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc000651d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc000409b18 sp=0xc000409970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc000442000}, 0xc000334500)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc000409b60 sp=0xc000409b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0x7ff72c628730?}, {0x7ff72c62c770?, 0xc000442000?}, 0x6?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc000409b90 sp=0xc000409b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc0000cbd40, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc000409fb8 sp=0xc000409b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc000409fe0 sp=0xc000409fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000409fe8 sp=0xc000409fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 1 gp=0xc0000021c0 m=nil [IO wait]:
+runtime.gopark(0x0?, 0xc00037f5f8?, 0xe4?, 0x3?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00037f570 sp=0xc00037f550 pc=0x7ff72b02a10e
+runtime.netpollblock(0x7ff72b014e4e?, 0x2b033e80?, 0xf7?)
+        /usr/local/go/src/runtime/netpoll.go:575 +0xf7 fp=0xc00037f5a8 sp=0xc00037f570 pc=0x7ff72afef637
+internal/poll.runtime_pollWait(0x149fd554400, 0x72)
+        /usr/local/go/src/runtime/netpoll.go:351 +0x85 fp=0xc00037f5c8 sp=0xc00037f5a8 pc=0x7ff72b0292a5
+internal/poll.(*pollDesc).wait(0x128?, 0x7ff72afc0d66?, 0x0)
+        /usr/local/go/src/internal/poll/fd_poll_runtime.go:84 +0x27 fp=0xc00037f5f0 sp=0xc00037f5c8 pc=0x7ff72b0bc867
+internal/poll.waitIO(0x7ff72afca426?)
+        /usr/local/go/src/internal/poll/fd_windows.go:187 +0x65 fp=0xc00037f638 sp=0xc00037f5f0 pc=0x7ff72b0bdca5
+internal/poll.execIO(0xc000115ba0, 0xc00037f6d8)
+        /usr/local/go/src/internal/poll/fd_windows.go:240 +0x13a fp=0xc00037f6a8 sp=0xc00037f638 pc=0x7ff72b0be01a
+internal/poll.(*FD).acceptOne(0xc000115b88, 0x3e4, {0xc0003741e0?, 0xc00037f780?, 0x7ff72afcaa74?}, 0xc000361008?)
+        /usr/local/go/src/internal/poll/fd_windows.go:1063 +0x65 fp=0xc00037f708 sp=0xc00037f6a8 pc=0x7ff72b0c2945
+internal/poll.(*FD).Accept(0xc000115b88, 0xc00037f8b8)
+        /usr/local/go/src/internal/poll/fd_windows.go:1097 +0x1b6 fp=0xc00037f7c0 sp=0xc00037f708 pc=0x7ff72b0c2c76
+net.(*netFD).accept(0xc000115b88)
+        /usr/local/go/src/net/fd_windows.go:202 +0x4b fp=0xc00037f8d8 sp=0xc00037f7c0 pc=0x7ff72b200b2b
+net.(*TCPListener).accept(0xc0002fb3c0)
+        /usr/local/go/src/net/tcpsock_posix.go:159 +0x1b fp=0xc00037f928 sp=0xc00037f8d8 pc=0x7ff72b21697b
+net.(*TCPListener).Accept(0xc0002fb3c0)
+        /usr/local/go/src/net/tcpsock.go:380 +0x30 fp=0xc00037f958 sp=0xc00037f928 pc=0x7ff72b215a30
+net/http.(*onceCloseListener).Accept(0xc0001283f0?)
+        <autogenerated>:1 +0x24 fp=0xc00037f970 sp=0xc00037f958 pc=0x7ff72b57c264
+net/http.(*Server).Serve(0xc000131500, {0x7ff72c62c500, 0xc0002fb3c0})
+        /usr/local/go/src/net/http/server.go:3463 +0x30c fp=0xc00037faa0 sp=0xc00037f970 pc=0x7ff72b5685ac
+net/http.(*Server).ListenAndServe(0xc000131500)
+        /usr/local/go/src/net/http/server.go:3389 +0x72 fp=0xc00037fad0 sp=0xc00037faa0 pc=0x7ff72b568192
+github.com/kkkdddd-start/winalog-go/internal/api.(*Server).Start(0xc000131300)
+        /workspace/winalog-go/internal/api/server.go:210 +0x155 fp=0xc00037fb68 sp=0xc00037fad0 pc=0x7ff72bee9455
+github.com/kkkdddd-start/winalog-go/cmd/winalog/commands.runServe(0xc0000d7400?, {0x7ff72c27cd70?, 0x4?, 0x7ff72c27cd50?})
+        /workspace/winalog-go/cmd/winalog/commands/system.go:881 +0x3b2 fp=0xc00037fc60 sp=0xc00037fb68 pc=0x7ff72bf6dfd2
+github.com/spf13/cobra.(*Command).execute(0x7ff72d1ee900, {0x7ff72d2613e0, 0x0, 0x0})
+        /go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1015 +0xb02 fp=0xc00037fe08 sp=0xc00037fc60 pc=0x7ff72b623a02
+github.com/spf13/cobra.(*Command).ExecuteC(0x7ff72d1e8a20)
+        /go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1148 +0x465 fp=0xc00037fef8 sp=0xc00037fe08 pc=0x7ff72b624345
+github.com/spf13/cobra.(*Command).Execute(...)
+        /go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1071
+main.main()
+        /workspace/winalog-go/cmd/winalog/main.go:35 +0x26 fp=0xc00037ff50 sp=0xc00037fef8 pc=0x7ff72bf73d26
+runtime.main()
+        /usr/local/go/src/runtime/proc.go:285 +0x27d fp=0xc00037ffe0 sp=0xc00037ff50 pc=0x7ff72aff869d
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00037ffe8 sp=0xc00037ffe0 pc=0x7ff72b032641
+
+goroutine 2 gp=0xc0000028c0 m=nil [force gc (idle), 3 minutes]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005bfa8 sp=0xc00005bf88 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.forcegchelper()
+        /usr/local/go/src/runtime/proc.go:373 +0xb8 fp=0xc00005bfe0 sp=0xc00005bfa8 pc=0x7ff72aff89b8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005bfe8 sp=0xc00005bfe0 pc=0x7ff72b032641
+created by runtime.init.7 in goroutine 1
+        /usr/local/go/src/runtime/proc.go:361 +0x1a
+
+goroutine 3 gp=0xc000002c40 m=nil [GC sweep wait]:
+runtime.gopark(0x1?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005df80 sp=0xc00005df60 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.bgsweep(0xc00006a000)
+        /usr/local/go/src/runtime/mgcsweep.go:323 +0xdf fp=0xc00005dfc8 sp=0xc00005df80 pc=0x7ff72afdfedf
+runtime.gcenable.gowrap1()
+        /usr/local/go/src/runtime/mgc.go:212 +0x25 fp=0xc00005dfe0 sp=0xc00005dfc8 pc=0x7ff72afd3e25
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005dfe8 sp=0xc00005dfe0 pc=0x7ff72b032641
+created by runtime.gcenable in goroutine 1
+        /usr/local/go/src/runtime/mgc.go:212 +0x66
+
+goroutine 4 gp=0xc000002e00 m=nil [GC scavenge wait]:
+runtime.gopark(0x3c361bb8?, 0x3b9aca00?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000071f78 sp=0xc000071f58 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.(*scavengerState).park(0x7ff72d2177e0)
+        /usr/local/go/src/runtime/mgcscavenge.go:425 +0x49 fp=0xc000071fa8 sp=0xc000071f78 pc=0x7ff72afdd949
+runtime.bgscavenge(0xc00006a000)
+        /usr/local/go/src/runtime/mgcscavenge.go:658 +0x59 fp=0xc000071fc8 sp=0xc000071fa8 pc=0x7ff72afddef9
+runtime.gcenable.gowrap2()
+        /usr/local/go/src/runtime/mgc.go:213 +0x25 fp=0xc000071fe0 sp=0xc000071fc8 pc=0x7ff72afd3dc5
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000071fe8 sp=0xc000071fe0 pc=0x7ff72b032641
+created by runtime.gcenable in goroutine 1
+        /usr/local/go/src/runtime/mgc.go:213 +0xa5
+
+goroutine 5 gp=0xc000003180 m=nil [GOMAXPROCS updater (idle), 3 minutes]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000073f88 sp=0xc000073f68 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.updateMaxProcsGoroutine()
+        /usr/local/go/src/runtime/proc.go:6720 +0xe7 fp=0xc000073fe0 sp=0xc000073f88 pc=0x7ff72b0063a7
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000073fe8 sp=0xc000073fe0 pc=0x7ff72b032641
+created by runtime.defaultGOMAXPROCSUpdateEnable in goroutine 1
+        /usr/local/go/src/runtime/proc.go:6708 +0x37
+
+goroutine 6 gp=0xc000003340 m=nil [finalizer wait, 3 minutes]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00006de20 sp=0xc00006de00 pc=0x7ff72b02a10e
+runtime.runFinalizers()
+        /usr/local/go/src/runtime/mfinal.go:210 +0x107 fp=0xc00006dfe0 sp=0xc00006de20 pc=0x7ff72afd2d67
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00006dfe8 sp=0xc00006dfe0 pc=0x7ff72b032641
+created by runtime.createfing in goroutine 1
+        /usr/local/go/src/runtime/mfinal.go:172 +0x3d
+
+goroutine 7 gp=0xc0001b6000 m=nil [cleanup wait, 3 minutes]:
+runtime.gopark(0x0?, 0x101000000000000?, 0xfc?, 0x0?, 0x2?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005ff68 sp=0xc00005ff48 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+        /usr/local/go/src/runtime/proc.go:466
+runtime.(*cleanupQueue).dequeue(0x7ff72d217ba0)
+        /usr/local/go/src/runtime/mcleanup.go:439 +0xc5 fp=0xc00005ffa0 sp=0xc00005ff68 pc=0x7ff72afcfc25
+runtime.runCleanups()
+        /usr/local/go/src/runtime/mcleanup.go:635 +0x45 fp=0xc00005ffe0 sp=0xc00005ffa0 pc=0x7ff72afd02e5
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005ffe8 sp=0xc00005ffe0 pc=0x7ff72b032641
+created by runtime.(*cleanupQueue).createGs in goroutine 1
+        /usr/local/go/src/runtime/mcleanup.go:589 +0xa5
+
+goroutine 18 gp=0xc0001b6540 m=nil [select, 3 minutes]:
+runtime.gopark(0xc00006ff88?, 0x2?, 0xa5?, 0xb4?, 0xc00006ff84?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00006fe10 sp=0xc00006fdf0 pc=0x7ff72b02a10e
+runtime.selectgo(0xc00006ff88, 0xc00006ff80, 0x0?, 0x0, 0xc000000000?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc00006ff50 sp=0xc00006fe10 pc=0x7ff72b00a485
+database/sql.(*DB).connectionOpener(0xc000384820, {0x7ff72c62dfb8, 0xc0000a4460})
+        /usr/local/go/src/database/sql/sql.go:1261 +0x87 fp=0xc00006ffb8 sp=0xc00006ff50 pc=0x7ff72b125447
+database/sql.OpenDB.gowrap1()
+        /usr/local/go/src/database/sql/sql.go:841 +0x28 fp=0xc00006ffe0 sp=0xc00006ffb8 pc=0x7ff72b1236e8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00006ffe8 sp=0xc00006ffe0 pc=0x7ff72b032641
+created by database/sql.OpenDB in goroutine 1
+        /usr/local/go/src/database/sql/sql.go:841 +0x130
+
+goroutine 19 gp=0xc0000861c0 m=nil [select, 3 minutes]:
+runtime.gopark(0xc0003a1f90?, 0x2?, 0xe0?, 0xf?, 0xc0003a1f5c?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc0003a1de8 sp=0xc0003a1dc8 pc=0x7ff72b02a10e
+runtime.selectgo(0xc0003a1f90, 0xc0003a1f58, 0x0?, 0x0, 0x0?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc0003a1f28 sp=0xc0003a1de8 pc=0x7ff72b00a485
+database/sql.(*DB).connectionCleaner(0xc000384820, 0x0?)
+        /usr/local/go/src/database/sql/sql.go:1104 +0x9c fp=0xc0003a1fc0 sp=0xc0003a1f28 pc=0x7ff72b12493c
+database/sql.(*DB).startCleanerLocked.gowrap1()
+        /usr/local/go/src/database/sql/sql.go:1091 +0x25 fp=0xc0003a1fe0 sp=0xc0003a1fc0 pc=0x7ff72b124865
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0003a1fe8 sp=0xc0003a1fe0 pc=0x7ff72b032641
+created by database/sql.(*DB).startCleanerLocked in goroutine 1
+        /usr/local/go/src/database/sql/sql.go:1091 +0x105
+
+goroutine 20 gp=0xc000086540 m=nil [select]:
+runtime.gopark(0xc000cfbfb0?, 0x2?, 0x1?, 0x0?, 0xc000cfbfa4?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000cfbe30 sp=0xc000cfbe10 pc=0x7ff72b02a10e
+runtime.selectgo(0xc000cfbfb0, 0xc000cfbfa0, 0x0?, 0x0, 0x0?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc000cfbf70 sp=0xc000cfbe30 pc=0x7ff72b00a485
+github.com/kkkdddd-start/winalog-go/internal/observability.(*MetricsLogger).Start.func1()
+        /workspace/winalog-go/internal/observability/metrics_logger.go:76 +0x6c fp=0xc000cfbfe0 sp=0xc000cfbf70 pc=0x7ff72be992ec
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000cfbfe8 sp=0xc000cfbfe0 pc=0x7ff72b032641
+created by github.com/kkkdddd-start/winalog-go/internal/observability.(*MetricsLogger).Start in goroutine 1
+        /workspace/winalog-go/internal/observability/metrics_logger.go:73 +0x98
+
+goroutine 10 gp=0xc0001b6a80 m=nil [select]:
+runtime.gopark(0xc00039ff78?, 0x2?, 0xe0?, 0xf?, 0xc00039ff5c?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00039fde0 sp=0xc00039fdc0 pc=0x7ff72b02a10e
+runtime.selectgo(0xc00039ff78, 0xc00039ff58, 0x0?, 0x0, 0x0?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc00039ff20 sp=0xc00039fde0 pc=0x7ff72b00a485
+github.com/kkkdddd-start/winalog-go/internal/alerts.(*DedupCache).cleanupLoop(0xc0002faa00)
+        /workspace/winalog-go/internal/alerts/dedup.go:106 +0xf2 fp=0xc00039ffc8 sp=0xc00039ff20 pc=0x7ff72b5cc012
+github.com/kkkdddd-start/winalog-go/internal/alerts.NewDedupCache.gowrap1()
+        /workspace/winalog-go/internal/alerts/dedup.go:34 +0x25 fp=0xc00039ffe0 sp=0xc00039ffc8 pc=0x7ff72b5cb965
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00039ffe8 sp=0xc00039ffe0 pc=0x7ff72b032641
+created by github.com/kkkdddd-start/winalog-go/internal/alerts.NewDedupCache in goroutine 1
+        /workspace/winalog-go/internal/alerts/dedup.go:34 +0xd6
+
+goroutine 11 gp=0xc0001b6c40 m=nil [select]:
+runtime.gopark(0xc0003a3f60?, 0x2?, 0xe0?, 0xf?, 0xc0003a3ebc?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc0003a3d40 sp=0xc0003a3d20 pc=0x7ff72b02a10e
+runtime.selectgo(0xc0003a3f60, 0xc0003a3eb8, 0xc0003a3ee8?, 0x0, 0x0?, 0x1)
+        /usr/local/go/src/runtime/select.go:351 +0x8c5 fp=0xc0003a3e80 sp=0xc0003a3d40 pc=0x7ff72b00a485
+github.com/kkkdddd-start/winalog-go/internal/alerts.(*Evaluator).cleanupExpiredEntries(0xc000348ea0)
+        /workspace/winalog-go/internal/alerts/evaluator.go:50 +0xdc fp=0xc0003a3fc8 sp=0xc0003a3e80 pc=0x7ff72b5ce57c
+github.com/kkkdddd-start/winalog-go/internal/alerts.NewEvaluator.gowrap1()
+        /workspace/winalog-go/internal/alerts/evaluator.go:38 +0x25 fp=0xc0003a3fe0 sp=0xc0003a3fc8 pc=0x7ff72b5ce465
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0003a3fe8 sp=0xc0003a3fe0 pc=0x7ff72b032641
+created by github.com/kkkdddd-start/winalog-go/internal/alerts.NewEvaluator in goroutine 1
+        /workspace/winalog-go/internal/alerts/evaluator.go:38 +0xcc
+
+goroutine 12 gp=0xc0001b6e00 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc000065b58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000404948 sp=0xc0004048e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72b1d71ed?, 0xc001272f00?, {0xc000404990?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000404968 sp=0xc000404948 pc=0x7ff72b014e4e
+syscall.Syscall(0x39?, 0x3?, 0x3?, 0x1?, 0x2?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc0004049b8 sp=0xc000404968 pc=0x7ff72b02e3a9
+syscall.WaitForSingleObject(0x414, 0xffffffff)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1159 +0x5a fp=0xc000404a00 sp=0xc0004049b8 pc=0x7ff72b0939da
+os.(*Process).wait(0xc00124cb00)
+        /usr/local/go/src/os/exec_windows.go:28 +0x89 fp=0xc000404a90 sp=0xc000404a00 pc=0x7ff72b0ca9e9
+os.(*Process).Wait(...)
+        /usr/local/go/src/os/exec.go:340
+os/exec.(*Cmd).Wait(0xc001201c80)
+        /usr/local/go/src/os/exec/exec.go:922 +0x45 fp=0xc000404af0 sp=0xc000404a90 pc=0x7ff72b1d7bc5
+os/exec.(*Cmd).Run(0xc001201c80)
+        /usr/local/go/src/os/exec/exec.go:626 +0x2d fp=0xc000404b08 sp=0xc000404af0 pc=0x7ff72b1d680d
+github.com/kkkdddd-start/winalog-go/internal/utils.RunPowerShell({0xc000386a00?, 0x65?})
+        /workspace/winalog-go/internal/utils/powershell.go:42 +0x14d fp=0xc000404be0 sp=0xc000404b08 pc=0x7ff72b57fced
+github.com/kkkdddd-start/winalog-go/internal/collectors.GetDLLVersion({0xc00126d980?, 0x7ffdc8910000?})
+        /workspace/winalog-go/internal/collectors/dll_info.go:166 +0x7b fp=0xc000404c38 sp=0xc000404be0 pc=0x7ff72b66465b
+github.com/kkkdddd-start/winalog-go/internal/collectors.enumProcessModules(0xc00040524c?)
+        /workspace/winalog-go/internal/collectors/dll_info.go:148 +0x413 fp=0xc0004051c8 sp=0xc000404c38 pc=0x7ff72b6643f3
+github.com/kkkdddd-start/winalog-go/internal/collectors.ListLoadedDLLs()
+        /workspace/winalog-go/internal/collectors/dll_info.go:96 +0x1fb fp=0xc000405548 sp=0xc0004051c8 pc=0x7ff72b663cbb
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs(0xc000293890?, 0xc0003ba000)
+        /workspace/winalog-go/internal/api/handlers_system.go:400 +0xa9 fp=0xc000405698 sp=0xc000405548 pc=0x7ff72bede6c9
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs-fm(0xc00025c8e0?)
+        <autogenerated>:1 +0x26 fp=0xc0004056b8 sp=0xc000405698 pc=0x7ff72beeb6e6
+github.com/gin-gonic/gin.(*Context).Next(0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0004056d8 sp=0xc0004056b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc0003ba000)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc000405750 sp=0xc0004056d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000405770 sp=0xc000405750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc0003ba000)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0004058f8 sp=0xc000405770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000405918 sp=0xc0004058f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0xc000405968?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc000405950 sp=0xc000405918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000405970 sp=0xc000405950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc0003ba000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc000405b18 sp=0xc000405970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc0002a4000}, 0xc0002783c0)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc000405b60 sp=0xc000405b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0xc0002fb400?}, {0x7ff72c62c770?, 0xc0002a4000?}, 0x1?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc000405b90 sp=0xc000405b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc000128870, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc000405fb8 sp=0xc000405b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc000405fe0 sp=0xc000405fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000405fe8 sp=0xc000405fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 145 gp=0xc0001b6fc0 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc000d0a358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000046948 sp=0xc0000468e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72b1d71ed?, 0xc0012ade40?, {0xc000046990?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000046968 sp=0xc000046948 pc=0x7ff72b014e4e
+syscall.Syscall(0x39?, 0x3?, 0x3?, 0x1?, 0x2?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc0000469b8 sp=0xc000046968 pc=0x7ff72b02e3a9
+syscall.WaitForSingleObject(0x388, 0xffffffff)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1159 +0x5a fp=0xc000046a00 sp=0xc0000469b8 pc=0x7ff72b0939da
+os.(*Process).wait(0xc00129ac40)
+        /usr/local/go/src/os/exec_windows.go:28 +0x89 fp=0xc000046a90 sp=0xc000046a00 pc=0x7ff72b0ca9e9
+os.(*Process).Wait(...)
+        /usr/local/go/src/os/exec.go:340
+os/exec.(*Cmd).Wait(0xc0011cbe00)
+        /usr/local/go/src/os/exec/exec.go:922 +0x45 fp=0xc000046af0 sp=0xc000046a90 pc=0x7ff72b1d7bc5
+os/exec.(*Cmd).Run(0xc0011cbe00)
+        /usr/local/go/src/os/exec/exec.go:626 +0x2d fp=0xc000046b08 sp=0xc000046af0 pc=0x7ff72b1d680d
+github.com/kkkdddd-start/winalog-go/internal/utils.RunPowerShell({0xc000d559e0?, 0x65?})
+        /workspace/winalog-go/internal/utils/powershell.go:42 +0x14d fp=0xc000046be0 sp=0xc000046b08 pc=0x7ff72b57fced
+github.com/kkkdddd-start/winalog-go/internal/collectors.GetDLLVersion({0xc0012c2e60?, 0x7ffdd4210000?})
+        /workspace/winalog-go/internal/collectors/dll_info.go:166 +0x7b fp=0xc000046c38 sp=0xc000046be0 pc=0x7ff72b66465b
+github.com/kkkdddd-start/winalog-go/internal/collectors.enumProcessModules(0xc00004724c?)
+        /workspace/winalog-go/internal/collectors/dll_info.go:148 +0x413 fp=0xc0000471c8 sp=0xc000046c38 pc=0x7ff72b6643f3
+github.com/kkkdddd-start/winalog-go/internal/collectors.ListLoadedDLLs()
+        /workspace/winalog-go/internal/collectors/dll_info.go:96 +0x1fb fp=0xc000047548 sp=0xc0000471c8 pc=0x7ff72b663cbb
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs(0xc000545470?, 0xc000661b00)
+        /workspace/winalog-go/internal/api/handlers_system.go:400 +0xa9 fp=0xc000047698 sp=0xc000047548 pc=0x7ff72bede6c9
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs-fm(0xc00009c290?)
+        <autogenerated>:1 +0x26 fp=0xc0000476b8 sp=0xc000047698 pc=0x7ff72beeb6e6
+github.com/gin-gonic/gin.(*Context).Next(0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0000476d8 sp=0xc0000476b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc000661b00)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc000047750 sp=0xc0000476d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000047770 sp=0xc000047750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc000661b00)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0000478f8 sp=0xc000047770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000047918 sp=0xc0000478f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0x149fd553ab8?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc000047950 sp=0xc000047918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc000047970 sp=0xc000047950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc000661b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc000047b18 sp=0xc000047970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc0002a40f0}, 0xc000334000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc000047b60 sp=0xc000047b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0xc0004ae600?}, {0x7ff72c62c770?, 0xc0002a40f0?}, 0x6?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc000047b90 sp=0xc000047b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc00059c000, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc000047fb8 sp=0xc000047b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc000047fe0 sp=0xc000047fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000047fe8 sp=0xc000047fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 2666 gp=0xc0001b7880 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc000361b58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000379ab8 sp=0xc000379a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2360f0?, 0x149fd810180?, {0xc000379b00?, 0xc000379b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000379ad8 sp=0xc000379ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd80ef60?, 0x149fd3edf35?, 0x1000c000109b68?, 0x149fd80ef60?, 0x35?, 0xc000379bc0?, 0x7ff72afca71b?, 0x149f80e05a0?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000379b40 sp=0xc000379ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x3cc, {0xc0012b2c00?, 0x200, 0x7ff72b027b05?}, 0x7ff72b026ede?, 0xc000379bf8?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000379bb0 sp=0xc000379b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000379c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000379bf0 sp=0xc000379bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc00127eca0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000379c60 sp=0xc000379bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc00127ec88, {0xc0012b2c00, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc000379d00 sp=0xc000379c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc00121a548, {0xc0012b2c00?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc000379d40 sp=0xc000379d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc001275230, {0x7ff72c622e20, 0xc0012c6070})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc000379d98 sp=0xc000379d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc001275230}, {0x7ff72c622e20, 0xc0012c6070}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc000379e10 sp=0xc000379d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc001275230})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc000379e60 sp=0xc000379e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc001275230?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc000379e88 sp=0xc000379e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc001275230}, {0x7ff72c622ce0, 0xc00121a548}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc000379f00 sp=0xc000379e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc000379f60 sp=0xc000379f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0xc00097d1c0?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc000379fc8 sp=0xc000379f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc000379fe0 sp=0xc000379fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000379fe8 sp=0xc000379fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 12
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 2682 gp=0xc0001b7a40 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc000360358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000425ab8 sp=0xc000425a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2369f0?, 0x149fd7bc990?, {0xc000425b00?, 0xc000425b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000425ad8 sp=0xc000425ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd7bb9f0?, 0x7ff72c291741?, 0x800c000082d20?, 0x149fd7bb9f0?, 0x41?, 0xc000425bc0?, 0x7ff72afca71b?, 0x149f80e0108?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000425b40 sp=0xc000425ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x21c, {0xc0012b2e00?, 0x200, 0x7ff72b027b05?}, 0x7ff72b026ede?, 0xc000425bf8?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000425bb0 sp=0xc000425b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000425c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000425bf0 sp=0xc000425bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc0012cf420, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000425c60 sp=0xc000425bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc0012cf408, {0xc0012b2e00, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc000425d00 sp=0xc000425c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc0012c6098, {0xc0012b2e00?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc000425d40 sp=0xc000425d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc0012c1d10, {0x7ff72c622e20, 0xc0012c60c0})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc000425d98 sp=0xc000425d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc0012c1d10}, {0x7ff72c622e20, 0xc0012c60c0}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc000425e10 sp=0xc000425d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc0012c1d10})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc000425e60 sp=0xc000425e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc0012c1d10?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc000425e88 sp=0xc000425e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc0012c1d10}, {0x7ff72c622ce0, 0xc0012c6098}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc000425f00 sp=0xc000425e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc000425f60 sp=0xc000425f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0xc0000ada80?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc000425fc8 sp=0xc000425f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc000425fe0 sp=0xc000425fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000425fe8 sp=0xc000425fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 2018
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 53 gp=0xc000086700 m=nil [GC worker (idle)]:
+runtime.gopark(0x69b897c28a8?, 0xc0003d2800?, 0x1c?, 0xa?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000423f38 sp=0xc000423f18 pc=0x7ff72b02a10e
+runtime.gcBgMarkWorker(0xc0003983f0)
+        /usr/local/go/src/runtime/mgc.go:1463 +0xeb fp=0xc000423fc8 sp=0xc000423f38 pc=0x7ff72afd65ab
+runtime.gcBgMarkStartWorkers.gowrap1()
+        /usr/local/go/src/runtime/mgc.go:1373 +0x25 fp=0xc000423fe0 sp=0xc000423fc8 pc=0x7ff72afd6485
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000423fe8 sp=0xc000423fe0 pc=0x7ff72b032641
+created by runtime.gcBgMarkStartWorkers in goroutine 12
+        /usr/local/go/src/runtime/mgc.go:1373 +0x105
+
+goroutine 52 gp=0xc0000868c0 m=nil [GC worker (idle), 1 minutes]:
+runtime.gopark(0x69731aa6238?, 0xc0003d2600?, 0x1c?, 0xa?, 0x0?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000437f38 sp=0xc000437f18 pc=0x7ff72b02a10e
+runtime.gcBgMarkWorker(0xc0003983f0)
+        /usr/local/go/src/runtime/mgc.go:1463 +0xeb fp=0xc000437fc8 sp=0xc000437f38 pc=0x7ff72afd65ab
+runtime.gcBgMarkStartWorkers.gowrap1()
+        /usr/local/go/src/runtime/mgc.go:1373 +0x25 fp=0xc000437fe0 sp=0xc000437fc8 pc=0x7ff72afd6485
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000437fe8 sp=0xc000437fe0 pc=0x7ff72b032641
+created by runtime.gcBgMarkStartWorkers in goroutine 12
+        /usr/local/go/src/runtime/mgc.go:1373 +0x105
+
+goroutine 2664 gp=0xc000086a80 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc0000e1358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000439ab8 sp=0xc000439a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2360f0?, 0x149fd7be830?, {0xc000439b00?, 0xc000439b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000439ad8 sp=0xc000439ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd7bdb10?, 0x7ff72b57ff35?, 0x1000c000109b68?, 0x149fd7bdb10?, 0x35?, 0xc000439bc0?, 0x7ff72afca71b?, 0x149f80e05a0?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000439b40 sp=0xc000439ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x454, {0xc0012b2a00?, 0x200, 0x7ff72b027b05?}, 0xc000439d08?, 0x10?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000439bb0 sp=0xc000439b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000439c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000439bf0 sp=0xc000439bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc00127e020, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000439c60 sp=0xc000439bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc00127e008, {0xc0012b2a00, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc000439d00 sp=0xc000439c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc00121a4e8, {0xc0012b2a00?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc000439d40 sp=0xc000439d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc001274900, {0x7ff72c622e20, 0xc0012c6020})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc000439d98 sp=0xc000439d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc001274900}, {0x7ff72c622e20, 0xc0012c6020}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc000439e10 sp=0xc000439d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc001274900})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc000439e60 sp=0xc000439e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc001274900?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc000439e88 sp=0xc000439e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc001274900}, {0x7ff72c622ce0, 0xc00121a4e8}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc000439f00 sp=0xc000439e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc000439f60 sp=0xc000439f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0xc0004ae340?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc000439fc8 sp=0xc000439f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc000439fe0 sp=0xc000439fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000439fe8 sp=0xc000439fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 96
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 245 gp=0xc000087340 m=nil [chan receive, 2 minutes]:
+runtime.gopark(0x7ff72b00b380?, 0xc0001b6fc0?, 0x4?, 0x0?, 0xc00045bf50?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00045bef8 sp=0xc00045bed8 pc=0x7ff72b02a10e
+runtime.chanrecv(0xc0000f1b90, 0xc00045bfb0, 0x1)
+        /usr/local/go/src/runtime/chan.go:667 +0x473 fp=0xc00045bf70 sp=0xc00045bef8 pc=0x7ff72afc2fb3
+runtime.chanrecv2(0xc00045bf50?, 0x0?)
+        /usr/local/go/src/runtime/chan.go:514 +0x12 fp=0xc00045bf98 sp=0xc00045bf70 pc=0x7ff72afc2b32
+github.com/kkkdddd-start/winalog-go/internal/monitor.(*MonitorEngine).processEvents(0xc000128750)
+        /workspace/winalog-go/internal/monitor/monitor.go:136 +0x5b fp=0xc00045bfc8 sp=0xc00045bf98 pc=0x7ff72bea9e3b
+github.com/kkkdddd-start/winalog-go/internal/monitor.(*MonitorEngine).Start.gowrap2()
+        /workspace/winalog-go/internal/monitor/monitor.go:93 +0x25 fp=0xc00045bfe0 sp=0xc00045bfc8 pc=0x7ff72bea9b45
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00045bfe8 sp=0xc00045bfe0 pc=0x7ff72b032641
+created by github.com/kkkdddd-start/winalog-go/internal/monitor.(*MonitorEngine).Start in goroutine 145
+        /workspace/winalog-go/internal/monitor/monitor.go:93 +0x2c9
+
+goroutine 2683 gp=0xc0000876c0 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc00067eb58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000455ab8 sp=0xc000455a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2369f0?, 0x149fd7be650?, {0xc000455b00?, 0xc000455b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000455ad8 sp=0xc000455ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd7bdbb0?, 0x41?, 0x800c000085b68?, 0x149fd7bdbb0?, 0x41?, 0xc000455bc0?, 0x7ff72afca71b?, 0x149f80e05a0?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000455b40 sp=0xc000455ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x338, {0xc00130a200?, 0x200, 0x7ff72b027b05?}, 0x7ff72d19d180?, 0x7ff72d2613e0?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000455bb0 sp=0xc000455b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000455c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000455bf0 sp=0xc000455bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc0012cfba0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000455c60 sp=0xc000455bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc0012cfb88, {0xc00130a200, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc000455d00 sp=0xc000455c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc0012c60d0, {0xc00130a200?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc000455d40 sp=0xc000455d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc0012d4690, {0x7ff72c622e20, 0xc00121a598})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc000455d98 sp=0xc000455d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc0012d4690}, {0x7ff72c622e20, 0xc00121a598}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc000455e10 sp=0xc000455d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc0012d4690})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc000455e60 sp=0xc000455e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc0012d4690?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc000455e88 sp=0xc000455e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc0012d4690}, {0x7ff72c622ce0, 0xc0012c60d0}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc000455f00 sp=0xc000455e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc000455f60 sp=0xc000455f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0x7ff72d2613e0?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc000455fc8 sp=0xc000455f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc000455fe0 sp=0xc000455fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000455fe8 sp=0xc000455fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 145
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 966 gp=0xc000087dc0 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc000065358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc0005a2948 sp=0xc0005a28e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72b1d71ed?, 0xc0012ad3c0?, {0xc0005a2990?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc0005a2968 sp=0xc0005a2948 pc=0x7ff72b014e4e
+syscall.Syscall(0x39?, 0x3?, 0x3?, 0x1?, 0x2?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc0005a29b8 sp=0xc0005a2968 pc=0x7ff72b02e3a9
+syscall.WaitForSingleObject(0x484, 0xffffffff)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1159 +0x5a fp=0xc0005a2a00 sp=0xc0005a29b8 pc=0x7ff72b0939da
+os.(*Process).wait(0xc00129a9c0)
+        /usr/local/go/src/os/exec_windows.go:28 +0x89 fp=0xc0005a2a90 sp=0xc0005a2a00 pc=0x7ff72b0ca9e9
+os.(*Process).Wait(...)
+        /usr/local/go/src/os/exec.go:340
+os/exec.(*Cmd).Wait(0xc0011cbb00)
+        /usr/local/go/src/os/exec/exec.go:922 +0x45 fp=0xc0005a2af0 sp=0xc0005a2a90 pc=0x7ff72b1d7bc5
+os/exec.(*Cmd).Run(0xc0011cbb00)
+        /usr/local/go/src/os/exec/exec.go:626 +0x2d fp=0xc0005a2b08 sp=0xc0005a2af0 pc=0x7ff72b1d680d
+github.com/kkkdddd-start/winalog-go/internal/utils.RunPowerShell({0xc0012ba500?, 0x65?})
+        /workspace/winalog-go/internal/utils/powershell.go:42 +0x14d fp=0xc0005a2be0 sp=0xc0005a2b08 pc=0x7ff72b57fced
+github.com/kkkdddd-start/winalog-go/internal/collectors.GetDLLVersion({0xc0012c2500?, 0x7ffdce490000?})
+        /workspace/winalog-go/internal/collectors/dll_info.go:166 +0x7b fp=0xc0005a2c38 sp=0xc0005a2be0 pc=0x7ff72b66465b
+github.com/kkkdddd-start/winalog-go/internal/collectors.enumProcessModules(0xc0005a324c?)
+        /workspace/winalog-go/internal/collectors/dll_info.go:148 +0x413 fp=0xc0005a31c8 sp=0xc0005a2c38 pc=0x7ff72b6643f3
+github.com/kkkdddd-start/winalog-go/internal/collectors.ListLoadedDLLs()
+        /workspace/winalog-go/internal/collectors/dll_info.go:96 +0x1fb fp=0xc0005a3548 sp=0xc0005a31c8 pc=0x7ff72b663cbb
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs(0xc0005447e0?, 0xc000660b00)
+        /workspace/winalog-go/internal/api/handlers_system.go:400 +0xa9 fp=0xc0005a3698 sp=0xc0005a3548 pc=0x7ff72bede6c9
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs-fm(0xc0004862f0?)
+        <autogenerated>:1 +0x26 fp=0xc0005a36b8 sp=0xc0005a3698 pc=0x7ff72beeb6e6
+github.com/gin-gonic/gin.(*Context).Next(0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a36d8 sp=0xc0005a36b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc000660b00)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc0005a3750 sp=0xc0005a36d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a3770 sp=0xc0005a3750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc000660b00)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0005a38f8 sp=0xc0005a3770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a3918 sp=0xc0005a38f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0x149fd5538b8?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc0005a3950 sp=0xc0005a3918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a3970 sp=0xc0005a3950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc000660b00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc0005a3b18 sp=0xc0005a3970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc0002a41e0}, 0xc000224000)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc0005a3b60 sp=0xc0005a3b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0xc0004f43c0?}, {0x7ff72c62c770?, 0xc0002a41e0?}, 0x1?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc0005a3b90 sp=0xc0005a3b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc000628090, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc0005a3fb8 sp=0xc0005a3b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc0005a3fe0 sp=0xc0005a3fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0005a3fe8 sp=0xc0005a3fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 96 gp=0xc0000036c0 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc0002c3b58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc0005a6948 sp=0xc0005a68e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72b1d71ed?, 0xc0012729c0?, {0xc0005a6990?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc0005a6968 sp=0xc0005a6948 pc=0x7ff72b014e4e
+syscall.Syscall(0x39?, 0x3?, 0x3?, 0x1?, 0x2?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc0005a69b8 sp=0xc0005a6968 pc=0x7ff72b02e3a9
+syscall.WaitForSingleObject(0x46c, 0xffffffff)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1159 +0x5a fp=0xc0005a6a00 sp=0xc0005a69b8 pc=0x7ff72b0939da
+os.(*Process).wait(0xc00124c9c0)
+        /usr/local/go/src/os/exec_windows.go:28 +0x89 fp=0xc0005a6a90 sp=0xc0005a6a00 pc=0x7ff72b0ca9e9
+os.(*Process).Wait(...)
+        /usr/local/go/src/os/exec.go:340
+os/exec.(*Cmd).Wait(0xc001201b00)
+        /usr/local/go/src/os/exec/exec.go:922 +0x45 fp=0xc0005a6af0 sp=0xc0005a6a90 pc=0x7ff72b1d7bc5
+os/exec.(*Cmd).Run(0xc001201b00)
+        /usr/local/go/src/os/exec/exec.go:626 +0x2d fp=0xc0005a6b08 sp=0xc0005a6af0 pc=0x7ff72b1d680d
+github.com/kkkdddd-start/winalog-go/internal/utils.RunPowerShell({0xc00114ebd0?, 0x65?})
+        /workspace/winalog-go/internal/utils/powershell.go:42 +0x14d fp=0xc0005a6be0 sp=0xc0005a6b08 pc=0x7ff72b57fced
+github.com/kkkdddd-start/winalog-go/internal/collectors.GetDLLVersion({0xc001259660?, 0x7ffdd9f00000?})
+        /workspace/winalog-go/internal/collectors/dll_info.go:166 +0x7b fp=0xc0005a6c38 sp=0xc0005a6be0 pc=0x7ff72b66465b
+github.com/kkkdddd-start/winalog-go/internal/collectors.enumProcessModules(0xc0005a724c?)
+        /workspace/winalog-go/internal/collectors/dll_info.go:148 +0x413 fp=0xc0005a71c8 sp=0xc0005a6c38 pc=0x7ff72b6643f3
+github.com/kkkdddd-start/winalog-go/internal/collectors.ListLoadedDLLs()
+        /workspace/winalog-go/internal/collectors/dll_info.go:96 +0x1fb fp=0xc0005a7548 sp=0xc0005a71c8 pc=0x7ff72b663cbb
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs(0xc0005fe090?, 0xc000392d00)
+        /workspace/winalog-go/internal/api/handlers_system.go:400 +0xa9 fp=0xc0005a7698 sp=0xc0005a7548 pc=0x7ff72bede6c9
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs-fm(0xc0004861d0?)
+        <autogenerated>:1 +0x26 fp=0xc0005a76b8 sp=0xc0005a7698 pc=0x7ff72beeb6e6
+github.com/gin-gonic/gin.(*Context).Next(0xc000392d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a76d8 sp=0xc0005a76b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc000392d00)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc0005a7750 sp=0xc0005a76d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc000392d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a7770 sp=0xc0005a7750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc000392d00)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc0005a78f8 sp=0xc0005a7770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc000392d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a7918 sp=0xc0005a78f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0x149fd553cb8?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc0005a7950 sp=0xc0005a7918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc000392d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc0005a7970 sp=0xc0005a7950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc000392d00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc0005a7b18 sp=0xc0005a7970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc0004420f0}, 0xc0003fa140)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc0005a7b60 sp=0xc0005a7b18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0xc0000ada80?}, {0x7ff72c62c770?, 0xc0004420f0?}, 0x6?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc0005a7b90 sp=0xc0005a7b60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc000294a20, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc0005a7fb8 sp=0xc0005a7b90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc0005a7fe0 sp=0xc0005a7fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0005a7fe8 sp=0xc0005a7fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 2058 gp=0xc000003c00 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc000361358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc0009978c0 sp=0xc000997858 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0xc0009de400?, 0xc000997908?, {0xc000997908?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc0009978e0 sp=0xc0009978c0 pc=0x7ff72b014e4e
+syscall.Syscall(0xc0009de400?, 0x149fd553630?, 0xc000997960?, 0x7ff72b029145?, 0x7ff72d261c90?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc000997930 sp=0xc0009978e0 pc=0x7ff72b02e3a9
+syscall.Closesocket(0x3f0)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1352 +0x4f fp=0xc000997970 sp=0xc000997930 pc=0x7ff72b094ccf
+internal/poll.(*FD).destroy(0xc0009e1188)
+        /usr/local/go/src/internal/poll/fd_windows.go:465 +0xa2 fp=0xc000997998 sp=0xc000997970 pc=0x7ff72b0be782
+internal/poll.(*FD).decref(0x149fd553600?)
+        /usr/local/go/src/internal/poll/fd_mutex.go:213 +0x53 fp=0xc0009979b8 sp=0xc000997998 pc=0x7ff72b0bc553
+internal/poll.(*FD).Close(0xc0009e1188)
+        /usr/local/go/src/internal/poll/fd_windows.go:486 +0x65 fp=0xc0009979e8 sp=0xc0009979b8 pc=0x7ff72b0be865
+net.(*netFD).Close(0xc0009e1188)
+        /usr/local/go/src/net/fd_posix.go:50 +0x32 fp=0xc000997a18 sp=0xc0009979e8 pc=0x7ff72b1fea12
+net.(*conn).Close(0xc0009b4238)
+        /usr/local/go/src/net/net.go:220 +0x36 fp=0xc000997a48 sp=0xc000997a18 pc=0x7ff72b20e2d6
+net/http.(*conn).close(0xc0001283f0)
+        /usr/local/go/src/net/http/server.go:1792 +0x2b fp=0xc000997a60 sp=0xc000997a48 pc=0x7ff72b56222b
+net/http.(*conn).serve.func1()
+        /usr/local/go/src/net/http/server.go:1955 +0x1f4 fp=0xc000997b00 sp=0xc000997a60 pc=0x7ff72b563dd4
+runtime.deferreturn()
+        /usr/local/go/src/runtime/panic.go:589 +0x5e fp=0xc000997b90 sp=0xc000997b00 pc=0x7ff72aff459e
+net/http.(*conn).serve(0xc0001283f0, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2151 +0x836 fp=0xc000997fb8 sp=0xc000997b90 pc=0x7ff72b562e96
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc000997fe0 sp=0xc000997fb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000997fe8 sp=0xc000997fe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+
+goroutine 2667 gp=0xc000472700 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc0001a5b58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000263ab8 sp=0xc000263a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2360f0?, 0x149fd81df90?, {0xc000263b00?, 0xc000263b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000263ad8 sp=0xc000263ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd81cff0?, 0xc000086335?, 0x1000c000103b68?, 0x149fd81cff0?, 0x35?, 0xc000263bc0?, 0x7ff72afca71b?, 0x149f80e0108?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000263b40 sp=0xc000263ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x16c, {0xc00125fe00?, 0x200, 0x7ff72b027b05?}, 0x7ff72b026ede?, 0xc000263bf8?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000263bb0 sp=0xc000263b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000263c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000263bf0 sp=0xc000263bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc00127f1a0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000263c60 sp=0xc000263bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc00127f188, {0xc00125fe00, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc000263d00 sp=0xc000263c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc00121a560, {0xc00125fe00?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc000263d40 sp=0xc000263d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc001275260, {0x7ff72c622e20, 0xc00121a588})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc000263d98 sp=0xc000263d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc001275260}, {0x7ff72c622e20, 0xc00121a588}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc000263e10 sp=0xc000263d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc001275260})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc000263e60 sp=0xc000263e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc001275260?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc000263e88 sp=0xc000263e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc001275260}, {0x7ff72c622ce0, 0xc00121a560}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc000263f00 sp=0xc000263e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc000263f60 sp=0xc000263f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0xc0004ae600?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc000263fc8 sp=0xc000263f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc000263fe0 sp=0xc000263fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000263fe8 sp=0xc000263fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 12
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 2680 gp=0xc0004728c0 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc0002c2b58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc0002efab8 sp=0xc0002efa50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2360f0?, 0x149fd7bdb10?, {0xc0002efb00?, 0xc0002efb30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc0002efad8 sp=0xc0002efab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd81ecb0?, 0x35?, 0x1000c00010fb68?, 0x149fd81ecb0?, 0x35?, 0xc0002efbc0?, 0x7ff72afca71b?, 0x149f80e05a0?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc0002efb40 sp=0xc0002efad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x374, {0xc00125fc00?, 0x200, 0x7ff72b027b05?}, 0x0?, 0x0?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc0002efbb0 sp=0xc0002efb40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc0002efc60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc0002efbf0 sp=0xc0002efbb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc0012ce7a0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc0002efc60 sp=0xc0002efbf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc0012ce788, {0xc00125fc00, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc0002efd00 sp=0xc0002efc60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc0012c6048, {0xc00125fc00?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc0002efd40 sp=0xc0002efd00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc0012c13e0, {0x7ff72c622e20, 0xc00121a538})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc0002efd98 sp=0xc0002efd40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc0012c13e0}, {0x7ff72c622e20, 0xc00121a538}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc0002efe10 sp=0xc0002efd98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc0012c13e0})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc0002efe60 sp=0xc0002efe10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc0012c13e0?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc0002efe88 sp=0xc0002efe60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc0012c13e0}, {0x7ff72c622ce0, 0xc0012c6048}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc0002eff00 sp=0xc0002efe88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc0002eff60 sp=0xc0002eff00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0x0?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc0002effc8 sp=0xc0002eff60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc0002effe0 sp=0xc0002effc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0002effe8 sp=0xc0002effe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 966
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 2665 gp=0xc000472e00 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc00067f358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc0004c5ab8 sp=0xc0004c5a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2369f0?, 0x149fd80eec0?, {0xc0004c5b00?, 0xc0004c5b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc0004c5ad8 sp=0xc0004c5ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd7be650?, 0x41?, 0x800c000085b68?, 0x149fd7be650?, 0x41?, 0xc0004c5bc0?, 0x7ff72afca71b?, 0x149f80e05a0?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc0004c5b40 sp=0xc0004c5ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x18c, {0xc00125f800?, 0x200, 0x7ff72b027b05?}, 0x0?, 0x0?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc0004c5bb0 sp=0xc0004c5b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc0004c5c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc0004c5bf0 sp=0xc0004c5bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc00127e520, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc0004c5c60 sp=0xc0004c5bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc00127e508, {0xc00125f800, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc0004c5d00 sp=0xc0004c5c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc00121a500, {0xc00125f800?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc0004c5d40 sp=0xc0004c5d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc001274930, {0x7ff72c622e20, 0xc00121a528})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc0004c5d98 sp=0xc0004c5d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc001274930}, {0x7ff72c622e20, 0xc00121a528}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc0004c5e10 sp=0xc0004c5d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc001274930})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc0004c5e60 sp=0xc0004c5e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc001274930?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc0004c5e88 sp=0xc0004c5e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc001274930}, {0x7ff72c622ce0, 0xc00121a500}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc0004c5f00 sp=0xc0004c5e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc0004c5f60 sp=0xc0004c5f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0xc00046c0c0?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc0004c5fc8 sp=0xc0004c5f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc0004c5fe0 sp=0xc0004c5fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0004c5fe8 sp=0xc0004c5fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 96
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 2684 gp=0xc0005e9180 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc0000e0b58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000457ab8 sp=0xc000457a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2369f0?, 0x149fd7bdbb0?, {0xc000457b00?, 0xc000457b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000457ad8 sp=0xc000457ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fefd2d08?, 0xc000086341?, 0x800c000087b68?, 0x149fefd2d08?, 0x41?, 0xc000457bc0?, 0x7ff72afca71b?, 0x149f80e05a0?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000457b40 sp=0xc000457ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x3c8, {0xc0012b3000?, 0x200, 0x7ff72b027b05?}, 0x7ff72b026ede?, 0xc00037fbf8?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000457bb0 sp=0xc000457b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000457c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000457bf0 sp=0xc000457bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc0012da2a0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000457c60 sp=0xc000457bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc0012da288, {0xc0012b3000, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc000457d00 sp=0xc000457c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc0012c60e8, {0xc0012b3000?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc000457d40 sp=0xc000457d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc0012d46c0, {0x7ff72c622e20, 0xc0012c6110})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc000457d98 sp=0xc000457d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc0012d46c0}, {0x7ff72c622e20, 0xc0012c6110}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc000457e10 sp=0xc000457d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc0012d46c0})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc000457e60 sp=0xc000457e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc0012d46c0?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc000457e88 sp=0xc000457e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc0012d46c0}, {0x7ff72c622ce0, 0xc0012c60e8}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc000457f00 sp=0xc000457e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc000457f60 sp=0xc000457f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0xc0003493e0?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc000457fc8 sp=0xc000457f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc000457fe0 sp=0xc000457fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000457fe8 sp=0xc000457fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 145
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 2019 gp=0xc0005e96c0 m=nil [IO wait]:
+runtime.gopark(0x7ff72b033e80?, 0xc000361b58?, 0x0?, 0x0?, 0x2b026ede?)
+        /usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000189d18 sp=0xc000189cf8 pc=0x7ff72b02a10e
+runtime.netpollblock(0x1?, 0x2d1b68e0?, 0xf7?)
+        /usr/local/go/src/runtime/netpoll.go:575 +0xf7 fp=0xc000189d50 sp=0xc000189d18 pc=0x7ff72afef637
+internal/poll.runtime_pollWait(0x149fd553e00, 0x72)
+        /usr/local/go/src/runtime/netpoll.go:351 +0x85 fp=0xc000189d70 sp=0xc000189d50 pc=0x7ff72b0292a5
+internal/poll.(*pollDesc).wait(0x244?, 0x7ff72afc0d66?, 0x0)
+        /usr/local/go/src/internal/poll/fd_poll_runtime.go:84 +0x27 fp=0xc000189d98 sp=0xc000189d70 pc=0x7ff72b0bc867
+internal/poll.waitIO(0xc000189e20?)
+        /usr/local/go/src/internal/poll/fd_windows.go:187 +0x65 fp=0xc000189de0 sp=0xc000189d98 pc=0x7ff72b0bdca5
+internal/poll.execIO(0xc00097bba0, 0x7ff72c40b948)
+        /usr/local/go/src/internal/poll/fd_windows.go:240 +0x13a fp=0xc000189e50 sp=0xc000189de0 pc=0x7ff72b0be01a
+internal/poll.(*FD).Read(0xc00097bb88, {0xc00097c321, 0x1, 0x1})
+        /usr/local/go/src/internal/poll/fd_windows.go:537 +0x1ee fp=0xc000189ef0 sp=0xc000189e50 pc=0x7ff72b0beace
+net.(*netFD).Read(0xc00097bb88, {0xc00097c321?, 0x1?, 0xc000189fb8?})
+        /usr/local/go/src/net/fd_posix.go:68 +0x25 fp=0xc000189f38 sp=0xc000189ef0 pc=0x7ff72b1feb25
+net.(*conn).Read(0xc000095df8, {0xc00097c321?, 0x0?, 0x0?})
+        /usr/local/go/src/net/net.go:196 +0x45 fp=0xc000189f80 sp=0xc000189f38 pc=0x7ff72b20df85
+net/http.(*connReader).backgroundRead(0xc00097c300)
+        /usr/local/go/src/net/http/server.go:702 +0x33 fp=0xc000189fc8 sp=0xc000189f80 pc=0x7ff72b55d173
+net/http.(*connReader).startBackgroundRead.gowrap2()
+        /usr/local/go/src/net/http/server.go:698 +0x25 fp=0xc000189fe0 sp=0xc000189fc8 pc=0x7ff72b55d0a5
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000189fe8 sp=0xc000189fe0 pc=0x7ff72b032641
+created by net/http.(*connReader).startBackgroundRead in goroutine 2018
+        /usr/local/go/src/net/http/server.go:698 +0xb6
+
+goroutine 2681 gp=0xc0005e9880 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc0002c3358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc0004c7ab8 sp=0xc0004c7a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2360f0?, 0x149fd7c1490?, {0xc0004c7b00?, 0xc0004c7b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc0004c7ad8 sp=0xc0004c7ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd7c0810?, 0x35?, 0x10000000100000?, 0x149fd7c0810?, 0x35?, 0xc0004c7bc0?, 0x7ff72afca7d4?, 0x149f80e0108?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc0004c7b40 sp=0xc0004c7ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x384, {0xc00130a000?, 0x200, 0x7ff72b027b05?}, 0x0?, 0x0?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc0004c7bb0 sp=0xc0004c7b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc0004c7c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc0004c7bf0 sp=0xc0004c7bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc0012cef20, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc0004c7c60 sp=0xc0004c7bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc0012cef08, {0xc00130a000, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc0004c7d00 sp=0xc0004c7c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc0012c6080, {0xc00130a000?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc0004c7d40 sp=0xc0004c7d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc0012c1ce0, {0x7ff72c622e20, 0xc00121a590})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc0004c7d98 sp=0xc0004c7d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc0012c1ce0}, {0x7ff72c622e20, 0xc00121a590}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc0004c7e10 sp=0xc0004c7d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc0012c1ce0})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc0004c7e60 sp=0xc0004c7e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc0012c1ce0?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc0004c7e88 sp=0xc0004c7e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc0012c1ce0}, {0x7ff72c622ce0, 0xc0012c6080}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc0004c7f00 sp=0xc0004c7e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc0004c7f60 sp=0xc0004c7f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0x0?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc0004c7fc8 sp=0xc0004c7f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc0004c7fe0 sp=0xc0004c7fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc0004c7fe8 sp=0xc0004c7fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 2018
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 2679 gp=0xc0004736c0 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc000080358)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000557ab8 sp=0xc000557a50 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72d2369f0?, 0x149fd81def0?, {0xc000557b00?, 0xc000557b30?, 0x7ff72afcdb6b?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000557ad8 sp=0xc000557ab8 pc=0x7ff72b014e4e
+syscall.Syscall6(0x149fd81d4f0?, 0xc00000b741?, 0x800c000087b68?, 0x149fd81d4f0?, 0x41?, 0xc000557bc0?, 0x7ff72afca71b?, 0x149f80e0108?)
+        /usr/local/go/src/runtime/syscall_windows.go:463 +0x38 fp=0xc000557b40 sp=0xc000557ad8 pc=0x7ff72b02e3f8
+syscall.readFile(0x450, {0xc00125fa00?, 0x200, 0x7ff72b027b05?}, 0x1?, 0x0?)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1030 +0x8b fp=0xc000557bb0 sp=0xc000557b40 pc=0x7ff72b092fcb
+syscall.ReadFile(...)
+        /usr/local/go/src/syscall/syscall_windows.go:482
+internal/poll.(*FD).Read.func1(0xc000557c60?)
+        /usr/local/go/src/internal/poll/fd_windows.go:522 +0x4d fp=0xc000557bf0 sp=0xc000557bb0 pc=0x7ff72b0c762d
+internal/poll.execIO(0xc0012ce2a0, 0x7ff72c40b940)
+        /usr/local/go/src/internal/poll/fd_windows.go:233 +0xa7 fp=0xc000557c60 sp=0xc000557bf0 pc=0x7ff72b0bdf87
+internal/poll.(*FD).Read(0xc0012ce288, {0xc00125fa00, 0x200, 0x200})
+        /usr/local/go/src/internal/poll/fd_windows.go:521 +0x288 fp=0xc000557d00 sp=0xc000557c60 pc=0x7ff72b0beb68
+os.(*File).read(...)
+        /usr/local/go/src/os/file_posix.go:29
+os.(*File).Read(0xc0012c6030, {0xc00125fa00?, 0x1?, 0x0?})
+        /usr/local/go/src/os/file.go:144 +0x4f fp=0xc000557d40 sp=0xc000557d00 pc=0x7ff72b0cba8f
+bytes.(*Buffer).ReadFrom(0xc0012c13b0, {0x7ff72c622e20, 0xc00121a530})
+        /usr/local/go/src/bytes/buffer.go:217 +0x98 fp=0xc000557d98 sp=0xc000557d40 pc=0x7ff72b0f6078
+io.copyBuffer({0x7ff72c622f20, 0xc0012c13b0}, {0x7ff72c622e20, 0xc00121a530}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:415 +0x151 fp=0xc000557e10 sp=0xc000557d98 pc=0x7ff72b080071
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os.genericWriteTo(0x0?, {0x7ff72c622f20, 0xc0012c13b0})
+        /usr/local/go/src/os/file.go:295 +0x4f fp=0xc000557e60 sp=0xc000557e10 pc=0x7ff72b0cc26f
+os.(*File).WriteTo(0x7ff72d1a0d30?, {0x7ff72c622f20?, 0xc0012c13b0?})
+        /usr/local/go/src/os/file.go:273 +0x49 fp=0xc000557e88 sp=0xc000557e60 pc=0x7ff72b0cc1a9
+io.copyBuffer({0x7ff72c622f20, 0xc0012c13b0}, {0x7ff72c622ce0, 0xc0012c6030}, {0x0, 0x0, 0x0})
+        /usr/local/go/src/io/io.go:411 +0x9d fp=0xc000557f00 sp=0xc000557e88 pc=0x7ff72b07ffbd
+io.Copy(...)
+        /usr/local/go/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+        /usr/local/go/src/os/exec/exec.go:596 +0x34 fp=0xc000557f60 sp=0xc000557f00 pc=0x7ff72b1d6794
+os/exec.(*Cmd).Start.func2(0x5555555555555555?)
+        /usr/local/go/src/os/exec/exec.go:749 +0x2c fp=0xc000557fc8 sp=0xc000557f60 pc=0x7ff72b1d744c
+os/exec.(*Cmd).Start.gowrap1()
+        /usr/local/go/src/os/exec/exec.go:761 +0x24 fp=0xc000557fe0 sp=0xc000557fc8 pc=0x7ff72b1d73e4
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000557fe8 sp=0xc000557fe0 pc=0x7ff72b032641
+created by os/exec.(*Cmd).Start in goroutine 966
+        /usr/local/go/src/os/exec/exec.go:748 +0x9ce
+
+goroutine 2018 gp=0xc000473880 m=nil [runnable]:
+runtime.cgocall(0x7ff72b033e80, 0xc00067fb58)
+        /usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc00099a948 sp=0xc00099a8e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x7ff72b1d71ed?, 0xc0012ad900?, {0xc00099a990?, 0x0?, 0x0?})
+        /usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc00099a968 sp=0xc00099a948 pc=0x7ff72b014e4e
+syscall.Syscall(0x39?, 0x3?, 0x3?, 0x1?, 0x2?)
+        /usr/local/go/src/runtime/syscall_windows.go:457 +0x29 fp=0xc00099a9b8 sp=0xc00099a968 pc=0x7ff72b02e3a9
+syscall.WaitForSingleObject(0x47c, 0xffffffff)
+        /usr/local/go/src/syscall/zsyscall_windows.go:1159 +0x5a fp=0xc00099aa00 sp=0xc00099a9b8 pc=0x7ff72b0939da
+os.(*Process).wait(0xc00129ab00)
+        /usr/local/go/src/os/exec_windows.go:28 +0x89 fp=0xc00099aa90 sp=0xc00099aa00 pc=0x7ff72b0ca9e9
+os.(*Process).Wait(...)
+        /usr/local/go/src/os/exec.go:340
+os/exec.(*Cmd).Wait(0xc0011cbc80)
+        /usr/local/go/src/os/exec/exec.go:922 +0x45 fp=0xc00099aaf0 sp=0xc00099aa90 pc=0x7ff72b1d7bc5
+os/exec.(*Cmd).Run(0xc0011cbc80)
+        /usr/local/go/src/os/exec/exec.go:626 +0x2d fp=0xc00099ab08 sp=0xc00099aaf0 pc=0x7ff72b1d680d
+github.com/kkkdddd-start/winalog-go/internal/utils.RunPowerShell({0xc000d55950?, 0x65?})
+        /workspace/winalog-go/internal/utils/powershell.go:42 +0x14d fp=0xc00099abe0 sp=0xc00099ab08 pc=0x7ff72b57fced
+github.com/kkkdddd-start/winalog-go/internal/collectors.GetDLLVersion({0xc0012abe90?, 0x7ffdc8c00000?})
+        /workspace/winalog-go/internal/collectors/dll_info.go:166 +0x7b fp=0xc00099ac38 sp=0xc00099abe0 pc=0x7ff72b66465b
+github.com/kkkdddd-start/winalog-go/internal/collectors.enumProcessModules(0xc00099b24c?)
+        /workspace/winalog-go/internal/collectors/dll_info.go:148 +0x413 fp=0xc00099b1c8 sp=0xc00099ac38 pc=0x7ff72b6643f3
+github.com/kkkdddd-start/winalog-go/internal/collectors.ListLoadedDLLs()
+        /workspace/winalog-go/internal/collectors/dll_info.go:96 +0x1fb fp=0xc00099b548 sp=0xc00099b1c8 pc=0x7ff72b663cbb
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs(0xc000979560?, 0xc00096ec00)
+        /workspace/winalog-go/internal/api/handlers_system.go:400 +0xa9 fp=0xc00099b698 sp=0xc00099b548 pc=0x7ff72bede6c9
+github.com/kkkdddd-start/winalog-go/internal/api.(*SystemHandler).GetLoadedDLLs-fm(0xc00009d390?)
+        <autogenerated>:1 +0x26 fp=0xc00099b6b8 sp=0xc00099b698 pc=0x7ff72beeb6e6
+github.com/gin-gonic/gin.(*Context).Next(0xc00096ec00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc00099b6d8 sp=0xc00099b6b8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.corsMiddleware.func3(0xc00096ec00)
+        /workspace/winalog-go/internal/api/middleware.go:109 +0x230 fp=0xc00099b750 sp=0xc00099b6d8 pc=0x7ff72bee8270
+github.com/gin-gonic/gin.(*Context).Next(0xc00096ec00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc00099b770 sp=0xc00099b750 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.requestLogger.func2(0xc00096ec00)
+        /workspace/winalog-go/internal/api/middleware.go:21 +0x87 fp=0xc00099b8f8 sp=0xc00099b770 pc=0x7ff72beea3a7
+github.com/gin-gonic/gin.(*Context).Next(0xc00096ec00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc00099b918 sp=0xc00099b8f8 pc=0x7ff72bdd5a9f
+github.com/kkkdddd-start/winalog-go/internal/api.NewServer.recoveryMiddleware.func1(0x149fd553eb8?)
+        /workspace/winalog-go/internal/api/middleware.go:157 +0x3f fp=0xc00099b950 sp=0xc00099b918 pc=0x7ff72beea07f
+github.com/gin-gonic/gin.(*Context).Next(0xc00096ec00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x5f fp=0xc00099b970 sp=0xc00099b950 pc=0x7ff72bdd5a9f
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0xc000086380, 0xc00096ec00)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x475 fp=0xc00099bb18 sp=0xc00099b970 pc=0x7ff72bde31f5github.com/gin-gonic/gin.(*Engine).ServeHTTP(0xc000086380, {0x7ff72c62c770, 0xc0002a42d0}, 0xc000432280)
+        /go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x1dc fp=0xc00099bb60 sp=0xc00099bb18 pc=0x7ff72bde2afcnet/http.serverHandler.ServeHTTP({0xc00097c300?}, {0x7ff72c62c770?, 0xc0002a42d0?}, 0x1?)
+        /usr/local/go/src/net/http/server.go:3340 +0x8e fp=0xc00099bb90 sp=0xc00099bb60 pc=0x7ff72b57220e
+net/http.(*conn).serve(0xc000128090, {0x7ff72c62df80, 0xc0003493e0})
+        /usr/local/go/src/net/http/server.go:2109 +0x665 fp=0xc00099bfb8 sp=0xc00099bb90 pc=0x7ff72b562cc5
+net/http.(*Server).Serve.gowrap3()
+        /usr/local/go/src/net/http/server.go:3493 +0x28 fp=0xc00099bfe0 sp=0xc00099bfb8 pc=0x7ff72b5689a8
+runtime.goexit({})
+        /usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00099bfe8 sp=0xc00099bfe0 pc=0x7ff72b032641
+created by net/http.(*Server).Serve in goroutine 1
+        /usr/local/go/src/net/http/server.go:3493 +0x485
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                

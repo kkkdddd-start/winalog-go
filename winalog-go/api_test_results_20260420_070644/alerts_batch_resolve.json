@@ -1,0 +1,1 @@
+{"message":"Batch action completed","data":{"affected":0,"errors":["alert 1 not found","alert 2 not found","alert 3 not found"],"failed":3}}

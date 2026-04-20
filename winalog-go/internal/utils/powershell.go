@@ -66,10 +66,18 @@ func RunPowerShellAsync(ctx context.Context, command string) *PowerShellResult {
 	}
 
 	if err != nil {
-		result.Error = fmt.Errorf("powershell error: %w, stderr: %s", err, stderr.String())
+		if ctx.Err() == context.DeadlineExceeded {
+			result.Error = fmt.Errorf("powershell timeout: %w", ctx.Err())
+		} else {
+			result.Error = fmt.Errorf("powershell error: %w, stderr: %s", err, stderr.String())
+		}
 	}
 
 	return result
+}
+
+func RunPowerShellWithContext(ctx context.Context, command string) *PowerShellResult {
+	return RunPowerShellAsync(ctx, command)
 }
 
 func RunPowerShellScript(scriptPath string, args ...string) *PowerShellResult {

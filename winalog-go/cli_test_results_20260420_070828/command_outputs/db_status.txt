@@ -1,0 +1,7 @@
+=============================================================
+  Database Status
+=============================================================
+  Path: /root/.winalog/winalog.db
+  Total Events: 480329
+  Total Alerts: 337
+  Storage Size: 1028.89 MB

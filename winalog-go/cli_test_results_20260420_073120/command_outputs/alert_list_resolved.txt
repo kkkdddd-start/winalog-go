@@ -1,0 +1,5 @@
+ID     Severity   Rule                           Count      LastSeen
+------ ---------- ------------------------------ ---------- -----------
+1      high       event-log-cleared-system       1          2026-04-14 08:16
+
+Total: 1 alerts

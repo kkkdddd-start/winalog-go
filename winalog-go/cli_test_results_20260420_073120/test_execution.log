@@ -1,0 +1,138 @@
+[2026-04-20 07:31:20.230] [INFO] ========================================
+[2026-04-20 07:31:20.231] [INFO] WinLogAnalyzer-Go CLI Full Function Test (Linux)
+[2026-04-20 07:31:20.234] [INFO] ========================================
+[2026-04-20 07:31:20.236] [INFO] Hostname: 08613c9e-7232-4608-b282-a8ae90542605
+[2026-04-20 07:31:20.238] [INFO] User: root
+[2026-04-20 07:31:20.241] [INFO] OS: Linux 6.6.116
+[2026-04-20 07:31:20.252] [INFO] WinLogAnalyzer Version: winalog version 2.4.0
+[2026-04-20 07:31:20.254] [INFO] Test Start Time: 2026-04-20T07:31:20+00:00
+[2026-04-20 07:31:20.270] [INFO] ========================================
+[2026-04-20 07:31:20.271] [INFO] Part 1: Help and Version
+[2026-04-20 07:31:20.271] [INFO] ========================================
+[2026-04-20 07:31:20.272] [INFO] Executing: help
+[2026-04-20 07:31:20.273] [INFO] Args: --help
+[2026-04-20 07:31:20.274] [INFO] Desc: Show full help
+[2026-04-20 07:31:20.290] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.292] [INFO] Executing: version
+[2026-04-20 07:31:20.293] [INFO] Args: --version
+[2026-04-20 07:31:20.294] [INFO] Desc: Show version
+[2026-04-20 07:31:20.306] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.308] [INFO] ========================================
+[2026-04-20 07:31:20.309] [INFO] Part 2: Status and System Info
+[2026-04-20 07:31:20.310] [INFO] ========================================
+[2026-04-20 07:31:20.311] [INFO] Executing: status
+[2026-04-20 07:31:20.312] [INFO] Args: status
+[2026-04-20 07:31:20.313] [INFO] Desc: Show system status
+[2026-04-20 07:31:20.333] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.334] [INFO] Executing: info
+[2026-04-20 07:31:20.335] [INFO] Args: info
+[2026-04-20 07:31:20.338] [INFO] Desc: Show system info
+[2026-04-20 07:31:20.355] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.357] [INFO] Executing: info_process
+[2026-04-20 07:31:20.358] [INFO] Args: info --process
+[2026-04-20 07:31:20.358] [INFO] Desc: Show process info
+[2026-04-20 07:31:20.372] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.374] [INFO] Executing: info_network
+[2026-04-20 07:31:20.375] [INFO] Args: info --network
+[2026-04-20 07:31:20.376] [INFO] Desc: Show network connections
+[2026-04-20 07:31:20.389] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.391] [INFO] Executing: info_users
+[2026-04-20 07:31:20.392] [INFO] Args: info --users
+[2026-04-20 07:31:20.393] [INFO] Desc: Show local users
+[2026-04-20 07:31:20.406] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.408] [INFO] Executing: info_registry
+[2026-04-20 07:31:20.409] [INFO] Args: info --registry
+[2026-04-20 07:31:20.410] [INFO] Desc: Show registry persistence
+[2026-04-20 07:31:20.424] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.426] [INFO] Executing: info_tasks
+[2026-04-20 07:31:20.427] [INFO] Args: info --tasks
+[2026-04-20 07:31:20.428] [INFO] Desc: Show scheduled tasks
+[2026-04-20 07:31:20.440] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.442] [INFO] Executing: info_save
+[2026-04-20 07:31:20.443] [INFO] Args: info --save
+[2026-04-20 07:31:20.444] [INFO] Desc: Save system info to DB
+[2026-04-20 07:31:20.462] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.464] [INFO] Executing: info_all
+[2026-04-20 07:31:20.465] [INFO] Args: info --process --network --users --registry --tasks
+[2026-04-20 07:31:20.466] [INFO] Desc: Show all system info
+[2026-04-20 07:31:20.479] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.481] [INFO] ========================================
+[2026-04-20 07:31:20.482] [INFO] Part 3: Database Operations
+[2026-04-20 07:31:20.482] [INFO] ========================================
+[2026-04-20 07:31:20.483] [INFO] Executing: db_status
+[2026-04-20 07:31:20.484] [INFO] Args: db status
+[2026-04-20 07:31:20.485] [INFO] Desc: Show DB status
+[2026-04-20 07:31:20.503] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:20.505] [INFO] Executing: db_clean
+[2026-04-20 07:31:20.506] [INFO] Args: db clean
+[2026-04-20 07:31:20.507] [INFO] Desc: Clean old data (90 days)
+[2026-04-20 07:31:39.431] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:39.433] [INFO] Executing: db_clean_30
+[2026-04-20 07:31:39.434] [INFO] Args: db clean --days 30
+[2026-04-20 07:31:39.435] [INFO] Desc: Clean 30 days data
+[2026-04-20 07:31:58.590] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.593] [INFO] Executing: metrics
+[2026-04-20 07:31:58.594] [INFO] Args: metrics
+[2026-04-20 07:31:58.595] [INFO] Desc: Show Prometheus metrics
+[2026-04-20 07:31:58.623] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.625] [INFO] ========================================
+[2026-04-20 07:31:58.626] [INFO] Part 3.5: Forensic Collection
+[2026-04-20 07:31:58.627] [INFO] ========================================
+[2026-04-20 07:31:58.628] [INFO] NOTE: Collect tests are skipped on Linux (requires Windows)
+[2026-04-20 07:31:58.629] [INFO] ========================================
+[2026-04-20 07:31:58.630] [INFO] Part 4: Rules Management
+[2026-04-20 07:31:58.631] [INFO] ========================================
+[2026-04-20 07:31:58.632] [INFO] Executing: rules_list
+[2026-04-20 07:31:58.633] [INFO] Args: rules list
+[2026-04-20 07:31:58.634] [INFO] Desc: List all rules
+[2026-04-20 07:31:58.651] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.653] [INFO] Executing: rules_status
+[2026-04-20 07:31:58.654] [INFO] Args: rules status
+[2026-04-20 07:31:58.654] [INFO] Desc: Show rules status
+[2026-04-20 07:31:58.669] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.671] [INFO] Executing: rules_status_detail
+[2026-04-20 07:31:58.672] [INFO] Args: rules status --type alert BruteForce
+[2026-04-20 07:31:58.673] [INFO] Desc: Show specific rule status
+[2026-04-20 07:31:58.688] [FAIL] Status: FAIL (ExitCode: 1, Expected: 0)
+[2026-04-20 07:31:58.695] [INFO] Executing: rules_validate
+[2026-04-20 07:31:58.696] [INFO] Args: rules validate
+[2026-04-20 07:31:58.697] [INFO] Desc: Validate rules file
+[2026-04-20 07:31:58.709] [FAIL] Status: FAIL (ExitCode: 1, Expected: 0)
+[2026-04-20 07:31:58.711] [INFO] Executing: rules_disable
+[2026-04-20 07:31:58.712] [INFO] Args: rules disable --type alert BruteForce
+[2026-04-20 07:31:58.713] [INFO] Desc: Disable rule
+[2026-04-20 07:31:58.729] [FAIL] Status: FAIL (ExitCode: 1, Expected: 0)
+[2026-04-20 07:31:58.730] [INFO] Executing: rules_enable
+[2026-04-20 07:31:58.731] [INFO] Args: rules enable --type alert BruteForce
+[2026-04-20 07:31:58.732] [INFO] Desc: Enable rule
+[2026-04-20 07:31:58.746] [FAIL] Status: FAIL (ExitCode: 1, Expected: 0)
+[2026-04-20 07:31:58.748] [INFO] ========================================
+[2026-04-20 07:31:58.748] [INFO] Part 5: Alert Management
+[2026-04-20 07:31:58.749] [INFO] ========================================
+[2026-04-20 07:31:58.750] [INFO] Executing: alert_list
+[2026-04-20 07:31:58.751] [INFO] Args: alert list
+[2026-04-20 07:31:58.752] [INFO] Desc: List alerts
+[2026-04-20 07:31:58.768] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.770] [INFO] Executing: alert_list_json
+[2026-04-20 07:31:58.771] [INFO] Args: alert list --format json --limit 20
+[2026-04-20 07:31:58.772] [INFO] Desc: List alerts in JSON
+[2026-04-20 07:31:58.787] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.789] [INFO] Executing: alert_stats
+[2026-04-20 07:31:58.790] [INFO] Args: alert stats
+[2026-04-20 07:31:58.791] [INFO] Desc: Show alert stats
+[2026-04-20 07:31:58.810] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.812] [INFO] Executing: alert_list_high
+[2026-04-20 07:31:58.813] [INFO] Args: alert list --severity high --limit 10
+[2026-04-20 07:31:58.814] [INFO] Desc: List high severity alerts
+[2026-04-20 07:31:58.829] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.831] [INFO] Executing: alert_list_medium
+[2026-04-20 07:31:58.832] [INFO] Args: alert list --severity medium --limit 10
+[2026-04-20 07:31:58.832] [INFO] Desc: List medium severity alerts
+[2026-04-20 07:31:58.850] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.852] [INFO] Executing: alert_list_resolved
+[2026-04-20 07:31:58.853] [INFO] Args: alert list --resolved --limit 10
+[2026-04-20 07:31:58.853] [INFO] Desc: List resolved alerts
+[2026-04-20 07:31:58.871] [PASS] Status: PASS (ExitCode: 0, Duration: s)
+[2026-04-20 07:31:58.873] [INFO] Executing: alert_run
+[2026-04-20 07:31:58.874] [INFO] Args: alert run
+[2026-04-20 07:31:58.875] [INFO] Desc: Run alert analysis

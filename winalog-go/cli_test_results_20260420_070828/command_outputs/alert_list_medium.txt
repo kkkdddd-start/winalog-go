@@ -1,0 +1,14 @@
+ID     Severity   Rule                           Count      LastSeen
+------ ---------- ------------------------------ ---------- -----------
+14     medium     ueba-off-hours-login           1          2026-04-14 08:15
+74     medium     ueba-off-hours-login           1          2026-04-14 08:15
+32     medium     cloud-storage-upload           1          2026-04-14 08:01
+33     medium     network-connection-alert       1          2026-04-14 08:01
+95     medium     cloud-storage-upload           1          2026-04-14 08:01
+96     medium     network-connection-alert       1          2026-04-14 08:01
+99     medium     cloud-storage-upload           1          2026-04-14 08:01
+100    medium     network-connection-alert       1          2026-04-14 08:01
+25     medium     cloud-storage-upload           1          2026-04-14 08:01
+26     medium     network-connection-alert       1          2026-04-14 08:01
+
+Total: 10 alerts

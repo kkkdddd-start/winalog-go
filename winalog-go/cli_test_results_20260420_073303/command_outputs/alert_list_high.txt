@@ -1,0 +1,14 @@
+ID     Severity   Rule                           Count      LastSeen
+------ ---------- ------------------------------ ---------- -----------
+1      high       event-log-cleared-system       1          2026-04-14 08:16
+68     high       event-log-cleared-system       1          2026-04-14 08:16
+361    high       event-log-cleared-system       1          2026-04-14 08:16
+554    high       event-log-cleared-system       1          2026-04-14 08:16
+684    high       event-log-cleared-system       1          2026-04-14 08:16
+898    high       event-log-cleared-system       1          2026-04-14 08:16
+3      high       ueba-privilege-escalation      1          2026-04-14 08:15
+5      high       mass-privilege-assignment      1          2026-04-14 08:15
+70     high       pass-the-hash-suspect          1          2026-04-14 08:15
+71     high       ueba-privilege-escalation      1          2026-04-14 08:15
+
+Total: 10 alerts

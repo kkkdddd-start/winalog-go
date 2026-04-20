@@ -7,11 +7,19 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 	"golang.org/x/sys/windows"
+)
+
+var (
+	dllVersionCache = make(map[string]string)
+	dllCacheMu      sync.RWMutex
+	dllFetchSem     = make(chan struct{}, 10)
 )
 
 type DLLInfoCollector struct {
@@ -162,12 +170,35 @@ func GetDLLVersion(dllPath string) string {
 		return ""
 	}
 
-	cmd := fmt.Sprintf(`(Get-Item '%s' -ErrorAction SilentlyContinue).VersionInfo | Select-Object -ExpandProperty FileVersion`, strings.ReplaceAll(dllPath, "'", "''"))
-	result := utils.RunPowerShell(cmd)
-	if result.Success() && result.Output != "" {
-		return strings.TrimSpace(result.Output)
+	dllCacheMu.RLock()
+	if version, ok := dllVersionCache[dllPath]; ok {
+		dllCacheMu.RUnlock()
+		return version
 	}
-	return ""
+	dllCacheMu.RUnlock()
+
+	select {
+	case dllFetchSem <- struct{}{}:
+		defer func() { <-dllFetchSem }()
+	default:
+		return ""
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cmd := fmt.Sprintf(`(Get-Item '%s' -ErrorAction SilentlyContinue).VersionInfo | Select-Object -ExpandProperty FileVersion`, strings.ReplaceAll(dllPath, "'", "''"))
+	result := utils.RunPowerShellWithContext(ctx, cmd)
+	version := ""
+	if result.Success() && result.Output != "" {
+		version = strings.TrimSpace(result.Output)
+	}
+
+	dllCacheMu.Lock()
+	dllVersionCache[dllPath] = version
+	dllCacheMu.Unlock()
+
+	return version
 }
 
 func IsDLLLoaded(dllName string) bool {
@@ -199,4 +230,10 @@ func CollectDLLInfo(ctx context.Context) ([]*types.DLLModule, error) {
 		}
 	}
 	return dlls, nil
+}
+
+func ClearDLLVersionCache() {
+	dllCacheMu.Lock()
+	dllVersionCache = make(map[string]string)
+	dllCacheMu.Unlock()
 }

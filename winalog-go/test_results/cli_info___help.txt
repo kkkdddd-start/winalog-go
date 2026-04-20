@@ -1,0 +1,18 @@
+Display system information including processes and network connections.
+
+Usage:
+  winalog info [flags]
+
+Flags:
+  -h, --help       help for info
+      --network    Show network connections
+      --process    Show process info
+      --registry   Show registry persistence
+      --save       Save to database
+      --tasks      Show scheduled tasks
+      --users      Show user accounts
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)

@@ -1,0 +1,1 @@
+{"database_path":"./data/winalog.db","log_level":"info","max_events":100000,"retention_days":30,"enable_alerting":true,"enable_live_collection":false,"enable_auto_update":true,"api_port":8080,"api_host":"127.0.0.1","cors_enabled":true,"max_import_file_size":10000,"export_directory":"./reports","parser_workers":4,"memory_limit":2048}

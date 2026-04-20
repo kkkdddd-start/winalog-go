@@ -1,0 +1,28 @@
+Error: collection failed: this feature requires Windows
+Usage:
+  winalog collect [flags]
+
+Flags:
+      --calculate-hash        Calculate SHA256 hash (default true)
+      --compress              Compress output (default true)
+      --compress-level int    Compression level (0-9) (default 6)
+      --exclude string        Exclude patterns
+  -h, --help                  help for collect
+      --include-amcache       Include Amcache
+      --include-logs          Include Windows Event Logs (default true)
+      --include-prefetch      Include Prefetch
+      --include-registry      Include Registry persistence
+      --include-shimcache     Include ShimCache
+      --include-system-info   Include System Info (default true)
+      --include-tasks         Include Scheduled Tasks
+      --include-userassist    Include UserAssist
+  -o, --output string         Output file path (default "winalog_collect.zip")
+      --password string       ZIP password (optional)
+      --workers int           Number of parallel workers (default 4)
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)
+
+Error: collection failed: this feature requires Windows

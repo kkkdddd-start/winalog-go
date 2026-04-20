@@ -1,0 +1,11 @@
+=============================================================
+  System Information
+=============================================================
+
+[Process Information]
+  Error: this feature requires Windows
+
+[Network Connections]
+  Error: this feature requires Windows
+
+=============================================================

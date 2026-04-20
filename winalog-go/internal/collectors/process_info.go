@@ -4,12 +4,14 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 	"unsafe"
 
 	"github.com/kkkdddd-start/winalog-go/internal/forensics"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
+	"github.com/kkkdddd-start/winalog-go/internal/utils"
 	"golang.org/x/sys/windows"
 )
 
@@ -133,14 +135,33 @@ func formatTime(t *time.Time) string {
 }
 
 func getCommandLine(pid uint32) string {
-	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_VM_READ, false, pid)
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
 	if err != nil {
 		return ""
 	}
 	defer windows.CloseHandle(hProcess)
 
-	cmdLine := windows.GetCommandLine()
-	return windows.UTF16PtrToString(cmdLine)
+	var buf [32768]uint16
+	size := uint32(len(buf))
+	if err := windows.QueryFullProcessImageName(hProcess, 0, &buf[0], &size); err != nil {
+		return ""
+	}
+
+	path := windows.UTF16ToString(buf[:size])
+	if path == "" {
+		return ""
+	}
+
+	script := fmt.Sprintf(`(Get-CimInstance Win32_Process -Filter "ProcessId=%d").CommandLine`, pid)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result := utils.RunPowerShellWithContext(ctx, script)
+	if result.Success() && result.Output != "" {
+		return strings.TrimSpace(result.Output)
+	}
+
+	return path
 }
 
 func getProcessUser(pid uint32) string {
@@ -171,16 +192,23 @@ func getProcessUser(pid uint32) string {
 }
 
 func getProcessStartTime(pid uint32) time.Time {
-	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION, false, pid)
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
 	if err != nil {
-		return time.Now()
+		return time.Time{}
 	}
 	defer windows.CloseHandle(hProcess)
 
 	var creationTime windows.Filetime
-	err = windows.GetProcessTimes(hProcess, &creationTime, nil, nil, nil)
+	var exitTime windows.Filetime
+	var kernelTime windows.Filetime
+	var userTime windows.Filetime
+	err = windows.GetProcessTimes(hProcess, &creationTime, &exitTime, &kernelTime, &userTime)
 	if err != nil {
-		return time.Now()
+		return time.Time{}
+	}
+
+	if creationTime.Nanoseconds() == 0 && creationTime.HighDateTime == 0 && creationTime.LowDateTime == 0 {
+		return time.Time{}
 	}
 
 	return time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC).

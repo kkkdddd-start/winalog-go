@@ -1,0 +1,12 @@
+Display Prometheus-format metrics.
+
+Usage:
+  winalog metrics [flags]
+
+Flags:
+  -h, --help   help for metrics
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)

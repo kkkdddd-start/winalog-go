@@ -1,0 +1,1 @@
+{"chains":[{"id":"lateral-movement","name":"Lateral Movement","technique":"T1021","tactic":"Lateral Movement","severity":"high","event_count":100,"start_time":"2026-04-14T08:15:03.3336395Z","end_time":"2026-04-14T05:27:11.2530131Z"}],"total":1}

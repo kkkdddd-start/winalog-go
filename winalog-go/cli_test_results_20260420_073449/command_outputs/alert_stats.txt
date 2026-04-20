@@ -1,0 +1,11 @@
+=== Alert Statistics ===
+Total Alerts:  1212
+
+By Severity:
+  critical  : 415
+  high      : 546
+  medium    : 251
+
+By Status:
+  unresolved: 1211
+  resolved  : 1

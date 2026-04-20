@@ -1,0 +1,12 @@
+# HELP winalog_events_total Total number of events
+# TYPE winalog_events_total counter
+winalog_events_total 218584
+# HELP winalog_alerts_total Total number of alerts
+# TYPE winalog_alerts_total counter
+winalog_alerts_total 337
+# HELP winalog_storage_bytes Storage size in bytes
+# TYPE winalog_storage_bytes gauge
+winalog_storage_bytes 659562496.00
+# HELP winalog_imports_total Total number of imports
+# TYPE winalog_imports_total counter
+winalog_imports_total 231

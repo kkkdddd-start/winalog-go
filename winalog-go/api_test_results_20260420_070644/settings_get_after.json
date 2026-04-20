@@ -1,0 +1,1 @@
+{"database_path":"","log_level":"debug","max_events":0,"retention_days":0,"enable_alerting":false,"enable_live_collection":false,"enable_auto_update":false,"api_port":0,"api_host":"","cors_enabled":true,"max_import_file_size":0,"export_directory":"","parser_workers":0,"memory_limit":0}

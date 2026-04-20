@@ -1,0 +1,12 @@
+Calculate and verify file SHA256 hash.
+
+Usage:
+  winalog verify [file] [flags]
+
+Flags:
+  -h, --help   help for verify
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)

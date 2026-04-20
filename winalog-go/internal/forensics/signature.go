@@ -4,6 +4,7 @@ package forensics
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -166,12 +167,18 @@ func runPowerShellCommand(script string) (string, error) {
 }
 
 func execPowerShell(scriptPath string) (string, error) {
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("signature verification timeout")
+		}
 		if stderr.Len() > 0 {
 			return "", fmt.Errorf("%s: %s", err.Error(), stderr.String())
 		}

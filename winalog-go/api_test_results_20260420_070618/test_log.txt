@@ -1,0 +1,11 @@
+[2026-04-20 07:06:18.599] [INFO] ========================================
+[2026-04-20 07:06:18.600] [INFO] WinLogAnalyzer-Go API Test Suite (Linux)
+[2026-04-20 07:06:18.601] [INFO] ========================================
+[2026-04-20 07:06:18.603] [INFO] Base URL: http://localhost:8080/api
+[2026-04-20 07:06:18.605] [INFO] Start Time: 2026-04-20T07:06:18+00:00
+[2026-04-20 07:06:18.606] [INFO] Max Retries: 3
+[2026-04-20 07:06:18.607] [INFO] Retry Delay: 1000ms
+[2026-04-20 07:06:18.608] [INFO] SSE Enabled: false
+[2026-04-20 07:06:18.609] [INFO] Validation Enabled: false
+[2026-04-20 07:06:18.611] [INFO] Performance Enabled: false
+[2026-04-20 07:06:18.612] [INFO] Auto-searching for EVTX files...

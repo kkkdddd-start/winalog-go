@@ -1,0 +1,16 @@
+Run a specific threat analyzer by type. Use 'analyze list' to see available analyzers.
+
+Usage:
+  winalog analyze <type> [flags]
+
+Flags:
+      --format string        Output format: table, json (default "table")
+  -h, --help                 help for analyze
+      --hours int            Time window in hours (default 24)
+  -o, --output string        Output file
+      --time-window string   Time window (overrides --hours, e.g., 24h, 7d)
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)
