@@ -269,14 +269,14 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 				Format:     reports.ReportFormat(req.Format),
 				IncludeRaw: req.IncludeRaw,
 			}
-			if req.StartTime != "" {
-				if t, err := time.Parse(time.RFC3339, req.StartTime); err == nil {
-					pdfReq.StartTime = t
+			if req.StartTime != "" || req.EndTime != "" {
+				timeInput := req.StartTime
+				if req.EndTime != "" {
+					timeInput = req.StartTime + "," + req.EndTime
 				}
-			}
-			if req.EndTime != "" {
-				if t, err := time.Parse(time.RFC3339, req.EndTime); err == nil {
-					pdfReq.EndTime = t
+				if tf, err := types.ParseTimeFilter(timeInput); err == nil && tf != nil {
+					pdfReq.StartTime = tf.Start
+					pdfReq.EndTime = tf.End
 				}
 			}
 			err = h.svc.ExportPDF(pdfReq, f)
