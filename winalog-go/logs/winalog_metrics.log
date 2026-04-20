@@ -1138,3 +1138,222 @@
 {"timestamp":"2026-04-20T07:52:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3957672119140625,"mem_total_mb":4.694404602050781,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":7930,"heap_objects":6949}
 {"timestamp":"2026-04-20T07:53:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3961410522460938,"mem_total_mb":4.6947784423828125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":7930,"heap_objects":6952}
 {"timestamp":"2026-04-20T07:54:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3960494995117188,"mem_total_mb":4.6959991455078125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":8474,"heap_objects":6958}
+{"timestamp":"2026-04-20T07:55:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3970184326171875,"mem_total_mb":4.696968078613281,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":8474,"heap_objects":6969}
+{"timestamp":"2026-04-20T07:56:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3958969116210938,"mem_total_mb":4.697685241699219,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":9413,"heap_objects":6954}
+{"timestamp":"2026-04-20T07:57:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.396270751953125,"mem_total_mb":4.69805908203125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":9413,"heap_objects":6957}
+{"timestamp":"2026-04-20T07:58:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3959884643554688,"mem_total_mb":4.699127197265625,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":10272,"heap_objects":6952}
+{"timestamp":"2026-04-20T07:59:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3969573974609375,"mem_total_mb":4.700096130371094,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":10272,"heap_objects":6963}
+{"timestamp":"2026-04-20T08:00:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3973312377929688,"mem_total_mb":4.700469970703125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":10272,"heap_objects":6966}
+{"timestamp":"2026-04-20T08:01:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3957672119140625,"mem_total_mb":4.7010955810546875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":10601,"heap_objects":6952}
+{"timestamp":"2026-04-20T08:02:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3961410522460938,"mem_total_mb":4.701469421386719,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":10601,"heap_objects":6955}
+{"timestamp":"2026-04-20T08:03:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.396514892578125,"mem_total_mb":4.70184326171875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":10601,"heap_objects":6958}
+{"timestamp":"2026-04-20T08:04:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3961105346679688,"mem_total_mb":4.703033447265625,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":11063,"heap_objects":6958}
+{"timestamp":"2026-04-20T08:05:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3970794677734375,"mem_total_mb":4.704002380371094,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":11063,"heap_objects":6969}
+{"timestamp":"2026-04-20T08:06:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3958969116210938,"mem_total_mb":4.704627990722656,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":12858,"heap_objects":6954}
+{"timestamp":"2026-04-20T08:07:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.396270751953125,"mem_total_mb":4.7050018310546875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":12858,"heap_objects":6957}
+{"timestamp":"2026-04-20T08:08:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3966445922851562,"mem_total_mb":4.705375671386719,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":12858,"heap_objects":6960}
+{"timestamp":"2026-04-20T08:08:34Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:08:34Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.24737548828125,"mem_total_mb":2.24737548828125,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11304}
+{"timestamp":"2026-04-20T08:08:37Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:08:37Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.24456787109375,"mem_total_mb":2.24456787109375,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11330}
+{"timestamp":"2026-04-20T08:08:38Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2406692504882812,"mem_total_mb":2.2406692504882812,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11279}
+{"timestamp":"2026-04-20T08:08:38Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:08:38Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.24212646484375,"mem_total_mb":2.24212646484375,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11288}
+{"timestamp":"2026-04-20T08:08:38Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:08:41Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:08:41Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.24749755859375,"mem_total_mb":2.24749755859375,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11374}
+{"timestamp":"2026-04-20T08:09:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3955078125,"mem_total_mb":4.706092834472656,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":13450,"heap_objects":6950}
+{"timestamp":"2026-04-20T08:10:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3958663940429688,"mem_total_mb":4.706451416015625,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":13450,"heap_objects":6953}
+{"timestamp":"2026-04-20T08:11:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3968353271484375,"mem_total_mb":4.707420349121094,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":13450,"heap_objects":6964}
+{"timestamp":"2026-04-20T08:11:52Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:11:52Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2356643676757812,"mem_total_mb":2.2356643676757812,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11270}
+{"timestamp":"2026-04-20T08:11:53Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.244110107421875,"mem_total_mb":2.244110107421875,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11323}
+{"timestamp":"2026-04-20T08:11:53Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:11:54Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:11:57Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:11:57Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.247894287109375,"mem_total_mb":2.247894287109375,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11377}
+{"timestamp":"2026-04-20T08:11:58Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2405853271484375,"mem_total_mb":2.2405853271484375,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11279}
+{"timestamp":"2026-04-20T08:11:58Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:11:58Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:11:58Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2490768432617188,"mem_total_mb":2.2490768432617188,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11325}
+{"timestamp":"2026-04-20T08:12:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3960418701171875,"mem_total_mb":4.708229064941406,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":13989,"heap_objects":6955}
+{"timestamp":"2026-04-20T08:12:03Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:12:04Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:12:04Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.264251708984375,"mem_total_mb":2.264251708984375,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11534}
+{"timestamp":"2026-04-20T08:12:04Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:12:04Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2425537109375,"mem_total_mb":2.2425537109375,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11293}
+{"timestamp":"2026-04-20T08:12:11Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:12:11Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2512664794921875,"mem_total_mb":2.2512664794921875,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11371}
+{"timestamp":"2026-04-20T08:12:15Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.24102783203125,"mem_total_mb":2.24102783203125,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11281}
+{"timestamp":"2026-04-20T08:12:15Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:12:20Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:12:20Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2444534301757812,"mem_total_mb":2.2444534301757812,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11333}
+{"timestamp":"2026-04-20T08:12:20Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2404098510742188,"mem_total_mb":2.2404098510742188,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11276}
+{"timestamp":"2026-04-20T08:12:20Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:12:27Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:12:27Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2408218383789062,"mem_total_mb":2.2408218383789062,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11279}
+{"timestamp":"2026-04-20T08:12:28Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2419586181640625,"mem_total_mb":2.2419586181640625,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11286}
+{"timestamp":"2026-04-20T08:12:28Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:13:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3970108032226562,"mem_total_mb":4.709197998046875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":13989,"heap_objects":6966}
+{"timestamp":"2026-04-20T08:14:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3957290649414062,"mem_total_mb":4.709754943847656,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":14338,"heap_objects":6954}
+{"timestamp":"2026-04-20T08:15:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3963546752929688,"mem_total_mb":4.710380554199219,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":14338,"heap_objects":6959}
+{"timestamp":"2026-04-20T08:16:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3960037231445312,"mem_total_mb":4.711006164550781,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":14779,"heap_objects":6956}
+{"timestamp":"2026-04-20T08:17:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3963775634765625,"mem_total_mb":4.7113800048828125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":14779,"heap_objects":6959}
+{"timestamp":"2026-04-20T08:18:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3956298828125,"mem_total_mb":4.712005615234375,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":15082,"heap_objects":6953}
+{"timestamp":"2026-04-20T08:19:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3964462280273438,"mem_total_mb":4.712821960449219,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":15082,"heap_objects":6957}
+{"timestamp":"2026-04-20T08:20:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3974151611328125,"mem_total_mb":4.7137908935546875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":15082,"heap_objects":6968}
+{"timestamp":"2026-04-20T08:21:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3962249755859375,"mem_total_mb":4.71441650390625,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":15920,"heap_objects":6957}
+{"timestamp":"2026-04-20T08:22:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3965988159179688,"mem_total_mb":4.714790344238281,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":15920,"heap_objects":6960}
+{"timestamp":"2026-04-20T08:23:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.39697265625,"mem_total_mb":4.7151641845703125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":15920,"heap_objects":6963}
+{"timestamp":"2026-04-20T08:24:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3963394165039062,"mem_total_mb":4.7157745361328125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":16583,"heap_objects":6959}
+{"timestamp":"2026-04-20T08:25:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3967132568359375,"mem_total_mb":4.716148376464844,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":16583,"heap_objects":6962}
+{"timestamp":"2026-04-20T08:26:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3958740234375,"mem_total_mb":4.716773986816406,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":17106,"heap_objects":6954}
+{"timestamp":"2026-04-20T08:27:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3966903686523438,"mem_total_mb":4.71759033203125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":17106,"heap_objects":6958}
+{"timestamp":"2026-04-20T08:28:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3966598510742188,"mem_total_mb":4.7188720703125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":17446,"heap_objects":6964}
+{"timestamp":"2026-04-20T08:29:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.39703369140625,"mem_total_mb":4.719245910644531,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":17446,"heap_objects":6967}
+{"timestamp":"2026-04-20T08:30:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3961868286132812,"mem_total_mb":4.719963073730469,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":17702,"heap_objects":6958}
+{"timestamp":"2026-04-20T08:31:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.39715576171875,"mem_total_mb":4.7209320068359375,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":17702,"heap_objects":6969}
+{"timestamp":"2026-04-20T08:32:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3965682983398438,"mem_total_mb":4.721588134765625,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":18802,"heap_objects":6963}
+{"timestamp":"2026-04-20T08:33:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.396942138671875,"mem_total_mb":4.721961975097656,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":18802,"heap_objects":6966}
+{"timestamp":"2026-04-20T08:34:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3944015502929688,"mem_total_mb":4.7223358154296875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19227,"heap_objects":6946}
+{"timestamp":"2026-04-20T08:35:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3956222534179688,"mem_total_mb":4.7235565185546875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19227,"heap_objects":6959}
+{"timestamp":"2026-04-20T08:36:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3965911865234375,"mem_total_mb":4.724525451660156,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19227,"heap_objects":6970}
+{"timestamp":"2026-04-20T08:37:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3952484130859375,"mem_total_mb":4.725151062011719,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19328,"heap_objects":6952}
+{"timestamp":"2026-04-20T08:38:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3956222534179688,"mem_total_mb":4.72552490234375,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19328,"heap_objects":6955}
+{"timestamp":"2026-04-20T08:39:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3950271606445312,"mem_total_mb":4.7261505126953125,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19588,"heap_objects":6951}
+{"timestamp":"2026-04-20T08:40:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3954010009765625,"mem_total_mb":4.726524353027344,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19588,"heap_objects":6954}
+{"timestamp":"2026-04-20T08:41:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3956222534179688,"mem_total_mb":4.727745056152344,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19917,"heap_objects":6959}
+{"timestamp":"2026-04-20T08:42:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.39599609375,"mem_total_mb":4.728118896484375,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":19917,"heap_objects":6962}
+{"timestamp":"2026-04-20T08:43:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3950119018554688,"mem_total_mb":4.728729248046875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":20028,"heap_objects":6951}
+{"timestamp":"2026-04-20T08:44:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3953857421875,"mem_total_mb":4.729103088378906,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":20028,"heap_objects":6954}
+{"timestamp":"2026-04-20T08:45:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3953399658203125,"mem_total_mb":4.730171203613281,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":20105,"heap_objects":6950}
+{"timestamp":"2026-04-20T08:46:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3963088989257812,"mem_total_mb":4.73114013671875,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":20105,"heap_objects":6961}
+{"timestamp":"2026-04-20T08:47:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3966827392578125,"mem_total_mb":4.731513977050781,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":20105,"heap_objects":6964}
+{"timestamp":"2026-04-20T08:48:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.3952484130859375,"mem_total_mb":4.732139587402344,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":20768,"heap_objects":6952}
+{"timestamp":"2026-04-20T08:48:27Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:48:27Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2422256469726562,"mem_total_mb":2.2422256469726562,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11283}
+{"timestamp":"2026-04-20T08:48:30Z","level":"info","message":"[API]","status":200,"latency":"1.85571ms","client_ip":"127.0.0.1","method":"GET","path":"/api/health"}
+{"timestamp":"2026-04-20T08:48:58Z","level":"info","message":"[API]","status":200,"latency":"567.132µs","client_ip":"121.35.103.140","method":"GET","path":"/"}
+{"timestamp":"2026-04-20T08:48:59Z","level":"info","message":"[API]","status":200,"latency":"3.358656ms","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-BrwPbm9A.js"}
+{"timestamp":"2026-04-20T08:48:59Z","level":"info","message":"[API]","status":200,"latency":"3.524955ms","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T08:48:59Z","level":"info","message":"[API]","status":200,"latency":"761.755185ms","client_ip":"121.35.103.140","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T08:48:59Z","level":"info","message":"[API]","status":200,"latency":"763.387296ms","client_ip":"121.35.103.140","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T08:48:59Z","level":"info","message":"[API]","status":200,"latency":"669.70828ms","client_ip":"121.35.103.140","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T08:49:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":1.511688232421875,"mem_total_mb":6.753761291503906,"mem_sys_mb":13.084236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":21246,"heap_objects":7859}
+{"timestamp":"2026-04-20T08:49:10Z","level":"info","message":"[API]","status":200,"latency":"267.38233ms","client_ip":"121.35.103.140","method":"GET","path":"/api/timeline?limit=1000"}
+{"timestamp":"2026-04-20T08:49:17Z","level":"warn","message":"[API]","status":404,"latency":"61.485µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute-force"}
+{"timestamp":"2026-04-20T08:49:20Z","level":"warn","message":"[API]","status":404,"latency":"56.038µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:20Z","level":"warn","message":"[API]","status":404,"latency":"59.084µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:21Z","level":"warn","message":"[API]","status":404,"latency":"55.189µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:21Z","level":"warn","message":"[API]","status":404,"latency":"40.993µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:21Z","level":"warn","message":"[API]","status":404,"latency":"43.712µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:21Z","level":"warn","message":"[API]","status":404,"latency":"38.907µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:21Z","level":"warn","message":"[API]","status":404,"latency":"48.816µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:23Z","level":"warn","message":"[API]","status":404,"latency":"39.997µs","client_ip":"121.35.103.140","method":"GET","path":"/analyze"}
+{"timestamp":"2026-04-20T08:49:24Z","level":"warn","message":"[API]","status":404,"latency":"41.332µs","client_ip":"121.35.103.140","method":"GET","path":"/favicon.ico"}
+{"timestamp":"2026-04-20T08:49:44Z","level":"info","message":"[API]","status":200,"latency":"124.475µs","client_ip":"121.35.103.140","method":"GET","path":"/"}
+{"timestamp":"2026-04-20T08:49:44Z","level":"info","message":"[API]","status":200,"latency":"351.318µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T08:49:44Z","level":"info","message":"[API]","status":200,"latency":"3.747763ms","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-BrwPbm9A.js"}
+{"timestamp":"2026-04-20T08:49:44Z","level":"info","message":"[API]","status":200,"latency":"2.668973ms","client_ip":"121.35.103.140","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T08:49:44Z","level":"info","message":"[API]","status":200,"latency":"325.291216ms","client_ip":"121.35.103.140","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T08:49:44Z","level":"info","message":"[API]","status":200,"latency":"323.212831ms","client_ip":"121.35.103.140","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T08:49:47Z","level":"info","message":"[API]","status":200,"latency":"119.064µs","client_ip":"121.35.103.140","method":"GET","path":"/"}
+{"timestamp":"2026-04-20T08:49:47Z","level":"info","message":"[API]","status":200,"latency":"208.217µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T08:49:47Z","level":"info","message":"[API]","status":200,"latency":"810.351µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-BrwPbm9A.js"}
+{"timestamp":"2026-04-20T08:49:48Z","level":"warn","message":"[API]","status":404,"latency":"56.135µs","client_ip":"121.35.103.140","method":"GET","path":"/favicon.ico"}
+{"timestamp":"2026-04-20T08:49:48Z","level":"info","message":"[API]","status":200,"latency":"276.806112ms","client_ip":"121.35.103.140","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T08:49:48Z","level":"info","message":"[API]","status":200,"latency":"289.817296ms","client_ip":"121.35.103.140","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T08:49:48Z","level":"info","message":"[API]","status":200,"latency":"299.460512ms","client_ip":"121.35.103.140","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T08:49:52Z","level":"warn","message":"[API]","status":404,"latency":"66.178µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:53Z","level":"warn","message":"[API]","status":404,"latency":"65.647µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:53Z","level":"warn","message":"[API]","status":404,"latency":"75.183µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:53Z","level":"warn","message":"[API]","status":404,"latency":"50.931µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:49:58Z","level":"info","message":"[API]","status":200,"latency":"199.368µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T08:50:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":3.5892715454101562,"mem_total_mb":20.055747985839844,"mem_sys_mb":17.58423614501953,"num_goroutine":7,"num_cpu":2,"mem_pause_us":22099,"heap_objects":17663}
+{"timestamp":"2026-04-20T08:50:03Z","level":"error","message":"[ERROR]","module":"live_handler","error":"SSE client connected from 121.35.103.140"}
+{"timestamp":"2026-04-20T08:50:04Z","level":"info","message":"[API]","status":200,"latency":"528.404µs","client_ip":"121.35.103.140","method":"GET","path":"/api/monitor/events?limit=100\u0026"}
+{"timestamp":"2026-04-20T08:50:04Z","level":"info","message":"[API]","status":200,"latency":"224.92µs","client_ip":"121.35.103.140","method":"GET","path":"/api/monitor/stats"}
+{"timestamp":"2026-04-20T08:50:04Z","level":"error","message":"[ERROR]","module":"live_handler","error":"SSE client disconnected from 121.35.103.140"}
+{"timestamp":"2026-04-20T08:50:03Z","level":"info","message":"[API]","status":200,"latency":"820.075891ms","client_ip":"121.35.103.140","method":"GET","path":"/api/live/events"}
+{"timestamp":"2026-04-20T08:50:05Z","level":"info","message":"[API]","status":200,"latency":"197.962µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/detect"}
+{"timestamp":"2026-04-20T08:50:06Z","level":"info","message":"[API]","status":200,"latency":"539.309µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/detectors"}
+{"timestamp":"2026-04-20T08:50:08Z","level":"warn","message":"[API]","status":404,"latency":"81.391µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/rules/com_hijack_detector"}
+{"timestamp":"2026-04-20T08:50:17Z","level":"info","message":"[API]","status":200,"latency":"33.600506ms","client_ip":"121.35.103.140","method":"GET","path":"/api/dashboard/log-names"}
+{"timestamp":"2026-04-20T08:50:17Z","level":"info","message":"[API]","status":200,"latency":"328.003909ms","client_ip":"121.35.103.140","method":"GET","path":"/api/events?page=1\u0026page_size=50\u0026sort_by=timestamp\u0026sort_order=desc"}
+{"timestamp":"2026-04-20T08:50:23Z","level":"warn","message":"[API]","status":404,"latency":"280.561µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:51:02Z","level":"info","message":"[METRICS]","mem_alloc_mb":3.952392578125,"mem_total_mb":20.418869018554688,"mem_sys_mb":17.58423614501953,"num_goroutine":7,"num_cpu":2,"mem_pause_us":22099,"heap_objects":21083}
+{"timestamp":"2026-04-20T08:56:22Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:56:22Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2408370971679688,"mem_total_mb":2.2408370971679688,"mem_sys_mb":12.209236145019531,"num_goroutine":3,"num_cpu":2,"mem_pause_us":0,"heap_objects":11275}
+{"timestamp":"2026-04-20T08:56:22Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:56:22Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.439178466796875,"mem_total_mb":2.439178466796875,"mem_sys_mb":12.209236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":0,"heap_objects":13723}
+{"timestamp":"2026-04-20T08:56:25Z","level":"info","message":"[API]","status":200,"latency":"28.829µs","client_ip":"121.35.103.140","method":"GET","path":"/"}
+{"timestamp":"2026-04-20T08:56:25Z","level":"info","message":"[API]","status":200,"latency":"401.714µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T08:56:25Z","level":"info","message":"[API]","status":200,"latency":"4.569531ms","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-BrwPbm9A.js"}
+{"timestamp":"2026-04-20T08:56:26Z","level":"warn","message":"[API]","status":404,"latency":"39.699µs","client_ip":"121.35.103.140","method":"GET","path":"/favicon.ico"}
+{"timestamp":"2026-04-20T08:56:26Z","level":"info","message":"[API]","status":200,"latency":"720.871858ms","client_ip":"121.35.103.140","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T08:56:26Z","level":"info","message":"[API]","status":200,"latency":"638.44207ms","client_ip":"121.35.103.140","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T08:56:26Z","level":"info","message":"[API]","status":200,"latency":"751.554107ms","client_ip":"121.35.103.140","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T08:56:31Z","level":"info","message":"[API]","status":200,"latency":"122.914µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute-force"}
+{"timestamp":"2026-04-20T08:56:33Z","level":"info","message":"[API]","status":200,"latency":"113.69µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/login"}
+{"timestamp":"2026-04-20T08:56:33Z","level":"info","message":"[API]","status":200,"latency":"78.14µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/login"}
+{"timestamp":"2026-04-20T08:56:33Z","level":"info","message":"[API]","status":200,"latency":"60.564µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/login"}
+{"timestamp":"2026-04-20T08:56:33Z","level":"info","message":"[API]","status":200,"latency":"61.873µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/login"}
+{"timestamp":"2026-04-20T08:56:37Z","level":"info","message":"[API]","status":200,"latency":"162.385µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T08:56:47Z","level":"info","message":"[API]","status":200,"latency":"503.106µs","client_ip":"121.35.103.140","method":"GET","path":"/api/rules"}
+{"timestamp":"2026-04-20T08:56:49Z","level":"info","message":"[API]","status":200,"latency":"166.072µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/detect"}
+{"timestamp":"2026-04-20T08:56:51Z","level":"info","message":"[API]","status":200,"latency":"172.232µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/detectors"}
+{"timestamp":"2026-04-20T08:56:52Z","level":"info","message":"[API]","status":200,"latency":"117.567µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/rules/run_key_detector"}
+{"timestamp":"2026-04-20T08:58:05Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:58:05Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2427902221679688,"mem_total_mb":2.2427902221679688,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11287}
+{"timestamp":"2026-04-20T08:58:05Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T08:58:05Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.3072586059570312,"mem_total_mb":2.3072586059570312,"mem_sys_mb":12.209236145019531,"num_goroutine":5,"num_cpu":2,"mem_pause_us":0,"heap_objects":12250}
+{"timestamp":"2026-04-20T08:58:07Z","level":"info","message":"[API]","status":200,"latency":"66.307µs","client_ip":"127.0.0.1","method":"GET","path":"/api/persistence/rules/service_persistence_detector"}
+{"timestamp":"2026-04-20T08:58:10Z","level":"info","message":"[API]","status":200,"latency":"56.095µs","client_ip":"121.35.103.140","method":"GET","path":"/"}
+{"timestamp":"2026-04-20T08:58:10Z","level":"info","message":"[API]","status":200,"latency":"1.029408ms","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-BrwPbm9A.js"}
+{"timestamp":"2026-04-20T08:58:10Z","level":"info","message":"[API]","status":200,"latency":"266.213µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T08:58:10Z","level":"info","message":"[API]","status":200,"latency":"1.750273ms","client_ip":"121.35.103.140","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T08:58:10Z","level":"info","message":"[API]","status":200,"latency":"486.403514ms","client_ip":"121.35.103.140","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T08:58:11Z","level":"info","message":"[API]","status":200,"latency":"437.593933ms","client_ip":"121.35.103.140","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T08:58:14Z","level":"info","message":"[API]","status":200,"latency":"121.835µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:58:15Z","level":"info","message":"[API]","status":200,"latency":"66.704µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:58:17Z","level":"info","message":"[API]","status":200,"latency":"186.479µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T08:58:19Z","level":"info","message":"[API]","status":200,"latency":"61.032µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:58:23Z","level":"info","message":"[API]","status":200,"latency":"95.366µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:58:24Z","level":"info","message":"[API]","status":200,"latency":"61.399µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T08:58:32Z","level":"info","message":"[API]","status":200,"latency":"375.635µs","client_ip":"121.35.103.140","method":"GET","path":"/api/system/info"}
+{"timestamp":"2026-04-20T08:58:34Z","level":"info","message":"[API]","status":200,"latency":"170.278µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/detect"}
+{"timestamp":"2026-04-20T08:58:35Z","level":"info","message":"[API]","status":200,"latency":"192.07µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/detectors"}
+{"timestamp":"2026-04-20T08:58:37Z","level":"info","message":"[API]","status":200,"latency":"79.839µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/rules/startup_folder_detector"}
+{"timestamp":"2026-04-20T08:59:05Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.7327117919921875,"mem_total_mb":4.675971984863281,"mem_sys_mb":13.271736145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":27,"heap_objects":18677}
+{"timestamp":"2026-04-20T08:59:05Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.7328414916992188,"mem_total_mb":4.6761016845703125,"mem_sys_mb":13.271736145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":27,"heap_objects":18679}
+{"timestamp":"2026-04-20T09:05:28Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T09:05:28Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2411117553710938,"mem_total_mb":2.2411117553710938,"mem_sys_mb":8.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11276}
+{"timestamp":"2026-04-20T09:05:28Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T09:05:28Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.3127365112304688,"mem_total_mb":2.3127365112304688,"mem_sys_mb":8.209236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":0,"heap_objects":12336}
+{"timestamp":"2026-04-20T09:05:34Z","level":"info","message":"[API]","status":200,"latency":"33.199µs","client_ip":"121.35.103.140","method":"GET","path":"/"}
+{"timestamp":"2026-04-20T09:05:34Z","level":"info","message":"[API]","status":200,"latency":"203.778µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T09:05:34Z","level":"info","message":"[API]","status":200,"latency":"1.80538ms","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-BrwPbm9A.js"}
+{"timestamp":"2026-04-20T09:05:34Z","level":"info","message":"[API]","status":200,"latency":"816.444005ms","client_ip":"121.35.103.140","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T09:05:35Z","level":"info","message":"[API]","status":200,"latency":"607.037083ms","client_ip":"121.35.103.140","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T09:05:34Z","level":"info","message":"[API]","status":200,"latency":"827.765635ms","client_ip":"121.35.103.140","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T09:05:43Z","level":"info","message":"[API]","status":200,"latency":"1.107473ms","client_ip":"121.35.103.140","method":"GET","path":"/api/alerts?page=1\u0026page_size=50"}
+{"timestamp":"2026-04-20T09:05:47Z","level":"info","message":"[API]","status":200,"latency":"245.879µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute-force"}
+{"timestamp":"2026-04-20T09:05:48Z","level":"info","message":"[API]","status":200,"latency":"70.858µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute_force"}
+{"timestamp":"2026-04-20T09:05:51Z","level":"info","message":"[API]","status":200,"latency":"306.518µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/detect"}
+{"timestamp":"2026-04-20T09:05:52Z","level":"info","message":"[API]","status":200,"latency":"164.571µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/detectors"}
+{"timestamp":"2026-04-20T09:05:53Z","level":"info","message":"[API]","status":200,"latency":"115.285µs","client_ip":"121.35.103.140","method":"GET","path":"/api/persistence/rules/com_hijack_detector"}
+{"timestamp":"2026-04-20T09:06:53Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T09:06:53Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.2411270141601562,"mem_total_mb":2.2411270141601562,"mem_sys_mb":12.209236145019531,"num_goroutine":2,"num_cpu":2,"mem_pause_us":0,"heap_objects":11277}
+{"timestamp":"2026-04-20T09:06:53Z","level":"info","message":"[STARTUP]","reason":"service started"}
+{"timestamp":"2026-04-20T09:06:53Z","level":"info","message":"[METRICS]","mem_alloc_mb":2.3527145385742188,"mem_total_mb":2.3527145385742188,"mem_sys_mb":12.209236145019531,"num_goroutine":7,"num_cpu":2,"mem_pause_us":0,"heap_objects":13081}
+{"timestamp":"2026-04-20T09:06:57Z","level":"info","message":"[API]","status":200,"latency":"21.3µs","client_ip":"121.35.103.140","method":"GET","path":"/"}
+{"timestamp":"2026-04-20T09:06:58Z","level":"info","message":"[API]","status":200,"latency":"1.069809ms","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-BrwPbm9A.js"}
+{"timestamp":"2026-04-20T09:06:58Z","level":"info","message":"[API]","status":200,"latency":"215.497µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T09:06:58Z","level":"info","message":"[API]","status":200,"latency":"1.960904ms","client_ip":"121.35.103.140","method":"GET","path":"/api/alerts/stats"}
+{"timestamp":"2026-04-20T09:06:58Z","level":"warn","message":"[API]","status":404,"latency":"34.413µs","client_ip":"121.35.103.140","method":"GET","path":"/favicon.ico"}
+{"timestamp":"2026-04-20T09:06:58Z","level":"info","message":"[API]","status":200,"latency":"757.357608ms","client_ip":"121.35.103.140","method":"GET","path":"/api/timeline?limit=24"}
+{"timestamp":"2026-04-20T09:06:58Z","level":"info","message":"[API]","status":200,"latency":"762.102952ms","client_ip":"121.35.103.140","method":"GET","path":"/api/dashboard/collection-stats"}
+{"timestamp":"2026-04-20T09:07:04Z","level":"info","message":"[API]","status":200,"latency":"182.509µs","client_ip":"121.35.103.140","method":"GET","path":"/assets/index-CgWrGmA-.css"}
+{"timestamp":"2026-04-20T09:07:07Z","level":"info","message":"[API]","status":200,"latency":"266.349µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute-force"}
+{"timestamp":"2026-04-20T09:07:10Z","level":"info","message":"[API]","status":200,"latency":"64.129µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/brute-force"}
+{"timestamp":"2026-04-20T09:07:19Z","level":"info","message":"[API]","status":200,"latency":"78.025µs","client_ip":"121.35.103.140","method":"GET","path":"/api/analyzer-rules/kerberos"}

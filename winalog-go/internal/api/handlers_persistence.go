@@ -367,33 +367,32 @@ func (h *PersistenceHandler) UpdateDetectorConfig(c *gin.Context) {
 }
 
 type PersistenceRuleInfo struct {
-	Name                 string   `json:"name"`
-	Enabled              bool     `json:"enabled"`
-	Technique            string   `json:"technique"`
-	Category             string   `json:"category"`
-	Description          string   `json:"description"`
-	Severity             string   `json:"severity"`
-	SuspiciousIndicators []string `json:"suspicious_indicators,omitempty"`
-	Whitelist            []string `json:"whitelist,omitempty"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Technique   string   `json:"technique"`
+	Category    string   `json:"category"`
+	Enabled     bool     `json:"enabled"`
+	Patterns    []string `json:"patterns"`
+	Whitelist   []string `json:"whitelist"`
 }
 
 func (h *PersistenceHandler) ListRules(c *gin.Context) {
 	rules := []PersistenceRuleInfo{
-		{Name: "run_key_detector", Enabled: true, Technique: "T1547.001", Category: "Registry", Description: "Run Key Persistence", Severity: "high", SuspiciousIndicators: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
-		{Name: "user_init_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "UserInit MPR Logon", Severity: "medium"},
-		{Name: "startup_folder_detector", Enabled: true, Technique: "T1547.016", Category: "Registry", Description: "Startup Folder Persistence", Severity: "high"},
-		{Name: "accessibility_detector", Enabled: true, Technique: "T1546.001", Category: "Accessibility", Description: "Accessibility Features Backdoor", Severity: "critical"},
-		{Name: "com_hijack_detector", Enabled: true, Technique: "T1546.015", Category: "COM", Description: "COM Hijacking", Severity: "high"},
-		{Name: "ifeo_detector", Enabled: true, Technique: "T1546.012", Category: "Registry", Description: "IFEO Injection", Severity: "high"},
-		{Name: "appinit_detector", Enabled: true, Technique: "T1546.010", Category: "Registry", Description: "AppInit DLLs", Severity: "medium"},
-		{Name: "wmi_persistence_detector", Enabled: true, Technique: "T1546.003", Category: "WMI", Description: "WMI Event Subscription", Severity: "high"},
-		{Name: "service_persistence_detector", Enabled: true, Technique: "T1543.003", Category: "Service", Description: "Service Persistence", Severity: "critical"},
-		{Name: "lsa_persistence_detector", Enabled: true, Technique: "T1546.008", Category: "Registry", Description: "LSA Authentication Package", Severity: "critical"},
-		{Name: "winsock_detector", Enabled: true, Technique: "T1546.007", Category: "Registry", Description: "Winsock Helper DLL", Severity: "high"},
-		{Name: "bho_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "Browser Helper Object", Severity: "medium"},
-		{Name: "print_monitor_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "Print Monitor", Severity: "medium"},
-		{Name: "boot_execute_detector", Enabled: true, Technique: "T1053", Category: "ScheduledTask", Description: "Boot Execute", Severity: "high"},
-		{Name: "etw_detector", Enabled: true, Technique: "T1546.006", Category: "Registry", Description: "ETW Manipulation", Severity: "medium"},
+		{Name: "run_key_detector", Description: "Run Key Persistence", Technique: "T1547.001", Category: "Registry", Enabled: true, Patterns: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		{Name: "user_init_detector", Description: "UserInit MPR Logon", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"UserInitMprLogonScript"}, Whitelist: []string{}},
+		{Name: "startup_folder_detector", Description: "Startup Folder Persistence", Technique: "T1547.016", Category: "Registry", Enabled: true, Patterns: []string{"Startup"}, Whitelist: []string{}},
+		{Name: "accessibility_detector", Description: "Accessibility Features Backdoor", Technique: "T1546.001", Category: "Accessibility", Enabled: true, Patterns: []string{"sethc.exe", "utilman.exe", "magnify.exe", "narrator.exe", "osk.exe", "displayswitch.exe"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		{Name: "com_hijack_detector", Description: "COM Hijacking", Technique: "T1546.015", Category: "COM", Enabled: true, Patterns: []string{"HKEY_CURRENT_USER\\Software\\Classes\\"}, Whitelist: []string{}},
+		{Name: "ifeo_detector", Description: "IFEO Injection", Technique: "T1546.012", Category: "Registry", Enabled: true, Patterns: []string{"Debugger"}, Whitelist: []string{}},
+		{Name: "appinit_detector", Description: "AppInit DLLs", Technique: "T1546.010", Category: "Registry", Enabled: true, Patterns: []string{"AppInit_DLLs"}, Whitelist: []string{}},
+		{Name: "wmi_persistence_detector", Description: "WMI Event Subscription", Technique: "T1546.003", Category: "WMI", Enabled: true, Patterns: []string{"ActiveScriptEventConsumer"}, Whitelist: []string{}},
+		{Name: "service_persistence_detector", Description: "Service Persistence", Technique: "T1543.003", Category: "Service", Enabled: true, Patterns: []string{"sc.exe create"}, Whitelist: []string{}},
+		{Name: "lsa_persistence_detector", Description: "LSA Authentication Package", Technique: "T1546.008", Category: "Registry", Enabled: true, Patterns: []string{"Security Packages"}, Whitelist: []string{}},
+		{Name: "winsock_detector", Description: "Winsock Helper DLL", Technique: "T1546.007", Category: "Registry", Enabled: true, Patterns: []string{"NetworkProvider"}, Whitelist: []string{}},
+		{Name: "bho_detector", Description: "Browser Helper Object", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"InprocServer32"}, Whitelist: []string{}},
+		{Name: "print_monitor_detector", Description: "Print Monitor", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"Print\\Monitors"}, Whitelist: []string{}},
+		{Name: "boot_execute_detector", Description: "Boot Execute", Technique: "T1053", Category: "ScheduledTask", Enabled: true, Patterns: []string{"boot execute"}, Whitelist: []string{}},
+		{Name: "etw_detector", Description: "ETW Manipulation", Technique: "T1546.006", Category: "Registry", Enabled: true, Patterns: []string{"ETW Providers"}, Whitelist: []string{}},
 	}
 	c.JSON(http.StatusOK, gin.H{"rules": rules})
 }
@@ -406,21 +405,21 @@ func (h *PersistenceHandler) GetRule(c *gin.Context) {
 	}
 
 	defaultRules := map[string]PersistenceRuleInfo{
-		"run_key_detector":             {Name: "run_key_detector", Enabled: true, Technique: "T1547.001", Category: "Registry", Description: "Run Key Persistence", Severity: "high", SuspiciousIndicators: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
-		"user_init_detector":           {Name: "user_init_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "UserInit MPR Logon", Severity: "medium"},
-		"startup_folder_detector":      {Name: "startup_folder_detector", Enabled: true, Technique: "T1547.016", Category: "Registry", Description: "Startup Folder Persistence", Severity: "high"},
-		"accessibility_detector":       {Name: "accessibility_detector", Enabled: true, Technique: "T1546.001", Category: "Accessibility", Description: "Accessibility Features Backdoor", Severity: "critical"},
-		"com_hijack_detector":          {Name: "com_hijack_detector", Enabled: true, Technique: "T1546.015", Category: "COM", Description: "COM Hijacking", Severity: "high"},
-		"ifeo_detector":                {Name: "ifeo_detector", Enabled: true, Technique: "T1546.012", Category: "Registry", Description: "IFEO Injection", Severity: "high"},
-		"appinit_detector":             {Name: "appinit_detector", Enabled: true, Technique: "T1546.010", Category: "Registry", Description: "AppInit DLLs", Severity: "medium"},
-		"wmi_persistence_detector":     {Name: "wmi_persistence_detector", Enabled: true, Technique: "T1546.003", Category: "WMI", Description: "WMI Event Subscription", Severity: "high"},
-		"service_persistence_detector": {Name: "service_persistence_detector", Enabled: true, Technique: "T1543.003", Category: "Service", Description: "Service Persistence", Severity: "critical"},
-		"lsa_persistence_detector":     {Name: "lsa_persistence_detector", Enabled: true, Technique: "T1546.008", Category: "Registry", Description: "LSA Authentication Package", Severity: "critical"},
-		"winsock_detector":             {Name: "winsock_detector", Enabled: true, Technique: "T1546.007", Category: "Registry", Description: "Winsock Helper DLL", Severity: "high"},
-		"bho_detector":                 {Name: "bho_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "Browser Helper Object", Severity: "medium"},
-		"print_monitor_detector":       {Name: "print_monitor_detector", Enabled: true, Technique: "T1546.001", Category: "Registry", Description: "Print Monitor", Severity: "medium"},
-		"boot_execute_detector":        {Name: "boot_execute_detector", Enabled: true, Technique: "T1053", Category: "ScheduledTask", Description: "Boot Execute", Severity: "high"},
-		"etw_detector":                 {Name: "etw_detector", Enabled: true, Technique: "T1546.006", Category: "Registry", Description: "ETW Manipulation", Severity: "medium"},
+		"run_key_detector":             {Name: "run_key_detector", Description: "Run Key Persistence", Technique: "T1547.001", Category: "Registry", Enabled: true, Patterns: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		"user_init_detector":           {Name: "user_init_detector", Description: "UserInit MPR Logon", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"UserInitMprLogonScript"}, Whitelist: []string{}},
+		"startup_folder_detector":      {Name: "startup_folder_detector", Description: "Startup Folder Persistence", Technique: "T1547.016", Category: "Registry", Enabled: true, Patterns: []string{"Startup"}, Whitelist: []string{}},
+		"accessibility_detector":       {Name: "accessibility_detector", Description: "Accessibility Features Backdoor", Technique: "T1546.001", Category: "Accessibility", Enabled: true, Patterns: []string{"sethc.exe", "utilman.exe", "magnify.exe", "narrator.exe", "osk.exe", "displayswitch.exe"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		"com_hijack_detector":          {Name: "com_hijack_detector", Description: "COM Hijacking", Technique: "T1546.015", Category: "COM", Enabled: true, Patterns: []string{"HKEY_CURRENT_USER\\Software\\Classes\\"}, Whitelist: []string{}},
+		"ifeo_detector":                {Name: "ifeo_detector", Description: "IFEO Injection", Technique: "T1546.012", Category: "Registry", Enabled: true, Patterns: []string{"Debugger"}, Whitelist: []string{}},
+		"appinit_detector":             {Name: "appinit_detector", Description: "AppInit DLLs", Technique: "T1546.010", Category: "Registry", Enabled: true, Patterns: []string{"AppInit_DLLs"}, Whitelist: []string{}},
+		"wmi_persistence_detector":     {Name: "wmi_persistence_detector", Description: "WMI Event Subscription", Technique: "T1546.003", Category: "WMI", Enabled: true, Patterns: []string{"ActiveScriptEventConsumer"}, Whitelist: []string{}},
+		"service_persistence_detector": {Name: "service_persistence_detector", Description: "Service Persistence", Technique: "T1543.003", Category: "Service", Enabled: true, Patterns: []string{"sc.exe create"}, Whitelist: []string{}},
+		"lsa_persistence_detector":     {Name: "lsa_persistence_detector", Description: "LSA Authentication Package", Technique: "T1546.008", Category: "Registry", Enabled: true, Patterns: []string{"Security Packages"}, Whitelist: []string{}},
+		"winsock_detector":             {Name: "winsock_detector", Description: "Winsock Helper DLL", Technique: "T1546.007", Category: "Registry", Enabled: true, Patterns: []string{"NetworkProvider"}, Whitelist: []string{}},
+		"bho_detector":                 {Name: "bho_detector", Description: "Browser Helper Object", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"InprocServer32"}, Whitelist: []string{}},
+		"print_monitor_detector":       {Name: "print_monitor_detector", Description: "Print Monitor", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"Print\\Monitors"}, Whitelist: []string{}},
+		"boot_execute_detector":        {Name: "boot_execute_detector", Description: "Boot Execute", Technique: "T1053", Category: "ScheduledTask", Enabled: true, Patterns: []string{"boot execute"}, Whitelist: []string{}},
+		"etw_detector":                 {Name: "etw_detector", Description: "ETW Manipulation", Technique: "T1546.006", Category: "Registry", Enabled: true, Patterns: []string{"ETW Providers"}, Whitelist: []string{}},
 	}
 
 	if rule, ok := defaultRules[ruleName]; ok {
