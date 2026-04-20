@@ -1,18 +1,21 @@
 # WinLogAnalyzer-Go Web API Test Script
-# Tests all API endpoints
+# Tests all API endpoints with data preparation
 # Usage: powershell -ExecutionPolicy Bypass -File api_test.ps1
 
 param(
     [string]$BaseUrl = "http://localhost:8080/api",
     [string]$OutputDir = ".\api_test_results",
+    [string]$TestEvtxFile = "",
     [switch]$SkipLiveTests,
-    [switch]$SkipImportTests
+    [switch]$SkipImportTests,
+    [switch]$FullTest
 )
 
 $ErrorActionPreference = "Continue"
 $Script:TestResults = New-Object System.Collections.ArrayList
 $Script:TestStartTime = Get-Date
 $Script:BaseUrl = $BaseUrl
+$Script:PreparedData = @{}
 
 function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
@@ -36,7 +39,8 @@ function Test-ApiRequest {
         [string]$Body = "",
         [string]$Description = "",
         [int]$ExpectedStatus = 200,
-        [switch]$AllowRedirect
+        [switch]$AllowRedirect,
+        [switch]$SaveResponse
     )
     
     $result = @{
@@ -66,7 +70,7 @@ function Test-ApiRequest {
             Uri = "$Script:BaseUrl$Endpoint"
             Method = $Method
             Headers = $headers
-            TimeoutSec = 30
+            TimeoutSec = 60
         }
         
         if ($Body) {
@@ -85,7 +89,9 @@ function Test-ApiRequest {
         $content = $response.Content
         $result.Response = $content
         
-        $content | Out-File -FilePath $outputFile -Encoding UTF8
+        if ($SaveResponse) {
+            $content | Out-File -FilePath $outputFile -Encoding UTF8
+        }
         
         if ($result.StatusCode -eq $ExpectedStatus -or ($ExpectedStatus -eq 0 -and $result.StatusCode -gt 0)) {
             $result.Status = "PASS"
@@ -114,11 +120,37 @@ function Test-ApiJsonPost {
         [string]$Endpoint,
         [hashtable]$JsonBody,
         [string]$Description = "",
-        [int]$ExpectedStatus = 200
+        [int]$ExpectedStatus = 200,
+        [switch]$SaveResponse
     )
     
     $body = $JsonBody | ConvertTo-Json -Compress
-    return Test-ApiRequest -Name $Name -Method "POST" -Endpoint $Endpoint -Body $body -Description $Description -ExpectedStatus $ExpectedStatus
+    return Test-ApiRequest -Name $Name -Method "POST" -Endpoint $Endpoint -Body $body -Description $Description -ExpectedStatus $ExpectedStatus -SaveResponse:$SaveResponse
+}
+
+function Invoke-WaitForTask {
+    param(
+        [string]$TaskName,
+        [scriptblock]$CheckBlock,
+        [int]$MaxWaitSeconds = 60,
+        [int]$IntervalSeconds = 2
+    )
+    
+    Write-Log "Waiting for $TaskName (max ${MaxWaitSeconds}s)..." "INFO"
+    $elapsed = 0
+    while ($elapsed -lt $MaxWaitSeconds) {
+        Start-Sleep -Seconds $IntervalSeconds
+        $elapsed += $IntervalSeconds
+        
+        $result = & $CheckBlock
+        if ($result) {
+            Write-Log "$TaskName completed" "SUCCESS"
+            return $true
+        }
+        Write-Log "  $elapsed s elapsed..." "INFO"
+    }
+    Write-Log "$TaskName timeout after ${MaxWaitSeconds}s" "WARN"
+    return $false
 }
 
 if (-not (Test-Path $OutputDir)) {
@@ -130,71 +162,144 @@ Write-Log "WinLogAnalyzer-Go API Test Suite" "INFO"
 Write-Log "========================================" "INFO"
 Write-Log "Base URL: $BaseUrl" "INFO"
 Write-Log "Start Time: $Script:TestStartTime" "INFO"
+if ($TestEvtxFile) {
+    Write-Log "Test EVTX: $TestEvtxFile" "INFO"
+}
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 1: Health Check" "INFO"
+Write-Log "Step 0: Prepare Test Environment" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "health_check" -Method "GET" -Endpoint "/health" -Description "Health check endpoint"
+Test-ApiRequest -Name "health_check" -Method "GET" -Endpoint "/health" -Description "Health check"
+
+if (-not $SkipImportTests -and $TestEvtxFile -and (Test-Path $TestEvtxFile)) {
+    Write-Log "========================================" "INFO"
+    Write-Log "Step 0.1: Import Test Data" "INFO"
+    Write-Log "========================================" "INFO"
+    
+    Test-ApiJsonPost -Name "import_logs" -Endpoint "/import/logs" -JsonBody @{files=@($TestEvtxFile);alert_on_import=$false} -Description "Import EVTX file for testing" -SaveResponse
+    
+    $Script:PreparedData.EvtxImported = $true
+} else {
+    Write-Log "Skipping EVTX import (use -TestEvtxFile to specify file)" "WARN"
+}
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 2: Events API" "INFO"
+Write-Log "Part 1: Events API (with test data)" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "events_list" -Method "GET" -Endpoint "/events?page=1&page_size=10" -Description "List events with pagination"
+Test-ApiRequest -Name "events_list" -Method "GET" -Endpoint "/events?page=1&page_size=10" -Description "List events with pagination" -SaveResponse
 Test-ApiRequest -Name "events_list_page2" -Method "GET" -Endpoint "/events?page=2&page_size=10" -Description "List events page 2"
-Test-ApiRequest -Name "events_search" -Method "POST" -Endpoint "/events/search" -Body '{"keywords":"system","page_size":10}' -Description "Search events"
+Test-ApiRequest -Name "events_search_basic" -Method "POST" -Endpoint "/events/search" -Body '{"page_size":10}' -Description "Basic search"
+Test-ApiRequest -Name "events_search_keywords" -Method "POST" -Endpoint "/events/search" -Body '{"keywords":"system","page_size":10}' -Description "Search by keywords"
 Test-ApiRequest -Name "events_search_levels" -Method "POST" -Endpoint "/events/search" -Body '{"levels":[4],"page_size":10}' -Description "Search by level"
 Test-ApiRequest -Name "events_search_regex" -Method "POST" -Endpoint "/events/search" -Body '{"keywords":"4624|4625","regex":true,"page_size":10}' -Description "Regex search"
+Test-ApiRequest -Name "events_search_event_ids" -Method "POST" -Endpoint "/events/search" -Body '{"event_ids":[4624,4625],"page_size":10}' -Description "Search by event IDs"
 Test-ApiRequest -Name "events_search_time" -Method "POST" -Endpoint "/events/search" -Body '{"start_time":"2024-01-01T00:00:00Z","end_time":"2024-12-31T23:59:59Z","page_size":10}' -Description "Time range search"
+Test-ApiRequest -Name "events_search_users" -Method "POST" -Endpoint "/events/search" -Body '{"users":["Administrator"],"page_size":10}' -Description "Search by users"
+Test-ApiRequest -Name "events_search_computers" -Method "POST" -Endpoint "/events/search" -Body '{"computers":["localhost"],"page_size":10}' -Description "Search by computers"
+Test-ApiRequest -Name "events_search_lognames" -Method "POST" -Endpoint "/events/search" -Body '{"log_names":["Security"],"page_size":10}' -Description "Search by log names"
+Test-ApiRequest -Name "events_search_sort" -Method "POST" -Endpoint "/events/search" -Body '{"sort_by":"timestamp","sort_order":"desc","page_size":10}' -Description "Sorted search"
 Test-ApiRequest -Name "events_export_csv" -Method "POST" -Endpoint "/events/export" -Body '{"format":"csv","filters":{"limit":100}}' -Description "Export events as CSV"
 Test-ApiRequest -Name "events_export_json" -Method "POST" -Endpoint "/events/export" -Body '{"format":"json","filters":{"limit":100}}' -Description "Export events as JSON"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 3: Alerts API" "INFO"
+Write-Log "Step 0.2: Run Alert Analysis" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "alerts_list" -Method "GET" -Endpoint "/alerts?page=1&page_size=10" -Description "List alerts"
+Test-ApiJsonPost -Name "alerts_run_analysis" -Endpoint "/alerts/run-analysis" -JsonBody @{} -Description "Run alert analysis to generate test alerts" -SaveResponse
+
+if ($FullTest) {
+    Write-Log "Waiting for alert analysis to complete..." "INFO"
+    Start-Sleep -Seconds 5
+}
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 2: Alerts API (with alerts generated)" "INFO"
+Write-Log "========================================" "INFO"
+
+Test-ApiRequest -Name "alerts_list" -Method "GET" -Endpoint "/alerts?page=1&page_size=10" -Description "List alerts" -SaveResponse
 Test-ApiRequest -Name "alerts_list_high" -Method "GET" -Endpoint "/alerts?severity=high&page_size=10" -Description "List high severity alerts"
+Test-ApiRequest -Name "alerts_list_medium" -Method "GET" -Endpoint "/alerts?severity=medium&page_size=10" -Description "List medium severity alerts"
+Test-ApiRequest -Name "alerts_list_low" -Method "GET" -Endpoint "/alerts?severity=low&page_size=10" -Description "List low severity alerts"
 Test-ApiRequest -Name "alerts_list_unresolved" -Method "GET" -Endpoint "/alerts?resolved=false&page_size=10" -Description "List unresolved alerts"
-Test-ApiRequest -Name "alerts_stats" -Method "GET" -Endpoint "/alerts/stats" -Description "Get alert statistics"
-Test-ApiRequest -Name "alerts_trend" -Method "GET" -Endpoint "/alerts/trend?days=7" -Description "Get alert trend"
-Test-ApiRequest -Name "alerts_run_analysis" -Method "POST" -Endpoint "/alerts/run-analysis" -Description "Run alert analysis"
-Test-ApiRequest -Name "alerts_batch" -Method "POST" -Endpoint "/alerts/batch" -Body '{"ids":[1,2,3],"action":"resolve","notes":"Batch test"}' -Description "Batch operation"
+Test-ApiRequest -Name "alerts_list_resolved" -Method "GET" -Endpoint "/alerts?resolved=true&page_size=10" -Description "List resolved alerts"
+Test-ApiRequest -Name "alerts_stats" -Method "GET" -Endpoint "/alerts/stats" -Description "Get alert statistics" -SaveResponse
+Test-ApiRequest -Name "alerts_trend_7d" -Method "GET" -Endpoint "/alerts/trend?days=7" -Description "Get alert trend 7 days"
+Test-ApiRequest -Name "alerts_trend_30d" -Method "GET" -Endpoint "/alerts/trend?days=30" -Description "Get alert trend 30 days"
+
+$alertsResponse = Test-ApiRequest -Name "alerts_list_first" -Method "GET" -Endpoint "/alerts?page=1&page_size=1" -Description "Get first alert for resolve test"
+if ($alertsResponse.Status -eq "PASS" -and $alertsResponse.Response) {
+    try {
+        $alertData = $alertsResponse.Response | ConvertFrom-Json
+        if ($alertData.alerts -and $alertData.alerts.Count -gt 0) {
+            $firstAlertId = $alertData.alerts[0].id
+            Write-Log "Testing alert operations on ID: $firstAlertId" "INFO"
+            
+            Test-ApiJsonPost -Name "alerts_resolve" -Endpoint "/alerts/$firstAlertId/resolve" -JsonBody @{notes="Test resolve from API script"} -Description "Resolve alert"
+            Test-ApiRequest -Name "alerts_get_resolved" -Method "GET" -Endpoint "/alerts/$firstAlertId" -Description "Get resolved alert"
+            
+            Test-ApiJsonPost -Name "alerts_false_positive" -Endpoint "/alerts/$firstAlertId/false-positive" -JsonBody @{reason="Test false positive"} -Description "Mark as false positive"
+        }
+    } catch {
+        Write-Log "Could not parse alerts response for ID extraction: $($_.Exception.Message)" "WARN"
+    }
+}
+
+Test-ApiJsonPost -Name "alerts_batch_resolve" -Endpoint "/alerts/batch" -JsonBody @{ids=@(1,2,3);action="resolve";notes="Batch test"} -Description "Batch resolve alerts"
+Test-ApiJsonPost -Name "alerts_batch_delete" -Endpoint "/alerts/batch" -JsonBody @{ids=@(999999);action="delete"} -Description "Batch delete (non-existent)"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 4: Timeline API" "INFO"
+Write-Log "Part 3: Timeline API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "timeline_list" -Method "GET" -Endpoint "/timeline?limit=50" -Description "Get timeline"
-Test-ApiRequest -Name "timeline_stats" -Method "GET" -Endpoint "/timeline/stats" -Description "Get timeline stats"
+Test-ApiRequest -Name "timeline_list" -Method "GET" -Endpoint "/timeline?limit=50" -Description "Get timeline" -SaveResponse
+Test-ApiRequest -Name "timeline_stats" -Method "GET" -Endpoint "/timeline/stats" -Description "Get timeline stats" -SaveResponse
 Test-ApiRequest -Name "timeline_chains" -Method "GET" -Endpoint "/timeline/chains" -Description "Get attack chains"
 Test-ApiRequest -Name "timeline_export_json" -Method "GET" -Endpoint "/timeline/export?format=json" -Description "Export timeline as JSON"
 Test-ApiRequest -Name "timeline_export_csv" -Method "GET" -Endpoint "/timeline/export?format=csv" -Description "Export timeline as CSV"
+Test-ApiRequest -Name "timeline_with_time" -Method "GET" -Endpoint "/timeline?start_time=2024-01-01T00:00:00Z&end_time=2024-12-31T23:59:59Z" -Description "Timeline with time filter"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 5: Dashboard API" "INFO"
+Write-Log "Part 4: Dashboard API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "dashboard_stats" -Method "GET" -Endpoint "/dashboard/collection-stats" -Description "Get collection statistics"
+Test-ApiRequest -Name "dashboard_stats" -Method "GET" -Endpoint "/dashboard/collection-stats" -Description "Get collection statistics" -SaveResponse
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 6: Rules API" "INFO"
+Write-Log "Part 5: Rules API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "rules_list" -Method "GET" -Endpoint "/rules?page=1&page_size=20" -Description "List all rules"
+Test-ApiRequest -Name "rules_list" -Method "GET" -Endpoint "/rules?page=1&page_size=20" -Description "List all rules" -SaveResponse
 Test-ApiRequest -Name "rules_list_enabled" -Method "GET" -Endpoint "/rules?enabled=true&page_size=20" -Description "List enabled rules"
 Test-ApiRequest -Name "rules_templates" -Method "GET" -Endpoint "/rules/templates" -Description "List rule templates"
+Test-ApiRequest -Name "rules_templates_powershell" -Method "GET" -Endpoint "/rules/templates/powershell_detection" -Description "Get PowerShell template"
 Test-ApiRequest -Name "rules_validate" -Method "POST" -Endpoint "/rules/validate" -Body '{"name":"TestRule","event_type":"single","conditions":[]}' -Description "Validate rule"
 Test-ApiRequest -Name "rules_export" -Method "GET" -Endpoint "/rules/export?format=json" -Description "Export rules"
 
+$rulesResponse = Test-ApiRequest -Name "rules_list_first" -Method "GET" -Endpoint "/rules?page=1&page_size=1" -Description "Get first rule"
+if ($rulesResponse.Status -eq "PASS" -and $rulesResponse.Response) {
+    try {
+        $ruleData = $rulesResponse.Response | ConvertFrom-Json
+        if ($ruleData.rules -and $ruleData.rules.Count -gt 0) {
+            $firstRuleName = $ruleData.rules[0].name
+            Write-Log "Testing rule operations on: $firstRuleName" "INFO"
+            
+            Test-ApiRequest -Name "rules_get" -Method "GET" -Endpoint "/rules/$firstRuleName" -Description "Get specific rule"
+            Test-ApiRequest -Name "rules_toggle" -Method "POST" -Endpoint "/rules/$firstRuleName/toggle" -Description "Toggle rule"
+        }
+    } catch {
+        Write-Log "Could not parse rules response: $($_.Exception.Message)" "WARN"
+    }
+}
+
 Write-Log "========================================" "INFO"
-Write-Log "Part 7: System API" "INFO"
+Write-Log "Part 6: System API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "system_info" -Method "GET" -Endpoint "/system/info" -Description "Get system info"
+Test-ApiRequest -Name "system_info" -Method "GET" -Endpoint "/system/info" -Description "Get system info" -SaveResponse
 Test-ApiRequest -Name "system_metrics" -Method "GET" -Endpoint "/system/metrics" -Description "Get system metrics"
-Test-ApiRequest -Name "system_processes" -Method "GET" -Endpoint "/system/processes?page=1&page_size=10" -Description "List processes"
+Test-ApiRequest -Name "system_processes" -Method "GET" -Endpoint "/system/processes?page=1&page_size=10" -Description "List processes" -SaveResponse
 Test-ApiRequest -Name "system_network" -Method "GET" -Endpoint "/system/network" -Description "Get network connections"
 Test-ApiRequest -Name "system_users" -Method "GET" -Endpoint "/system/users" -Description "Get local users"
 Test-ApiRequest -Name "system_tasks" -Method "GET" -Endpoint "/system/tasks" -Description "Get scheduled tasks"
@@ -204,149 +309,228 @@ Test-ApiRequest -Name "system_env" -Method "GET" -Endpoint "/system/env" -Descri
 Test-ApiRequest -Name "system_registry" -Method "GET" -Endpoint "/system/registry" -Description "Get registry stats"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 8: Reports API" "INFO"
+Write-Log "Step 0.3: Collect Forensic Data" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "reports_list" -Method "GET" -Endpoint "/reports" -Description "List reports"
-Test-ApiJsonPost -Name "reports_generate_summary" -Endpoint "/reports" -JsonBody @{type="security_summary";format="json";title="Test Report"} -Description "Generate summary report"
-Test-ApiJsonPost -Name "reports_generate_alert" -Endpoint "/reports" -JsonBody @{type="alert_report";format="json"} -Description "Generate alert report"
-Test-ApiJsonPost -Name "reports_generate_event" -Endpoint "/reports" -JsonBody @{type="event_report";format="json"} -Description "Generate event report"
-Test-ApiRequest -Name "report_templates" -Method "GET" -Endpoint "/report-templates" -Description "List report templates"
-Test-ApiRequest -Name "reports_export" -Method "GET" -Endpoint "/reports/export?format=json" -Description "Export reports"
+Test-ApiJsonPost -Name "forensics_collect" -Endpoint "/forensics/collect" -JsonBody @{targets=@("processes","network","registry");options=@{include_hidden=$true;deep_scan=$false}} -Description "Collect forensic data for testing" -SaveResponse
+
+Write-Log "Waiting for forensics collection..." "INFO"
+Start-Sleep -Seconds 3
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 9: UEBA API" "INFO"
+Write-Log "Part 7: Forensics API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiJsonPost -Name "ueba_analyze" -Endpoint "/ueba/analyze" -JsonBody @{start_time="2024-01-01T00:00:00Z";end_time="2024-12-31T23:59:59Z"} -Description "Analyze user behavior"
-Test-ApiRequest -Name "ueba_profiles" -Method "GET" -Endpoint "/ueba/profiles?page=1&page_size=10" -Description "Get user profiles"
-Test-ApiRequest -Name "ueba_anomaly_time" -Method "GET" -Endpoint "/ueba/anomaly/unusual_time" -Description "Get unusual time anomalies"
-Test-ApiRequest -Name "ueba_anomaly_location" -Method "GET" -Endpoint "/ueba/anomaly/unusual_location" -Description "Get unusual location anomalies"
+Test-ApiJsonPost -Name "forensics_hash_single" -Endpoint "/forensics/hash" -JsonBody @{paths=@("$env:SystemRoot\System32\notepad.exe");algorithms=@("md5","sha256")} -Description "Calculate hash for notepad.exe"
+Test-ApiJsonPost -Name "forensics_hash_multiple" -Endpoint "/forensics/hash" -JsonBody @{paths=@("$env:SystemRoot\System32\notepad.exe","$env:SystemRoot\System32\cmd.exe");algorithms=@("sha256")} -Description "Calculate hashes for multiple files"
+Test-ApiRequest -Name "forensics_signature" -Method "GET" -Endpoint "/forensics/signature?path=C:\Windows\System32\notepad.exe" -Description "Get file signature"
+Test-ApiRequest -Name "forensics_is_signed" -Method "GET" -Endpoint "/forensics/is-signed?path=C:\Windows\System32\notepad.exe" -Description "Check if file is signed"
+Test-ApiRequest -Name "forensics_evidence_list" -Method "GET" -Endpoint "/forensics/evidence?page=1&page_size=10" -Description "List evidence" -SaveResponse
+Test-ApiJsonPost -Name "forensics_manifest" -Endpoint "/forensics/manifest" -JsonBody @{paths=@("$env:SystemRoot\System32\notepad.exe");include_hashes=$true} -Description "Generate forensic manifest"
+Test-ApiRequest -Name "forensics_chain_custody" -Method "GET" -Endpoint "/forensics/chain-of-custody" -Description "Get chain of custody"
+Test-ApiRequest -Name "forensics_memory_dump" -Method "GET" -Endpoint "/forensics/memory-dump" -Description "Get memory dump info"
+Test-ApiRequest -Name "forensics_verify_hash" -Method "GET" -Endpoint "/forensics/verify-hash?hash=a1b2c3d4e5f6" -Description "Verify hash (expect not found)"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 10: Correlation API" "INFO"
+Write-Log "Step 0.4: Start Monitor" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiJsonPost -Name "correlation_analyze" -Endpoint "/correlation/analyze" -JsonBody @{window="5m"} -Description "Run correlation analysis"
-Test-ApiJsonPost -Name "correlation_analyze_rules" -Endpoint "/correlation/analyze" -JsonBody @{rules=@("BruteForceDetection");"window"="5m"} -Description "Correlation with specific rules"
+Test-ApiJsonPost -Name "monitor_config" -Endpoint "/monitor/config" -JsonBody @{process_monitoring=@{enabled=$true;interval_ms=3000};network_monitoring=@{enabled=$true;interval_ms=5000};dns_monitoring=@{enabled=$false}} -Description "Configure monitor"
+Test-ApiJsonPost -Name "monitor_action_start" -Endpoint "/monitor/action" -JsonBody @{action="start"} -Description "Start monitoring"
+
+Write-Log "Waiting for monitor to collect data..." "INFO"
+Start-Sleep -Seconds 5
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 11: Query API" "INFO"
+Write-Log "Part 8: Monitor API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiJsonPost -Name "query_execute_count" -Endpoint "/query/execute" -JsonBody @{sql="SELECT COUNT(*) FROM events";limit=10} -Description "Execute COUNT query"
-Test-ApiJsonPost -Name "query_execute_select" -Endpoint "/query/execute" -JsonBody @{sql="SELECT * FROM events LIMIT 5";limit=10} -Description "Execute SELECT query"
-Test-ApiJsonPost -Name "query_execute_pragma" -Endpoint "/query/execute" -JsonBody @{sql="PRAGMA table_info(events)"} -Description "Execute PRAGMA query"
-
-Write-Log "========================================" "INFO"
-Write-Log "Part 12: Monitor API" "INFO"
-Write-Log "========================================" "INFO"
-
-Test-ApiRequest -Name "monitor_stats" -Method "GET" -Endpoint "/monitor/stats" -Description "Get monitor statistics"
-Test-ApiRequest -Name "monitor_events" -Method "GET" -Endpoint "/monitor/events?limit=20" -Description "List monitor events"
+Test-ApiRequest -Name "monitor_stats" -Method "GET" -Endpoint "/monitor/stats" -Description "Get monitor statistics" -SaveResponse
+Test-ApiRequest -Name "monitor_events_all" -Method "GET" -Endpoint "/monitor/events?limit=20" -Description "List all monitor events"
 Test-ApiRequest -Name "monitor_events_process" -Method "GET" -Endpoint "/monitor/events?type=process&limit=10" -Description "List process events"
 Test-ApiRequest -Name "monitor_events_network" -Method "GET" -Endpoint "/monitor/events?type=network&limit=10" -Description "List network events"
-Test-ApiJsonPost -Name "monitor_config" -Endpoint "/monitor/config" -JsonBody @{process_monitoring=@{enabled=$true;interval_ms=5000}} -Description "Update monitor config"
-Test-ApiJsonPost -Name "monitor_action_start" -Endpoint "/monitor/action" -JsonBody @{action="start"} -Description "Start monitor"
-Test-ApiJsonPost -Name "monitor_action_stop" -Endpoint "/monitor/action" -JsonBody @{action="stop"} -Description "Stop monitor"
+Test-ApiRequest -Name "monitor_events_dns" -Method "GET" -Endpoint "/monitor/events?type=dns&limit=10" -Description "List DNS events"
+Test-ApiRequest -Name "monitor_events_severity" -Method "GET" -Endpoint "/monitor/events?severity=high&limit=10" -Description "List high severity events"
+Test-ApiJsonPost -Name "monitor_action_stop" -Endpoint "/monitor/action" -JsonBody @{action="stop"} -Description "Stop monitoring"
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 9: Reports API" "INFO"
+Write-Log "========================================" "INFO"
+
+Test-ApiRequest -Name "reports_list" -Method "GET" -Endpoint "/reports" -Description "List reports" -SaveResponse
+Test-ApiRequest -Name "report_templates" -Method "GET" -Endpoint "/report-templates" -Description "List report templates"
+Test-ApiRequest -Name "report_templates_security" -Method "GET" -Endpoint "/report-templates/security_summary" -Description "Get security summary template"
+
+$reportResponse = Test-ApiJsonPost -Name "reports_generate_summary" -Endpoint "/reports" -JsonBody @{type="security_summary";format="json";title="API Test Report";description="Generated by API test script"} -Description "Generate summary report" -SaveResponse
+if ($reportResponse.Status -eq "PASS" -and $reportResponse.Response) {
+    try {
+        $reportData = $reportResponse.Response | ConvertFrom-Json
+        if ($reportData.id) {
+            Write-Log "Report generated with ID: $($reportData.id)" "INFO"
+            Start-Sleep -Seconds 2
+            
+            Test-ApiRequest -Name "reports_get" -Method "GET" -Endpoint "/reports/$($reportData.id)" -Description "Get report details"
+        }
+    } catch {
+        Write-Log "Could not parse report response: $($_.Exception.Message)" "WARN"
+    }
+}
+
+Test-ApiJsonPost -Name "reports_generate_alert" -Endpoint "/reports" -JsonBody @{type="alert_report";format="json"} -Description "Generate alert report"
+Test-ApiJsonPost -Name "reports_generate_event" -Endpoint "/reports" -JsonBody @{type="event_report";format="json"} -Description "Generate event report"
+Test-ApiJsonPost -Name "reports_generate_timeline" -Endpoint "/reports" -JsonBody @{type="timeline_report";format="json"} -Description "Generate timeline report"
+Test-ApiRequest -Name "reports_export_json" -Method "GET" -Endpoint "/reports/export?format=json" -Description "Export reports as JSON"
+Test-ApiRequest -Name "reports_export_csv" -Method "GET" -Endpoint "/reports/export?format=csv" -Description "Export reports as CSV"
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 10: UEBA API" "INFO"
+Write-Log "========================================" "INFO"
+
+Test-ApiJsonPost -Name "ueba_analyze" -Endpoint "/ueba/analyze" -JsonBody @{start_time="2024-01-01T00:00:00Z";end_time="2024-12-31T23:59:59Z"} -Description "Analyze user behavior" -SaveResponse
+Test-ApiRequest -Name "ueba_profiles" -Method "GET" -Endpoint "/ueba/profiles?page=1&page_size=10" -Description "Get user profiles" -SaveResponse
+Test-ApiRequest -Name "ueba_anomaly_time" -Method "GET" -Endpoint "/ueba/anomaly/unusual_time" -Description "Get unusual time anomalies"
+Test-ApiRequest -Name "ueba_anomaly_location" -Method "GET" -Endpoint "/ueba/anomaly/unusual_location" -Description "Get unusual location anomalies"
+Test-ApiRequest -Name "ueba_anomaly_command" -Method "GET" -Endpoint "/ueba/anomaly/unusual_command" -Description "Get unusual command anomalies"
+Test-ApiRequest -Name "ueba_anomaly_process" -Method "GET" -Endpoint "/ueba/anomaly/unusual_process" -Description "Get unusual process anomalies"
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 11: Correlation API" "INFO"
+Write-Log "========================================" "INFO"
+
+Test-ApiJsonPost -Name "correlation_analyze_default" -Endpoint "/correlation/analyze" -JsonBody @{window="5m"} -Description "Run correlation analysis" -SaveResponse
+Test-ApiJsonPost -Name "correlation_analyze_10m" -Endpoint "/correlation/analyze" -JsonBody @{window="10m"} -Description "Run correlation with 10m window"
+Test-ApiJsonPost -Name "correlation_analyze_rules" -Endpoint "/correlation/analyze" -JsonBody @{rules=@("BruteForceDetection","SuspiciousProcessCreation");window="5m"} -Description "Correlation with specific rules"
+Test-ApiJsonPost -Name "correlation_analyze_time" -Endpoint "/correlation/analyze" -JsonBody @{start_time="2024-01-01T00:00:00Z";end_time="2024-12-31T23:59:59Z";window="5m"} -Description "Correlation with time range"
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 12: Query API" "INFO"
+Write-Log "========================================" "INFO"
+
+Test-ApiJsonPost -Name "query_count" -Endpoint "/query/execute" -JsonBody @{sql="SELECT COUNT(*) FROM events";limit=10} -Description "Execute COUNT query"
+Test-ApiJsonPost -Name "query_select" -Endpoint "/query/execute" -JsonBody @{sql="SELECT * FROM events LIMIT 5";limit=10} -Description "Execute SELECT query"
+Test-ApiJsonPost -Name "query_pragma" -Endpoint "/query/execute" -JsonBody @{sql="PRAGMA table_info(events)"} -Description "Execute PRAGMA query"
+Test-ApiJsonPost -Name "query_rules" -Endpoint "/query/execute" -JsonBody @{sql="SELECT * FROM rules LIMIT 5"} -Description "Query rules table"
+Test-ApiJsonPost -Name "query_alerts" -Endpoint "/query/execute" -JsonBody @{sql="SELECT * FROM alerts LIMIT 5"} -Description "Query alerts table"
+Test-ApiJsonPost -Name "query_join" -Endpoint "/query/execute" -JsonBody @{sql="SELECT e.event_id, COUNT(*) as cnt FROM events e GROUP BY e.event_id LIMIT 10"} -Description "Execute JOIN query"
 
 Write-Log "========================================" "INFO"
 Write-Log "Part 13: Persistence API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "persistence_detect" -Method "GET" -Endpoint "/persistence/detect" -Description "Detect persistence mechanisms"
-Test-ApiRequest -Name "persistence_categories" -Method "GET" -Endpoint "/persistence/categories" -Description "Get persistence categories"
-Test-ApiRequest -Name "persistence_techniques" -Method "GET" -Endpoint "/persistence/techniques" -Description "Get MITRE techniques"
-Test-ApiRequest -Name "persistence_detect_category" -Method "GET" -Endpoint "/persistence/detect?category=runkey" -Description "Detect runkey persistence"
+Test-ApiRequest -Name "persistence_categories" -Method "GET" -Endpoint "/persistence/categories" -Description "Get persistence categories" -SaveResponse
+Test-ApiRequest -Name "persistence_techniques" -Method "GET" -Endpoint "/persistence/techniques" -Description "Get MITRE techniques" -SaveResponse
+Test-ApiRequest -Name "persistence_detect_all" -Method "GET" -Endpoint "/persistence/detect" -Description "Detect all persistence" -SaveResponse
+Test-ApiRequest -Name "persistence_detect_runkey" -Method "GET" -Endpoint "/persistence/detect?category=runkey" -Description "Detect runkey persistence"
+Test-ApiRequest -Name "persistence_detect_service" -Method "GET" -Endpoint "/persistence/detect?category=service" -Description "Detect service persistence"
+Test-ApiRequest -Name "persistence_detect_scheduled" -Method "GET" -Endpoint "/persistence/detect?category=scheduled_task" -Description "Detect scheduled task persistence"
+Test-ApiRequest -Name "persistence_detect_wmi" -Method "GET" -Endpoint "/persistence/detect?category=wmi" -Description "Detect WMI persistence"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 14: Forensics API" "INFO"
+Write-Log "Part 14: Analyze API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiJsonPost -Name "forensics_hash" -Endpoint "/forensics/hash" -JsonBody @{paths=@("$env:SystemRoot\System32\notepad.exe");algorithms=@("md5","sha256")} -Description "Calculate file hashes"
-Test-ApiRequest -Name "forensics_signature" -Method "GET" -Endpoint "/forensics/signature?path=C:\Windows\System32\notepad.exe" -Description "Get file signature"
-Test-ApiRequest -Name "forensics_is_signed" -Method "GET" -Endpoint "/forensics/is-signed?path=C:\Windows\System32\notepad.exe" -Description "Check if file is signed"
-Test-ApiRequest -Name "forensics_evidence" -Method "GET" -Endpoint "/forensics/evidence?page=1&page_size=10" -Description "List evidence"
-Test-ApiJsonPost -Name "forensics_collect" -Endpoint "/forensics/collect" -JsonBody @{targets=@("processes","network")} -Description "Collect forensic data"
-Test-ApiJsonPost -Name "forensics_manifest" -Endpoint "/forensics/manifest" -JsonBody @{paths=@("$env:SystemRoot\System32")} -Description "Generate forensic manifest"
-Test-ApiRequest -Name "forensics_chain_custody" -Method "GET" -Endpoint "/forensics/chain-of-custody" -Description "Get chain of custody"
-Test-ApiRequest -Name "forensics_memory_dump" -Method "GET" -Endpoint "/forensics/memory-dump" -Description "Get memory dump info"
+Test-ApiRequest -Name "analyzers_list" -Method "GET" -Endpoint "/analyzers" -Description "List all analyzers" -SaveResponse
+Test-ApiRequest -Name "analyzers_hash" -Method "GET" -Endpoint "/analyzers/hash" -Description "Get hash analyzer details"
+Test-ApiRequest -Name "analyzers_memory" -Method "GET" -Endpoint "/analyzers/memory" -Description "Get memory analyzer details"
+Test-ApiJsonPost -Name "analyze_hash" -Endpoint "/analyze/hash" -JsonBody @{target="$env:SystemRoot\System32\notepad.exe";options=@{deep_scan=$false}} -Description "Analyze file hash"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 15: Analyze API" "INFO"
+Write-Log "Part 15: Settings API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "analyzers_list" -Method "GET" -Endpoint "/analyzers" -Description "List analyzers"
-Test-ApiJsonPost -Name "analyze_hash" -Endpoint "/analyze/hash" -JsonBody @{target="$env:SystemRoot\System32\notepad.exe"} -Description "Analyze file hash"
+Test-ApiRequest -Name "settings_get" -Method "GET" -Endpoint "/settings" -Description "Get current settings" -SaveResponse
+Test-ApiJsonPost -Name "settings_update" -Endpoint "/settings" -JsonBody @{alert_retention_days=60;log_level="debug"} -Description "Update settings"
+Test-ApiRequest -Name "settings_get_after" -Method "GET" -Endpoint "/settings" -Description "Verify settings update"
+Test-ApiRequest -Name "settings_reset" -Method "POST" -Endpoint "/settings/reset" -Description "Reset settings to defaults"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 16: Settings API" "INFO"
+Write-Log "Part 16: Suppress API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "settings_get" -Method "GET" -Endpoint "/settings" -Description "Get settings"
-Test-ApiJsonPost -Name "settings_update" -Endpoint "/settings" -JsonBody @{alert_retention_days=60} -Description "Update settings"
-Test-ApiRequest -Name "settings_reset" -Method "POST" -Endpoint "/settings/reset" -Description "Reset settings"
+Test-ApiRequest -Name "suppress_list" -Method "GET" -Endpoint "/suppress?page=1&page_size=10" -Description "List suppression rules" -SaveResponse
+Test-ApiJsonPost -Name "suppress_create" -Endpoint "/suppress" -JsonBody @{name="APITestSuppress";description="Test suppression";enabled=$true;filter=@{event_ids=@(4624);users=@("TestUser")}} -Description "Create suppression rule"
 
-Write-Log "========================================" "INFO"
-Write-Log "Part 17: Suppress API" "INFO"
-Write-Log "========================================" "INFO"
-
-Test-ApiRequest -Name "suppress_list" -Method "GET" -Endpoint "/suppress?page=1&page_size=10" -Description "List suppression rules"
-Test-ApiJsonPost -Name "suppress_create" -Endpoint "/suppress" -JsonBody @{name="TestSuppress";description="Test";enabled=$true;filter=@{event_ids=@(4624)}} -Description "Create suppression rule"
-
-Write-Log "========================================" "INFO"
-Write-Log "Part 18: Multi API" "INFO"
-Write-Log "========================================" "INFO"
-
-Test-ApiJsonPost -Name "multi_analyze" -Endpoint "/multi/analyze" -JsonBody @{sources=@("security","system")} -Description "Multi-source analysis"
-Test-ApiRequest -Name "multi_lateral" -Method "GET" -Endpoint "/multi/lateral" -Description "Detect lateral movement"
-
-Write-Log "========================================" "INFO"
-Write-Log "Part 19: Collect API" "INFO"
-Write-Log "========================================" "INFO"
-
-Test-ApiJsonPost -Name "collect_start" -Endpoint "/collect" -JsonBody @{sources=@("security")} -Description "Start collection"
-Test-ApiRequest -Name "collect_status" -Method "GET" -Endpoint "/collect/status?task_id=test" -Description "Get collection status" -ExpectedStatus 0
-
-if (-not $SkipImportTests) {
-    Write-Log "========================================" "INFO"
-    Write-Log "Part 20: Import API" "INFO"
-    Write-Log "========================================" "INFO"
-    
-    Test-ApiJsonPost -Name "import_logs" -Endpoint "/import/logs" -JsonBody @{files=@();alert_on_import=$false} -Description "Import logs (test empty)"
-    Test-ApiRequest -Name "import_status" -Method "GET" -Endpoint "/import/status?path=test.evtx" -Description "Get import status"
+$suppressResponse = Test-ApiRequest -Name "suppress_list_after" -Method "GET" -Endpoint "/suppress?page=1&page_size=10" -Description "List suppressions after create"
+if ($suppressResponse.Status -eq "PASS" -and $suppressResponse.Response) {
+    try {
+        $suppressData = $suppressResponse.Response | ConvertFrom-Json
+        if ($suppressData.suppressions -and $suppressData.suppressions.Count -gt 0) {
+            $firstSuppress = $suppressData.suppressions[0]
+            if ($firstSuppress.id) {
+                Test-ApiRequest -Name "suppress_get" -Method "GET" -Endpoint "/suppress/$($firstSuppress.id)" -Description "Get specific suppression"
+                Test-ApiRequest -Name "suppress_toggle" -Method "POST" -Endpoint "/suppress/$($firstSuppress.id)/toggle" -Description "Toggle suppression"
+                Test-ApiRequest -Name "suppress_delete" -Method "DELETE" -Endpoint "/suppress/$($firstSuppress.id)" -Description "Delete suppression"
+            }
+        }
+    } catch {
+        Write-Log "Could not parse suppress response: $($_.Exception.Message)" "WARN"
+    }
 }
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 17: Multi API" "INFO"
+Write-Log "========================================" "INFO"
+
+Test-ApiJsonPost -Name "multi_analyze_security" -Endpoint "/multi/analyze" -JsonBody @{sources=@("security")} -Description "Multi-source analysis (security)"
+Test-ApiJsonPost -Name "multi_analyze_multiple" -Endpoint "/multi/analyze" -JsonBody @{sources=@("security","system","sysmon")} -Description "Multi-source analysis (multiple)"
+Test-ApiJsonPost -Name "multi_analyze_time" -Endpoint "/multi/analyze" -JsonBody @{sources=@("security");start_time="2024-01-01T00:00:00Z";end_time="2024-12-31T23:59:59Z"} -Description "Multi-source with time filter"
+Test-ApiRequest -Name "multi_lateral" -Method "GET" -Endpoint "/multi/lateral" -Description "Detect lateral movement"
+Test-ApiRequest -Name "multi_lateral_time" -Method "GET" -Endpoint "/multi/lateral?start_time=2024-01-01T00:00:00Z" -Description "Lateral movement with time filter"
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 18: Collect API" "INFO"
+Write-Log "========================================" "INFO"
+
+Test-ApiJsonPost -Name "collect_start_security" -Endpoint "/collect" -JsonBody @{sources=@("security","system")} -Description "Start collection"
+Test-ApiRequest -Name "collect_status" -Method "GET" -Endpoint "/collect/status?task_id=test" -Description "Get collection status" -ExpectedStatus 0
+Test-ApiJsonPost -Name "collect_import" -Endpoint "/collect/import" -JsonBody @{file_path="test.evtx";source_type="evtx"} -Description "Import collected data"
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 19: Import API" "INFO"
+Write-Log "========================================" "INFO"
+
+if (-not $SkipImportTests -and $TestEvtxFile -and (Test-Path $TestEvtxFile)) {
+    Test-ApiJsonPost -Name "import_logs_again" -Endpoint "/import/logs" -JsonBody @{files=@($TestEvtxFile);alert_on_import=$true} -Description "Import with alert analysis"
+    Test-ApiRequest -Name "import_status" -Method "GET" -Endpoint "/import/status?path=$TestEvtxFile" -Description "Get import status"
+} else {
+    Test-ApiJsonPost -Name "import_logs_empty" -Endpoint "/import/logs" -JsonBody @{files=@();alert_on_import=$false} -Description "Import empty (no files)"
+    Test-ApiRequest -Name "import_status_none" -Method "GET" -Endpoint "/import/status?path=nonexistent.evtx" -Description "Get import status (non-existent)"
+}
+
+Write-Log "========================================" "INFO"
+Write-Log "Part 20: Live Events API" "INFO"
+Write-Log "========================================" "INFO"
 
 if (-not $SkipLiveTests) {
-    Write-Log "========================================" "INFO"
-    Write-Log "Part 21: Live Events API" "INFO"
-    Write-Log "========================================" "INFO"
-    
     Test-ApiRequest -Name "live_stats" -Method "GET" -Endpoint "/live/stats" -Description "Get live stats"
+} else {
+    Write-Log "Skipping live events tests (use -FullTest to enable)" "WARN"
 }
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 22: Policy API" "INFO"
+Write-Log "Part 21: Policy API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "policy_templates" -Method "GET" -Endpoint "/policy-templates" -Description "List policy templates"
-Test-ApiRequest -Name "policy_instances" -Method "GET" -Endpoint "/policy-instances" -Description "List policy instances"
-Test-ApiJsonPost -Name "policy_create" -Endpoint "/policies" -JsonBody @{name="TestPolicy";rules=@()} -Description "Create policy"
+Test-ApiRequest -Name "policy_templates_list" -Method "GET" -Endpoint "/policy-templates" -Description "List policy templates"
+Test-ApiRequest -Name "policy_instances_list" -Method "GET" -Endpoint "/policy-instances" -Description "List policy instances"
+Test-ApiJsonPost -Name "policy_create" -Endpoint "/policies" -JsonBody @{name="APITestPolicy";rules=@();settings=@{}} -Description "Create policy"
+Test-ApiRequest -Name "policy_delete" -Method "DELETE" -Endpoint "/policies/APITestPolicy" -Description "Delete policy"
 
 Write-Log "========================================" "INFO"
-Write-Log "Part 23: UI API" "INFO"
+Write-Log "Part 22: UI API" "INFO"
 Write-Log "========================================" "INFO"
 
-Test-ApiRequest -Name "ui_dashboard" -Method "GET" -Endpoint "/ui/dashboard" -Description "Get UI dashboard"
-Test-ApiRequest -Name "ui_alerts_groups" -Method "GET" -Endpoint "/ui/alerts/groups?group_by=rule&page_size=10" -Description "Get grouped alerts"
-Test-ApiRequest -Name "ui_metrics" -Method "GET" -Endpoint "/ui/metrics?period=24h" -Description "Get UI metrics"
-Test-ApiRequest -Name "ui_events_distribution" -Method "GET" -Endpoint "/ui/events/distribution?field=level&limit=10" -Description "Get event distribution"
-
-Write-Log "========================================" "INFO"
-Write-Log "Part 24: Collect Import API" "INFO"
-Write-Log "========================================" "INFO"
-
-Test-ApiJsonPost -Name "collect_import" -Endpoint "/collect/import" -JsonBody @{file_path="test.evtx";source_type="evtx"} -Description "Import collected data"
+Test-ApiRequest -Name "ui_dashboard" -Method "GET" -Endpoint "/ui/dashboard" -Description "Get UI dashboard" -SaveResponse
+Test-ApiRequest -Name "ui_dashboard_refresh" -Method "GET" -Endpoint "/ui/dashboard?refresh=60" -Description "Get UI dashboard with refresh"
+Test-ApiRequest -Name "ui_alerts_groups_rule" -Method "GET" -Endpoint "/ui/alerts/groups?group_by=rule&page_size=10" -Description "Get alerts grouped by rule"
+Test-ApiRequest -Name "ui_alerts_groups_severity" -Method "GET" -Endpoint "/ui/alerts/groups?group_by=severity&page_size=10" -Description "Get alerts grouped by severity"
+Test-ApiRequest -Name "ui_alerts_groups_time" -Method "GET" -Endpoint "/ui/alerts/groups?group_by=time&page_size=10" -Description "Get alerts grouped by time"
+Test-ApiRequest -Name "ui_metrics_1h" -Method "GET" -Endpoint "/ui/metrics?period=1h" -Description "Get UI metrics (1h)"
+Test-ApiRequest -Name "ui_metrics_24h" -Method "GET" -Endpoint "/ui/metrics?period=24h" -Description "Get UI metrics (24h)"
+Test-ApiRequest -Name "ui_metrics_7d" -Method "GET" -Endpoint "/ui/metrics?period=7d" -Description "Get UI metrics (7d)"
+Test-ApiRequest -Name "ui_events_dist_level" -Method "GET" -Endpoint "/ui/events/distribution?field=level&limit=10" -Description "Get event distribution by level"
+Test-ApiRequest -Name "ui_events_dist_source" -Method "GET" -Endpoint "/ui/events/distribution?field=source&limit=10" -Description "Get event distribution by source"
+Test-ApiRequest -Name "ui_events_dist_logname" -Method "GET" -Endpoint "/ui/events/distribution?field=log_name&limit=10" -Description "Get event distribution by log name"
 
 Write-Log "========================================" "INFO"
 Write-Log "Test Complete - Generating Report" "INFO"
@@ -366,6 +550,8 @@ $summary = @{
     Errors = $errorCount
     SuccessRate = if ($totalCount -gt 0) { [math]::Round($passCount/$totalCount*100, 2) } else { 0 }
     BaseUrl = $Script:BaseUrl
+    TestEvtxFile = $TestEvtxFile
+    PreparedData = $Script:PreparedData
     TestResults = $Script:TestResults
 } | ConvertTo-Json -Depth 10
 
@@ -402,7 +588,11 @@ if ($failedTests) {
     foreach ($test in $failedTests) {
         Write-Log "  - $($test.Name): $($test.Method) $($test.Endpoint)" "ERROR"
         if ($test.Response -and $test.Response.Length -gt 0) {
-            Write-Log "    Response: $($test.Response.Substring(0, [math]::Min(200, $test.Response.Length)))" "ERROR"
+            $responsePreview = $test.Response
+            if ($responsePreview.Length -gt 200) {
+                $responsePreview = $responsePreview.Substring(0, 200) + "..."
+            }
+            Write-Log "    Response: $responsePreview" "ERROR"
         }
     }
 }
