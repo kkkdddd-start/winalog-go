@@ -1,4 +1,5 @@
 //go:build windows
+// +build windows
 
 package forensics
 
@@ -344,7 +345,6 @@ func readSystemMemoryImpl() ([]byte, error) {
 			size = sectionBasicInfo.BaseAddress + sectionBasicInfo.SectionSize - offset
 		}
 
-		regionSize := size
 		var data bytes.Buffer
 
 		readAddr := offset
@@ -355,7 +355,7 @@ func readSystemMemoryImpl() ([]byte, error) {
 			}
 
 			readBuf := make([]byte, readSize)
-			var nr uintptr
+			var nr uint32
 			ovec := &windows.Overlapped{
 				Offset:     uint32(readAddr & 0xFFFFFFFF),
 				OffsetHigh: uint32(readAddr >> 32),
@@ -363,8 +363,7 @@ func readSystemMemoryImpl() ([]byte, error) {
 
 			err := windows.ReadFile(
 				handle,
-				&readBuf[0],
-				uintptr(readSize),
+				readBuf,
 				&nr,
 				ovec,
 			)
@@ -400,25 +399,27 @@ func hasDebugPrivilege() (bool, error) {
 	}
 	defer token.Close()
 
-	luid := windows.Kernel32LookupPrivilegeValue(nil, windows.StringToUTF16Ptr("SeDebugPrivilege"))
-	if luid == 0 {
-		return false, fmt.Errorf("failed to lookup SeDebugPrivilege")
+	var luid windows.LUID
+	err = windows.LookupPrivilegeValue(nil, windows.StringToUTF16Ptr("SeDebugPrivilege"), &luid)
+	if err != nil {
+		return false, fmt.Errorf("failed to lookup SeDebugPrivilege: %w", err)
 	}
 
 	enable := uint32(1)
-	tp := windows.TokenPrivileges{
+	tp := windows.Tokenprivileges{
 		PrivilegeCount: 1,
-		Privileges: []windows.LUIDAndAttributes{
+		Privileges: [1]windows.LUIDAndAttributes{
 			{Luid: luid, Attributes: enable},
 		},
 	}
 
-	err = token.AdjustTokenPrivileges(uint32(windows.TOKEN_ADJUST_PRIVILEGES), &tp)
+	var retLen uint32
+	err = windows.AdjustTokenPrivileges(token, false, &tp, windows.TOKEN_ADJUST_PRIVILEGES, nil, &retLen)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to adjust token privileges: %w", err)
 	}
 
-	return windows.Kernel32GetLastError() == 0, nil
+	return true, nil
 }
 
 func calculateMemoryHash(data []byte) string {

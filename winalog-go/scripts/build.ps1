@@ -1,9 +1,10 @@
 # Windows Build Script for WinLogAnalyzer-Go
 #
 # 使用方法:
-#   .\build.ps1
-#   .\build.ps1 -Target 386
-#   .\build.ps1 -Clean
+#   .\build.ps1                    - Build for amd64 (default)
+#   .\build.ps1 -Target 386       - Build for 32-bit
+#   .\build.ps1 -Target arm64     - Build for ARM64
+#   .\build.ps1 -Clean             - Clean build artifacts
 
 param(
     [string]$Target = "amd64",
@@ -13,9 +14,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Get project root - parent of scripts directory
 $PROJECT_ROOT = Split-Path -Parent $PSScriptRoot
+
+if (-not $PROJECT_ROOT -or $PROJECT_ROOT -eq "") {
+    $PROJECT_ROOT = $PSScriptRoot
+}
+
+# Normalize path
+$PROJECT_ROOT = (Resolve-Path $PROJECT_ROOT -ErrorAction SilentlyContinue).Path
 if (-not $PROJECT_ROOT) {
-    $PROJECT_ROOT = Get-Location
+    Write-Host "[ERROR] Could not determine project root" -ForegroundColor Red
+    exit 1
 }
 
 Write-Host "=== WinLogAnalyzer Windows Build ===" -ForegroundColor Cyan
@@ -26,18 +36,21 @@ Write-Host ""
 
 if ($Clean) {
     Write-Host "[CLEAN] Removing previous build artifacts..." -ForegroundColor Yellow
-    if (Test-Path "$PROJECT_ROOT\$Output") {
-        Remove-Item -Recurse -Force "$PROJECT_ROOT\$Output"
+    $distPath = Join-Path $PROJECT_ROOT $Output
+    if (Test-Path $distPath) {
+        Remove-Item -Recurse -Force $distPath
     }
-    if (Test-Path "$PROJECT_ROOT\winalog.exe") {
-        Remove-Item -Force "$PROJECT_ROOT\winalog.exe"
+    $exePath = Join-Path $PROJECT_ROOT "winalog.exe"
+    if (Test-Path $exePath) {
+        Remove-Item -Force $exePath
     }
     Write-Host "[CLEAN] Done" -ForegroundColor Green
     Write-Host ""
 }
 
-if (-not (Test-Path "$PROJECT_ROOT\$Output")) {
-    New-Item -ItemType Directory -Path "$PROJECT_ROOT\$Output" | Out-Null
+$outputPath = Join-Path $PROJECT_ROOT $Output
+if (-not (Test-Path $outputPath)) {
+    New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 }
 
 switch ($Target) {
@@ -46,12 +59,13 @@ switch ($Target) {
     "arm64" { $GOOS = "windows"; $GOARCH = "arm64" }
     default {
         Write-Host "[ERROR] Unknown target: $Target" -ForegroundColor Red
+        Write-Host "Valid targets: amd64, 386, arm64" -ForegroundColor Yellow
         exit 1
     }
 }
 
 $OUTPUT_NAME = "winalog-$Target.exe"
-$OUTPUT_PATH = "$PROJECT_ROOT\$Output\$OUTPUT_NAME"
+$OUTPUT_FILE = Join-Path $outputPath $OUTPUT_NAME
 
 Write-Host "[BUILD] Compiling for $GOOS/$GOARCH..." -ForegroundColor Yellow
 
@@ -60,33 +74,59 @@ $env:GOARCH = $GOARCH
 
 try {
     Push-Location $PROJECT_ROOT
-    go build -ldflags="-s -w" -o $OUTPUT_PATH ./cmd/winalog
+    
+    # Ensure output directory exists
+    if (-not (Test-Path $outputPath)) {
+        New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
+    }
+    
+    # Copy static files for embedding
+    $statichDir = Join-Path $PROJECT_ROOT "internal\api\_statich"
+    if (-not (Test-Path $statichDir)) {
+        New-Item -ItemType Directory -Path $statichDir -Force | Out-Null
+    }
+    $guiDist = Join-Path $PROJECT_ROOT "internal\gui\dist"
+    if (Test-Path $guiDist) {
+        Copy-Item -Path "$guiDist\*" -Destination $statichDir -Recurse -Force
+    }
+    
+    go build -ldflags="-s -w" -o $OUTPUT_FILE ./cmd/winalog
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed with exit code $LASTEXITCODE"
     }
+    
     Pop-Location
     
-    $fileSize = (Get-Item $OUTPUT_PATH).Length
+    if (-not (Test-Path $OUTPUT_FILE)) {
+        throw "Build completed but output file not found: $OUTPUT_FILE"
+    }
+    
+    $fileSize = (Get-Item $OUTPUT_FILE).Length
     $fileSizeMB = [math]::Round($fileSize / 1MB, 2)
     
     Write-Host ""
     Write-Host "[BUILD] Success!" -ForegroundColor Green
-    Write-Host "  Output: $OUTPUT_PATH"
+    Write-Host "  Output: $OUTPUT_FILE"
     Write-Host "  Size:   $fileSizeMB MB"
     Write-Host ""
     
-    if (Test-Path $OUTPUT_PATH) {
+    # Verify PE header
+    if (Test-Path $OUTPUT_FILE) {
         Write-Host "[VERIFY] File exists: OK" -ForegroundColor Green
-        $bytes = [System.IO.File]::ReadAllBytes($OUTPUT_PATH)[0..1]
+        $bytes = [System.IO.File]::ReadAllBytes($OUTPUT_FILE)[0..1]
         if ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A) {
             Write-Host "[VERIFY] PE header: OK (MZ)" -ForegroundColor Green
+        } else {
+            Write-Host "[VERIFY] PE header: WARNING (not a valid Windows executable)" -ForegroundColor Yellow
         }
     }
     
 } catch {
     Write-Host ""
     Write-Host "[ERROR] Build failed: $_" -ForegroundColor Red
-    Pop-Location
+    if (Test-Path $PROJECT_ROOT) {
+        Pop-Location 2>$null
+    }
     exit 1
 }
 
