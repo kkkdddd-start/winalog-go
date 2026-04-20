@@ -193,7 +193,7 @@ func (c *EvtLiveCollector) runLoop() {
 			return
 		}
 
-		waitResult := windows.WaitForSingleObject(signalEvent, INFINITE)
+		waitResult, _, _ := windows.WaitForSingleObject(signalEvent, INFINITE)
 
 		select {
 		case <-ctx.Done():
@@ -352,4 +352,8 @@ func renderEvent(eventHandle windows.Handle) *types.Event {
 	}
 
 	return ParseEventXML(string(buffer))
+}
+
+func formatUint64(n uint64) string {
+	return fmt.Sprintf("%d", n)
 }

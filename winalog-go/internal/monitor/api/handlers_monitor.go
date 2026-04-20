@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/monitor"
+	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
 type MonitorHandler struct {
@@ -18,9 +19,9 @@ type MonitorHandler struct {
 		Start() error
 		Stop() error
 		UpdateConfig(req *monitor.MonitorConfigRequest) error
-		GetStats() *monitor.MonitorStats
-		GetEvents(filter *monitor.EventFilter) ([]*monitor.MonitorEvent, int64)
-		Subscribe(ch chan *monitor.MonitorEvent) func()
+		GetStats() *types.MonitorStats
+		GetEvents(filter *monitor.EventFilter) ([]*types.MonitorEvent, int64)
+		Subscribe(ch chan *types.MonitorEvent) func()
 		IsRunning() bool
 	}
 }
@@ -42,11 +43,11 @@ func (h *MonitorHandler) ListEvents(c *gin.Context) {
 	filter := &monitor.EventFilter{}
 
 	if eventType := c.Query("type"); eventType != "" {
-		filter.Type = monitor.EventType(eventType)
+		filter.Type = types.EventType(eventType)
 	}
 
 	if severity := c.Query("severity"); severity != "" {
-		filter.Severity = monitor.Severity(severity)
+		filter.Severity = types.Severity(severity)
 	}
 
 	if limitStr := c.Query("limit"); limitStr != "" {
@@ -141,7 +142,7 @@ func (h *MonitorHandler) StreamEvents(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
 
-	eventChan := make(chan *monitor.MonitorEvent, 100)
+	eventChan := make(chan *types.MonitorEvent, 100)
 	unsubscribe := h.engine.Subscribe(eventChan)
 	defer unsubscribe()
 

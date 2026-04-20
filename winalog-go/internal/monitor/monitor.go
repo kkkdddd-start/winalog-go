@@ -3,9 +3,10 @@
 package monitor
 
 import (
-	"context"
 	"sync"
 	"time"
+
+	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
 type MonitorEngine struct {
@@ -15,22 +16,22 @@ type MonitorEngine struct {
 	processWatch interface {
 		Start() error
 		Stop() error
-		Subscribe(ch chan *MonitorEvent) func()
+		Subscribe(ch chan *types.MonitorEvent) func()
 	}
 	networkPoll interface {
 		Start() error
 		Stop() error
-		Subscribe(ch chan *MonitorEvent) func()
+		Subscribe(ch chan *types.MonitorEvent) func()
 	}
 	dnsPoll interface {
 		Start() error
 		Stop() error
-		Subscribe(ch chan *MonitorEvent) func()
+		Subscribe(ch chan *types.MonitorEvent) func()
 	}
 	isRunning bool
 	startTime time.Time
-	stats     *MonitorStats
-	eventCh   chan *MonitorEvent
+	stats     *types.MonitorStats
+	eventCh   chan *types.MonitorEvent
 }
 
 func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
@@ -40,13 +41,13 @@ func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
 		config:     configMgr,
 		eventCache: NewEventCache(DefaultMaxCacheSize),
 		isRunning:  false,
-		stats: &MonitorStats{
+		stats: &types.MonitorStats{
 			ProcessCount: 0,
 			NetworkCount: 0,
 			DNSCount:     0,
 			AlertCount:   0,
 		},
-		eventCh: make(chan *MonitorEvent, 1000),
+		eventCh: make(chan *types.MonitorEvent, 1000),
 	}
 
 	return engine, nil
@@ -142,20 +143,20 @@ func (e *MonitorEngine) processEvents() {
 	}
 }
 
-func (e *MonitorEngine) updateStats(event *MonitorEvent) {
+func (e *MonitorEngine) updateStats(event *types.MonitorEvent) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	switch event.Type {
-	case EventTypeProcess:
+	case types.EventTypeProcess:
 		e.stats.ProcessCount++
-	case EventTypeNetwork:
+	case types.EventTypeNetwork:
 		e.stats.NetworkCount++
-	case EventTypeDNS:
+	case types.EventTypeDNS:
 		e.stats.DNSCount++
 	}
 
-	if event.Severity == SeverityHigh || event.Severity == SeverityCritical {
+	if event.Severity == types.SeverityHigh || event.Severity == types.SeverityCritical {
 		e.stats.AlertCount++
 	}
 }
@@ -216,7 +217,7 @@ func (e *MonitorEngine) UpdateConfig(req *MonitorConfigRequest) error {
 	return nil
 }
 
-func (e *MonitorEngine) GetStats() *MonitorStats {
+func (e *MonitorEngine) GetStats() *types.MonitorStats {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	stats := *e.stats
@@ -224,11 +225,11 @@ func (e *MonitorEngine) GetStats() *MonitorStats {
 	return &stats
 }
 
-func (e *MonitorEngine) GetEvents(filter *EventFilter) ([]*MonitorEvent, int64) {
+func (e *MonitorEngine) GetEvents(filter *EventFilter) ([]*types.MonitorEvent, int64) {
 	return e.eventCache.Get(filter)
 }
 
-func (e *MonitorEngine) Subscribe(ch chan *MonitorEvent) func() {
+func (e *MonitorEngine) Subscribe(ch chan *types.MonitorEvent) func() {
 	return func() {
 		<-ch
 	}

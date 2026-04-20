@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/monitor"
+	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
 type MonitorHandler struct {
@@ -14,9 +15,9 @@ type MonitorHandler struct {
 		Start() error
 		Stop() error
 		UpdateConfig(req *monitor.MonitorConfigRequest) error
-		GetStats() *monitor.MonitorStats
-		GetEvents(filter *monitor.EventFilter) ([]*monitor.MonitorEvent, int64)
-		Subscribe(ch chan *monitor.MonitorEvent) func()
+		GetStats() *types.MonitorStats
+		GetEvents(filter *monitor.EventFilter) ([]*types.MonitorEvent, int64)
+		Subscribe(ch chan *types.MonitorEvent) func()
 		IsRunning() bool
 	}
 }
@@ -27,7 +28,7 @@ func NewMonitorHandler(engine *monitor.MonitorEngine) *MonitorHandler {
 
 func (h *MonitorHandler) GetStats(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"stats": &monitor.MonitorStats{
+		"stats": &types.MonitorStats{
 			IsRunning: false,
 		},
 	})
@@ -35,7 +36,7 @@ func (h *MonitorHandler) GetStats(c *gin.Context) {
 
 func (h *MonitorHandler) ListEvents(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"events": []*monitor.MonitorEvent{},
+		"events": []*types.MonitorEvent{},
 		"total":  0,
 		"limit":  50,
 		"offset": 0,
@@ -56,7 +57,7 @@ func (h *MonitorHandler) StartStop(c *gin.Context) {
 
 func (h *MonitorHandler) StreamEvents(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"events": []*monitor.MonitorEvent{},
+		"events": []*types.MonitorEvent{},
 	})
 }
 
