@@ -101,7 +101,7 @@ func TestEngine_DetectAnomalies(t *testing.T) {
 			name: "impossible travel",
 			events: []*types.Event{
 				makeTestEventAt(4624, "user1", "192.168.1.1", time.Now().Add(-1*time.Hour)),
-				makeTestEventAt(4624, "user1", "10.0.0.1", time.Now()),
+				makeTestEventAt(4624, "user1", "8.8.8.8", time.Now()),
 			},
 			wantAnomaly: true,
 		},
@@ -175,7 +175,7 @@ func TestEngine_DetectImpossibleTravel(t *testing.T) {
 			name: "different IPs within hour",
 			events: []*types.Event{
 				makeTestEventAt(4624, "user1", "192.168.1.1", time.Now().Add(-30*time.Minute)),
-				makeTestEventAt(4624, "user1", "10.0.0.1", time.Now()),
+				makeTestEventAt(4624, "user1", "8.8.8.8", time.Now()),
 			},
 			wantAnomaly: true,
 		},
@@ -620,7 +620,7 @@ func TestCalculateIPDistance(t *testing.T) {
 		{"empty ip1", "", "192.168.1.1", 0},
 		{"empty ip2", "192.168.1.1", "", 0},
 		{"same ip", "192.168.1.1", "192.168.1.1", 0},
-		{"different ips", "192.168.1.1", "10.0.0.1", 1000},
+		{"different ips", "192.168.1.1", "8.8.8.8", 1000},
 	}
 
 	for _, tt := range tests {
