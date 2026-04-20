@@ -1,0 +1,13 @@
+Error: unknown flag: --time-window
+Usage:
+  winalog multi analyze [flags]
+
+Flags:
+  -h, --help   help for analyze
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)
+
+Error: unknown flag: --time-window

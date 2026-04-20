@@ -1,0 +1,7 @@
+User Behavior Profiles
+============================================================
+
+Analyzing 0 events from the last 7 days...
+
+No user profiles found.
+Import authentication events (Event ID 4624, 4625) to build user profiles.

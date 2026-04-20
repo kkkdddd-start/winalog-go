@@ -1,0 +1,13 @@
+Error: only SELECT and PRAGMA queries are allowed for safety
+Usage:
+  winalog query <sql> [flags]
+
+Flags:
+  -h, --help   help for query
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)
+
+Error: only SELECT and PRAGMA queries are allowed for safety

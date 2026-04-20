@@ -1,0 +1,57 @@
+=============================================================
+  System Information
+=============================================================
+
+[Process Information]
+  Total Processes: 65
+  PID      NAME                          
+  --------------------------------------------------
+  0        [System Process]                        
+  4        System                                  
+  272      smss.exe                                
+  376      csrss.exe                               
+  440      wininit.exe                             
+  448      csrss.exe                               
+  512      services.exe                            
+  532      winlogon.exe                            
+  540      lsass.exe                               
+  648      svchost.exe                             
+  712      svchost.exe                             
+  812      dwm.exe                                 
+  840      svchost.exe                             
+  900      svchost.exe                             
+  1012     svchost.exe                             
+  1020     svchost.exe                             
+  728      svchost.exe                             
+  1112     svchost.exe                             
+  1212     svchost.exe                             
+  1316     svchost.exe                             
+  ... and 45 more processes
+
+[Network Connections]
+  Total Connections: 21
+  PROTO  LOCAL ADDRESS        PORT     REMOTE ADDRESS       PORT     STATE          
+  -------------------------------------------------------------------------------------
+  UDP    ::                   63556                         0        Listen         
+  UDP    ::1                  54828                         0        Listen         
+  UDP    fe80::c067:a899...   54827                         0        Listen         
+  UDP    ::                   5355                          0        Listen         
+  UDP    ::                   5353                          0        Listen         
+  UDP    fe80::c067:a899...   1900                          0        Listen         
+  UDP    ::1                  1900                          0        Listen         
+  UDP    fe80::20e5:91ab...   546                           0        Listen         
+  UDP    ::                   123                           0        Listen         
+  UDP    192.168.79.130       64045                         0        Listen         
+  UDP    127.0.0.1            54830                         0        Listen         
+  UDP    192.168.79.130       54829                         0        Listen         
+  UDP    0.0.0.0              5355                          0        Listen         
+  UDP    0.0.0.0              5353                          0        Listen         
+  UDP    0.0.0.0              5050                          0        Listen         
+  UDP    0.0.0.0              3544                          0        Listen         
+  UDP    192.168.79.130       1900                          0        Listen         
+  UDP    127.0.0.1            1900                          0        Listen         
+  UDP    192.168.79.130       138                           0        Listen         
+  UDP    192.168.79.130       137                           0        Listen         
+  ... and 1 more connections
+
+=============================================================

@@ -113,6 +113,12 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 }
 
 func getProcessPath(pid uint32) string {
+	defer func() {
+		if r := recover(); r != nil {
+			return
+		}
+	}()
+
 	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION, false, pid)
 	if err != nil {
 		return ""
@@ -135,6 +141,12 @@ func formatTime(t *time.Time) string {
 }
 
 func getCommandLine(pid uint32) string {
+	defer func() {
+		if r := recover(); r != nil {
+			return
+		}
+	}()
+
 	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
 	if err != nil {
 		return ""
@@ -165,6 +177,12 @@ func getCommandLine(pid uint32) string {
 }
 
 func getProcessUser(pid uint32) string {
+	defer func() {
+		if r := recover(); r != nil {
+			return
+		}
+	}()
+
 	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION, false, pid)
 	if err != nil {
 		return "SYSTEM"
@@ -192,6 +210,12 @@ func getProcessUser(pid uint32) string {
 }
 
 func getProcessStartTime(pid uint32) time.Time {
+	defer func() {
+		if r := recover(); r != nil {
+			return
+		}
+	}()
+
 	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
 	if err != nil {
 		return time.Time{}

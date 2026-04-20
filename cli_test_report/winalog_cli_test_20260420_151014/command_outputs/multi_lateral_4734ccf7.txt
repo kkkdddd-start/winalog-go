@@ -1,0 +1,27 @@
+Lateral Movement Detection
+======================================================================
+
+
+[high] Pass-the-Hash Attack
+Description: Authentication using NTLM without actual password
+----------------------------------------------------------------------
+  No events detected
+
+[medium] Remote Desktop Jump
+Description: RDP connection between machines
+----------------------------------------------------------------------
+  No events detected
+
+[high] Admin to Admin
+Description: Administrative account remote login
+----------------------------------------------------------------------
+  No events detected
+
+[critical] Account Creation on Remote
+Description: User account created or enabled remotely
+----------------------------------------------------------------------
+  No events detected
+
+======================================================================
+Detection Summary:
+  No lateral movement indicators detected.

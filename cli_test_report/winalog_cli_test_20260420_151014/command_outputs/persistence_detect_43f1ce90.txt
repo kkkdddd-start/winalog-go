@@ -1,0 +1,189 @@
+
+=== Persistence Detection Results ===
+
+Total Detections: 9
+Duration: 2.0191014s
+
+By Severity:
+  high: 8
+  low: 1
+
+By Category:
+  ETW: 7
+  Registry: 1
+  WMI: 1
+
+[
+  {
+    "id": "25f09761-e552-4b5e-bbee-ce6dfce43132",
+    "time": "2026-04-20T15:13:47.8351622+08:00",
+    "technique": "T1546.001",
+    "category": "Registry",
+    "severity": "high",
+    "title": "Userinit Registry Modification",
+    "description": "Userinit registry value has been modified, indicating possible persistence",
+    "evidence": {
+      "type": "registry",
+      "key": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\Userinit",
+      "value": "C:\\Windows\\system32\\userinit.exe,",
+      "expected": "C:\\Windows\\system32\\userinit.exe"
+    },
+    "mitre_ref": [
+      "T1546.001"
+    ],
+    "recommended_action": "Verify if the modification is legitimate. Malicious scripts often add after userinit.exe",
+    "false_positive_risk": "Low"
+  },
+  {
+    "id": "a07772da-2d45-470c-960a-076103f54cdd",
+    "time": "2026-04-20T15:13:48.1111918+08:00",
+    "technique": "T1546.003",
+    "category": "WMI",
+    "severity": "low",
+    "title": "WMI Event Filter with Process/Startup Query",
+    "description": "A WMI event filter contains a potentially suspicious query: select * from MSFT_SCMEventLogEvent",
+    "evidence": {
+      "type": "wmi",
+      "key": "EventFilter",
+      "value": "select * from MSFT_SCMEventLogEvent"
+    },
+    "mitre_ref": [
+      "T1546.003"
+    ],
+    "recommended_action": "Verify the filter is legitimate",
+    "false_positive_risk": "Medium"
+  },
+  {
+    "id": "c717cf2f-4022-4782-886f-6435740aad45",
+    "time": "2026-04-20T15:13:49.654541+08:00",
+    "technique": "T1546.006",
+    "category": "ETW",
+    "severity": "high",
+    "title": "Suspicious ETW Provider Registered",
+    "description": "A potentially malicious ETW provider has been registered: Microsoft-Antimalware-Engine",
+    "evidence": {
+      "type": "etw",
+      "key": "Provider",
+      "value": "Microsoft-Antimalware-Engine"
+    },
+    "mitre_ref": [
+      "T1546.006"
+    ],
+    "recommended_action": "Investigate this ETW provider. ETW providers can be used for defense evasion and persistence.",
+    "false_positive_risk": "Medium"
+  },
+  {
+    "id": "e440a3a0-def8-4d7f-8c2f-00f4e10416a0",
+    "time": "2026-04-20T15:13:49.654541+08:00",
+    "technique": "T1546.006",
+    "category": "ETW",
+    "severity": "high",
+    "title": "Suspicious ETW Provider Registered",
+    "description": "A potentially malicious ETW provider has been registered: Microsoft-Antimalware-Service",
+    "evidence": {
+      "type": "etw",
+      "key": "Provider",
+      "value": "Microsoft-Antimalware-Service"
+    },
+    "mitre_ref": [
+      "T1546.006"
+    ],
+    "recommended_action": "Investigate this ETW provider. ETW providers can be used for defense evasion and persistence.",
+    "false_positive_risk": "Medium"
+  },
+  {
+    "id": "9ab6bd3f-b43f-4a36-86c7-72d8c3de23a7",
+    "time": "2026-04-20T15:13:49.654541+08:00",
+    "technique": "T1546.006",
+    "category": "ETW",
+    "severity": "high",
+    "title": "Suspicious ETW Provider Registered",
+    "description": "A potentially malicious ETW provider has been registered: Microsoft-Antimalware-RTP",
+    "evidence": {
+      "type": "etw",
+      "key": "Provider",
+      "value": "Microsoft-Antimalware-RTP"
+    },
+    "mitre_ref": [
+      "T1546.006"
+    ],
+    "recommended_action": "Investigate this ETW provider. ETW providers can be used for defense evasion and persistence.",
+    "false_positive_risk": "Medium"
+  },
+  {
+    "id": "5281b106-5469-43eb-98a2-f0b2c09c1912",
+    "time": "2026-04-20T15:13:49.654541+08:00",
+    "technique": "T1546.006",
+    "category": "ETW",
+    "severity": "high",
+    "title": "Suspicious ETW Provider Registered",
+    "description": "A potentially malicious ETW provider has been registered: Microsoft-Antimalware-UI",
+    "evidence": {
+      "type": "etw",
+      "key": "Provider",
+      "value": "Microsoft-Antimalware-UI"
+    },
+    "mitre_ref": [
+      "T1546.006"
+    ],
+    "recommended_action": "Investigate this ETW provider. ETW providers can be used for defense evasion and persistence.",
+    "false_positive_risk": "Medium"
+  },
+  {
+    "id": "e4e5ecda-7aac-4cfb-97d4-f92e3491091c",
+    "time": "2026-04-20T15:13:49.654541+08:00",
+    "technique": "T1546.006",
+    "category": "ETW",
+    "severity": "high",
+    "title": "Suspicious ETW Provider Registered",
+    "description": "A potentially malicious ETW provider has been registered: Microsoft-Antimalware-AMFilter",
+    "evidence": {
+      "type": "etw",
+      "key": "Provider",
+      "value": "Microsoft-Antimalware-AMFilter"
+    },
+    "mitre_ref": [
+      "T1546.006"
+    ],
+    "recommended_action": "Investigate this ETW provider. ETW providers can be used for defense evasion and persistence.",
+    "false_positive_risk": "Medium"
+  },
+  {
+    "id": "eb8dec4e-9619-486e-b31b-2002d6a05e31",
+    "time": "2026-04-20T15:13:49.654541+08:00",
+    "technique": "T1546.006",
+    "category": "ETW",
+    "severity": "high",
+    "title": "Suspicious ETW Provider Registered",
+    "description": "A potentially malicious ETW provider has been registered: Microsoft-Antimalware-Protection",
+    "evidence": {
+      "type": "etw",
+      "key": "Provider",
+      "value": "Microsoft-Antimalware-Protection"
+    },
+    "mitre_ref": [
+      "T1546.006"
+    ],
+    "recommended_action": "Investigate this ETW provider. ETW providers can be used for defense evasion and persistence.",
+    "false_positive_risk": "Medium"
+  },
+  {
+    "id": "d269bcaf-95d1-42d8-be9c-7f10617e7bdc",
+    "time": "2026-04-20T15:13:49.654541+08:00",
+    "technique": "T1546.006",
+    "category": "ETW",
+    "severity": "high",
+    "title": "Suspicious ETW Provider Registered",
+    "description": "A potentially malicious ETW provider has been registered: Microsoft-Windows Networking VPN Plugin Platform",
+    "evidence": {
+      "type": "etw",
+      "key": "Provider",
+      "value": "Microsoft-Windows Networking VPN Plugin Platform"
+    },
+    "mitre_ref": [
+      "T1546.006"
+    ],
+    "recommended_action": "Investigate this ETW provider. ETW providers can be used for defense evasion and persistence.",
+    "false_positive_risk": "Medium"
+  }
+]

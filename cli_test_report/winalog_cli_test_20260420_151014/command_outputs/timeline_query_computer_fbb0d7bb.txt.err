@@ -1,0 +1,17 @@
+Error: unknown flag: --limit
+Usage:
+  winalog timeline query [flags]
+
+Flags:
+  -h, --help   help for query
+
+Global Flags:
+      --category string    Filter by category
+      --computer string    Filter by computer
+      --config string      Config file path
+      --db string          Database path
+      --end string         End time (RFC3339)
+      --log-level string   Log level (debug/info/warn/error)
+      --start string       Start time (RFC3339)
+
+Error: unknown flag: --limit

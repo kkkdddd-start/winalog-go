@@ -1,0 +1,5 @@
+File: C:\Windows\system32\calc.exe
+Size: 32256 bytes
+SHA256: b093fd472121cda0bbb1e0079479de36325f1b2faa7fda54c4f757565572fe1d
+SHA1: 4a2446ee9651d90ac6c5613bddf416df197f6401
+MD5: 4673c27fdcab6166578a1863060d83ff

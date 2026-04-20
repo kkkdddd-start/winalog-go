@@ -1,0 +1,2 @@
+Cannot set unknown config key: alert.retention_days
+Configuration saved successfully.

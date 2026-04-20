@@ -1,0 +1,16 @@
+Error: unknown flag: --user
+Usage:
+  winalog ueba profiles [flags]
+
+Flags:
+  -h, --help   help for profiles
+
+Global Flags:
+      --action string      Baseline action: learn, clear, show (default "show")
+      --config string      Config file path
+      --db string          Database path
+  -H, --hours int          Analysis time window in hours (default 24)
+      --log-level string   Log level (debug/info/warn/error)
+      --save-alerts        Save detected anomalies as alerts
+
+Error: unknown flag: --user

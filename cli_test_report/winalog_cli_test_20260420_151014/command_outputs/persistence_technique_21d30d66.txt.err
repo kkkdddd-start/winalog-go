@@ -1,0 +1,13 @@
+Error: unknown flag: --technique
+Usage:
+  winalog persistence detect [flags]
+
+Flags:
+  -h, --help   help for detect
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)
+
+Error: unknown flag: --technique

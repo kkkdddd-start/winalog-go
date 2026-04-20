@@ -1,0 +1,5 @@
+File: C:\Windows\system32\notepad.exe
+Status: Valid
+Signer: Microsoft Windows
+Issuer: Microsoft Windows Production PCA 2011
+Thumbprint: E85459B23C232DB3CB94C7A56D47678F58E8E51E

@@ -1,0 +1,18 @@
+cid	name	type	notnull	dflt_value	pk
+0	id	INTEGER	0	NULL	1
+1	timestamp	TEXT	1	NULL	0
+2	event_id	INTEGER	1	NULL	0
+3	level	INTEGER	1	NULL	0
+4	source	TEXT	0	NULL	0
+5	log_name	TEXT	1	NULL	0
+6	computer	TEXT	0	NULL	0
+7	user	TEXT	0	NULL	0
+8	user_sid	TEXT	0	NULL	0
+9	message	TEXT	0	NULL	0
+10	raw_xml	TEXT	0	NULL	0
+11	session_id	TEXT	0	NULL	0
+12	ip_address	TEXT	0	NULL	0
+13	import_time	TEXT	1	NULL	0
+14	import_id	INTEGER	0	NULL	0
+
+(15 rows)

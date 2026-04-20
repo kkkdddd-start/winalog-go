@@ -1,0 +1,8 @@
+Running multi-machine correlation analysis...
+
+No machine contexts found in database.
+Import event logs from multiple machines to enable cross-machine analysis.
+
+To add machine context:
+  1. Import event logs from each machine
+  2. Each import will automatically create a machine context

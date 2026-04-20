@@ -1,0 +1,31 @@
+=============================================================
+  System Information
+=============================================================
+
+[Process Information]
+  Total Processes: 66
+  PID      NAME                          
+  --------------------------------------------------
+  0        [System Process]                        
+  4        System                                  
+  272      smss.exe                                
+  376      csrss.exe                               
+  440      wininit.exe                             
+  448      csrss.exe                               
+  512      services.exe                            
+  532      winlogon.exe                            
+  540      lsass.exe                               
+  648      svchost.exe                             
+  712      svchost.exe                             
+  812      dwm.exe                                 
+  840      svchost.exe                             
+  900      svchost.exe                             
+  1012     svchost.exe                             
+  1020     svchost.exe                             
+  728      svchost.exe                             
+  1112     svchost.exe                             
+  1212     svchost.exe                             
+  1316     svchost.exe                             
+  ... and 46 more processes
+
+=============================================================

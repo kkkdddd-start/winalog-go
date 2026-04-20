@@ -1,0 +1,99 @@
+{
+  "generated_at": "2026-04-20T15:12:55.5046598+08:00",
+  "title": "summary",
+  "time_range": {
+    "start": "2026-04-19T15:12:55.5046598+08:00",
+    "end": "2026-04-20T15:12:55.5046598+08:00"
+  },
+  "summary": {
+    "total_events": 0,
+    "total_alerts": 0,
+    "critical_events": 0,
+    "high_alerts": 0,
+    "time_range_days": 1,
+    "computers": null
+  },
+  "stats": {
+    "generated_at": "2026-04-20T15:12:55.5046598+08:00",
+    "total_events": 0,
+    "total_alerts": 0,
+    "event_distribution": {
+      "by_level": {},
+      "by_log_name": {},
+      "by_source": {},
+      "by_computer": {},
+      "by_hour": {}
+    },
+    "alert_distribution": {
+      "by_severity": {},
+      "by_status": {},
+      "by_rule": {}
+    },
+    "level_distribution": null,
+    "top_event_ids": null,
+    "login_stats": {
+      "successful": 0,
+      "failed": 0,
+      "total": 0
+    },
+    "time_range_stats": null
+  },
+  "iocs": {
+    "ip_addresses": null,
+    "users": null,
+    "computers": null,
+    "file_paths": null
+  },
+  "executive_summary": {
+    "risk_score": 0,
+    "risk_level": "Low",
+    "total_alerts": 0,
+    "resolved_alerts": 0,
+    "unresolved_alerts": 0,
+    "top_threat": "",
+    "key_findings": null,
+    "action_items": 0
+  },
+  "timeline_analysis": {
+    "events_by_hour": {},
+    "events_by_day": {},
+    "alerts_by_hour": {},
+    "alerts_by_day": {},
+    "peak_activity_hour": 0,
+    "peak_activity_day": ""
+  },
+  "threat_landscape": {
+    "critical_threats": 0,
+    "high_threats": 0,
+    "medium_threats": 0,
+    "low_threats": 0,
+    "top_attack_vectors": [],
+    "affected_systems": []
+  },
+  "recommendations": [
+    {
+      "priority": "Medium",
+      "category": "Prevention",
+      "title": "Implement Additional Logging",
+      "description": "Consider expanding event collection to improve detection coverage",
+      "actionable": "Review and update event sources configuration"
+    },
+    {
+      "priority": "Low",
+      "category": "Hardening",
+      "title": "Review User Access Controls",
+      "description": "Regularly review user accounts and access permissions",
+      "actionable": "Run access review and remove unnecessary privileges"
+    }
+  ],
+  "compliance_status": {
+    "passed_checks": [
+      "No unresolved critical alerts"
+    ],
+    "failed_checks": [],
+    "warnings": [
+      "Low event collection activity detected"
+    ],
+    "overall_status": "Compliant"
+  }
+}

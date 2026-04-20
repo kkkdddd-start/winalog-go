@@ -1,0 +1,4 @@
+UEBA Baseline Management
+============================================================
+Clearing all baselines...
+All baselines cleared.

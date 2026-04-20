@@ -1,0 +1,7 @@
+Starting one-click collection...
+Output: .\winalog_cli_test_20260420_151014\forensic_collect.zip
+Workers: 4
+Compress: true
+
+
+Collection completed with errors

@@ -1,0 +1,3 @@
+id	rule_name	severity	message	event_ids	event_db_ids	first_seen	last_seen	count	mitre_attack	resolved	resolved_time	notes	false_positive	log_name	rule_score
+
+(0 rows)

@@ -1,0 +1,6 @@
+=== Alert Statistics ===
+Total Alerts:  0
+
+By Severity:
+
+By Status:

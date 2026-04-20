@@ -1,0 +1,58 @@
+WinLogAnalyzer-Go is a Windows security forensics and log analysis tool 
+written in Go. It provides high-performance EVTX parsing, alerting, correlation, 
+and forensics capabilities in a single binary.
+
+Supported formats:
+  - EVTX (Windows Event Log)
+  - ETL (Event Trace Log)
+  - CSV/LOG (Custom formats)
+  - IIS (W3C Extended Log)
+  - Sysmon (Event ID 1-22)
+
+Examples:
+  winalog import security.evtx
+  winalog search --event-id 4624
+  winalog collect --output ./evidence.zip
+
+Usage:
+  winalog [command]
+
+Available Commands:
+  alert       Alert management
+  analyze     Run threat analyzer
+  collect     One-click collection of all log sources
+  completion  Generate the autocompletion script for the specified shell
+  config      Configuration management
+  correlate   Run correlation analysis
+  dashboard   Display statistics dashboard
+  db          Database management
+  evtx2csv    Convert EVTX file to CSV format
+  export      Export events data
+  forensics   Forensics operations
+  help        Help about any command
+  import      Import EVTX/ETL/LOG/CSV files
+  info        Show system information
+  live        Live monitoring
+  metrics     Show Prometheus metrics
+  multi       Multi-machine analysis
+  persistence Detect Windows persistence mechanisms
+  query       Execute SQL query
+  report      Report generation
+  rules       Rule management
+  search      Search events in the database
+  serve       Start HTTP API server
+  status      Show system status
+  timeline    Timeline analysis
+  tui         Start terminal UI
+  ueba        User Behavior Analytics (UEBA)
+  verify      Verify file integrity
+  whitelist   Manage alert whitelist (suppress rules)
+
+Flags:
+      --config string      Config file path
+      --db string          Database path
+  -h, --help               help for winalog
+      --log-level string   Log level (debug/info/warn/error)
+  -v, --version            version for winalog
+
+Use "winalog [command] --help" for more information about a command.

@@ -1,0 +1,7 @@
+Starting one-click collection...
+Output: winalog_collect.zip
+Workers: 8
+Compress: true
+
+
+Collection completed with errors

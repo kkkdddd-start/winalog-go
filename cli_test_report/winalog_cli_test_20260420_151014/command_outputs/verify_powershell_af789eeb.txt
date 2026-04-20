@@ -1,0 +1,5 @@
+File: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Size: 446976 bytes
+SHA256: e82115ffd93298cbf1d5837677f5e1cfd5fc515b53f2cf02c473b0f63d542bca
+SHA1: 5f710e3665d26b17ef57e87f3aecd19f0513b8d9
+MD5: 349f866bd2fa869ed047707c5723b9f1

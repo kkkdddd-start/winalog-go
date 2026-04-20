@@ -1,0 +1,14 @@
+Error: failed to parse EVTX file: failed to open EVTX file: open C:\Windows\System32\winevt\Logs\Microsoft-Windows-Sysmon%4Operational.evtx: Access is denied.
+Usage:
+  winalog evtx2csv <input.evtx> [output.csv] [flags]
+
+Flags:
+  -h, --help        help for evtx2csv
+  -l, --limit int   Limit number of events (0 = no limit)
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)
+
+Error: failed to parse EVTX file: failed to open EVTX file: open C:\Windows\System32\winevt\Logs\Microsoft-Windows-Sysmon%4Operational.evtx: Access is denied.

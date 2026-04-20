@@ -1,0 +1,134 @@
+Exception 0xc0000005 0x1 0x0 0x7ffddac8c61a
+PC=0x7ffddac8c61a
+
+runtime.cgocall(0x7ff72b033e80, 0xc000065b58)
+	/usr/local/go/src/runtime/cgocall.go:167 +0x3e fp=0xc000143148 sp=0xc0001430e0 pc=0x7ff72b026ede
+runtime.syscall_syscalln(0x0?, 0x0?, {0xc0001431c0?, 0x7ff72d1bb1f0?, 0xc000143178?})
+	/usr/local/go/src/runtime/syscall_windows.go:521 +0x4e fp=0xc000143168 sp=0xc000143148 pc=0x7ff72b014e4e
+syscall.SyscallN(0x7ff72d1bb1e0?, {0xc0001431c0?, 0x0?, 0xc000143210?})
+	/usr/local/go/src/runtime/syscall_windows.go:500 +0x1e fp=0xc0001431a0 sp=0xc000143168 pc=0x7ff72b02e5de
+golang.org/x/sys/windows.GetProcessTimes(0x134, 0xf38?, 0x7ff72c6171d8?, 0xc000143250?, 0xc00000b099?)
+	/go/pkg/mod/golang.org/x/sys@v0.42.0/windows/zsyscall_windows.go:2605 +0xb4 fp=0xc000143220 sp=0xc0001431a0 pc=0x7ff72b22e4d4
+github.com/kkkdddd-start/winalog-go/internal/collectors.getProcessStartTime(0x14335c?)
+	/workspace/winalog-go/internal/collectors/process_info.go:181 +0x89 fp=0xc0001432b0 sp=0xc000143220 pc=0x7ff72b66b0c9
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*ProcessInfoCollector).collectProcessInfo(0xc000038460?)
+	/workspace/winalog-go/internal/collectors/process_info.go:82 +0x245 fp=0xc000143628 sp=0xc0001432b0 pc=0x7ff72b66a445
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*OneClickCollector).collectProcessInfoWithSignaturesAndDLLs(0xc000143b38, {0xc0000bca00?, 0xc0000001ed?})
+	/workspace/winalog-go/internal/collectors/one_click.go:263 +0x12a fp=0xc000143870 sp=0xc000143628 pc=0x7ff72b666f4a
+github.com/kkkdddd-start/winalog-go/internal/collectors.(*OneClickCollector).FullCollect(0xc000143b38, {0x7ff72c62df10, 0x7ff72d2613e0})
+	/workspace/winalog-go/internal/collectors/one_click.go:168 +0x7f9 fp=0xc000143a48 sp=0xc000143870 pc=0x7ff72b666459
+github.com/kkkdddd-start/winalog-go/internal/collectors.RunOneClickCollection({0x7ff72c62df10?, 0x7ff72d2613e0?}, {0x0?, 0x0?})
+	/workspace/winalog-go/internal/collectors/one_click.go:110 +0x2cb fp=0xc000143bd8 sp=0xc000143a48 pc=0x7ff72b665b4b
+github.com/kkkdddd-start/winalog-go/cmd/winalog/commands.runForensicsCollect(0xc0003ea700?, {0x7ff72c27cd70?, 0x4?, 0x7ff72c27cd50?})
+	/workspace/winalog-go/cmd/winalog/commands/system.go:919 +0x9c fp=0xc000143c60 sp=0xc000143bd8 pc=0x7ff72bf6e4bc
+github.com/spf13/cobra.(*Command).execute(0xc0003e7b08, {0x7ff72d2613e0, 0x0, 0x0})
+	/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1015 +0xb02 fp=0xc000143e08 sp=0xc000143c60 pc=0x7ff72b623a02
+github.com/spf13/cobra.(*Command).ExecuteC(0x7ff72d1e8a20)
+	/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1148 +0x465 fp=0xc000143ef8 sp=0xc000143e08 pc=0x7ff72b624345
+github.com/spf13/cobra.(*Command).Execute(...)
+	/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1071
+main.main()
+	/workspace/winalog-go/cmd/winalog/main.go:35 +0x26 fp=0xc000143f50 sp=0xc000143ef8 pc=0x7ff72bf73d26
+runtime.main()
+	/usr/local/go/src/runtime/proc.go:285 +0x27d fp=0xc000143fe0 sp=0xc000143f50 pc=0x7ff72aff869d
+runtime.goexit({})
+	/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000143fe8 sp=0xc000143fe0 pc=0x7ff72b032641
+
+goroutine 2 gp=0xc0000028c0 m=nil [force gc (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	/usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005bfa8 sp=0xc00005bf88 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+	/usr/local/go/src/runtime/proc.go:466
+runtime.forcegchelper()
+	/usr/local/go/src/runtime/proc.go:373 +0xb8 fp=0xc00005bfe0 sp=0xc00005bfa8 pc=0x7ff72aff89b8
+runtime.goexit({})
+	/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005bfe8 sp=0xc00005bfe0 pc=0x7ff72b032641
+created by runtime.init.7 in goroutine 1
+	/usr/local/go/src/runtime/proc.go:361 +0x1a
+
+goroutine 3 gp=0xc000002c40 m=nil [GC sweep wait]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	/usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005df80 sp=0xc00005df60 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+	/usr/local/go/src/runtime/proc.go:466
+runtime.bgsweep(0xc00006a000)
+	/usr/local/go/src/runtime/mgcsweep.go:279 +0x94 fp=0xc00005dfc8 sp=0xc00005df80 pc=0x7ff72afdfe94
+runtime.gcenable.gowrap1()
+	/usr/local/go/src/runtime/mgc.go:212 +0x25 fp=0xc00005dfe0 sp=0xc00005dfc8 pc=0x7ff72afd3e25
+runtime.goexit({})
+	/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005dfe8 sp=0xc00005dfe0 pc=0x7ff72b032641
+created by runtime.gcenable in goroutine 1
+	/usr/local/go/src/runtime/mgc.go:212 +0x66
+
+goroutine 4 gp=0xc000002e00 m=nil [GC scavenge wait]:
+runtime.gopark(0xc00006a000?, 0x7ff72c617100?, 0x1?, 0x0?, 0xc000002e00?)
+	/usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc000071f78 sp=0xc000071f58 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+	/usr/local/go/src/runtime/proc.go:466
+runtime.(*scavengerState).park(0x7ff72d2177e0)
+	/usr/local/go/src/runtime/mgcscavenge.go:425 +0x49 fp=0xc000071fa8 sp=0xc000071f78 pc=0x7ff72afdd949
+runtime.bgscavenge(0xc00006a000)
+	/usr/local/go/src/runtime/mgcscavenge.go:653 +0x3c fp=0xc000071fc8 sp=0xc000071fa8 pc=0x7ff72afddedc
+runtime.gcenable.gowrap2()
+	/usr/local/go/src/runtime/mgc.go:213 +0x25 fp=0xc000071fe0 sp=0xc000071fc8 pc=0x7ff72afd3dc5
+runtime.goexit({})
+	/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc000071fe8 sp=0xc000071fe0 pc=0x7ff72b032641
+created by runtime.gcenable in goroutine 1
+	/usr/local/go/src/runtime/mgc.go:213 +0xa5
+
+goroutine 18 gp=0xc000082000 m=nil [GOMAXPROCS updater (idle)]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	/usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00006df88 sp=0xc00006df68 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+	/usr/local/go/src/runtime/proc.go:466
+runtime.updateMaxProcsGoroutine()
+	/usr/local/go/src/runtime/proc.go:6720 +0xe7 fp=0xc00006dfe0 sp=0xc00006df88 pc=0x7ff72b0063a7
+runtime.goexit({})
+	/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00006dfe8 sp=0xc00006dfe0 pc=0x7ff72b032641
+created by runtime.defaultGOMAXPROCSUpdateEnable in goroutine 1
+	/usr/local/go/src/runtime/proc.go:6708 +0x37
+
+goroutine 19 gp=0xc0000821c0 m=nil [finalizer wait]:
+runtime.gopark(0x0?, 0x0?, 0x0?, 0x0?, 0x0?)
+	/usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00006fe20 sp=0xc00006fe00 pc=0x7ff72b02a10e
+runtime.runFinalizers()
+	/usr/local/go/src/runtime/mfinal.go:210 +0x107 fp=0xc00006ffe0 sp=0xc00006fe20 pc=0x7ff72afd2d67
+runtime.goexit({})
+	/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00006ffe8 sp=0xc00006ffe0 pc=0x7ff72b032641
+created by runtime.createfing in goroutine 1
+	/usr/local/go/src/runtime/mfinal.go:172 +0x3d
+
+goroutine 20 gp=0xc000082e00 m=nil [cleanup wait]:
+runtime.gopark(0x0?, 0x101000000000000?, 0xfc?, 0x0?, 0x2?)
+	/usr/local/go/src/runtime/proc.go:460 +0xce fp=0xc00005ff68 sp=0xc00005ff48 pc=0x7ff72b02a10e
+runtime.goparkunlock(...)
+	/usr/local/go/src/runtime/proc.go:466
+runtime.(*cleanupQueue).dequeue(0x7ff72d217ba0)
+	/usr/local/go/src/runtime/mcleanup.go:439 +0xc5 fp=0xc00005ffa0 sp=0xc00005ff68 pc=0x7ff72afcfc25
+runtime.runCleanups()
+	/usr/local/go/src/runtime/mcleanup.go:635 +0x45 fp=0xc00005ffe0 sp=0xc00005ffa0 pc=0x7ff72afd02e5
+runtime.goexit({})
+	/usr/local/go/src/runtime/asm_amd64.s:1693 +0x1 fp=0xc00005ffe8 sp=0xc00005ffe0 pc=0x7ff72b032641
+created by runtime.(*cleanupQueue).createGs in goroutine 1
+	/usr/local/go/src/runtime/mcleanup.go:589 +0xa5
+rax     0x0
+rbx     0xc000143268
+rcx     0x7ffddd965174
+rdx     0x0
+rdi     0x0
+rsi     0x0
+rbp     0x984e1ff7b0
+rsp     0x984e1ff5c0
+r8      0x984e1ff5b8
+r9      0x984e1ff7b0
+r10     0x0
+r11     0x246
+r12     0x0
+r13     0xc000067820
+r14     0x0
+r15     0xffffffffffffffff
+rip     0x7ffddac8c61a
+rflags  0x10246
+cs      0x33
+fs      0x53
+gs      0x2b

@@ -1,0 +1,13 @@
+Error: accepts 1 arg(s), received 2
+Usage:
+  winalog verify [file] [flags]
+
+Flags:
+  -h, --help   help for verify
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)
+
+Error: accepts 1 arg(s), received 2

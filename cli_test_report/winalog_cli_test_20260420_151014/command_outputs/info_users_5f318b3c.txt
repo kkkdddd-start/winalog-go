@@ -1,0 +1,13 @@
+=============================================================
+  System Information
+=============================================================
+
+[Basic System Info]
+  Hostname:     DESKTOP-OTES36E
+  OS:           windows
+  Architecture: amd64
+  Go Version:   go1.25.6
+  CPUs:         2
+  Memory:       2.21 MB allocated
+
+=============================================================

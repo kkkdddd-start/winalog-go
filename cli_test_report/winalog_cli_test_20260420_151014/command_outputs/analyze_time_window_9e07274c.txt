@@ -1,0 +1,10 @@
+Available analyzers:
+  - powershell
+  - persistence
+  - domain_controller
+  - login
+  - kerberos
+  - data_exfiltration
+  - lateral_movement
+  - privilege_escalation
+  - brute_force

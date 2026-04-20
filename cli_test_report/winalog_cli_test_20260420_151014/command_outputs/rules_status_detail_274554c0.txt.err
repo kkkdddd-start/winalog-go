@@ -1,0 +1,13 @@
+Error: unknown rule type for: BruteForce
+Usage:
+  winalog rules status [name] [flags]
+
+Flags:
+  -h, --help   help for status
+
+Global Flags:
+      --config string      Config file path
+      --db string          Database path
+      --log-level string   Log level (debug/info/warn/error)
+
+Error: unknown rule type for: BruteForce

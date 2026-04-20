@@ -1,0 +1,1 @@
+Whitelist rule 'TestRule001' removed successfully

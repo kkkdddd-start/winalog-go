@@ -1,0 +1,11 @@
+=============================================================
+  Configuration
+=============================================================
+  Database Path: C:\Users\admin\.winalog\winalog.db
+  API Host: 127.0.0.1
+  API Port: 8080
+  Log Level: info
+  Import Workers: 4
+  Import Batch Size: 10000
+  Alerts Enabled: true
+  Report Output: ./reports

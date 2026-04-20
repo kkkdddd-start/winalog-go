@@ -1,0 +1,7 @@
+UEBA Baseline Management
+============================================================
+Current baseline statistics:
+
+Total users with baseline: 0
+Analysis window: 7 days
+Minimum events for baseline: 10

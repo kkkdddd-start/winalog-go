@@ -1,0 +1,1 @@
+Parsing EVTX file: C:\Windows\System32\winevt\Logs\Microsoft-Windows-Sysmon%4Operational.evtx

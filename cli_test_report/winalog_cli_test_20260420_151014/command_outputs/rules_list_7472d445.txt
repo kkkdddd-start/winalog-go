@@ -1,0 +1,48 @@
+=============================================================
+  Alert Rules
+=============================================================
+  Total: 98 rules
+
+  [high] failed-login-threshold
+  [high] admin-login-unusual
+  [high] powershell-encoding
+  [critical] security-log-cleared
+  [medium] account-lockout-alert
+  [medium] network-connection-alert
+  [high] service-creation-alert
+  [high] scheduled-task-creation
+  [medium] usb-device-insertion
+  [high] pass-the-hash-suspect
+  [critical] mimikatz-suspect
+  [high] encoded-powershell-alert
+  [medium] remote-tasking-creation
+  [high] suspicious-run-key
+  [medium] suspicious-dll-load
+  [medium] wmi-suspicious
+  [high] registry-run-key-modification
+  [high] registry-services-modification
+  [critical] registry-hive-modification
+  [high] registry-wmi-persistence
+  [high] registry-bypass-detection
+  [high] wmic-suspicious
+  [high] winrm-suspicious
+  [medium] winrm-remote-connection
+  [high] domain-recon
+  [critical] domain-admin-login
+  [critical] dc-sync-attack
+  [high] kerberoasting
+  [critical] golden-ticket
+  [high] powershell-remoting
+  ... and 68 more rules
+
+============================================================
+  Correlation Rules
+============================================================
+  Total: 6 rules
+
+  brute-force-attack: 暴力破解攻击模式
+  lateral-movement: 横向移动攻击模式
+  privilege-escalation-chain: 权限提升攻击链
+  persistence-chain: 持久化攻击链
+  credential-dump-chain: 凭据窃取攻击链
+  ransomware-preparation: 勒索软件准备阶段

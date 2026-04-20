@@ -1,0 +1,10 @@
+UEBA Analysis
+============================================================
+Time window: Last 24 hours
+Start time: 2026-04-19T15:13:29+08:00
+End time: 2026-04-20T15:13:29+08:00
+
+Loaded 0 events for analysis
+
+Not enough events for UEBA analysis (minimum 10 required)
+Please import more event logs first.

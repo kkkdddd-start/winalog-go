@@ -1,0 +1,16 @@
+{
+  "database_path": "C:\\Users\\admin\\.winalog\\winalog.db",
+  "total_events": 0,
+  "storage_size_bytes": 0,
+  "import_count": 0,
+  "level_distribution": {},
+  "log_name_distribution": {},
+  "source_distribution": {},
+  "top_event_ids": [],
+  "computers": [],
+  "login_summary": {
+    "successful": 0,
+    "failed": 0,
+    "total": 0
+  }
+}

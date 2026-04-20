@@ -1,0 +1,4 @@
+UEBA Baseline Management
+============================================================
+Learning baseline from events...
+Learned baseline for 0 users

@@ -1,0 +1,7 @@
+=============================================================
+  Database Status
+=============================================================
+  Path: C:\Users\admin\.winalog\winalog.db
+  Total Events: 0
+  Total Alerts: 0
+  Storage Size: 0.22 MB
