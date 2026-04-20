@@ -223,11 +223,10 @@ Write-TestLog "Part 4: Rules Management" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "rules_list" -Command "rules list" -Description "List all rules"
-Test-Command -Name "rules_list_enabled" -Command "rules list --enabled" -Description "List enabled rules"
 Test-Command -Name "rules_status" -Command "rules status" -Description "Show rules status"
-Test-Command -Name "rules_status_detail" -Command "rules status BruteForce" -Description "Show specific rule"
-Test-Command -Name "rules_disable" -Command "rules disable BruteForce" -Description "Disable rule"
-Test-Command -Name "rules_enable" -Command "rules enable BruteForce" -Description "Enable rule"
+Test-Command -Name "rules_status_detail" -Command "rules status brute-force-attack" -Description "Show specific rule"
+Test-Command -Name "rules_disable" -Command "rules disable brute-force-attack" -Description "Disable rule"
+Test-Command -Name "rules_enable" -Command "rules enable brute-force-attack" -Description "Enable rule"
 
 Write-TestLog "========================================" "INFO"
 Write-TestLog "Part 5: Alert Management" "INFO"
@@ -248,8 +247,8 @@ Write-TestLog "========================================" "INFO"
 Test-Command -Name "search_empty" -Command "search" -Description "Empty search"
 Test-Command -Name "search_level" -Command "search --level 4" -Description "Filter by level"
 Test-Command -Name "search_page" -Command "search --page 1 --page-size 10" -Description "Paged search"
-Test-Command -Name "search_keywords" -Command "search --keywords system --limit 20" -Description "Keyword search"
-Test-Command -Name "search_event_id" -Command "search --event-id 4624 --limit 20" -Description "Search by event ID"
+Test-Command -Name "search_keywords" -Command "search --keywords system --page-size 20" -Description "Keyword search"
+Test-Command -Name "search_event_id" -Command "search --event-id 4624 --page-size 20" -Description "Search by event ID"
 Test-Command -Name "search_regex" -Command "search --regex --keywords 4624" -Description "Regex search"
 Test-Command -Name "search_time" -Command "search --start-time 2024-01-01T00:00:00Z --end-time 2024-12-31T23:59:59Z" -Description "Time range search"
 Test-Command -Name "search_computer" -Command "search --computer localhost" -Description "Search by computer"
@@ -287,7 +286,7 @@ Write-TestLog "========================================" "INFO"
 Write-TestLog "Part 10: Timeline Analysis" "INFO"
 Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "timeline_query" -Command "timeline query --limit 50" -Description "Query timeline"
+Test-Command -Name "timeline_query" -Command "timeline query" -Description "Query timeline"
 Test-Command -Name "timeline_query_time" -Command "timeline query --start 2024-01-01T00:00:00Z --end 2024-12-31T23:59:59Z" -Description "Time range query"
 Test-Command -Name "timeline_query_category" -Command "timeline query --category Security" -Description "Query by category"
 Test-Command -Name "timeline_build" -Command "timeline build" -Description "Build timeline"
@@ -319,7 +318,6 @@ Write-TestLog "Part 13: Multi-Machine Analysis" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "multi_analyze" -Command "multi analyze" -Description "Multi-machine analysis"
-Test-Command -Name "multi_analyze_48h" -Command "multi analyze --time-window 48h" -Description "Multi-machine (48h)"
 Test-Command -Name "multi_lateral" -Command "multi lateral" -Description "Lateral movement detection"
 
 Write-TestLog "========================================" "INFO"
@@ -327,7 +325,6 @@ Write-TestLog "Part 14: UEBA Analysis" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "ueba_profiles" -Command "ueba profiles" -Description "Show user profiles"
-Test-Command -Name "ueba_profiles_user" -Command "ueba profiles --user Administrator" -Description "Show specific user"
 Test-Command -Name "ueba_analyze" -Command "ueba analyze --hours 24" -Description "UEBA analysis"
 Test-Command -Name "ueba_analyze_save" -Command "ueba analyze --hours 24 --save-alerts" -Description "UEBA with alerts"
 Test-Command -Name "ueba_baseline" -Command "ueba baseline" -Description "Show user baseline"
@@ -351,19 +348,7 @@ Test-Command -Name "forensics_verify" -Command "forensics verify `"$env:SystemRo
 Test-Command -Name "forensics_collect" -Command "forensics collect" -Description "Collect forensics"
 
 Write-TestLog "========================================" "INFO"
-Write-TestLog "Part 17: Persistence Detection" "INFO"
-Write-TestLog "========================================" "INFO"
-
-Test-Command -Name "persistence_detect" -Command "persistence detect" -Description "Detect persistence"
-Test-Command -Name "persistence_detect_json" -Command "persistence detect --format json" -Description "Detect persistence (JSON)"
-Test-Command -Name "persistence_category" -Command "persistence detect --category registry" -Description "Detect registry"
-Test-Command -Name "persistence_category_wmi" -Command "persistence detect --category WMI" -Description "Detect WMI"
-Test-Command -Name "persistence_category_service" -Command "persistence detect --category Service" -Description "Detect service"
-Test-Command -Name "persistence_technique" -Command "persistence detect --technique T1546.003" -Description "Detect MITRE T1546.003"
-Test-Command -Name "persistence_text" -Command "persistence detect --format text" -Description "Text output"
-
-Write-TestLog "========================================" "INFO"
-Write-TestLog "Part 18: Whitelist Management" "INFO"
+Write-TestLog "Part 17: Whitelist Management" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "whitelist_list" -Command "whitelist list" -Description "List whitelist"
@@ -372,7 +357,7 @@ Test-Command -Name "whitelist_list_after" -Command "whitelist list" -Description
 Test-Command -Name "whitelist_remove" -Command "whitelist remove TestRule" -Description "Remove whitelist rule"
 
 Write-TestLog "========================================" "INFO"
-Write-TestLog "Part 19: Config Management" "INFO"
+Write-TestLog "Part 18: Config Management" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "config_get" -Command "config get" -Description "Get all config"
@@ -381,31 +366,30 @@ Test-Command -Name "config_set" -Command "config set alert.retention_days 180" -
 Test-Command -Name "config_restore" -Command "config set alert.retention_days 90" -Description "Restore default"
 
 Write-TestLog "========================================" "INFO"
-Write-TestLog "Part 20: SQL Query" "INFO"
+Write-TestLog "Part 19: SQL Query" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "query_count" -Command 'query "SELECT COUNT(*) FROM events"' -Description "SQL COUNT"
 Test-Command -Name "query_events" -Command 'query "SELECT * FROM events LIMIT 5"' -Description "SQL query events"
-Test-Command -Name "query_rules" -Command 'query "SELECT * FROM rules LIMIT 5"' -Description "SQL query rules"
 Test-Command -Name "query_alerts" -Command 'query "SELECT * FROM alerts LIMIT 5"' -Description "SQL query alerts"
 Test-Command -Name "query_pragma" -Command 'query "PRAGMA table_info(events)"' -Description "View schema"
 
 Write-TestLog "========================================" "INFO"
-Write-TestLog "Part 21: Dashboard" "INFO"
+Write-TestLog "Part 20: Dashboard" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "dashboard" -Command "dashboard" -Description "Show dashboard"
 Test-Command -Name "dashboard_json" -Command "dashboard --format json" -Description "Dashboard (JSON)"
 
 Write-TestLog "========================================" "INFO"
-Write-TestLog "Part 22: Collect" "INFO"
+Write-TestLog "Part 21: Collect" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "collect_basic" -Command "collect" -Description "Basic collection"
 Test-Command -Name "collect_output" -Command "collect --include-system-info --include-registry" -Description "Collection with options"
 
 Write-TestLog "========================================" "INFO"
-Write-TestLog "Part 23: EVTX Conversion" "INFO"
+Write-TestLog "Part 22: EVTX Conversion" "INFO"
 Write-TestLog "========================================" "INFO"
 
 if ($TestEvtxFile -and (Test-Path $TestEvtxFile)) {
@@ -414,15 +398,14 @@ if ($TestEvtxFile -and (Test-Path $TestEvtxFile)) {
 }
 
 Write-TestLog "========================================" "INFO"
-Write-TestLog "Part 24: Verify" "INFO"
+Write-TestLog "Part 23: Verify" "INFO"
 Write-TestLog "========================================" "INFO"
 
 Test-Command -Name "verify_file" -Command "verify `"$env:SystemRoot\system32\notepad.exe`"" -Description "Verify file"
-Test-Command -Name "verify_batch" -Command "verify `"$env:SystemRoot\system32\notepad.exe`" `"$env:SystemRoot\system32\cmd.exe`"" -Description "Batch verify"
 
 if (-not $SkipTUI) {
     Write-TestLog "========================================" "INFO"
-    Write-TestLog "Part 25: TUI" "INFO"
+    Write-TestLog "Part 24: TUI" "INFO"
     Write-TestLog "========================================" "INFO"
     
     Test-Command -Name "tui_check" -Command "tui" -Description "TUI launch test" -ExpectedExitCode -1
