@@ -166,31 +166,33 @@ func (s *Server) setupRoutes() {
 
 	setupPersistenceStreamRoutes(s.engine, s.persistenceEng)
 
-	staticDir := getStaticDir()
-	staticFs := http.Dir(staticDir)
-
-	log.Printf("Serving static files from: %s", staticDir)
-
 	s.engine.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 		if path == "/" {
 			path = "/index.html"
 		}
 
-		safeFilePath, err := safePath(staticDir, path)
-		if err != nil {
+		if strings.Contains(path, "..") {
 			log.Printf("WARN: Blocked path traversal attempt: %s", path)
 			c.Data(403, "text/plain", []byte("Forbidden"))
 			return
 		}
 
-		file, err := staticFs.Open(path)
+		filePath := getStaticFilePath(path)
+
+		content, err := staticFiles.ReadFile("_statich/" + filePath)
 		if err != nil {
-			c.Data(404, "text/plain", []byte("Not found"))
+			if path == "/index.html" {
+				c.Data(404, "text/plain", []byte("Not found"))
+			} else {
+				c.Data(404, "text/plain", []byte("Not found"))
+			}
 			return
 		}
-		file.Close()
-		http.ServeFile(c.Writer, c.Request, safeFilePath)
+
+		contentType := getStaticContentType(filePath)
+		c.Header("Content-Type", contentType)
+		c.Data(200, contentType, content)
 	})
 }
 
@@ -232,4 +234,45 @@ func (s *Server) ReloadConfig(cfg *config.Config) {
 	s.cfg = cfg
 	s.settingsEng.UpdateConfig(cfg)
 	log.Println("Configuration reloaded successfully")
+}
+
+func getStaticContentType(path string) string {
+	path = strings.ToLower(path)
+	if strings.HasSuffix(path, ".html") {
+		return "text/html"
+	}
+	if strings.HasSuffix(path, ".css") {
+		return "text/css"
+	}
+	if strings.HasSuffix(path, ".js") {
+		return "application/javascript"
+	}
+	if strings.HasSuffix(path, ".json") {
+		return "application/json"
+	}
+	if strings.HasSuffix(path, ".png") {
+		return "image/png"
+	}
+	if strings.HasSuffix(path, ".jpg") || strings.HasSuffix(path, ".jpeg") {
+		return "image/jpeg"
+	}
+	if strings.HasSuffix(path, ".svg") {
+		return "image/svg+xml"
+	}
+	if strings.HasSuffix(path, ".ico") {
+		return "image/x-icon"
+	}
+	if strings.HasSuffix(path, ".woff") {
+		return "font/woff"
+	}
+	if strings.HasSuffix(path, ".woff2") {
+		return "font/woff2"
+	}
+	if strings.HasSuffix(path, ".ttf") {
+		return "font/ttf"
+	}
+	if strings.HasSuffix(path, ".eot") {
+		return "application/vnd.ms-fontobject"
+	}
+	return "application/octet-stream"
 }

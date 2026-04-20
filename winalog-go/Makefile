@@ -29,12 +29,16 @@ all: test lint build
 ## build: Build for current platform
 build:
 	@echo "Building $(BINARY_NAME)..."
+	@mkdir -p internal/api/_statich
+	@cp -r internal/gui/dist/* internal/api/_statich/ 2>/dev/null || true
 	$(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) ./cmd/winalog
 
 ## build-windows: Build for Windows
 build-windows:
 	@echo "Building $(BINARY_WIN) for Windows..."
 	@mkdir -p $(BUILD_WIN)
+	@mkdir -p internal/api/_statich
+	@cp -r internal/gui/dist/* internal/api/_statich/ 2>/dev/null || true
 	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_WIN)/$(BINARY_WIN) ./cmd/winalog
 
 ## build-linux: Build for Linux

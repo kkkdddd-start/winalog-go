@@ -18,29 +18,29 @@ if "%1"=="arm64" goto build_arm64
 
 :build_amd64
 echo === Building WinLogAnalyzer for Windows amd64 ===
-go build -ldflags="-s -w" -o "dist\winalog-amd64.exe" ./cmd/winalog
+go build -ldflags="-s -w" -o "%PROJECT_ROOT%\dist\winalog-amd64.exe" ./cmd/winalog
 if errorlevel 1 goto error
-echo Build complete: dist\winalog-amd64.exe
+echo Build complete: %PROJECT_ROOT%\dist\winalog-amd64.exe
 goto end
 
 :build_386
 echo === Building WinLogAnalyzer for Windows 386 ===
-go build -ldflags="-s -w" -o "dist\winalog-386.exe" ./cmd/winalog
+go build -ldflags="-s -w" -o "%PROJECT_ROOT%\dist\winalog-386.exe" ./cmd/winalog
 if errorlevel 1 goto error
-echo Build complete: dist\winalog-386.exe
+echo Build complete: %PROJECT_ROOT%\dist\winalog-386.exe
 goto end
 
 :build_arm64
 echo === Building WinLogAnalyzer for Windows ARM64 ===
-go build -ldflags="-s -w" -o "dist\winalog-arm64.exe" ./cmd/winalog
+go build -ldflags="-s -w" -o "%PROJECT_ROOT%\dist\winalog-arm64.exe" ./cmd/winalog
 if errorlevel 1 goto error
-echo Build complete: dist\winalog-arm64.exe
+echo Build complete: %PROJECT_ROOT%\dist\winalog-arm64.exe
 goto end
 
 :clean
 echo Cleaning build artifacts...
-if exist "dist" rmdir /s /q dist
-if exist "winalog.exe" del /q winalog.exe
+if exist "%PROJECT_ROOT%\dist" rmdir /s /q "%PROJECT_ROOT%\dist"
+if exist "%PROJECT_ROOT%\winalog.exe" del /q "%PROJECT_ROOT%\winalog.exe"
 echo Clean complete.
 goto end
 
