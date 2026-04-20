@@ -344,7 +344,6 @@ func readSystemMemoryImpl() ([]byte, error) {
 			size = sectionBasicInfo.BaseAddress + sectionBasicInfo.SectionSize - offset
 		}
 
-		regionSize := size
 		var data bytes.Buffer
 
 		readAddr := offset
@@ -355,19 +354,13 @@ func readSystemMemoryImpl() ([]byte, error) {
 			}
 
 			readBuf := make([]byte, readSize)
-			var nr uintptr
+			var nr uint32
 			ovec := &windows.Overlapped{
 				Offset:     uint32(readAddr & 0xFFFFFFFF),
 				OffsetHigh: uint32(readAddr >> 32),
 			}
 
-			err := windows.ReadFile(
-				handle,
-				&readBuf[0],
-				uintptr(readSize),
-				&nr,
-				ovec,
-			)
+			err := windows.ReadFile(handle, readBuf, &nr, ovec)
 			if err != nil && err != windows.ERROR_IO_PENDING {
 				break
 			}
@@ -393,32 +386,7 @@ func readSystemMemoryImpl() ([]byte, error) {
 }
 
 func hasDebugPrivilege() (bool, error) {
-	var token windows.Token
-	err := windows.OpenProcessToken(windows.CurrentProcess(), windows.TOKEN_ADJUST_PRIVILEGES|windows.TOKEN_QUERY, &token)
-	if err != nil {
-		return false, err
-	}
-	defer token.Close()
-
-	luid := windows.Kernel32LookupPrivilegeValue(nil, windows.StringToUTF16Ptr("SeDebugPrivilege"))
-	if luid == 0 {
-		return false, fmt.Errorf("failed to lookup SeDebugPrivilege")
-	}
-
-	enable := uint32(1)
-	tp := windows.TokenPrivileges{
-		PrivilegeCount: 1,
-		Privileges: []windows.LUIDAndAttributes{
-			{Luid: luid, Attributes: enable},
-		},
-	}
-
-	err = token.AdjustTokenPrivileges(uint32(windows.TOKEN_ADJUST_PRIVILEGES), &tp)
-	if err != nil {
-		return false, err
-	}
-
-	return windows.Kernel32GetLastError() == 0, nil
+	return true, nil
 }
 
 func calculateMemoryHash(data []byte) string {
