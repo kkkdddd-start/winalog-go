@@ -377,11 +377,12 @@ func (h *ReportsHandler) DownloadReport(c *gin.Context) {
 	var filePath string
 	var format string
 	var status string
+	var errorMessage sql.NullString
 
 	err := h.db.QueryRow(`
-		SELECT COALESCE(file_path, ''), COALESCE(format, ''), COALESCE(status, '')
+		SELECT COALESCE(file_path, ''), COALESCE(format, ''), COALESCE(status, ''), error_message
 		FROM reports WHERE id = ?
-	`, reportID).Scan(&filePath, &format, &status)
+	`, reportID).Scan(&filePath, &format, &status, &errorMessage)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -389,6 +390,26 @@ func (h *ReportsHandler) DownloadReport(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "GetReport query/scan error: " + err.Error()})
+		return
+	}
+
+	if status == "generating" {
+		c.JSON(http.StatusAccepted, gin.H{
+			"status":    status,
+			"message":   "Report is still being generated. Please wait and try again.",
+			"report_id": reportID,
+		})
+		return
+	}
+
+	if status == "failed" {
+		errMsg := "Report generation failed"
+		if errorMessage.Valid && errorMessage.String != "" {
+			errMsg = errorMessage.String
+		}
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: fmt.Sprintf("Report generation failed: %s", errMsg),
+		})
 		return
 	}
 
