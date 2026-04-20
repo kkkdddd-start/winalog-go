@@ -168,9 +168,6 @@ func (s *Server) setupRoutes() {
 
 	s.engine.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
-		if path == "/" {
-			path = "/index.html"
-		}
 
 		if strings.Contains(path, "..") {
 			log.Printf("WARN: Blocked path traversal attempt: %s", path)
@@ -178,14 +175,33 @@ func (s *Server) setupRoutes() {
 			return
 		}
 
-		filePath := getStaticFilePath(path)
+		if path == "/" {
+			path = "/index.html"
+			filePath := "index.html"
+			content, err := staticFiles.ReadFile("_statich/" + filePath)
+			if err != nil {
+				c.Data(404, "text/plain", []byte("Not found"))
+				return
+			}
+			c.Header("Content-Type", "text/html")
+			c.Data(200, "text/html", content)
+			return
+		}
 
+		hasExtension := strings.Contains(path, ".")
+		filePath := getStaticFilePath(path)
 		content, err := staticFiles.ReadFile("_statich/" + filePath)
 		if err != nil {
-			if path == "/index.html" {
+			if hasExtension {
 				c.Data(404, "text/plain", []byte("Not found"))
 			} else {
-				c.Data(404, "text/plain", []byte("Not found"))
+				indexContent, indexErr := staticFiles.ReadFile("_statich/index.html")
+				if indexErr != nil {
+					c.Data(404, "text/plain", []byte("Not found"))
+					return
+				}
+				c.Header("Content-Type", "text/html")
+				c.Data(200, "text/html", indexContent)
 			}
 			return
 		}
