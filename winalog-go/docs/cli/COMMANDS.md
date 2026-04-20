@@ -31,6 +31,7 @@
 - [24. whitelist - 白名单管理](#24-whitelist---白名单管理)
 - [25. ueba - 用户行为分析](#25-ueba---用户行为分析)
 - [26. persistence - 持久化检测](#26-persistence---持久化检测)
+- [27. evtx2csv - EVTX 转 CSV](#27-evtx2csv---evtx-转-csv)
 
 ---
 
@@ -1409,6 +1410,47 @@ winalog persistence detect -o persistence_results.json
 
 # 显示检测进度
 winalog persistence detect --progress
+```
+
+---
+
+## 27. evtx2csv - EVTX 转 CSV
+
+将 Windows 事件日志 (EVTX) 文件转换为 CSV 格式，无需存储到数据库。
+
+### 用法
+
+```bash
+winalog evtx2csv <input.evtx> [output.csv] [flags]
+```
+
+### 参数
+
+| 参数 | 描述 |
+|------|------|
+| `<input.evtx>` | 要转换的 EVTX 文件路径 |
+| `[output.csv]` | 输出 CSV 文件路径（可选，默认与输入文件同名） |
+
+### 选项
+
+| 选项 | 描述 | 默认值 |
+|------|------|--------|
+| `--limit, -l <n>` | 限制转换的事件数量（0 = 不限制） | `0` |
+
+### 示例
+
+```bash
+# 基本转换
+winalog evtx2csv security.evtx security.csv
+
+# 使用默认输出文件名
+winalog evtx2csv security.evtx
+
+# 限制事件数量
+winalog evtx2csv -l 1000 security.evtx security.csv
+
+# 使用管道输出
+winalog evtx2csv -l 1000 security.evtx > security.csv
 ```
 
 ---

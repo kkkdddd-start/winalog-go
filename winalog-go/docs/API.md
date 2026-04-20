@@ -23,14 +23,15 @@
 14. [Multi API](#14-multi-api)
 15. [Query API](#15-query-api)
 16. [Policy API](#16-policy-api)
-17. [Settings API](#17-settings-api)
-18. [Persistence API](#18-persistence-api)
-19. [Forensics API](#19-forensics-api)
-20. [Analyze API](#20-analyze-api)
-21. [Collect API](#21-collect-api)
-22. [UI API](#22-ui-api)
-23. [Health Check](#23-health-check)
-24. [Error Codes](#24-error-codes)
+17. [Monitor API](#17-monitor-api)
+18. [Settings API](#18-settings-api)
+19. [Persistence API](#19-persistence-api)
+20. [Forensics API](#20-forensics-api)
+21. [Analyze API](#21-analyze-api)
+22. [Collect API](#22-collect-api)
+23. [UI API](#23-ui-api)
+24. [Health Check](#24-health-check)
+25. [Error Codes](#25-error-codes)
 
 ---
 
@@ -2002,7 +2003,181 @@ Delete a policy.
 
 ---
 
-## 17. Settings API
+## 17. Monitor API
+
+### GET /api/monitor/stats
+Get real-time monitoring statistics.
+
+**Response (200):**
+```json
+{
+  "stats": {
+    "is_running": true,
+    "events_collected": 5000,
+    "alerts_triggered": 25,
+    "uptime": "6h15m30s",
+    "cpu_usage": 12.5,
+    "memory_usage": 45.2,
+    "last_event_time": "2026-04-17T10:30:00Z"
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl http://localhost:8080/api/monitor/stats
+```
+
+---
+
+### GET /api/monitor/events
+List monitoring events with filters.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| type | string | "" | Filter by event type (process, network, file, registry) |
+| severity | string | "" | Filter by severity (critical, high, medium, low, info) |
+| limit | int | 50 | Max events to return |
+| offset | int | 0 | Offset for pagination |
+| start_time | string | "" | Start time (RFC3339) |
+| end_time | string | "" | End time (RFC3339) |
+
+**Response (200):**
+```json
+{
+  "events": [
+    {
+      "id": "evt_12345",
+      "timestamp": "2026-04-17T10:30:00Z",
+      "type": "process",
+      "severity": "high",
+      "name": "SuspiciousProcess",
+      "details": {
+        "pid": 1234,
+        "path": "C:\\Temp\\malware.exe",
+        "cmdline": "malware.exe --encoded"
+      }
+    }
+  ],
+  "total": 150,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Example Request:**
+```bash
+curl "http://localhost:8080/api/monitor/events?type=process&severity=high&limit=20"
+```
+
+---
+
+### POST /api/monitor/config
+Update monitor configuration.
+
+**Request Body:**
+```json
+{
+  "enabled": true,
+  "polling_interval": 30,
+  "process_monitoring": {
+    "enabled": true,
+    "exclude_system": true
+  },
+  "network_monitoring": {
+    "enabled": true,
+    "monitor_dns": true
+  },
+  "file_monitoring": {
+    "enabled": false
+  }
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Configuration updated successfully",
+  "stats": {
+    "is_running": true,
+    "events_collected": 5000
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8080/api/monitor/config \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true, "polling_interval": 60}'
+```
+
+---
+
+### POST /api/monitor/action
+Start or stop the monitor.
+
+**Request Body:**
+```json
+{
+  "action": "start"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| action | string | Yes | Action: "start" or "stop" |
+
+**Response (200):**
+```json
+{
+  "message": "Monitor start successfully",
+  "stats": {
+    "is_running": true,
+    "events_collected": 5000
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8080/api/monitor/action \
+  -H "Content-Type: application/json" \
+  -d '{"action": "stop"}'
+```
+
+---
+
+### GET /api/monitor/events/stream
+Stream monitoring events in real-time using Server-Sent Events.
+
+**Response:**
+Server-Sent Events stream with monitoring events.
+
+**Event Data Format:**
+```json
+{
+  "id": "evt_12345",
+  "timestamp": "2026-04-17T10:30:00Z",
+  "type": "process",
+  "severity": "high",
+  "name": "SuspiciousProcess",
+  "details": {
+    "pid": 1234,
+    "path": "C:\\Temp\\malware.exe"
+  }
+}
+```
+
+**Example Request:**
+```bash
+curl -N http://localhost:8080/api/monitor/events/stream
+```
+
+---
+
+## 18. Settings API
 
 ### GET /api/settings
 Get current application settings.
@@ -2058,7 +2233,7 @@ Reset settings to defaults.
 
 ---
 
-## 18. Persistence API
+## 19. Persistence API
 
 ### GET /api/persistence/detect
 Detect persistence mechanisms on the system.
@@ -2136,7 +2311,7 @@ Get MITRE ATT&CK persistence techniques.
 
 ---
 
-## 19. Forensics API
+## 20. Forensics API
 
 ### POST /api/forensics/hash
 Calculate file hashes.
@@ -2377,7 +2552,7 @@ Get memory dump information.
 
 ---
 
-## 20. Analyze API
+## 21. Analyze API
 
 ### POST /api/analyze/:type
 Run specific analysis by type.
@@ -2451,7 +2626,7 @@ Get analyzer details.
 
 ---
 
-## 21. Collect API
+## 22. Collect API
 
 ### POST /api/collect
 Start a new collection task.
@@ -2522,7 +2697,7 @@ Get collection task status.
 
 ---
 
-## 22. UI API
+## 23. UI API
 
 ### GET /api/ui/dashboard
 Get dashboard data for UI.
@@ -2620,7 +2795,7 @@ Get event distribution for UI.
 
 ---
 
-## 23. Health Check
+## 24. Health Check
 
 ### GET /api/health
 Health check endpoint.
@@ -2645,7 +2820,7 @@ curl http://localhost:8080/api/health
 
 ---
 
-## 24. Error Codes
+## 25. Error Codes
 
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
