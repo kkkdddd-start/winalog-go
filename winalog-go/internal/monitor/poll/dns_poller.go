@@ -54,6 +54,7 @@ func (dp *DNSPoller) Start() error {
 		dp.mu.Unlock()
 		return nil
 	}
+	dp.ctx, dp.cancel = context.WithCancel(context.Background())
 	dp.running = true
 	dp.mu.Unlock()
 
