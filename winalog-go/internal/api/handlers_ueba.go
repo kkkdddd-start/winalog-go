@@ -136,6 +136,23 @@ func (h *UEBAHandler) GetProfiles(c *gin.Context) {
 	})
 }
 
+func (h *UEBAHandler) GetInfo(c *gin.Context) {
+	profiles := h.engine.GetUserActivity()
+	profileCount := len(profiles)
+
+	c.JSON(http.StatusOK, gin.H{
+		"service":       "ueba",
+		"status":        "operational",
+		"profile_count": profileCount,
+		"endpoints": []string{
+			"POST /api/ueba/analyze",
+			"GET /api/ueba/profiles",
+			"GET /api/ueba/baseline",
+			"GET /api/ueba/anomaly/:type",
+		},
+	})
+}
+
 func (h *UEBAHandler) GetAnomalyDetails(c *gin.Context) {
 	anomalyType := c.Param("type")
 
@@ -258,6 +275,7 @@ func getAnomalyDescription(anomalyType string) string {
 func SetupUEBARoutes(r *gin.Engine, uebaHandler *UEBAHandler) {
 	ueba := r.Group("/api/ueba")
 	{
+		ueba.GET("", uebaHandler.GetInfo)
 		ueba.POST("/analyze", uebaHandler.Analyze)
 		ueba.GET("/profiles", uebaHandler.GetProfiles)
 		ueba.GET("/anomaly/:type", uebaHandler.GetAnomalyDetails)

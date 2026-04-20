@@ -109,9 +109,20 @@ func (h *CorrelationHandler) Analyze(c *gin.Context) {
 	})
 }
 
+func (h *CorrelationHandler) GetInfo(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"service": "correlation",
+		"status":  "operational",
+		"endpoints": []string{
+			"POST /api/correlation/analyze",
+		},
+	})
+}
+
 func SetupCorrelationRoutes(r *gin.Engine, h *CorrelationHandler) {
 	correlationGroup := r.Group("/api/correlation")
 	{
+		correlationGroup.GET("", h.GetInfo)
 		correlationGroup.POST("/analyze", h.Analyze)
 	}
 }

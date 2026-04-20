@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -88,8 +89,16 @@ func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return d.conn.Query(query, args...)
 }
 
+func (d *DB) QueryWithContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	return d.conn.QueryContext(ctx, query, args...)
+}
+
 func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 	return d.conn.QueryRow(query, args...)
+}
+
+func (d *DB) QueryRowWithContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return d.conn.QueryRowContext(ctx, query, args...)
 }
 
 func (d *DB) Begin() (*sql.Tx, func(), error) {
@@ -187,6 +196,32 @@ func (d *DB) GetStats() (*DBStats, error) {
 		return nil, fmt.Errorf("failed to count alerts: %w", err)
 	}
 	if err := d.conn.QueryRow("SELECT COUNT(*) FROM import_log").Scan(&importCount); err != nil {
+		return nil, fmt.Errorf("failed to count imports: %w", err)
+	}
+
+	var dbSize int64
+	if fi, err := os.Stat(d.path); err == nil {
+		dbSize = fi.Size()
+	}
+
+	return &DBStats{
+		EventCount:   eventCount,
+		AlertCount:   alertCount,
+		ImportCount:  importCount,
+		DatabaseSize: dbSize,
+	}, nil
+}
+
+func (d *DB) GetStatsWithContext(ctx context.Context) (*DBStats, error) {
+	var eventCount, alertCount, importCount int64
+
+	if err := d.conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM events").Scan(&eventCount); err != nil {
+		return nil, fmt.Errorf("failed to count events: %w", err)
+	}
+	if err := d.conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM alerts").Scan(&alertCount); err != nil {
+		return nil, fmt.Errorf("failed to count alerts: %w", err)
+	}
+	if err := d.conn.QueryRowContext(ctx, "SELECT COUNT(*) FROM import_log").Scan(&importCount); err != nil {
 		return nil, fmt.Errorf("failed to count imports: %w", err)
 	}
 
@@ -327,6 +362,38 @@ func (d *DB) ListEvents(filter *EventFilter) ([]*types.Event, int64, error) {
 	}
 
 	return eventRepo.Search(req)
+}
+
+func (d *DB) ListEventsWithContext(ctx context.Context, filter *EventFilter) ([]*types.Event, int64, error) {
+	if filter == nil {
+		filter = &EventFilter{Limit: 100}
+	}
+
+	eventRepo := NewEventRepo(d)
+
+	req := &types.SearchRequest{
+		PageSize:    filter.Limit,
+		Page:        1,
+		Keywords:    filter.Keywords,
+		KeywordMode: filter.KeywordMode,
+		Regex:       filter.Regex,
+		EventIDs:    filter.EventIDs,
+		Levels:      filter.Levels,
+		LogNames:    filter.LogNames,
+		Sources:     filter.Sources,
+		Users:       filter.Users,
+		Computers:   filter.Computers,
+		StartTime:   filter.StartTime,
+		EndTime:     filter.EndTime,
+		SortBy:      filter.SortBy,
+		SortOrder:   filter.SortOrder,
+	}
+
+	if filter.Offset > 0 {
+		req.Page = (filter.Offset / filter.Limit) + 1
+	}
+
+	return eventRepo.SearchWithContext(ctx, req)
 }
 
 func (d *DB) SearchEvents(filter *EventFilter) ([]*types.Event, int64, error) {

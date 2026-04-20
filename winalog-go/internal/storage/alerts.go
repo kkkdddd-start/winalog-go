@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -407,6 +408,215 @@ func (r *AlertRepo) GetStats() (*types.AlertStatsData, error) {
 	}
 
 	return stats, nil
+}
+
+func (r *AlertRepo) GetStatsWithContext(ctx context.Context) (*types.AlertStatsData, error) {
+	stats := &types.AlertStatsData{
+		BySeverity: make(map[string]int64),
+		ByStatus:   make(map[string]int64),
+		ByRule:     make(map[string]int64),
+	}
+
+	var total int64
+	err := r.db.QueryRowWithContext(ctx, "SELECT COUNT(*) FROM alerts").Scan(&total)
+	if err != nil {
+		return nil, err
+	}
+	stats.TotalCount = total
+
+	severityCounts, err := r.CountBySeverityWithContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stats.BySeverity = severityCounts
+
+	statusCounts, err := r.CountByStatusWithContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stats.ByStatus = statusCounts
+
+	query := "SELECT rule_name, COUNT(*) FROM alerts GROUP BY rule_name"
+	rows, err := r.db.QueryWithContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ruleName string
+		var count int64
+		if err := rows.Scan(&ruleName, &count); err != nil {
+			return nil, err
+		}
+		stats.ByRule[ruleName] = count
+	}
+
+	ruleCounts, err := r.CountByRuleWithContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stats.TopRules = ruleCounts
+
+	if total > 0 {
+		stats.AvgPerDay = float64(total) / 30.0
+	}
+
+	return stats, nil
+}
+
+func (r *AlertRepo) CountBySeverityWithContext(ctx context.Context) (map[string]int64, error) {
+	query := "SELECT severity, COUNT(*) FROM alerts GROUP BY severity"
+	rows, err := r.db.QueryWithContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int64)
+	for rows.Next() {
+		var severity string
+		var count int64
+		if err := rows.Scan(&severity, &count); err != nil {
+			return nil, err
+		}
+		counts[severity] = count
+	}
+
+	return counts, nil
+}
+
+func (r *AlertRepo) CountByStatusWithContext(ctx context.Context) (map[string]int64, error) {
+	query := "SELECT resolved, COUNT(*) FROM alerts GROUP BY resolved"
+	rows, err := r.db.QueryWithContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int64)
+	for rows.Next() {
+		var resolved int
+		var count int64
+		if err := rows.Scan(&resolved, &count); err != nil {
+			return nil, err
+		}
+		status := "unresolved"
+		if resolved == 1 {
+			status = "resolved"
+		}
+		counts[status] = count
+	}
+
+	return counts, nil
+}
+
+func (r *AlertRepo) CountByRuleWithContext(ctx context.Context) ([]*types.RuleCount, error) {
+	query := `
+		SELECT rule_name, COUNT(*) as count
+		FROM alerts
+		GROUP BY rule_name
+		ORDER BY count DESC`
+
+	rows, err := r.db.QueryWithContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*types.RuleCount
+	var total int64
+	for rows.Next() {
+		var rc types.RuleCount
+		if err := rows.Scan(&rc.RuleName, &rc.Count); err != nil {
+			return nil, err
+		}
+		total += rc.Count
+		results = append(results, &rc)
+	}
+
+	for _, rc := range results {
+		if total > 0 {
+			rc.Percentage = float64(rc.Count) / float64(total) * 100
+		}
+	}
+
+	return results, nil
+}
+
+func (r *AlertRepo) QueryWithContext(ctx context.Context, filter *AlertFilter) ([]*types.Alert, error) {
+	var conditions []string
+	var args []interface{}
+
+	if filter.RuleName != "" {
+		conditions = append(conditions, "rule_name = ?")
+		args = append(args, filter.RuleName)
+	}
+
+	if filter.Severity != "" {
+		conditions = append(conditions, "severity = ?")
+		args = append(args, filter.Severity)
+	}
+
+	if filter.Resolved != nil {
+		conditions = append(conditions, "resolved = ?")
+		args = append(args, *filter.Resolved)
+	}
+
+	if filter.FalsePositive != nil {
+		conditions = append(conditions, "false_positive = ?")
+		args = append(args, *filter.FalsePositive)
+	}
+
+	if filter.StartTime != nil {
+		conditions = append(conditions, "first_seen >= ?")
+		args = append(args, *filter.StartTime)
+	}
+
+	if filter.EndTime != nil {
+		conditions = append(conditions, "first_seen <= ?")
+		args = append(args, *filter.EndTime)
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	limit := 100
+	if filter.Limit > 0 {
+		limit = filter.Limit
+	}
+
+	offset := 0
+	if filter.Offset > 0 {
+		offset = filter.Offset
+	}
+
+	selectQuery := fmt.Sprintf(`
+		SELECT id, rule_name, severity, message, event_ids, event_db_ids, first_seen, last_seen, count, mitre_attack, resolved, resolved_time, notes, false_positive, log_name, rule_score
+		FROM alerts %s
+		ORDER BY first_seen DESC
+		LIMIT ? OFFSET ?`, whereClause)
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.QueryWithContext(ctx, selectQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var alerts []*types.Alert
+	for rows.Next() {
+		alert, err := scanAlertFromRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		alerts = append(alerts, alert)
+	}
+
+	return alerts, nil
 }
 
 func (r *AlertRepo) GetTrend(days int) (*types.AlertTrend, error) {

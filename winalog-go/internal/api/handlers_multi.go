@@ -109,6 +109,17 @@ func (h *MultiHandler) Lateral(c *gin.Context) {
 	})
 }
 
+func (h *MultiHandler) GetInfo(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"service": "multi",
+		"status":  "operational",
+		"endpoints": []string{
+			"POST /api/multi/analyze",
+			"GET /api/multi/lateral",
+		},
+	})
+}
+
 func (h *MultiHandler) getMachineContexts() ([]MachineInfo, error) {
 	rows, err := h.db.Query(`
 		SELECT machine_id, machine_name, ip_address, domain, role, os_version, last_seen
@@ -314,6 +325,7 @@ func itoa(i int) string {
 func SetupMultiRoutes(r *gin.Engine, h *MultiHandler) {
 	multi := r.Group("/api/multi")
 	{
+		multi.GET("", h.GetInfo)
 		multi.POST("/analyze", h.Analyze)
 		multi.GET("/lateral", h.Lateral)
 	}

@@ -63,14 +63,15 @@ func NewUIHandler(db *storage.DB) *UIHandler {
 
 func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 	overview := &DashboardOverview{}
+	ctx := c.Request.Context()
 
-	stats, err := h.db.GetStats()
+	stats, err := h.db.GetStatsWithContext(ctx)
 	if err == nil {
 		overview.TotalEvents = stats.EventCount
 		overview.DatabaseSize = formatBytes(stats.DatabaseSize)
 	}
 
-	alertStats, err := h.db.AlertRepo().GetStats()
+	alertStats, err := h.db.AlertRepo().GetStatsWithContext(ctx)
 	if err == nil {
 		overview.TotalAlerts = alertStats.TotalCount
 		if bySev, ok := alertStats.BySeverity["critical"]; ok {
@@ -98,7 +99,7 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 	now := time.Now()
 	last24h := now.Add(-24 * time.Hour)
 
-	rows, err := h.db.Query(`
+	rows, err := h.db.QueryWithContext(ctx, `
 		SELECT COUNT(*) FROM events WHERE timestamp >= ?
 	`, last24h.Format(time.RFC3339))
 	if err == nil {
@@ -108,7 +109,7 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 		}
 	}
 
-	alertRows, err := h.db.Query(`
+	alertRows, err := h.db.QueryWithContext(ctx, `
 		SELECT COUNT(*) FROM alerts WHERE first_seen >= ?
 	`, last24h.Format(time.RFC3339))
 	if err == nil {
@@ -119,10 +120,10 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 	}
 
 	sources := make(map[string]int64)
-	sourceRows, err := h.db.Query(`
-		SELECT log_name, COUNT(*) as count 
-		FROM events 
-		GROUP BY log_name 
+	sourceRows, err := h.db.QueryWithContext(ctx, `
+		SELECT log_name, COUNT(*) as count
+		FROM events
+		GROUP BY log_name
 		ORDER BY count DESC
 		LIMIT 8
 	`)
@@ -141,7 +142,7 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 	alertFilter := &storage.AlertFilter{
 		Limit: 10,
 	}
-	alerts, err := h.db.AlertRepo().Query(alertFilter)
+	alerts, err := h.db.AlertRepo().QueryWithContext(ctx, alertFilter)
 	if err == nil {
 		for _, alert := range alerts {
 			overview.TopAlerts = append(overview.TopAlerts, &AlertSummary{
@@ -160,7 +161,7 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 	eventFilter := &storage.EventFilter{
 		Limit: 10,
 	}
-	events, _, err := h.db.ListEvents(eventFilter)
+	events, _, err := h.db.ListEventsWithContext(ctx, eventFilter)
 	if err == nil {
 		for _, event := range events {
 			overview.RecentEvents = append(overview.RecentEvents, &EventSummary{

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -426,6 +427,181 @@ func (r *EventRepo) Search(req *types.SearchRequest) ([]*types.Event, int64, err
 	args = append(args, req.PageSize, offset)
 
 	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var events []*types.Event
+	for rows.Next() {
+		event, err := scanEventFromRows(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		events = append(events, event)
+	}
+
+	return events, total, nil
+}
+
+func (r *EventRepo) SearchWithContext(ctx context.Context, req *types.SearchRequest) ([]*types.Event, int64, error) {
+	var conditions []string
+	var args []interface{}
+	var useFTS bool
+
+	keywordMode := strings.ToUpper(req.KeywordMode)
+	if keywordMode == "" {
+		keywordMode = "AND"
+	}
+
+	if len(req.Keywords) > 0 && r.supportsFTS() && !req.Regex {
+		useFTS = true
+		words := strings.Fields(req.Keywords)
+
+		if len(words) == 0 {
+			ftsQuery := escapeFTSQuery(req.Keywords) + "*"
+			conditions = append(conditions, fmt.Sprintf(
+				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
+				ftsQuery))
+		} else if keywordMode == "OR" {
+			var ftsTerms []string
+			for _, word := range words {
+				ftsTerms = append(ftsTerms, escapeFTSQuery(word)+"*")
+			}
+			ftsQuery := strings.Join(ftsTerms, " OR ")
+			conditions = append(conditions, fmt.Sprintf(
+				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
+				ftsQuery))
+		} else {
+			var ftsTerms []string
+			for _, word := range words {
+				ftsTerms = append(ftsTerms, escapeFTSQuery(word)+"*")
+			}
+			conditions = append(conditions, fmt.Sprintf(
+				"id IN (SELECT rowid FROM events_fts WHERE events_fts MATCH '%s')",
+				strings.Join(ftsTerms, " ")))
+		}
+	} else if len(req.Keywords) > 0 {
+		keywordMode := strings.ToUpper(req.KeywordMode)
+		if keywordMode == "" {
+			keywordMode = "AND"
+		}
+
+		if req.Regex {
+			likePattern := regexToLike(req.Keywords)
+			conditions = append(conditions, "message LIKE ?")
+			args = append(args, likePattern)
+		} else {
+			words := strings.Fields(req.Keywords)
+			if len(words) == 0 {
+				conditions = append(conditions, "message LIKE ?")
+				args = append(args, "%"+req.Keywords+"%")
+			} else if keywordMode == "OR" {
+				var likeConditions []string
+				for _, word := range words {
+					likeConditions = append(likeConditions, "message LIKE ?")
+					args = append(args, "%"+word+"%")
+				}
+				conditions = append(conditions, "("+strings.Join(likeConditions, " OR ")+")")
+			} else {
+				for _, word := range words {
+					conditions = append(conditions, "message LIKE ?")
+					args = append(args, "%"+word+"%")
+				}
+			}
+		}
+	}
+
+	_ = useFTS
+
+	if len(req.EventIDs) > 0 {
+		placeholders := make([]string, len(req.EventIDs))
+		for i, id := range req.EventIDs {
+			placeholders[i] = "?"
+			args = append(args, id)
+		}
+		conditions = append(conditions, fmt.Sprintf("event_id IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if len(req.Levels) > 0 {
+		placeholders := make([]string, len(req.Levels))
+		for i, l := range req.Levels {
+			placeholders[i] = "?"
+			args = append(args, l)
+		}
+		conditions = append(conditions, fmt.Sprintf("level IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if len(req.LogNames) > 0 {
+		placeholders := make([]string, len(req.LogNames))
+		for i, name := range req.LogNames {
+			placeholders[i] = "?"
+			args = append(args, name)
+		}
+		conditions = append(conditions, fmt.Sprintf("log_name IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if len(req.Sources) > 0 {
+		placeholders := make([]string, len(req.Sources))
+		for i, source := range req.Sources {
+			placeholders[i] = "?"
+			args = append(args, source)
+		}
+		conditions = append(conditions, fmt.Sprintf("source IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if len(req.Computers) > 0 {
+		placeholders := make([]string, len(req.Computers))
+		for i, c := range req.Computers {
+			placeholders[i] = "?"
+			args = append(args, c)
+		}
+		conditions = append(conditions, fmt.Sprintf("computer IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if req.StartTime != nil {
+		conditions = append(conditions, "timestamp >= ?")
+		args = append(args, req.StartTime.Format(time.RFC3339))
+	}
+
+	if req.EndTime != nil {
+		conditions = append(conditions, "timestamp <= ?")
+		args = append(args, req.EndTime.Format(time.RFC3339))
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM events %s", whereClause)
+	var total int64
+	if err := r.db.QueryRowWithContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	sortOrder := "DESC"
+	if req.SortOrder == "asc" {
+		sortOrder = "ASC"
+	}
+	sortByColumn := "timestamp"
+	if req.SortBy != "" {
+		sanitized := strings.ToLower(strings.TrimSpace(req.SortBy))
+		if allowedSortFields[sanitized] {
+			sortByColumn = sanitized
+		}
+	}
+
+	offset := (req.Page - 1) * req.PageSize
+	query := fmt.Sprintf(`
+		SELECT id, timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id
+		FROM events %s
+		ORDER BY %s %s
+		LIMIT ? OFFSET ?`, whereClause, sortByColumn, sortOrder)
+
+	args = append(args, req.PageSize, offset)
+
+	rows, err := r.db.QueryWithContext(ctx, query, args...)
 	if err != nil {
 		return nil, 0, err
 	}
