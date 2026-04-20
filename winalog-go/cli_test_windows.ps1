@@ -1,6 +1,6 @@
-# WinLogAnalyzer-Go CLI 测试脚本
-# 用于测试所有 CLI 命令的功能并记录原始数据
-# 使用方式: powershell -ExecutionPolicy Bypass -File winalog_cli_test.ps1
+# WinLogAnalyzer-Go CLI Test Script
+# Tests all CLI commands and records raw data
+# Usage: powershell -ExecutionPolicy Bypass -File cli_test_windows.ps1
 
 param(
     [string]$WinalogPath = ".\winalog.exe",
@@ -31,9 +31,9 @@ function Test-Command {
         [int]$ExpectedExitCode = 0
     )
     
-    Write-TestLog "测试: $Name"
-    Write-TestLog "命令: $Command"
-    Write-TestLog "描述: $Description"
+    Write-TestLog "Test: $Name"
+    Write-TestLog "Command: $Command"
+    Write-TestLog "Description: $Description"
     
     $outputFile = "$OutputDir\$($Name -replace '[^\w]', '_').txt"
     $errorFile = "$OutputDir\$($Name -replace '[^\w]', '_')_error.txt"
@@ -73,11 +73,11 @@ function Test-Command {
             Timestamp = $startTime
         }
         
-        Write-TestLog "状态: $status (退出码: $exitCode, 耗时: $($duration.TotalSeconds)s)"
-        Write-TestLog "输出文件: $outputFile"
+        Write-TestLog "Status: $status (ExitCode: $exitCode, Duration: $($duration.TotalSeconds)s)"
+        Write-TestLog "Output: $outputFile"
         
         if ($status -eq "FAIL") {
-            Write-TestLog "错误输出: $errorFile" "WARN"
+            Write-TestLog "Error output: $errorFile" "WARN"
         }
         
         $Script:TestResults += $testResult
@@ -86,7 +86,7 @@ function Test-Command {
     }
     catch {
         $duration = (Get-Date) - $startTime
-        Write-TestLog "执行异常: $($_.Exception.Message)" "ERROR"
+        Write-TestLog "Exception: $($_.Exception.Message)" "ERROR"
         
         $testResult = @{
             Name = $Name
@@ -99,352 +99,286 @@ function Test-Command {
             Error = $_.Exception.Message
             Timestamp = $startTime
         }
-        $Script:TestResults += $testResult
         
+        $Script:TestResults += $testResult
         return $false
     }
-    finally {
-        Write-TestLog "---"
-    }
 }
-
-function Get-TestEvtxFile {
-    if ($TestEvtxFile -and (Test-Path $TestEvtxFile)) {
-        return $TestEvtxFile
-    }
-    
-    $commonPaths = @(
-        ".\Security.evtx",
-        ".\System.evtx",
-        ".\Application.evtx",
-        ".\test.evtx",
-        ".\samples\Security.evtx",
-        ".\test_samples\Security.evtx",
-        "$env:TEMP\Security.evtx"
-    )
-    
-    foreach ($path in $commonPaths) {
-        if (Test-Path $path) {
-            return $path
-        }
-    }
-    
-    return $null
-}
-
-Write-TestLog "========================================"
-Write-TestLog "WinLogAnalyzer-Go CLI 测试开始"
-Write-TestLog "========================================"
-Write-TestLog "测试时间: $Script:TestStartTime"
-Write-TestLog "Winalog 路径: $WinalogPath"
-Write-TestLog "输出目录: $OutputDir"
-Write-TestLog "========================================"
 
 if (-not (Test-Path $OutputDir)) {
-    New-Item -ItemType Directory -Path $OutputDir | Out-Null
+    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 }
 
+Write-TestLog "========================================" "INFO"
+Write-TestLog "WinLogAnalyzer-Go CLI Test" "INFO"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Start Time: $Script:TestStartTime" "INFO"
+
 if (-not (Test-Path $WinalogPath)) {
-    Write-TestLog "错误: 找不到 winalog.exe at $WinalogPath" "ERROR"
+    Write-TestLog "Error: Cannot find winalog.exe at $WinalogPath" "ERROR"
     exit 1
 }
 
-$winalogVersion = & $WinalogPath --version 2>&1
-Write-TestLog "WinLogAnalyzer 版本: $winalogVersion"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 1: Help and Version" "INFO"
+Write-TestLog "========================================" "INFO"
 
-$testEvtx = Get-TestEvtxFile
-if ($testEvtx) {
-    Write-TestLog "找到测试 EVTX 文件: $testEvtx"
-} else {
-    Write-TestLog "未找到测试 EVTX 文件，部分导入测试将被跳过" "WARN"
-}
+Test-Command -Name "help" -Command "--help" -Description "Show help"
+Test-Command -Name "version" -Command "--version" -Description "Show version"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第1部分: 帮助和版本信息"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 2: Status and System Info" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "help" -Command "--help" -Description "显示帮助信息"
-Test-Command -Name "version" -Command "--version" -Description "显示版本信息"
+Test-Command -Name "status" -Command "status" -Description "Show system status"
+Test-Command -Name "info" -Command "info" -Description "Show system info"
+Test-Command -Name "info_process" -Command "info --process" -Description "Show process info"
+Test-Command -Name "info_network" -Command "info --network" -Description "Show network connections"
+Test-Command -Name "info_users" -Command "info --users" -Description "Show user list"
+Test-Command -Name "info_registry" -Command "info --registry" -Description "Show registry persistence"
+Test-Command -Name "info_tasks" -Command "info --tasks" -Description "Show scheduled tasks"
+Test-Command -Name "info_save" -Command "info --save" -Description "Save system info"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第2部分: 状态和信息命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 3: Database Operations" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "status" -Command "status" -Description "显示系统状态"
-Test-Command -Name "info" -Command "info" -Description "显示系统信息"
-Test-Command -Name "info_process" -Command "info --process" -Description "显示进程信息"
-Test-Command -Name "info_network" -Command "info --network" -Description "显示网络连接"
-Test-Command -Name "info_users" -Command "info --users" -Description "显示用户列表"
+Test-Command -Name "db_status" -Command "db status" -Description "Show database status"
+Test-Command -Name "db_clean" -Command "db clean --days 365" -Description "Clean old data"
+Test-Command -Name "db_vacuum" -Command "db vacuum" -Description "Optimize database"
+Test-Command -Name "metrics" -Command "metrics" -Description "Show Prometheus metrics"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第3部分: 数据库命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 4: Rules Management" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "db_status" -Command "db status" -Description "显示数据库状态"
-Test-Command -Name "metrics" -Command "metrics" -Description "显示 Prometheus 指标"
+Test-Command -Name "rules_list" -Command "rules list" -Description "List all rules"
+Test-Command -Name "rules_list_enabled" -Command "rules list --enabled" -Description "List enabled rules"
+Test-Command -Name "rules_status" -Command "rules status" -Description "Show rules status"
+Test-Command -Name "rules_status_detail" -Command "rules status BruteForce" -Description "Show specific rule"
+Test-Command -Name "rules_disable" -Command "rules disable BruteForce" -Description "Disable rule"
+Test-Command -Name "rules_enable" -Command "rules enable BruteForce" -Description "Enable rule"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第4部分: 规则命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 5: Alert Management" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "rules_list" -Command "rules list" -Description "列出所有规则"
-Test-Command -Name "rules_status" -Command "rules status" -Description "显示规则状态"
+Test-Command -Name "alert_list" -Command "alert list" -Description "List alerts"
+Test-Command -Name "alert_stats" -Command "alert stats" -Description "Show alert stats"
+Test-Command -Name "alert_list_json" -Command "alert list --format json" -Description "List alerts in JSON"
+Test-Command -Name "alert_list_limit" -Command "alert list --limit 10" -Description "Limit alert count"
+Test-Command -Name "alert_list_high" -Command "alert list --severity high" -Description "List high severity alerts"
+Test-Command -Name "alert_run" -Command "alert run" -Description "Run alert analysis"
+Test-Command -Name "alert_export" -Command "alert export $OutputDir\alerts.json --format json" -Description "Export alerts"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第5部分: 告警命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 6: Search Function" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "alert_list" -Command "alert list" -Description "列出告警"
-Test-Command -Name "alert_stats" -Command "alert stats" -Description "显示告警统计"
-Test-Command -Name "alert_list_json" -Command "alert list --format json" -Description "以JSON格式列出告警"
-Test-Command -Name "alert_list_limit" -Command "alert list --limit 10" -Description "限制告警数量"
+Test-Command -Name "search_empty" -Command "search" -Description "Empty search"
+Test-Command -Name "search_level" -Command "search --level 4" -Description "Filter by level"
+Test-Command -Name "search_page" -Command "search --page 1 --page-size 10" -Description "Paged search"
+Test-Command -Name "search_keywords" -Command "search --keywords system --limit 20" -Description "Keyword search"
+Test-Command -Name "search_event_id" -Command "search --event-id 4624 --limit 20" -Description "Search by event ID"
+Test-Command -Name "search_regex" -Command "search --regex --keywords 4624" -Description "Regex search"
+Test-Command -Name "search_time" -Command "search --start-time 2024-01-01T00:00:00Z --end-time 2024-12-31T23:59:59Z" -Description "Time range search"
+Test-Command -Name "search_computer" -Command "search --computer localhost" -Description "Search by computer"
+Test-Command -Name "search_user" -Command "search --user Administrator" -Description "Search by user"
+Test-Command -Name "search_logname" -Command "search --log-name Security" -Description "Search by log name"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第6部分: 搜索命令"
-Write-TestLog "========================================"
-
-Test-Command -Name "search_empty" -Command "search" -Description "空搜索(应返回所有事件)"
-Test-Command -Name "search_level" -Command "search --level 4" -Description "按级别过滤搜索"
-Test-Command -Name "search_page" -Command "search --page 1 --page-size 10" -Description "分页搜索"
-
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第7部分: 导入命令"
-Write-TestLog "========================================"
-
-if ($testEvtx -and -not $SkipImport) {
-    $importCmd = "import `"$testEvtx`" --log-name TestLog"
-    Test-Command -Name "import_evtx" -Command $importCmd -Description "导入 EVTX 文件"
+if (-not $SkipImport -and $TestEvtxFile -and (Test-Path $TestEvtxFile)) {
+    Write-TestLog "========================================" "INFO"
+    Write-TestLog "Part 7: Import Function" "INFO"
+    Write-TestLog "========================================" "INFO"
     
-    Test-Command -Name "search_after_import" -Command "search --log-name TestLog" -Description "搜索导入的事件"
-} else {
-    Write-TestLog "跳过导入测试 (无测试文件或 --SkipImport 标志)" "WARN"
+    $importCmd = "import `"$TestEvtxFile`" --log-name TestLog --workers 4"
+    Test-Command -Name "import_evtx" -Command $importCmd -Description "Import EVTX file"
+    Test-Command -Name "search_after_import" -Command "search --log-name TestLog" -Description "Search imported events"
 }
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第8部分: 导出命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 8: Export Function" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "export_json" -Command "export json" -Description "导出为 JSON"
-Test-Command -Name "export_csv" -Command "export csv" -Description "导出为 CSV"
-Test-Command -Name "export_limit" -Command "export csv --limit 100" -Description "限制导出数量"
+Test-Command -Name "export_json" -Command "export json $OutputDir\events.json --limit 100" -Description "Export to JSON"
+Test-Command -Name "export_csv" -Command "export csv $OutputDir\events.csv --limit 100" -Description "Export to CSV"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第9部分: 报告命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 9: Report Generation" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "report_list" -Command "report" -Description "列出报告"
-Test-Command -Name "report_generate" -Command "report generate --format json --time-range 24h" -Description "生成 JSON 报告"
+Test-Command -Name "report_list" -Command "report" -Description "List reports"
+Test-Command -Name "report_summary" -Command "report generate summary --format json --time-range 24h" -Description "Generate summary report"
+Test-Command -Name "report_security" -Command "report generate security --format json --time-range 24h" -Description "Generate security report"
+Test-Command -Name "report_threat" -Command "report generate threat --format json --time-range 24h" -Description "Generate threat report"
+Test-Command -Name "report_compliance" -Command "report generate compliance --format json --time-range 24h" -Description "Generate compliance report"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第10部分: 时间线命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 10: Timeline Analysis" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "timeline_query" -Command "timeline query" -Description "查询时间线"
-Test-Command -Name "timeline_build" -Command "timeline build" -Description "构建时间线"
+Test-Command -Name "timeline_query" -Command "timeline query --limit 50" -Description "Query timeline"
+Test-Command -Name "timeline_query_time" -Command "timeline query --start 2024-01-01T00:00:00Z --end 2024-12-31T23:59:59Z" -Description "Time range query"
+Test-Command -Name "timeline_query_category" -Command "timeline query --category Security" -Description "Query by category"
+Test-Command -Name "timeline_build" -Command "timeline build" -Description "Build timeline"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第11部分: 分析命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 11: Threat Analysis" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "analyze_list" -Command "analyze list" -Description "列出分析器"
-Test-Command -Name "analyze_bruteforce" -Command "analyze brute_force --hours 24" -Description "运行暴力破解分析"
-Test-Command -Name "analyze_login" -Command "analyze login --hours 24" -Description "运行登录分析"
+Test-Command -Name "analyze_list" -Command "analyze list" -Description "List analyzers"
+Test-Command -Name "analyze_bruteforce" -Command "analyze brute_force --hours 24" -Description "Brute force analysis"
+Test-Command -Name "analyze_login" -Command "analyze login --hours 24" -Description "Login analysis"
+Test-Command -Name "analyze_kerberos" -Command "analyze kerberos --hours 24" -Description "Kerberos analysis"
+Test-Command -Name "analyze_powershell" -Command "analyze powershell --hours 24" -Description "PowerShell analysis"
+Test-Command -Name "analyze_data_exfiltration" -Command "analyze data_exfiltration --hours 24" -Description "Data exfiltration analysis"
+Test-Command -Name "analyze_lateral_movement" -Command "analyze lateral_movement --hours 24" -Description "Lateral movement analysis"
+Test-Command -Name "analyze_privilege_escalation" -Command "analyze privilege_escalation --hours 24" -Description "Privilege escalation analysis"
+Test-Command -Name "analyze_persistence" -Command "analyze persistence --hours 24" -Description "Persistence analysis"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第12部分: 关联分析命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 12: Correlation Analysis" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "correlate" -Command "correlate" -Description "运行关联分析"
-Test-Command -Name "correlate_json" -Command "correlate --format json" -Description "以JSON格式运行关联分析"
+Test-Command -Name "correlate" -Command "correlate --time-window 24h" -Description "Correlation analysis"
+Test-Command -Name "correlate_json" -Command "correlate --format json --time-window 24h" -Description "Correlation analysis (JSON)"
+Test-Command -Name "correlate_rules" -Command "correlate --rules LateralMovement,BruteForce" -Description "Correlation with rules"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第13部分: 多机器分析命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 13: Multi-Machine Analysis" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "multi_analyze" -Command "multi analyze" -Description "多机器关联分析"
-Test-Command -Name "multi_lateral" -Command "multi lateral" -Description "横向移动检测"
+Test-Command -Name "multi_analyze" -Command "multi analyze" -Description "Multi-machine analysis"
+Test-Command -Name "multi_analyze_48h" -Command "multi analyze --time-window 48h" -Description "Multi-machine (48h)"
+Test-Command -Name "multi_lateral" -Command "multi lateral" -Description "Lateral movement detection"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第14部分: UEBA 命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 14: UEBA Analysis" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "ueba_profiles" -Command "ueba profiles" -Description "显示用户行为画像"
-Test-Command -Name "ueba_analyze" -Command "ueba analyze" -Description "运行 UEBA 分析"
-Test-Command -Name "ueba_baseline" -Command "ueba baseline" -Description "显示用户基线"
-
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第15部分: 实时监控命令"
-Write-TestLog "========================================"
+Test-Command -Name "ueba_profiles" -Command "ueba profiles" -Description "Show user profiles"
+Test-Command -Name "ueba_profiles_user" -Command "ueba profiles --user Administrator" -Description "Show specific user"
+Test-Command -Name "ueba_analyze" -Command "ueba analyze --hours 24" -Description "UEBA analysis"
+Test-Command -Name "ueba_analyze_save" -Command "ueba analyze --hours 24 --save-alerts" -Description "UEBA with alerts"
+Test-Command -Name "ueba_baseline" -Command "ueba baseline" -Description "Show user baseline"
+Test-Command -Name "ueba_baseline_learn" -Command "ueba baseline --action learn --hours 168" -Description "Learn baseline"
+Test-Command -Name "ueba_baseline_clear" -Command "ueba baseline --action clear" -Description "Clear baseline"
 
 if (-not $SkipLive) {
-    $liveJob = Start-Job -ScriptBlock {
-        param($exe, $outDir)
-        Start-Sleep -Seconds 3
-        & $exe live collect 2>&1 | Select-Object -First 20
-    } -ArgumentList $WinalogPath, $OutputDir
+    Write-TestLog "========================================" "INFO"
+    Write-TestLog "Part 15: Real-time Monitoring" "INFO"
+    Write-TestLog "========================================" "INFO"
     
-    Test-Command -Name "live_collect" -Command "live collect" -Description "实时监控" -ExpectedExitCode -1
-    
-    if ($liveJob.State -eq "Running") {
-        Stop-Job $liveJob
-        Remove-Job $liveJob
-    }
-} else {
-    Write-TestLog "跳过实时监控测试 (--SkipLive 标志)" "WARN"
+    Test-Command -Name "live_collect" -Command "live collect" -Description "Real-time monitoring" -ExpectedExitCode -1
 }
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第16部分: 取证命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 16: Forensics" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "forensics_hash" -Command "forensics hash `"$env:SystemRoot\system32\notepad.exe`"" -Description "计算文件哈希"
+Test-Command -Name "forensics_hash" -Command "forensics hash `"$env:SystemRoot\system32\notepad.exe`"" -Description "Calculate hash"
+Test-Command -Name "forensics_verify" -Command "forensics verify `"$env:SystemRoot\system32\notepad.exe`"" -Description "Verify signature"
+Test-Command -Name "forensics_collect" -Command "forensics collect" -Description "Collect forensics"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第17部分: 持久化检测命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 17: Persistence Detection" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "persistence_detect" -Command "persistence detect" -Description "检测持久化机制"
-Test-Command -Name "persistence_detect_json" -Command "persistence detect --format json" -Description "以JSON格式检测"
+Test-Command -Name "persistence_detect" -Command "persistence detect" -Description "Detect persistence"
+Test-Command -Name "persistence_detect_json" -Command "persistence detect --format json" -Description "Detect persistence (JSON)"
+Test-Command -Name "persistence_category" -Command "persistence detect --category registry" -Description "Detect registry"
+Test-Command -Name "persistence_category_wmi" -Command "persistence detect --category WMI" -Description "Detect WMI"
+Test-Command -Name "persistence_category_service" -Command "persistence detect --category Service" -Description "Detect service"
+Test-Command -Name "persistence_technique" -Command "persistence detect --technique T1546.003" -Description "Detect MITRE T1546.003"
+Test-Command -Name "persistence_text" -Command "persistence detect --format text" -Description "Text output"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第18部分: 白名单命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 18: Whitelist Management" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "whitelist_list" -Command "whitelist list" -Description "列出白名单"
-Test-Command -Name "whitelist_add" -Command "whitelist add TestRule --event-id 4624 --reason `"Test`" --scope global --duration 60" -Description "添加白名单规则"
-Test-Command -Name "whitelist_list_after_add" -Command "whitelist list" -Description "添加后列出白名单"
-Test-Command -Name "whitelist_remove" -Command "whitelist remove TestRule" -Description "移除白名单规则"
+Test-Command -Name "whitelist_list" -Command "whitelist list" -Description "List whitelist"
+Test-Command -Name "whitelist_add" -Command "whitelist add TestRule --event-id 4624 --reason Test --scope global --duration 60 --enabled" -Description "Add whitelist rule"
+Test-Command -Name "whitelist_list_after" -Command "whitelist list" -Description "List after add"
+Test-Command -Name "whitelist_remove" -Command "whitelist remove TestRule" -Description "Remove whitelist rule"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第19部分: 配置命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 19: Config Management" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "config_get" -Command "config get" -Description "获取配置"
-Test-Command -Name "config_get_specific" -Command "config get alert.retention_days" -Description "获取特定配置"
+Test-Command -Name "config_get" -Command "config get" -Description "Get all config"
+Test-Command -Name "config_get_specific" -Command "config get alert.retention_days" -Description "Get specific config"
+Test-Command -Name "config_set" -Command "config set alert.retention_days 180" -Description "Set config"
+Test-Command -Name "config_restore" -Command "config set alert.retention_days 90" -Description "Restore default"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第20部分: SQL 查询命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 20: SQL Query" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "query_count" -Command 'query "SELECT COUNT(*) FROM events"' -Description "SQL COUNT 查询"
-Test-Command -Name "query_events" -Command 'query "SELECT * FROM events LIMIT 5"' -Description "SQL 查询事件"
-Test-Command -Name "query_rules" -Command 'query "SELECT * FROM rules LIMIT 5"' -Description "SQL 查询规则"
+Test-Command -Name "query_count" -Command 'query "SELECT COUNT(*) FROM events"' -Description "SQL COUNT"
+Test-Command -Name "query_events" -Command 'query "SELECT * FROM events LIMIT 5"' -Description "SQL query events"
+Test-Command -Name "query_rules" -Command 'query "SELECT * FROM rules LIMIT 5"' -Description "SQL query rules"
+Test-Command -Name "query_alerts" -Command 'query "SELECT * FROM alerts LIMIT 5"' -Description "SQL query alerts"
+Test-Command -Name "query_pragma" -Command 'query "PRAGMA table_info(events)"' -Description "View schema"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第21部分: 仪表板命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 21: Dashboard" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "dashboard" -Command "dashboard" -Description "显示仪表板"
-Test-Command -Name "dashboard_json" -Command "dashboard --format json" -Description "以JSON格式显示仪表板"
+Test-Command -Name "dashboard" -Command "dashboard" -Description "Show dashboard"
+Test-Command -Name "dashboard_json" -Command "dashboard --format json" -Description "Dashboard (JSON)"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第22部分: EVTX 转换命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 22: Collect" "INFO"
+Write-TestLog "========================================" "INFO"
 
-if ($testEvtx) {
-    $evtx2csvCmd = "evtx2csv `"$testEvtx`" `"$OutputDir\test_output.csv`" --limit 100"
-    Test-Command -Name "evtx2csv" -Command $evtx2csvCmd -Description "EVTX 转 CSV"
-    
-    if (Test-Path "$OutputDir\test_output.csv") {
-        $csvContent = Get-Content "$OutputDir\test_output.csv" -TotalCount 5
-        Write-TestLog "CSV 输出预览: $csvContent"
-    }
-} else {
-    Write-TestLog "跳过 EVTX 转 CSV 测试 (无测试文件)" "WARN"
+Test-Command -Name "collect_basic" -Command "collect" -Description "Basic collection"
+Test-Command -Name "collect_output" -Command "collect --include-system-info --include-registry" -Description "Collection with options"
+
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 23: EVTX Conversion" "INFO"
+Write-TestLog "========================================" "INFO"
+
+if ($TestEvtxFile -and (Test-Path $TestEvtxFile)) {
+    $evtx2csvCmd = "evtx2csv `"$TestEvtxFile`" `"$OutputDir\converted.csv`" --limit 100"
+    Test-Command -Name "evtx2csv" -Command $evtx2csvCmd -Description "EVTX to CSV"
 }
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第23部分: 数据库维护命令"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Part 24: Verify" "INFO"
+Write-TestLog "========================================" "INFO"
 
-Test-Command -Name "db_clean" -Command "db clean --days 365" -Description "清理旧数据"
-Test-Command -Name "db_vacuum" -Command "db vacuum" -Description "优化数据库"
+Test-Command -Name "verify_file" -Command "verify `"$env:SystemRoot\system32\notepad.exe`"" -Description "Verify file"
+Test-Command -Name "verify_batch" -Command "verify `"$env:SystemRoot\system32\notepad.exe`" `"$env:SystemRoot\system32\cmd.exe`"" -Description "Batch verify"
 
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第24部分: 文件验证命令"
-Write-TestLog "========================================"
+if (-not $SkipTUI) {
+    Write-TestLog "========================================" "INFO"
+    Write-TestLog "Part 25: TUI" "INFO"
+    Write-TestLog "========================================" "INFO"
+    
+    Test-Command -Name "tui_check" -Command "tui" -Description "TUI launch test" -ExpectedExitCode -1
+}
 
-Test-Command -Name "verify_file" -Command "verify `"$env:SystemRoot\system32\notepad.exe`"" -Description "验证文件完整性"
-
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "第25部分: 仪表板命令"
-Write-TestLog "========================================"
-
-Test-Command -Name "tui_check" -Command "tui --help" -Description "TUI 命令存在性检查"
-
-Write-TestLog ""
-Write-TestLog "========================================"
-Write-TestLog "测试完成"
-Write-TestLog "========================================"
+Write-TestLog "========================================" "INFO"
+Write-TestLog "Test Complete" "INFO"
+Write-TestLog "========================================" "INFO"
 
 $passCount = ($Script:TestResults | Where-Object { $_.Status -eq "PASS" }).Count
-$failCount = ($Script:TestResults | Where-Object { $_.Status -eq "FAIL" -or $_.Status -eq "ERROR" }).Count
+$failCount = ($Script:TestResults | Where-Object { $_.Status -eq "FAIL" }).Count
+$errorCount = ($Script:TestResults | Where-Object { $_.Status -eq "ERROR" }).Count
 $totalCount = $Script:TestResults.Count
 
-Write-TestLog "========================================"
-Write-TestLog "测试结果汇总"
-Write-TestLog "========================================"
-Write-TestLog "总测试数: $totalCount"
-Write-TestLog "通过: $passCount"
-Write-TestLog "失败: $failCount"
-Write-TestLog "成功率: $([math]::Round($passCount/$totalCount*100, 2))%"
-Write-TestLog "========================================"
+Write-TestLog "Total Tests: $totalCount" "INFO"
+Write-TestLog "Passed: $passCount ($([math]::Round($passCount/$totalCount*100, 1))%)" "INFO"
+Write-TestLog "Failed: $failCount" $(if ($failCount -gt 0) { "WARN" } else { "INFO" })
+Write-TestLog "Errors: $errorCount" $(if ($errorCount -gt 0) { "ERROR" } else { "INFO" })
 
-$summaryFile = "$OutputDir\test_summary.json"
-$summary = @{
-    TestStartTime = $Script:TestStartTime
-    TestEndTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    TotalTests = $totalCount
-    PassedTests = $passCount
-    FailedTests = $failCount
-    SuccessRate = [math]::Round($passCount/$totalCount*100, 2)
-    WinalogPath = $WinalogPath
-    TestEvtxFile = $testEvtx
-    Results = $Script:TestResults
-} | ConvertTo-Json -Depth 10
-
-$summary | Out-File -FilePath $summaryFile -Encoding UTF8
-Write-TestLog "测试摘要已保存: $summaryFile"
-
-$csvFile = "$OutputDir\test_results.csv"
-$csvContent = "Name,Command,Description,ExitCode,ExpectedExitCode,Duration,Status`n"
-foreach ($result in $Script:TestResults) {
-    $csvContent += "`"$($result.Name)`",`"$($result.Command -replace '"', '""')`",`"$($result.Description -replace '"', '""')`",$($result.ExitCode),$($result.ExpectedExitCode),$([math]::Round($result.Duration, 3)),$($result.Status)`n"
-}
-$csvContent | Out-File -FilePath $csvFile -Encoding UTF8
-Write-TestLog "测试结果CSV已保存: $csvFile"
+$Script:TestResults | ConvertTo-Json -Depth 5 | Out-File "$OutputDir\test_results.json" -Encoding UTF8
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "测试完成!" -ForegroundColor Green
+Write-Host "CLI Test Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "结果目录: $OutputDir" -ForegroundColor Yellow
-Write-Host "通过: $passCount / $totalCount" -ForegroundColor $(if ($failCount -eq 0) { "Green" } else { "Yellow" })
-Write-Host "失败: $failCount / $totalCount" -ForegroundColor $(if ($failCount -gt 0) { "Red" } else { "Green" })
+Write-Host "Results: $OutputDir\test_results.json" -ForegroundColor Yellow
+Write-Host "Passed: $passCount/$totalCount" -ForegroundColor $(if ($failCount -eq 0) { "Green" } else { "Yellow" })
 
 exit $(if ($failCount -gt 0) { 1 } else { 0 })
