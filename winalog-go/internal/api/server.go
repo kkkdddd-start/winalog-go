@@ -2,11 +2,13 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +28,17 @@ func getStaticDir() string {
 	}
 	exeDir := filepath.Dir(exePath)
 	return filepath.Join(exeDir, "internal", "gui", "dist")
+}
+
+func safePath(root, userPath string) (string, error) {
+	if strings.Contains(userPath, "..") {
+		return "", errors.New("path traversal attempt detected")
+	}
+	clean := filepath.Clean(filepath.Join(root, userPath))
+	if !strings.HasPrefix(clean, root) {
+		return "", errors.New("path traversal attempt blocked")
+	}
+	return clean, nil
 }
 
 type Server struct {
@@ -163,13 +176,21 @@ func (s *Server) setupRoutes() {
 		if path == "/" {
 			path = "/index.html"
 		}
+
+		safeFilePath, err := safePath(staticDir, path)
+		if err != nil {
+			log.Printf("WARN: Blocked path traversal attempt: %s", path)
+			c.Data(403, "text/plain", []byte("Forbidden"))
+			return
+		}
+
 		file, err := staticFs.Open(path)
 		if err != nil {
 			c.Data(404, "text/plain", []byte("Not found"))
 			return
 		}
 		file.Close()
-		http.ServeFile(c.Writer, c.Request, filepath.Join(staticDir, path))
+		http.ServeFile(c.Writer, c.Request, safeFilePath)
 	})
 }
 

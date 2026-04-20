@@ -2,13 +2,15 @@ package monitor
 
 import (
 	"sync"
+
+	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
 const DefaultMaxCacheSize = 1000
 
 type EventCache struct {
 	mu      sync.RWMutex
-	events  []*MonitorEvent
+	events  []*types.MonitorEvent
 	maxSize int
 	stats   *CacheStats
 }
@@ -23,13 +25,13 @@ func NewEventCache(maxSize int) *EventCache {
 		maxSize = DefaultMaxCacheSize
 	}
 	return &EventCache{
-		events:  make([]*MonitorEvent, 0, maxSize),
+		events:  make([]*types.MonitorEvent, 0, maxSize),
 		maxSize: maxSize,
 		stats:   &CacheStats{},
 	}
 }
 
-func (c *EventCache) Add(event *MonitorEvent) {
+func (c *EventCache) Add(event *types.MonitorEvent) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -46,11 +48,11 @@ func (c *EventCache) Add(event *MonitorEvent) {
 	c.stats.TotalAdded++
 }
 
-func (c *EventCache) Get(filter *EventFilter) ([]*MonitorEvent, int64) {
+func (c *EventCache) Get(filter *EventFilter) ([]*types.MonitorEvent, int64) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	var result []*MonitorEvent
+	var result []*types.MonitorEvent
 
 	for _, e := range c.events {
 		if filter != nil {
@@ -90,16 +92,16 @@ func (c *EventCache) Get(filter *EventFilter) ([]*MonitorEvent, int64) {
 	}
 
 	if result == nil {
-		result = make([]*MonitorEvent, 0)
+		result = make([]*types.MonitorEvent, 0)
 	}
 
 	return result[offset : offset+limit], total
 }
 
-func (c *EventCache) GetAll() []*MonitorEvent {
+func (c *EventCache) GetAll() []*types.MonitorEvent {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make([]*MonitorEvent, len(c.events))
+	result := make([]*types.MonitorEvent, len(c.events))
 	copy(result, c.events)
 	return result
 }
@@ -107,7 +109,7 @@ func (c *EventCache) GetAll() []*MonitorEvent {
 func (c *EventCache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.events = make([]*MonitorEvent, 0, c.maxSize)
+	c.events = make([]*types.MonitorEvent, 0, c.maxSize)
 }
 
 func (c *EventCache) Size() int {

@@ -195,48 +195,7 @@ type EventDataItemXML struct {
 	Value string `xml:",chardata"`
 }
 
-func ParseEventXML(xmlContent string) *types.Event {
-	decoder := xml.NewDecoder(strings.NewReader(xmlContent))
-	event := &types.Event{
-		Level:      types.EventLevelInfo,
-		ImportTime: time.Now(),
-		RawXML:     &xmlContent,
-	}
 
-	for {
-		token, err := decoder.Token()
-		if err != nil {
-			break
-		}
-
-		switch elem := token.(type) {
-		case xml.StartElement:
-			switch elem.Name.Local {
-			case "Provider":
-				for _, attr := range elem.Attr {
-					if attr.Name.Local == "Name" {
-						event.Source = attr.Value
-						break
-					}
-				}
-			case "EventID":
-				if val := getElementText(decoder, elem); val != "" {
-					var id uint64
-					if _, err := parseUint(val, &id); err == nil {
-						event.EventID = int32(id)
-					}
-				}
-			case "Level":
-				if val := getElementText(decoder, elem); val != "" {
-					var level uint8
-					if _, err := parseUint(val, &level); err == nil {
-						if level > 0 && level <= 5 {
-							event.Level = types.EventLevel(level)
-						}
-					}
-				}
-			case "Channel":
-				if val := getElementText(decoder, elem); val != "" {
 					event.LogName = val
 				}
 			case "Computer":

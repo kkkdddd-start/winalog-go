@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/StackExchange/wmi"
-	"github.com/kkkdddd-start/winalog-go/internal/monitor"
+	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
 type ProcessWatcher struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
-	events      chan *monitor.MonitorEvent
-	subscribers []chan *monitor.MonitorEvent
+	events      chan *types.MonitorEvent
+	subscribers []chan *types.MonitorEvent
 	subMu       sync.RWMutex
 	running     bool
 	mu          sync.RWMutex
@@ -37,8 +37,8 @@ func NewProcessWatcher() (*ProcessWatcher, error) {
 	return &ProcessWatcher{
 		ctx:         ctx,
 		cancel:      cancel,
-		events:      make(chan *monitor.MonitorEvent, 100),
-		subscribers: make([]chan *monitor.MonitorEvent, 0),
+		events:      make(chan *types.MonitorEvent, 100),
+		subscribers: make([]chan *types.MonitorEvent, 0),
 		running:     false,
 	}, nil
 }
@@ -71,13 +71,13 @@ func (pw *ProcessWatcher) Stop() error {
 	for _, ch := range pw.subscribers {
 		close(ch)
 	}
-	pw.subscribers = make([]chan *monitor.MonitorEvent, 0)
+	pw.subscribers = make([]chan *types.MonitorEvent, 0)
 	pw.subMu.Unlock()
 
 	return nil
 }
 
-func (pw *ProcessWatcher) Subscribe(ch chan *monitor.MonitorEvent) func() {
+func (pw *ProcessWatcher) Subscribe(ch chan *types.MonitorEvent) func() {
 	pw.subMu.Lock()
 	defer pw.subMu.Unlock()
 	pw.subscribers = append(pw.subscribers, ch)
@@ -132,7 +132,7 @@ func (pw *ProcessWatcher) checkNewProcesses(lastProcs map[uint32]string) {
 	}
 }
 
-func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string) *monitor.MonitorEvent {
+func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string) *types.MonitorEvent {
 	var processes []Win32_Process
 	query := fmt.Sprintf("WHERE ProcessID = %d", pid)
 	err := wmi.Query(query, &processes)
@@ -142,16 +142,16 @@ func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string) *monitor.M
 
 	p := processes[0]
 
-	severity := monitor.SeverityInfo
-	for _, indicator := range monitor.SuspiciousProcessIndicators {
+	severity := types.SeverityInfo
+	for _, indicator := range types.SuspiciousProcessIndicators {
 		if strings.Contains(strings.ToLower(p.ExecutablePath), strings.ToLower(indicator)) ||
 			strings.Contains(strings.ToLower(p.CommandLine), strings.ToLower(indicator)) {
-			severity = monitor.SeverityMedium
+			severity = types.SeverityMedium
 			break
 		}
 	}
 
-	eventData := monitor.ProcessEventData{
+	eventData := types.ProcessEventData{
 		PID:         p.ProcessID,
 		PPID:        p.ParentProcessID,
 		ProcessName: p.Name,
@@ -168,16 +168,16 @@ func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string) *monitor.M
 	data["command_line"] = eventData.CommandLine
 	data["user"] = eventData.User
 
-	return &monitor.MonitorEvent{
+	return &types.MonitorEvent{
 		ID:        fmt.Sprintf("proc-%d-%d", p.ProcessID, time.Now().UnixNano()),
-		Type:      monitor.EventTypeProcess,
+		Type:      types.EventTypeProcess,
 		Timestamp: time.Now(),
 		Severity:  severity,
 		Data:      data,
 	}
 }
 
-func (pw *ProcessWatcher) publishEvent(event *monitor.MonitorEvent) {
+func (pw *ProcessWatcher) publishEvent(event *types.MonitorEvent) {
 	pw.subMu.RLock()
 	defer pw.subMu.RUnlock()
 

@@ -4,6 +4,8 @@ package monitor
 
 import (
 	"time"
+
+	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
 type MonitorEngine struct {
@@ -15,8 +17,8 @@ type MonitorEngine struct {
 	dnsPoll      interface{}
 	isRunning    bool
 	startTime    time.Time
-	stats        *MonitorStats
-	eventCh      chan *MonitorEvent
+	stats        *types.MonitorStats
+	eventCh      chan *types.MonitorEvent
 }
 
 func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
@@ -24,13 +26,13 @@ func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
 		config:     NewConfigManager(configPath),
 		eventCache: NewEventCache(DefaultMaxCacheSize),
 		isRunning:  false,
-		stats: &MonitorStats{
+		stats: &types.MonitorStats{
 			ProcessCount: 0,
 			NetworkCount: 0,
 			DNSCount:     0,
 			AlertCount:   0,
 		},
-		eventCh: make(chan *MonitorEvent, 1000),
+		eventCh: make(chan *types.MonitorEvent, 1000),
 	}, nil
 }
 
@@ -46,17 +48,17 @@ func (e *MonitorEngine) UpdateConfig(req *MonitorConfigRequest) error {
 	return nil
 }
 
-func (e *MonitorEngine) GetStats() *MonitorStats {
-	return &MonitorStats{
+func (e *MonitorEngine) GetStats() *types.MonitorStats {
+	return &types.MonitorStats{
 		IsRunning: false,
 	}
 }
 
-func (e *MonitorEngine) GetEvents(filter *EventFilter) ([]*MonitorEvent, int64) {
-	return []*MonitorEvent{}, 0
+func (e *MonitorEngine) GetEvents(filter *EventFilter) ([]*types.MonitorEvent, int64) {
+	return []*types.MonitorEvent{}, 0
 }
 
-func (e *MonitorEngine) Subscribe(ch chan *MonitorEvent) func() {
+func (e *MonitorEngine) Subscribe(ch chan *types.MonitorEvent) func() {
 	return func() {}
 }
 

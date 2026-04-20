@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kkkdddd-start/winalog-go/internal/monitor"
+	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
 type DNSEntry struct {
@@ -28,8 +28,8 @@ type DNSPoller struct {
 	cancel      context.CancelFunc
 	interval    time.Duration
 	prevCache   map[string]*DNSEntry
-	events      chan *monitor.MonitorEvent
-	subscribers []chan *monitor.MonitorEvent
+	events      chan *types.MonitorEvent
+	subscribers []chan *types.MonitorEvent
 	subMu       sync.RWMutex
 	running     bool
 	mu          sync.RWMutex
@@ -42,8 +42,8 @@ func NewDNSPoller(interval time.Duration) *DNSPoller {
 	return &DNSPoller{
 		interval:    interval,
 		prevCache:   make(map[string]*DNSEntry),
-		events:      make(chan *monitor.MonitorEvent, 100),
-		subscribers: make([]chan *monitor.MonitorEvent, 0),
+		events:      make(chan *types.MonitorEvent, 100),
+		subscribers: make([]chan *types.MonitorEvent, 0),
 		running:     false,
 	}
 }
@@ -76,13 +76,13 @@ func (dp *DNSPoller) Stop() error {
 	for _, ch := range dp.subscribers {
 		close(ch)
 	}
-	dp.subscribers = make([]chan *monitor.MonitorEvent, 0)
+	dp.subscribers = make([]chan *types.MonitorEvent, 0)
 	dp.subMu.Unlock()
 
 	return nil
 }
 
-func (dp *DNSPoller) Subscribe(ch chan *monitor.MonitorEvent) func() {
+func (dp *DNSPoller) Subscribe(ch chan *types.MonitorEvent) func() {
 	dp.subMu.Lock()
 	defer dp.subMu.Unlock()
 	dp.subscribers = append(dp.subscribers, ch)
@@ -207,12 +207,12 @@ func parseDNSOutput(output string) []*DNSEntry {
 	return entries
 }
 
-func (dp *DNSPoller) createDNSEvent(entry *DNSEntry) *monitor.MonitorEvent {
-	severity := monitor.SeverityInfo
+func (dp *DNSPoller) createDNSEvent(entry *DNSEntry) *types.MonitorEvent {
+	severity := types.SeverityInfo
 
-	for _, indicator := range monitor.SuspiciousDNSIndicators {
+	for _, indicator := range types.SuspiciousDNSIndicators {
 		if strings.Contains(strings.ToLower(entry.Name), strings.ToLower(indicator)) {
-			severity = monitor.SeverityMedium
+			severity = types.SeverityMedium
 			break
 		}
 	}
@@ -220,8 +220,8 @@ func (dp *DNSPoller) createDNSEvent(entry *DNSEntry) *monitor.MonitorEvent {
 	if strings.HasPrefix(entry.Data, "127.") ||
 		strings.HasPrefix(entry.Data, "192.168.") ||
 		strings.HasPrefix(entry.Data, "10.") {
-		if severity == monitor.SeverityInfo {
-			severity = monitor.SeverityLow
+		if severity == types.SeverityInfo {
+			severity = types.SeverityLow
 		}
 	}
 
@@ -231,16 +231,16 @@ func (dp *DNSPoller) createDNSEvent(entry *DNSEntry) *monitor.MonitorEvent {
 	data["results"] = []string{entry.Data}
 	data["ttl"] = entry.TTL
 
-	return &monitor.MonitorEvent{
+	return &types.MonitorEvent{
 		ID:        fmt.Sprintf("dns-%s-%d-%d", entry.Name, entry.Type, time.Now().UnixNano()),
-		Type:      monitor.EventTypeDNS,
+		Type:      types.EventTypeDNS,
 		Timestamp: time.Now(),
 		Severity:  severity,
 		Data:      data,
 	}
 }
 
-func (dp *DNSPoller) publishEvent(event *monitor.MonitorEvent) {
+func (dp *DNSPoller) publishEvent(event *types.MonitorEvent) {
 	dp.subMu.RLock()
 	defer dp.subMu.RUnlock()
 

@@ -132,7 +132,7 @@ func parseShimCacheHex(hexString string) []ShimCacheEntry {
 
 		entries = append(entries, ShimCacheEntry{
 			Path:           path,
-			LastUpdateTime: parseWindowsTime(timestamp),
+			LastUpdateTime: formatShimCacheTime(timestamp),
 			Flag:           flag,
 		})
 	}
@@ -140,7 +140,7 @@ func parseShimCacheHex(hexString string) []ShimCacheEntry {
 	return entries
 }
 
-func parseWindowsTime(timestamp uint64) string {
+func formatShimCacheTime(timestamp uint64) string {
 	if timestamp == 0 {
 		return ""
 	}

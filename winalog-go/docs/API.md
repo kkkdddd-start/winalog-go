@@ -23,14 +23,15 @@
 14. [Multi API](#14-multi-api)
 15. [Query API](#15-query-api)
 16. [Policy API](#16-policy-api)
-17. [Settings API](#17-settings-api)
-18. [Persistence API](#18-persistence-api)
-19. [Forensics API](#19-forensics-api)
-20. [Analyze API](#20-analyze-api)
-21. [Collect API](#21-collect-api)
-22. [UI API](#22-ui-api)
-23. [Health Check](#23-health-check)
-24. [Error Codes](#24-error-codes)
+17. [Monitor API](#17-monitor-api)
+18. [Settings API](#18-settings-api)
+19. [Persistence API](#19-persistence-api)
+20. [Forensics API](#20-forensics-api)
+21. [Analyze API](#21-analyze-api)
+22. [Collect API](#22-collect-api)
+23. [UI API](#23-ui-api)
+24. [Health Check](#24-health-check)
+25. [Error Codes](#25-error-codes)
 
 ---
 

@@ -1429,13 +1429,13 @@ winalog evtx2csv <input.evtx> [output.csv] [flags]
 | 参数 | 描述 |
 |------|------|
 | `<input.evtx>` | 要转换的 EVTX 文件路径 |
-| `[output.csv]` | 输出 CSV 文件路径（可选，默认使用输入文件名+.csv） |
+| `[output.csv]` | 输出 CSV 文件路径（可选，默认与输入文件同名） |
 
 ### 选项
 
 | 选项 | 描述 | 默认值 |
 |------|------|--------|
-| `--limit, -l <n>` | 限制事件数量（0 = 无限制） | `0` |
+| `--limit, -l <n>` | 限制转换的事件数量（0 = 不限制） | `0` |
 
 ### 示例
 
@@ -1443,11 +1443,14 @@ winalog evtx2csv <input.evtx> [output.csv] [flags]
 # 基本转换
 winalog evtx2csv security.evtx security.csv
 
-# 限制事件数量
-winalog evtx2csv -l 1000 security.evtx
+# 使用默认输出文件名
+winalog evtx2csv security.evtx
 
-# 输出到标准输出
-winalog evtx2csv security.evtx > security.csv
+# 限制事件数量
+winalog evtx2csv -l 1000 security.evtx security.csv
+
+# 使用管道输出
+winalog evtx2csv -l 1000 security.evtx > security.csv
 ```
 
 ---
