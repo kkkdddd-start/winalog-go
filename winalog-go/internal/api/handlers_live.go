@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -68,6 +69,9 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
+	queryCtx, queryCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer queryCancel()
+
 	for {
 		select {
 		case <-ticker.C:
@@ -80,7 +84,7 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 					Limit:     100,
 					StartTime: &lastImport,
 				}
-				events, _, err := h.db.ListEvents(filter)
+				events, _, err := h.db.ListEventsWithContext(queryCtx, filter)
 				if err != nil {
 					observability.LogServiceError("live_handler", fmt.Sprintf("ListEvents failed: %v", err))
 				} else if len(events) > 0 {

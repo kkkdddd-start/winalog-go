@@ -10,6 +10,7 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
 	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type CorrelationHandler struct {
@@ -40,15 +41,15 @@ func (h *CorrelationHandler) Analyze(c *gin.Context) {
 		req.TimeWindow = "24h"
 	}
 
-	timeWindow := 24 * time.Hour
+	startTime := time.Now().Add(-24 * time.Hour)
+	endTime := time.Now()
+
 	if req.TimeWindow != "" {
-		if dur, err := time.ParseDuration(req.TimeWindow); err == nil {
-			timeWindow = dur
+		if tf, err := types.ParseTimeFilter(req.TimeWindow); err == nil && tf != nil {
+			startTime = tf.Start
+			endTime = tf.End
 		}
 	}
-
-	startTime := time.Now().Add(-timeWindow)
-	endTime := time.Now()
 
 	events, _, err := h.db.SearchEvents(&storage.EventFilter{
 		StartTime: &startTime,

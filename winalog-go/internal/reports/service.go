@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/jung-kurt/gofpdf"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
@@ -195,15 +194,14 @@ func (s *ReportService) GenerateFromAPIRequest(apiReq *APIReportRequest) (*Repor
 		IncludeMITRE: apiReq.IncludeMITRE,
 	}
 
-	if apiReq.StartTime != "" {
-		if t, err := time.Parse(time.RFC3339, apiReq.StartTime); err == nil {
-			req.StartTime = t
+	if apiReq.StartTime != "" || apiReq.EndTime != "" {
+		timeInput := apiReq.StartTime
+		if apiReq.EndTime != "" {
+			timeInput = apiReq.StartTime + "," + apiReq.EndTime
 		}
-	}
-
-	if apiReq.EndTime != "" {
-		if t, err := time.Parse(time.RFC3339, apiReq.EndTime); err == nil {
-			req.EndTime = t
+		if tf, err := types.ParseTimeFilter(timeInput); err == nil && tf != nil {
+			req.StartTime = tf.Start
+			req.EndTime = tf.End
 		}
 	}
 

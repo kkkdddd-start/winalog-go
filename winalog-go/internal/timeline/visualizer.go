@@ -135,7 +135,17 @@ const DefaultVisualizerConfig = `
                         <option value="6h">6 Hours</option>
                         <option value="24h" selected>24 Hours</option>
                         <option value="7d">7 Days</option>
+                        <option value="30d">30 Days</option>
+                        <option value="custom">Custom Range</option>
                     </select>
+                </div>
+                <div class="col-md-3" id="custom-time-range" style="display: none;">
+                    <label>Start Time</label>
+                    <input type="datetime-local" class="form-control" id="time-start" step="1">
+                </div>
+                <div class="col-md-3" id="custom-time-end" style="display: none;">
+                    <label>End Time</label>
+                    <input type="datetime-local" class="form-control" id="time-end" step="1">
                 </div>
                 <div class="col-md-3">
                     <label>Category Filter</label>

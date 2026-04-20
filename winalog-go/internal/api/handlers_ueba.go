@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/ueba"
 )
 
@@ -58,14 +59,14 @@ func (h *UEBAHandler) Analyze(c *gin.Context) {
 	endTime := time.Now()
 	start := endTime.Add(-time.Duration(hours) * time.Hour)
 
-	if req.StartTime != "" {
-		if t, err := time.Parse(time.RFC3339, req.StartTime); err == nil {
-			start = t
+	if req.StartTime != "" || req.EndTime != "" {
+		timeInput := req.StartTime
+		if req.EndTime != "" {
+			timeInput = req.StartTime + "," + req.EndTime
 		}
-	}
-	if req.EndTime != "" {
-		if t, err := time.Parse(time.RFC3339, req.EndTime); err == nil {
-			endTime = t
+		if tf, err := types.ParseTimeFilter(timeInput); err == nil && tf != nil {
+			start = tf.Start
+			endTime = tf.End
 		}
 	}
 

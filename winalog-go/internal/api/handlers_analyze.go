@@ -115,7 +115,16 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 		Offset: offset,
 	}
 
-	if hours > 0 {
+	if req.StartTime != "" || req.EndTime != "" {
+		timeInput := req.StartTime
+		if req.EndTime != "" {
+			timeInput = req.StartTime + "," + req.EndTime
+		}
+		if tf, err := types.ParseTimeFilter(timeInput); err == nil && tf != nil {
+			filter.StartTime = &tf.Start
+			filter.EndTime = &tf.End
+		}
+	} else if hours > 0 {
 		startTime := time.Now().Add(-time.Duration(hours) * time.Hour)
 		filter.StartTime = &startTime
 		endTime := time.Now()

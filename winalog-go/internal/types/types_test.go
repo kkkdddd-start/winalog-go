@@ -373,3 +373,109 @@ func TestLogNameDistributionStruct(t *testing.T) {
 		t.Errorf("Count = %d, want 200", d.Count)
 	}
 }
+
+func TestParseTimeFilter(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+		checkFn func(*TimeFilter) bool
+	}{
+		{
+			name:    "empty string returns nil",
+			input:   "",
+			wantErr: false,
+			checkFn: func(tf *TimeFilter) bool { return tf == nil },
+		},
+		{
+			name:    "duration 24h",
+			input:   "24h",
+			wantErr: false,
+			checkFn: func(tf *TimeFilter) bool {
+				if tf == nil {
+					return false
+				}
+				diff := tf.Duration() - 24*time.Hour
+				return diff < time.Second && diff > -time.Second
+			},
+		},
+		{
+			name:    "duration 168h (7 days)",
+			input:   "168h",
+			wantErr: false,
+			checkFn: func(tf *TimeFilter) bool {
+				if tf == nil {
+					return false
+				}
+				diff := tf.Duration() - 168*time.Hour
+				return diff < time.Second && diff > -time.Second
+			},
+		},
+		{
+			name:    "RFC3339 format",
+			input:   "2024-01-01T00:00:00Z",
+			wantErr: false,
+			checkFn: func(tf *TimeFilter) bool {
+				return tf != nil && tf.Start.Year() == 2024 && tf.Start.Month() == 1 && tf.Start.Day() == 1
+			},
+		},
+		{
+			name:    "date only format",
+			input:   "2024-01-01",
+			wantErr: false,
+			checkFn: func(tf *TimeFilter) bool {
+				return tf != nil && tf.Start.Year() == 2024 && tf.Start.Month() == 1 && tf.Start.Day() == 1
+			},
+		},
+		{
+			name:    "custom range with comma",
+			input:   "2024-01-01T00:00:00Z,2024-01-02T00:00:00Z",
+			wantErr: false,
+			checkFn: func(tf *TimeFilter) bool {
+				return tf != nil && tf.Duration() == 24*time.Hour
+			},
+		},
+		{
+			name:    "custom range with date only",
+			input:   "2024-01-01,2024-01-02",
+			wantErr: false,
+			checkFn: func(tf *TimeFilter) bool {
+				return tf != nil && tf.Duration() == 24*time.Hour
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseTimeFilter(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseTimeFilter() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.checkFn(got) {
+				t.Errorf("ParseTimeFilter() = %v, check failed", got)
+			}
+			_ = now
+		})
+	}
+}
+
+func TestTimeFilterMethods(t *testing.T) {
+	now := time.Now()
+	start := now.Add(-24 * time.Hour)
+
+	tf := &TimeFilter{
+		Start: start,
+		End:   now,
+	}
+
+	if !tf.IsValid() {
+		t.Error("TimeFilter.IsValid() = false, want true")
+	}
+
+	if tf.Duration() != 24*time.Hour {
+		t.Errorf("TimeFilter.Duration() = %v, want 24h", tf.Duration())
+	}
+}
