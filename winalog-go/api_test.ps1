@@ -31,6 +31,63 @@ function Write-Log {
     Add-Content -Path "$OutputDir\test_log.txt" -Value $logEntry
 }
 
+function Find-EvtxFiles {
+    $searchPaths = @(
+        "$env:USERPROFILE\Desktop\*.evtx",
+        "$env:USERPROFILE\Documents\*.evtx",
+        "$env:USERPROFILE\Downloads\*.evtx",
+        ".\*.evtx",
+        ".\test_data\*.evtx",
+        ".\test_files\*.evtx",
+        ".\data\*.evtx",
+        "$env:SystemRoot\System32\winevt\Logs\*.evtx"
+    )
+    
+    $foundFiles = @()
+    
+    foreach ($path in $searchPaths) {
+        $files = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer }
+        if ($files) {
+            $foundFiles += $files
+        }
+    }
+    
+    if ($foundFiles.Count -gt 0) {
+        $sortedFiles = $foundFiles | Sort-Object LastWriteTime -Descending
+        return $sortedFiles[0].FullName
+    }
+    
+    return $null
+}
+
+function Find-AllEvtxFiles {
+    $searchPaths = @(
+        "$env:USERPROFILE\Desktop\*.evtx",
+        "$env:USERPROFILE\Documents\*.evtx",
+        "$env:USERPROFILE\Downloads\*.evtx",
+        ".\*.evtx",
+        ".\test_data\*.evtx",
+        ".\test_files\*.evtx",
+        ".\data\*.evtx",
+        "$env:SystemRoot\System32\winevt\Logs\*.evtx"
+    )
+    
+    $foundFiles = @()
+    
+    foreach ($path in $searchPaths) {
+        $files = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer }
+        if ($files) {
+            $foundFiles += $files
+        }
+    }
+    
+    if ($foundFiles.Count -gt 0) {
+        return ($foundFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 10)
+    }
+    
+    return $null
+}
+
 function Test-ApiRequest {
     param(
         [string]$Name,
@@ -162,8 +219,33 @@ Write-Log "WinLogAnalyzer-Go API Test Suite" "INFO"
 Write-Log "========================================" "INFO"
 Write-Log "Base URL: $BaseUrl" "INFO"
 Write-Log "Start Time: $Script:TestStartTime" "INFO"
-if ($TestEvtxFile) {
-    Write-Log "Test EVTX: $TestEvtxFile" "INFO"
+
+if (-not $SkipImportTests) {
+    if ($TestEvtxFile) {
+        if (Test-Path $TestEvtxFile) {
+            Write-Log "Using specified EVTX: $TestEvtxFile" "INFO"
+        } else {
+            Write-Log "Specified EVTX not found: $TestEvtxFile" "ERROR"
+            Write-Log "Auto-searching for EVTX files..." "INFO"
+            $TestEvtxFile = $null
+        }
+    }
+    
+    if (-not $TestEvtxFile) {
+        Write-Log "Auto-searching for EVTX files..." "INFO"
+        $foundFile = Find-EvtxFiles
+        
+        if ($foundFile) {
+            $TestEvtxFile = $foundFile
+            Write-Log "Found EVTX file: $TestEvtxFile" "SUCCESS"
+        } else {
+            Write-Log "No EVTX files found in search paths" "WARN"
+            $allFound = Find-AllEvtxFiles
+            if ($allFound) {
+                Write-Log "Files found (not usable): $($allFound.Count)" "WARN"
+            }
+        }
+    }
 }
 
 Write-Log "========================================" "INFO"
@@ -177,11 +259,13 @@ if (-not $SkipImportTests -and $TestEvtxFile -and (Test-Path $TestEvtxFile)) {
     Write-Log "Step 0.1: Import Test Data" "INFO"
     Write-Log "========================================" "INFO"
     
+    Write-Log "Importing: $TestEvtxFile" "INFO"
     Test-ApiJsonPost -Name "import_logs" -Endpoint "/import/logs" -JsonBody @{files=@($TestEvtxFile);alert_on_import=$false} -Description "Import EVTX file for testing" -SaveResponse
     
     $Script:PreparedData.EvtxImported = $true
 } else {
-    Write-Log "Skipping EVTX import (use -TestEvtxFile to specify file)" "WARN"
+    Write-Log "Skipping EVTX import (no valid file found)" "WARN"
+    Write-Log "Tip: Use -TestEvtxFile to specify a file manually" "INFO"
 }
 
 Write-Log "========================================" "INFO"
