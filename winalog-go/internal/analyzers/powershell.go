@@ -10,12 +10,85 @@ import (
 
 type PowerShellAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewPowerShellAnalyzer() *PowerShellAnalyzer {
 	return &PowerShellAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "powershell"},
+		config: &AnalyzerConfig{
+			EventIDs:  []int32{4103, 4104},
+			Patterns:  []string{"powershell", "Invoke-", "cmd.exe", "-enc", "-EncodedCommand", "-w hidden", "IEX", "Invoke-Expression", "Invoke-WebRequest", "downloadstring", "downloadfile", "mimikatz"},
+			Whitelist: []string{},
+		},
 	}
+}
+
+func (a *PowerShellAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *PowerShellAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
+}
+
+func (a *PowerShellAnalyzer) shouldProcessEvent(e *types.Event) bool {
+	eventIDs := a.config.EventIDs
+	if len(eventIDs) == 0 {
+		eventIDs = []int32{4103, 4104}
+	}
+
+	for _, id := range eventIDs {
+		if e.EventID == id {
+			goto checkWhitelist
+		}
+	}
+	return false
+
+checkWhitelist:
+	whitelist := a.config.Whitelist
+	if len(whitelist) > 0 {
+		for _, w := range whitelist {
+			w = strings.TrimSpace(w)
+			if w == "" {
+				continue
+			}
+			if strings.Contains(e.Message, w) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (a *PowerShellAnalyzer) isWhitelistedPath(e *types.Event) bool {
+	whitelist := []string{
+		`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`,
+		`%SystemRoot%\SysWOW64\WindowsPowerShell\v1.0\powershell.exe`,
+		`%SystemRoot%\System32\wbem\wmiadap.exe`,
+		`%ProgramFiles%\Microsoft Monitoring Agent\Agent\MonitoringHost.exe`,
+	}
+	path := getProcessPath(e)
+	for _, w := range whitelist {
+		if strings.Contains(path, strings.ReplaceAll(w, `%SystemRoot%\System32`, `C:\Windows\System32`)) ||
+			strings.Contains(path, strings.ReplaceAll(w, `%SystemRoot%\SysWOW64`, `C:\Windows\SysWOW64`)) ||
+			strings.Contains(path, strings.ReplaceAll(w, `%ProgramFiles%`, `C:\Program Files`)) {
+			return true
+		}
+	}
+	return false
+}
+
+func getProcessPath(e *types.Event) string {
+	if e.Message != "" {
+		parts := strings.Split(e.Message, "Process Name:")
+		if len(parts) > 1 {
+			return strings.TrimSpace(parts[1])
+		}
+	}
+	return ""
 }
 
 type PowerShellAnalysis struct {
@@ -58,7 +131,11 @@ func (a *PowerShellAnalyzer) performAnalysis(events []*types.Event) *PowerShellA
 	}
 
 	for _, e := range events {
-		if e.EventID != 4688 && e.EventID != 4103 && e.EventID != 4104 {
+		if !a.shouldProcessEvent(e) {
+			continue
+		}
+
+		if a.isWhitelistedPath(e) {
 			continue
 		}
 
@@ -113,6 +190,25 @@ func (a *PowerShellAnalyzer) performAnalysis(events []*types.Event) *PowerShellA
 	analysis.RiskScore = a.calculateRiskScore(analysis)
 
 	return analysis
+}
+
+func (a *PowerShellAnalyzer) matchesPattern(e *types.Event) bool {
+	patterns := a.config.Patterns
+	if len(patterns) == 0 {
+		return false
+	}
+
+	command := strings.ToLower(e.Message)
+	for _, pattern := range patterns {
+		pattern = strings.TrimSpace(strings.ToLower(pattern))
+		if pattern == "" {
+			continue
+		}
+		if strings.Contains(command, pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *PowerShellAnalyzer) extractCommand(e *types.Event) string {

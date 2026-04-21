@@ -6,6 +6,13 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
+type AnalyzerConfig struct {
+	EventIDs   []int32        `json:"event_ids"`
+	Patterns   []string       `json:"patterns"`
+	Whitelist  []string       `json:"whitelist"`
+	Thresholds map[string]int `json:"thresholds"`
+}
+
 type AnalyzerError struct {
 	AnalyzerName string
 	Err          error
@@ -115,11 +122,13 @@ func (r *Result) CalculateOverallScore() float64 {
 
 type AnalyzerManager struct {
 	analyzers map[string]Analyzer
+	configs   map[string]*AnalyzerConfig
 }
 
 func NewAnalyzerManager() *AnalyzerManager {
 	return &AnalyzerManager{
 		analyzers: make(map[string]Analyzer),
+		configs:   make(map[string]*AnalyzerConfig),
 	}
 }
 
@@ -138,6 +147,70 @@ func (m *AnalyzerManager) List() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+func (m *AnalyzerManager) SetConfig(name string, config *AnalyzerConfig) {
+	m.configs[name] = config
+}
+
+func (m *AnalyzerManager) GetConfig(name string) *AnalyzerConfig {
+	if config, ok := m.configs[name]; ok {
+		return config
+	}
+	return &AnalyzerConfig{}
+}
+
+func (m *AnalyzerManager) GetAllConfigs() map[string]*AnalyzerConfig {
+	return m.configs
+}
+
+func (m *AnalyzerManager) SetDefaultConfigs() {
+	m.configs["brute_force"] = &AnalyzerConfig{
+		EventIDs:   []int32{4625, 4624},
+		Patterns:   []string{},
+		Whitelist:  []string{},
+		Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1},
+	}
+	m.configs["login"] = &AnalyzerConfig{
+		EventIDs:  []int32{4624, 4625},
+		Patterns:  []string{},
+		Whitelist: []string{},
+	}
+	m.configs["kerberos"] = &AnalyzerConfig{
+		EventIDs:  []int32{4768, 4769, 4771, 4770},
+		Patterns:  []string{},
+		Whitelist: []string{},
+	}
+	m.configs["powershell"] = &AnalyzerConfig{
+		EventIDs:  []int32{4103, 4104},
+		Patterns:  []string{"powershell", "Invoke-", "cmd.exe"},
+		Whitelist: []string{},
+	}
+	m.configs["data_exfiltration"] = &AnalyzerConfig{
+		EventIDs:  []int32{4624, 4688, 4663},
+		Patterns:  []string{},
+		Whitelist: []string{},
+	}
+	m.configs["lateral_movement"] = &AnalyzerConfig{
+		EventIDs:  []int32{4624, 4688, 4648},
+		Patterns:  []string{},
+		Whitelist: []string{},
+	}
+	m.configs["persistence"] = &AnalyzerConfig{
+		EventIDs:  []int32{4720, 4697, 7045, 4698, 4728, 4729, 4732, 4733, 4756, 4757},
+		Patterns:  []string{},
+		Whitelist: []string{},
+	}
+	m.configs["privilege_escalation"] = &AnalyzerConfig{
+		EventIDs:  []int32{4672, 4673, 4674, 4688},
+		Patterns:  []string{},
+		Whitelist: []string{},
+	}
+	m.configs["dc"] = &AnalyzerConfig{
+		EventIDs:  []int32{4720, 4726, 4728, 4729, 4732, 4733, 4746, 4747, 4756, 4757, 5136, 4662, 5139, 5140, 4670, 4741},
+		Patterns:  []string{},
+		Whitelist: []string{},
+	}
 }
 
 func (m *AnalyzerManager) AnalyzeAll(events []*types.Event) ([]*Result, error) {
@@ -160,4 +233,20 @@ func (m *AnalyzerManager) AnalyzeAll(events []*types.Event) ([]*Result, error) {
 		return results, &AnalyzerErrors{Errors: errors}
 	}
 	return results, nil
+}
+
+func NewDefaultManager() *AnalyzerManager {
+	mgr := NewAnalyzerManager()
+	mgr.Register(NewBruteForceAnalyzer())
+	mgr.Register(NewLoginAnalyzer())
+	mgr.Register(NewKerberosAnalyzer())
+	mgr.Register(NewPowerShellAnalyzer())
+	mgr.Register(NewDataExfiltrationAnalyzer())
+	mgr.Register(NewLateralMovementAnalyzer())
+	mgr.Register(NewPersistenceAnalyzer())
+	mgr.Register(NewPrivilegeEscalationAnalyzer())
+	mgr.Register(NewDCAnalyzer())
+
+	mgr.SetDefaultConfigs()
+	return mgr
 }

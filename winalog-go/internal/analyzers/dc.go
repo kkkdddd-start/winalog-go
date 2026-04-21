@@ -10,12 +10,28 @@ import (
 
 type DCAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewDCAnalyzer() *DCAnalyzer {
 	return &DCAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "domain_controller"},
+		config: &AnalyzerConfig{
+			EventIDs:  []int32{4720, 4726, 4728, 4729, 4732, 4733, 4746, 4747, 4756, 4757, 5136, 4662, 5139, 5140, 4670, 4741},
+			Patterns:  []string{},
+			Whitelist: []string{},
+		},
 	}
+}
+
+func (a *DCAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *DCAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
 }
 
 type DCAnalysis struct {

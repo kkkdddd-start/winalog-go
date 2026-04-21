@@ -11,12 +11,42 @@ import (
 
 type DataExfiltrationAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewDataExfiltrationAnalyzer() *DataExfiltrationAnalyzer {
 	return &DataExfiltrationAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "data_exfiltration"},
+		config: &AnalyzerConfig{
+			EventIDs:  []int32{4624, 4688, 4663},
+			Patterns:  []string{},
+			Whitelist: []string{},
+		},
 	}
+}
+
+func (a *DataExfiltrationAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *DataExfiltrationAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
+}
+
+func (a *DataExfiltrationAnalyzer) shouldProcessEvent(e *types.Event) bool {
+	eventIDs := a.config.EventIDs
+	if len(eventIDs) == 0 {
+		eventIDs = []int32{4624, 4688, 4663}
+	}
+
+	for _, id := range eventIDs {
+		if e.EventID == id {
+			return true
+		}
+	}
+	return false
 }
 
 type DataExfiltrationAnalysis struct {

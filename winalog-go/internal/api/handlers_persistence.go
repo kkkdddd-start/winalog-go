@@ -19,10 +19,14 @@ const (
 )
 
 type PersistenceHandler struct {
-	cache          *DetectionCache
-	cacheMutex     sync.RWMutex
-	detectorConfig map[string]bool
-	detectorMutex  sync.RWMutex
+	cache            *DetectionCache
+	cacheMutex       sync.RWMutex
+	detectorConfig   map[string]bool
+	detectorMutex    sync.RWMutex
+	detectionEngine  *persistence.DetectionEngine
+	engineMutex      sync.RWMutex
+	ruleConfigs      map[string]PersistenceRuleInfo
+	ruleConfigsMutex sync.RWMutex
 }
 
 type DetectorConfig struct {
@@ -41,6 +45,27 @@ type DetectionCache struct {
 }
 
 func NewPersistenceHandler() *PersistenceHandler {
+	engine := persistence.NewDetectionEngine()
+	engine.RegisterAll(persistence.AllDetectors())
+
+	defaultRuleConfigs := map[string]PersistenceRuleInfo{
+		"run_key_detector":             {Name: "run_key_detector", Description: "Run Key Persistence", Technique: "T1547.001", Category: "Registry", Enabled: true, EventIDs: []int32{4657}, Patterns: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		"user_init_detector":           {Name: "user_init_detector", Description: "UserInit MPR Logon", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4688}, Patterns: []string{"UserInitMprLogonScript"}, Whitelist: []string{}},
+		"startup_folder_detector":      {Name: "startup_folder_detector", Description: "Startup Folder Persistence", Technique: "T1547.016", Category: "Registry", Enabled: true, EventIDs: []int32{4657}, Patterns: []string{"Startup"}, Whitelist: []string{}},
+		"accessibility_detector":       {Name: "accessibility_detector", Description: "Accessibility Features Backdoor", Technique: "T1546.001", Category: "Accessibility", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"sethc.exe", "utilman.exe", "magnify.exe", "narrator.exe", "osk.exe", "displayswitch.exe"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		"com_hijack_detector":          {Name: "com_hijack_detector", Description: "COM Hijacking", Technique: "T1546.015", Category: "COM", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"HKEY_CURRENT_USER\\Software\\Classes\\"}, Whitelist: []string{}},
+		"ifeo_detector":                {Name: "ifeo_detector", Description: "IFEO Injection", Technique: "T1546.012", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"Debugger"}, Whitelist: []string{}},
+		"appinit_detector":             {Name: "appinit_detector", Description: "AppInit DLLs", Technique: "T1546.010", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"AppInit_DLLs"}, Whitelist: []string{}},
+		"wmi_persistence_detector":     {Name: "wmi_persistence_detector", Description: "WMI Event Subscription", Technique: "T1546.003", Category: "WMI", Enabled: true, EventIDs: []int32{4688, 5861}, Patterns: []string{"ActiveScriptEventConsumer"}, Whitelist: []string{}},
+		"service_persistence_detector": {Name: "service_persistence_detector", Description: "Service Persistence", Technique: "T1543.003", Category: "Service", Enabled: true, EventIDs: []int32{4697, 7045}, Patterns: []string{"sc.exe create"}, Whitelist: []string{}},
+		"lsa_persistence_detector":     {Name: "lsa_persistence_detector", Description: "LSA Authentication Package", Technique: "T1546.008", Category: "Registry", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"Security Packages"}, Whitelist: []string{}},
+		"winsock_detector":             {Name: "winsock_detector", Description: "Winsock Helper DLL", Technique: "T1546.007", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"NetworkProvider"}, Whitelist: []string{}},
+		"bho_detector":                 {Name: "bho_detector", Description: "Browser Helper Object", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"InprocServer32"}, Whitelist: []string{}},
+		"print_monitor_detector":       {Name: "print_monitor_detector", Description: "Print Monitor", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"Print\\Monitors"}, Whitelist: []string{}},
+		"boot_execute_detector":        {Name: "boot_execute_detector", Description: "Boot Execute", Technique: "T1053", Category: "ScheduledTask", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"boot execute"}, Whitelist: []string{}},
+		"etw_persistence_detector":     {Name: "etw_persistence_detector", Description: "ETW Manipulation", Technique: "T1546.006", Category: "Registry", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"ETW Providers"}, Whitelist: []string{}},
+	}
+
 	return &PersistenceHandler{
 		cache: &DetectionCache{
 			ttl: defaultCacheTTL,
@@ -60,8 +85,10 @@ func NewPersistenceHandler() *PersistenceHandler {
 			"bho_detector":                 true,
 			"print_monitor_detector":       true,
 			"boot_execute_detector":        true,
-			"etw_detector":                 true,
+			"etw_persistence_detector":     true,
 		},
+		detectionEngine: engine,
+		ruleConfigs:     defaultRuleConfigs,
 	}
 }
 
@@ -173,12 +200,16 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 
 	var result *persistence.DetectionResult
 
+	h.engineMutex.RLock()
+	engine := h.detectionEngine
+	h.engineMutex.RUnlock()
+
 	if req.Technique != "" {
-		result = persistence.DetectByTechnique(ctx, persistence.Technique(req.Technique))
+		result = engine.DetectTechnique(ctx, persistence.Technique(req.Technique))
 	} else if req.Category != "" {
-		result = persistence.DetectByCategory(ctx, req.Category)
+		result = engine.DetectCategory(ctx, req.Category)
 	} else {
-		result = persistence.RunAllDetectors(ctx)
+		result = engine.Detect(ctx)
 	}
 
 	if result == nil {
@@ -318,7 +349,7 @@ func (h *PersistenceHandler) ListDetectors(c *gin.Context) {
 		"bho_detector":                 {"Browser Helper Object", "T1546.001", "Registry"},
 		"print_monitor_detector":       {"Print Monitor", "T1546.001", "Registry"},
 		"boot_execute_detector":        {"Boot Execute", "T1053", "ScheduledTask"},
-		"etw_detector":                 {"ETW Manipulation", "T1546.006", "Registry"},
+		"etw_persistence_detector":     {"ETW Manipulation", "T1546.006", "Registry"},
 	}
 
 	detectors := make([]DetectorConfig, 0, len(h.detectorConfig))
@@ -372,28 +403,20 @@ type PersistenceRuleInfo struct {
 	Technique   string   `json:"technique"`
 	Category    string   `json:"category"`
 	Enabled     bool     `json:"enabled"`
+	EventIDs    []int32  `json:"event_ids"`
 	Patterns    []string `json:"patterns"`
 	Whitelist   []string `json:"whitelist"`
 }
 
 func (h *PersistenceHandler) ListRules(c *gin.Context) {
-	rules := []PersistenceRuleInfo{
-		{Name: "run_key_detector", Description: "Run Key Persistence", Technique: "T1547.001", Category: "Registry", Enabled: true, Patterns: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
-		{Name: "user_init_detector", Description: "UserInit MPR Logon", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"UserInitMprLogonScript"}, Whitelist: []string{}},
-		{Name: "startup_folder_detector", Description: "Startup Folder Persistence", Technique: "T1547.016", Category: "Registry", Enabled: true, Patterns: []string{"Startup"}, Whitelist: []string{}},
-		{Name: "accessibility_detector", Description: "Accessibility Features Backdoor", Technique: "T1546.001", Category: "Accessibility", Enabled: true, Patterns: []string{"sethc.exe", "utilman.exe", "magnify.exe", "narrator.exe", "osk.exe", "displayswitch.exe"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
-		{Name: "com_hijack_detector", Description: "COM Hijacking", Technique: "T1546.015", Category: "COM", Enabled: true, Patterns: []string{"HKEY_CURRENT_USER\\Software\\Classes\\"}, Whitelist: []string{}},
-		{Name: "ifeo_detector", Description: "IFEO Injection", Technique: "T1546.012", Category: "Registry", Enabled: true, Patterns: []string{"Debugger"}, Whitelist: []string{}},
-		{Name: "appinit_detector", Description: "AppInit DLLs", Technique: "T1546.010", Category: "Registry", Enabled: true, Patterns: []string{"AppInit_DLLs"}, Whitelist: []string{}},
-		{Name: "wmi_persistence_detector", Description: "WMI Event Subscription", Technique: "T1546.003", Category: "WMI", Enabled: true, Patterns: []string{"ActiveScriptEventConsumer"}, Whitelist: []string{}},
-		{Name: "service_persistence_detector", Description: "Service Persistence", Technique: "T1543.003", Category: "Service", Enabled: true, Patterns: []string{"sc.exe create"}, Whitelist: []string{}},
-		{Name: "lsa_persistence_detector", Description: "LSA Authentication Package", Technique: "T1546.008", Category: "Registry", Enabled: true, Patterns: []string{"Security Packages"}, Whitelist: []string{}},
-		{Name: "winsock_detector", Description: "Winsock Helper DLL", Technique: "T1546.007", Category: "Registry", Enabled: true, Patterns: []string{"NetworkProvider"}, Whitelist: []string{}},
-		{Name: "bho_detector", Description: "Browser Helper Object", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"InprocServer32"}, Whitelist: []string{}},
-		{Name: "print_monitor_detector", Description: "Print Monitor", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"Print\\Monitors"}, Whitelist: []string{}},
-		{Name: "boot_execute_detector", Description: "Boot Execute", Technique: "T1053", Category: "ScheduledTask", Enabled: true, Patterns: []string{"boot execute"}, Whitelist: []string{}},
-		{Name: "etw_detector", Description: "ETW Manipulation", Technique: "T1546.006", Category: "Registry", Enabled: true, Patterns: []string{"ETW Providers"}, Whitelist: []string{}},
+	h.ruleConfigsMutex.RLock()
+	defer h.ruleConfigsMutex.RUnlock()
+
+	rules := make([]PersistenceRuleInfo, 0, len(h.ruleConfigs))
+	for _, rule := range h.ruleConfigs {
+		rules = append(rules, rule)
 	}
+
 	c.JSON(http.StatusOK, gin.H{"rules": rules})
 }
 
@@ -404,39 +427,98 @@ func (h *PersistenceHandler) GetRule(c *gin.Context) {
 		return
 	}
 
-	defaultRules := map[string]PersistenceRuleInfo{
-		"run_key_detector":             {Name: "run_key_detector", Description: "Run Key Persistence", Technique: "T1547.001", Category: "Registry", Enabled: true, Patterns: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
-		"user_init_detector":           {Name: "user_init_detector", Description: "UserInit MPR Logon", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"UserInitMprLogonScript"}, Whitelist: []string{}},
-		"startup_folder_detector":      {Name: "startup_folder_detector", Description: "Startup Folder Persistence", Technique: "T1547.016", Category: "Registry", Enabled: true, Patterns: []string{"Startup"}, Whitelist: []string{}},
-		"accessibility_detector":       {Name: "accessibility_detector", Description: "Accessibility Features Backdoor", Technique: "T1546.001", Category: "Accessibility", Enabled: true, Patterns: []string{"sethc.exe", "utilman.exe", "magnify.exe", "narrator.exe", "osk.exe", "displayswitch.exe"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
-		"com_hijack_detector":          {Name: "com_hijack_detector", Description: "COM Hijacking", Technique: "T1546.015", Category: "COM", Enabled: true, Patterns: []string{"HKEY_CURRENT_USER\\Software\\Classes\\"}, Whitelist: []string{}},
-		"ifeo_detector":                {Name: "ifeo_detector", Description: "IFEO Injection", Technique: "T1546.012", Category: "Registry", Enabled: true, Patterns: []string{"Debugger"}, Whitelist: []string{}},
-		"appinit_detector":             {Name: "appinit_detector", Description: "AppInit DLLs", Technique: "T1546.010", Category: "Registry", Enabled: true, Patterns: []string{"AppInit_DLLs"}, Whitelist: []string{}},
-		"wmi_persistence_detector":     {Name: "wmi_persistence_detector", Description: "WMI Event Subscription", Technique: "T1546.003", Category: "WMI", Enabled: true, Patterns: []string{"ActiveScriptEventConsumer"}, Whitelist: []string{}},
-		"service_persistence_detector": {Name: "service_persistence_detector", Description: "Service Persistence", Technique: "T1543.003", Category: "Service", Enabled: true, Patterns: []string{"sc.exe create"}, Whitelist: []string{}},
-		"lsa_persistence_detector":     {Name: "lsa_persistence_detector", Description: "LSA Authentication Package", Technique: "T1546.008", Category: "Registry", Enabled: true, Patterns: []string{"Security Packages"}, Whitelist: []string{}},
-		"winsock_detector":             {Name: "winsock_detector", Description: "Winsock Helper DLL", Technique: "T1546.007", Category: "Registry", Enabled: true, Patterns: []string{"NetworkProvider"}, Whitelist: []string{}},
-		"bho_detector":                 {Name: "bho_detector", Description: "Browser Helper Object", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"InprocServer32"}, Whitelist: []string{}},
-		"print_monitor_detector":       {Name: "print_monitor_detector", Description: "Print Monitor", Technique: "T1546.001", Category: "Registry", Enabled: true, Patterns: []string{"Print\\Monitors"}, Whitelist: []string{}},
-		"boot_execute_detector":        {Name: "boot_execute_detector", Description: "Boot Execute", Technique: "T1053", Category: "ScheduledTask", Enabled: true, Patterns: []string{"boot execute"}, Whitelist: []string{}},
-		"etw_detector":                 {Name: "etw_detector", Description: "ETW Manipulation", Technique: "T1546.006", Category: "Registry", Enabled: true, Patterns: []string{"ETW Providers"}, Whitelist: []string{}},
-	}
+	h.ruleConfigsMutex.RLock()
+	defer h.ruleConfigsMutex.RUnlock()
 
-	if rule, ok := defaultRules[ruleName]; ok {
-		if override, hasOverride := h.ruleConfig.Get(ruleName); hasOverride {
-			rule.Enabled = override.Enabled
-			rule.Patterns = override.SuspiciousIndicators
-			rule.Whitelist = override.Whitelist
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"detector":              rule,
-			"suspicious_indicators": rule.Patterns,
-			"whitelist":             rule.Whitelist,
-		})
+	rule, exists := h.ruleConfigs[ruleName]
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "rule not found: " + ruleName})
 		return
 	}
 
-	c.JSON(http.StatusNotFound, gin.H{"error": "rule not found: " + ruleName})
+	c.JSON(http.StatusOK, gin.H{
+		"detector":              rule,
+		"suspicious_indicators": rule.Patterns,
+		"whitelist":             rule.Whitelist,
+	})
+}
+
+type PersistenceRuleUpdate struct {
+	Name                 string   `json:"name"`
+	Enabled              bool     `json:"enabled"`
+	EventIDs             []int32  `json:"event_ids,omitempty"`
+	Patterns             []string `json:"patterns,omitempty"`
+	Whitelist            []string `json:"whitelist,omitempty"`
+	SuspiciousIndicators []string `json:"suspicious_indicators,omitempty"`
+}
+
+func (h *PersistenceHandler) UpdateRule(c *gin.Context) {
+	var req PersistenceRuleUpdate
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	ruleName := req.Name
+	if ruleName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "rule name is required"})
+		return
+	}
+
+	h.ruleConfigsMutex.Lock()
+	defer h.ruleConfigsMutex.Unlock()
+
+	rule, exists := h.ruleConfigs[ruleName]
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "rule not found: " + ruleName})
+		return
+	}
+
+	if req.Enabled {
+		rule.Enabled = req.Enabled
+	}
+	if req.EventIDs != nil {
+		rule.EventIDs = req.EventIDs
+	}
+	if req.Patterns != nil {
+		rule.Patterns = req.Patterns
+	}
+	if req.Whitelist != nil {
+		rule.Whitelist = req.Whitelist
+	}
+	if req.SuspiciousIndicators != nil {
+		rule.Patterns = req.SuspiciousIndicators
+	}
+
+	h.ruleConfigs[ruleName] = rule
+
+	h.engineMutex.RLock()
+	engine := h.detectionEngine
+	h.engineMutex.RUnlock()
+
+	config := &persistence.DetectorConfig{
+		Enabled:   rule.Enabled,
+		EventIDs:  rule.EventIDs,
+		Patterns:  rule.Patterns,
+		Whitelist: rule.Whitelist,
+	}
+
+	if err := engine.SetDetectorConfig(ruleName, config); err != nil {
+		observability.LogServiceError("persistence_update_rule", fmt.Sprintf("failed to update detector config: %v", err))
+	} else {
+		observability.LogServiceError("persistence_update_rule", fmt.Sprintf("detector %s config updated", ruleName))
+	}
+
+	h.cacheMutex.Lock()
+	h.cache = &DetectionCache{ttl: defaultCacheTTL}
+	h.cacheMutex.Unlock()
+
+	c.JSON(http.StatusOK, gin.H{
+		"detector":              rule,
+		"suspicious_indicators": rule.Patterns,
+		"whitelist":             rule.Whitelist,
+		"message":               "rule updated",
+	})
 }
 
 func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandler) {
@@ -449,5 +531,6 @@ func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandle
 		persistenceGroup.POST("/detectors/config", persistenceHandler.UpdateDetectorConfig)
 		persistenceGroup.GET("/rules", persistenceHandler.ListRules)
 		persistenceGroup.GET("/rules/:name", persistenceHandler.GetRule)
+		persistenceGroup.PUT("/rules", persistenceHandler.UpdateRule)
 	}
 }

@@ -10,12 +10,42 @@ import (
 
 type LateralMovementAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewLateralMovementAnalyzer() *LateralMovementAnalyzer {
 	return &LateralMovementAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "lateral_movement"},
+		config: &AnalyzerConfig{
+			EventIDs:  []int32{4624, 4688, 4648},
+			Patterns:  []string{},
+			Whitelist: []string{},
+		},
 	}
+}
+
+func (a *LateralMovementAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *LateralMovementAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
+}
+
+func (a *LateralMovementAnalyzer) shouldProcessEvent(e *types.Event) bool {
+	eventIDs := a.config.EventIDs
+	if len(eventIDs) == 0 {
+		eventIDs = []int32{4624, 4688, 4648}
+	}
+
+	for _, id := range eventIDs {
+		if e.EventID == id {
+			return true
+		}
+	}
+	return false
 }
 
 type LateralMovementAnalysis struct {

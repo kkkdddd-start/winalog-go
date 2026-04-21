@@ -3,6 +3,7 @@ package analyzers
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -10,12 +11,87 @@ import (
 
 type BruteForceAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewBruteForceAnalyzer() *BruteForceAnalyzer {
 	return &BruteForceAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "brute_force"},
+		config: &AnalyzerConfig{
+			EventIDs:   []int32{4625, 4624},
+			Patterns:   []string{},
+			Whitelist:  []string{},
+			Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1, "time_window_minutes": 30, "ip_failed_threshold": 10},
+		},
 	}
+}
+
+func (a *BruteForceAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *BruteForceAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
+}
+
+func (a *BruteForceAnalyzer) shouldProcessEvent(e *types.Event) bool {
+	eventIDs := a.config.EventIDs
+	if len(eventIDs) == 0 {
+		eventIDs = []int32{4625, 4624}
+	}
+
+	for _, id := range eventIDs {
+		if e.EventID == id {
+			goto checkWhitelist
+		}
+	}
+	return false
+
+checkWhitelist:
+	whitelist := a.config.Whitelist
+	if len(whitelist) > 0 {
+		for _, w := range whitelist {
+			w = strings.TrimSpace(w)
+			if w == "" {
+				continue
+			}
+			user := getUserIdentifier(e)
+			ip := getSourceIP(e)
+			if (user != "" && strings.Contains(user, w)) || (ip != "" && strings.Contains(ip, w)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (a *BruteForceAnalyzer) filterByEventIDs(events []*types.Event) []*types.Event {
+	var filtered []*types.Event
+	eventIDs := a.config.EventIDs
+	if len(eventIDs) == 0 {
+		eventIDs = []int32{4625, 4624}
+	}
+
+	eventIDSet := make(map[int32]bool)
+	for _, id := range eventIDs {
+		eventIDSet[id] = true
+	}
+
+	for _, e := range events {
+		if eventIDSet[e.EventID] && a.shouldProcessEvent(e) {
+			filtered = append(filtered, e)
+		}
+	}
+	return filtered
+}
+
+func getSourceIP(e *types.Event) string {
+	if e.IPAddress != nil && *e.IPAddress != "" && *e.IPAddress != "-" {
+		return *e.IPAddress
+	}
+	return ""
 }
 
 type BruteForceResult struct {
@@ -48,8 +124,9 @@ type IPBruteForceInfo struct {
 func (a *BruteForceAnalyzer) Analyze(events []*types.Event) (*Result, error) {
 	result := NewResult("brute_force", nil, "", "medium", 50)
 
-	failedLogins := a.filterFailedLogins(events)
-	successLogins := a.filterSuccessLogins(events)
+	filtered := a.filterByEventIDs(events)
+	failedLogins := a.filterFailedLogins(filtered)
+	successLogins := a.filterSuccessLogins(filtered)
 
 	userInfo := a.analyzeByUser(failedLogins, successLogins)
 	ipInfo := a.analyzeByIP(failedLogins, successLogins)
@@ -124,7 +201,17 @@ func (a *BruteForceAnalyzer) analyzeByUser(failed, success []*types.Event) map[s
 	}
 
 	for _, info := range userInfo {
-		if info.FailedCount >= 5 && info.SuccessCount > 0 {
+		failedThreshold := 5
+		successThreshold := 1
+		if a.config.Thresholds != nil {
+			if v, ok := a.config.Thresholds["failed_threshold"]; ok {
+				failedThreshold = v
+			}
+			if v, ok := a.config.Thresholds["success_threshold"]; ok {
+				successThreshold = v
+			}
+		}
+		if info.FailedCount >= failedThreshold && info.SuccessCount >= successThreshold {
 			info.IsCompromised = true
 		}
 	}
@@ -170,7 +257,13 @@ func (a *BruteForceAnalyzer) analyzeByIP(failed, success []*types.Event) map[str
 	}
 
 	for _, info := range ipInfo {
-		if info.FailedCount >= 10 {
+		failedThreshold := 10
+		if a.config.Thresholds != nil {
+			if v, ok := a.config.Thresholds["ip_failed_threshold"]; ok {
+				failedThreshold = v
+			}
+		}
+		if info.FailedCount >= failedThreshold {
 			info.IsSuspicious = true
 		}
 	}

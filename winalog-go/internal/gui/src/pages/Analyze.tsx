@@ -43,6 +43,7 @@ interface AnalyzerRule {
   technique: string
   category: string
   enabled: boolean
+  event_ids: number[]
   thresholds?: Record<string, number>
   patterns: string[]
   whitelist: string[]
@@ -59,7 +60,7 @@ const analyzerIcons: Record<string, string> = {
   'privilege-escalation': '⬆️',
   'malware': '🦠',
   'anomaly': '🔍',
-  'domain-controller': '🏢',
+  'dc': '🏢',
 }
 
 const findingDescMap: Record<string, Record<string, string>> = {
@@ -110,7 +111,7 @@ function Analyze() {
     { id: 'data_exfiltration', name: t('analyze.dataExfil'), desc: t('analyze.dataExfilDesc'), icon: analyzerIcons['data-exfil'], category: 'collection', recommended: false },
     { id: 'persistence', name: t('analyze.persistence'), desc: t('analyze.persistenceDesc'), icon: analyzerIcons['persistence'], category: 'persistence', recommended: false },
     { id: 'privilege_escalation', name: t('analyze.privilegeEscalation'), desc: t('analyze.privilegeEscalationDesc'), icon: analyzerIcons['privilege-escalation'], category: 'privilege-escalation', recommended: false },
-    { id: 'domain_controller', name: t('analyze.domainController'), desc: t('analyze.domainControllerDesc'), icon: analyzerIcons['domain-controller'], category: 'domain-services', recommended: false },
+    { id: 'dc', name: t('analyze.domainController'), desc: t('analyze.domainControllerDesc'), icon: analyzerIcons['dc'], category: 'domain-services', recommended: false },
   ]
 
   const handleRun = async () => {
@@ -146,6 +147,7 @@ function Analyze() {
       await analyzeAPI.updateRule({
         name: editingRule.name,
         enabled: editingRule.enabled,
+        event_ids: editingRule.event_ids,
         thresholds: editingRule.thresholds,
         patterns: editingRule.patterns,
         whitelist: editingRule.whitelist,
@@ -469,6 +471,18 @@ function Analyze() {
                 <div className="loading">{t('common.loading')}</div>
               ) : (
                 <>
+                  <div className="rule-section">
+                    <h4>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                      </svg>
+                      Event IDs
+                    </h4>
+                    <p className="section-desc">
+                      {editingRule.event_ids?.join(', ') || 'No event IDs configured'}
+                    </p>
+                  </div>
+
                   {editingRule.thresholds && Object.keys(editingRule.thresholds).length > 0 && (
                     <div className="rule-section">
                       <h4>

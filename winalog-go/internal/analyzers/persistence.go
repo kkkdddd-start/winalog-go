@@ -9,12 +9,28 @@ import (
 
 type PersistenceAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewPersistenceAnalyzer() *PersistenceAnalyzer {
 	return &PersistenceAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "persistence"},
+		config: &AnalyzerConfig{
+			EventIDs:  []int32{4697, 4698, 4702, 4720, 4722, 4724, 4728, 4729, 4732, 4733, 4756, 4757, 7045, 4690},
+			Patterns:  []string{},
+			Whitelist: []string{},
+		},
 	}
+}
+
+func (a *PersistenceAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *PersistenceAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
 }
 
 type PersistenceInfo struct {

@@ -12,8 +12,9 @@ import (
 )
 
 type AnalyzeHandler struct {
-	db      *storage.DB
-	manager *analyzers.AnalyzerManager
+	db          *storage.DB
+	manager     *analyzers.AnalyzerManager
+	ruleConfigs map[string]AnalyzerRuleInfo
 }
 
 type AnalyzeRequest struct {
@@ -60,9 +61,21 @@ type AnalyzeResult struct {
 }
 
 func NewAnalyzeHandler(db *storage.DB, manager *analyzers.AnalyzerManager) *AnalyzeHandler {
+	defaultRuleConfigs := map[string]AnalyzerRuleInfo{
+		"brute_force":          {Name: "brute_force", Type: "brute_force", Enabled: true, Description: "Brute force login detection", Severity: "high", Score: 80, MitreAttack: []string{"T1110"}, EventIDs: []int32{4625, 4624}, Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1110", Category: "authentication"},
+		"login":                {Name: "login", Type: "login", Enabled: true, Description: "Login analysis", Severity: "medium", Score: 50, MitreAttack: []string{"T1078"}, EventIDs: []int32{4624, 4625}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1078", Category: "authentication"},
+		"kerberos":             {Name: "kerberos", Type: "kerberos", Enabled: true, Description: "Kerberos authentication analysis", Severity: "high", Score: 70, MitreAttack: []string{"T1558"}, EventIDs: []int32{4768, 4769, 4771, 4770}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1558", Category: "authentication"},
+		"powershell":           {Name: "powershell", Type: "powershell", Enabled: true, Description: "PowerShell command detection", Severity: "high", Score: 75, MitreAttack: []string{"T1059.001"}, EventIDs: []int32{4103, 4104}, Patterns: []string{"powershell", "Invoke-", "cmd.exe"}, Whitelist: []string{}, Technique: "T1059.001", Category: "execution"},
+		"data_exfiltration":    {Name: "data_exfiltration", Type: "data_exfiltration", Enabled: true, Description: "Data exfiltration detection", Severity: "critical", Score: 90, MitreAttack: []string{"T1041"}, EventIDs: []int32{4624, 4688, 4663}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1041", Category: "exfiltration"},
+		"lateral_movement":     {Name: "lateral_movement", Type: "lateral_movement", Enabled: true, Description: "Lateral movement detection", Severity: "high", Score: 85, MitreAttack: []string{"T1021"}, EventIDs: []int32{4624, 4688, 4648}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1021", Category: "lateral_movement"},
+		"persistence":          {Name: "persistence", Type: "persistence", Enabled: true, Description: "Persistence mechanism detection", Severity: "high", Score: 80, MitreAttack: []string{"T1547"}, EventIDs: []int32{4720, 4697, 7045, 4698, 4728, 4729, 4732, 4733, 4756, 4757}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1547", Category: "persistence"},
+		"privilege_escalation": {Name: "privilege_escalation", Type: "privilege_escalation", Enabled: true, Description: "Privilege escalation detection", Severity: "high", Score: 75, MitreAttack: []string{"T1068"}, EventIDs: []int32{4672, 4673, 4674, 4688}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1068", Category: "privilege_escalation"},
+		"dc":                   {Name: "dc", Type: "dc", Enabled: true, Description: "Domain controller analysis", Severity: "high", Score: 80, MitreAttack: []string{"T1207"}, EventIDs: []int32{4720, 4726, 4728, 4729, 4732, 4733, 4746, 4747, 4756, 4757, 5136, 4662, 5139, 5140, 4670, 4741}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1207", Category: "defense_evasion"},
+	}
 	return &AnalyzeHandler{
-		db:      db,
-		manager: manager,
+		db:          db,
+		manager:     manager,
+		ruleConfigs: defaultRuleConfigs,
 	}
 }
 
@@ -89,6 +102,13 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 			Code:  types.ErrCodeInvalidRequest,
 		})
 		return
+	}
+
+	config := h.manager.GetConfig(analyzerType)
+	if configurable, ok := analyzer.(interface {
+		SetConfig(*analyzers.AnalyzerConfig)
+	}); ok {
+		configurable.SetConfig(config)
 	}
 
 	var req AnalyzeRequest
@@ -237,6 +257,7 @@ type AnalyzerRuleInfo struct {
 	Severity    string         `json:"severity"`
 	Score       float64        `json:"score"`
 	MitreAttack []string       `json:"mitre_attack"`
+	EventIDs    []int32        `json:"event_ids"`
 	Thresholds  map[string]int `json:"thresholds"`
 	Patterns    []string       `json:"patterns"`
 	Whitelist   []string       `json:"whitelist"`
@@ -245,17 +266,11 @@ type AnalyzerRuleInfo struct {
 }
 
 func (h *AnalyzeHandler) ListRules(c *gin.Context) {
-	rules := []AnalyzerRuleInfo{
-		{Name: "brute_force", Type: "brute_force", Enabled: true, Description: "Brute force login detection", Severity: "high", Score: 80, MitreAttack: []string{"T1110"}, Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1}},
-		{Name: "login", Type: "login", Enabled: true, Description: "Login analysis", Severity: "medium", Score: 50, MitreAttack: []string{"T1078"}},
-		{Name: "kerberos", Type: "kerberos", Enabled: true, Description: "Kerberos authentication analysis", Severity: "high", Score: 70, MitreAttack: []string{"T1558"}},
-		{Name: "powershell", Type: "powershell", Enabled: true, Description: "PowerShell command detection", Severity: "high", Score: 75, MitreAttack: []string{"T1059.001"}},
-		{Name: "data_exfiltration", Type: "data_exfiltration", Enabled: true, Description: "Data exfiltration detection", Severity: "critical", Score: 90, MitreAttack: []string{"T1041"}},
-		{Name: "lateral_movement", Type: "lateral_movement", Enabled: true, Description: "Lateral movement detection", Severity: "high", Score: 85, MitreAttack: []string{"T1021"}},
-		{Name: "persistence", Type: "persistence", Enabled: true, Description: "Persistence mechanism detection", Severity: "high", Score: 80, MitreAttack: []string{"T1547"}},
-		{Name: "privilege_escalation", Type: "privilege_escalation", Enabled: true, Description: "Privilege escalation detection", Severity: "high", Score: 75, MitreAttack: []string{"T1068"}},
-		{Name: "dc", Type: "dc", Enabled: true, Description: "Domain controller analysis", Severity: "high", Score: 80, MitreAttack: []string{"T1207"}},
+	rules := make([]AnalyzerRuleInfo, 0, len(h.ruleConfigs))
+	for _, rule := range h.ruleConfigs {
+		rules = append(rules, rule)
 	}
+
 	c.JSON(http.StatusOK, gin.H{"rules": rules})
 }
 
@@ -268,24 +283,80 @@ func (h *AnalyzeHandler) GetRule(c *gin.Context) {
 
 	ruleName = strings.ReplaceAll(ruleName, "-", "_")
 
-	defaultRules := map[string]AnalyzerRuleInfo{
-		"brute_force":          {Name: "brute_force", Type: "brute_force", Enabled: true, Description: "Brute force login detection", Severity: "high", Score: 80, MitreAttack: []string{"T1110"}, Thresholds: map[string]int{"failed_threshold": 5, "success_threshold": 1}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1110", Category: "authentication"},
-		"login":                {Name: "login", Type: "login", Enabled: true, Description: "Login analysis", Severity: "medium", Score: 50, MitreAttack: []string{"T1078"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1078", Category: "authentication"},
-		"kerberos":             {Name: "kerberos", Type: "kerberos", Enabled: true, Description: "Kerberos authentication analysis", Severity: "high", Score: 70, MitreAttack: []string{"T1558"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1558", Category: "authentication"},
-		"powershell":           {Name: "powershell", Type: "powershell", Enabled: true, Description: "PowerShell command detection", Severity: "high", Score: 75, MitreAttack: []string{"T1059.001"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1059.001", Category: "execution"},
-		"data_exfiltration":    {Name: "data_exfiltration", Type: "data_exfiltration", Enabled: true, Description: "Data exfiltration detection", Severity: "critical", Score: 90, MitreAttack: []string{"T1041"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1041", Category: "exfiltration"},
-		"lateral_movement":     {Name: "lateral_movement", Type: "lateral_movement", Enabled: true, Description: "Lateral movement detection", Severity: "high", Score: 85, MitreAttack: []string{"T1021"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1021", Category: "lateral_movement"},
-		"persistence":          {Name: "persistence", Type: "persistence", Enabled: true, Description: "Persistence mechanism detection", Severity: "high", Score: 80, MitreAttack: []string{"T1547"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1547", Category: "persistence"},
-		"privilege_escalation": {Name: "privilege_escalation", Type: "privilege_escalation", Enabled: true, Description: "Privilege escalation detection", Severity: "high", Score: 75, MitreAttack: []string{"T1068"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1068", Category: "privilege_escalation"},
-		"dc":                   {Name: "dc", Type: "dc", Enabled: true, Description: "Domain controller analysis", Severity: "high", Score: 80, MitreAttack: []string{"T1207"}, Patterns: []string{}, Whitelist: []string{}, Technique: "T1207", Category: "defense_evasion"},
-	}
-
-	if rule, ok := defaultRules[ruleName]; ok {
-		c.JSON(http.StatusOK, gin.H{"rule": rule})
+	rule, exists := h.ruleConfigs[ruleName]
+	if !exists {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "rule not found: " + ruleName})
 		return
 	}
 
-	c.JSON(http.StatusNotFound, ErrorResponse{Error: "rule not found: " + ruleName})
+	c.JSON(http.StatusOK, gin.H{"rule": rule})
+}
+
+type AnalyzerRuleUpdate struct {
+	Name       string         `json:"name"`
+	Enabled    bool           `json:"enabled"`
+	EventIDs   []int32        `json:"event_ids,omitempty"`
+	Thresholds map[string]int `json:"thresholds,omitempty"`
+	Patterns   []string       `json:"patterns,omitempty"`
+	Whitelist  []string       `json:"whitelist,omitempty"`
+}
+
+func (h *AnalyzeHandler) UpdateRule(c *gin.Context) {
+	ruleName := c.Param("type")
+	if ruleName == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "rule type is required"})
+		return
+	}
+
+	ruleName = strings.ReplaceAll(ruleName, "-", "_")
+
+	var req AnalyzerRuleUpdate
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid request: " + err.Error()})
+		return
+	}
+
+	rule, exists := h.ruleConfigs[ruleName]
+	if !exists {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "rule not found: " + ruleName})
+		return
+	}
+
+	if req.Enabled {
+		rule.Enabled = req.Enabled
+	}
+	if req.EventIDs != nil {
+		rule.EventIDs = req.EventIDs
+	}
+	if req.Thresholds != nil {
+		rule.Thresholds = req.Thresholds
+	}
+	if req.Patterns != nil {
+		rule.Patterns = req.Patterns
+	}
+	if req.Whitelist != nil {
+		rule.Whitelist = req.Whitelist
+	}
+
+	h.ruleConfigs[ruleName] = rule
+
+	config := &analyzers.AnalyzerConfig{
+		EventIDs:   rule.EventIDs,
+		Patterns:   rule.Patterns,
+		Whitelist:  rule.Whitelist,
+		Thresholds: rule.Thresholds,
+	}
+	h.manager.SetConfig(ruleName, config)
+
+	if analyzer, ok := h.manager.Get(ruleName); ok {
+		if configurable, ok := analyzer.(interface {
+			SetConfig(*analyzers.AnalyzerConfig)
+		}); ok {
+			configurable.SetConfig(config)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"rule": rule, "message": "rule updated"})
 }
 
 func SetupAnalyzeRoutes(r *gin.Engine, analyzeHandler *AnalyzeHandler) {
@@ -304,5 +375,6 @@ func SetupAnalyzeRoutes(r *gin.Engine, analyzeHandler *AnalyzeHandler) {
 	{
 		analyzerRules.GET("", analyzeHandler.ListRules)
 		analyzerRules.GET("/:type", analyzeHandler.GetRule)
+		analyzerRules.PUT("/:type", analyzeHandler.UpdateRule)
 	}
 }

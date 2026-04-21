@@ -1004,6 +1004,21 @@ function Events() {
           border-color: #00d9ff;
         }
         
+        .filter-group .select-input option {
+          background: #16213e;
+          color: #eee;
+        }
+        
+        .page-size-selector .select-input option {
+          background: #16213e;
+          color: #eee;
+        }
+        
+        .select-input option {
+          background: #16213e;
+          color: #eee;
+        }
+        
         .level-checkboxes {
           display: flex;
           gap: 12px;

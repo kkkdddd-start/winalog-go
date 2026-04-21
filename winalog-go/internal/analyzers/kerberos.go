@@ -10,12 +10,58 @@ import (
 
 type KerberosAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewKerberosAnalyzer() *KerberosAnalyzer {
 	return &KerberosAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "kerberos"},
+		config: &AnalyzerConfig{
+			EventIDs:  []int32{4768, 4769, 4771, 4770},
+			Patterns:  []string{},
+			Whitelist: []string{"krbtgt", "*$"},
+		},
 	}
+}
+
+func (a *KerberosAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *KerberosAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
+}
+
+func (a *KerberosAnalyzer) shouldProcessEvent(e *types.Event) bool {
+	eventIDs := a.config.EventIDs
+	if len(eventIDs) == 0 {
+		eventIDs = []int32{4768, 4769, 4771, 4770}
+	}
+
+	for _, id := range eventIDs {
+		if e.EventID == id {
+			goto checkWhitelist
+		}
+	}
+	return false
+
+checkWhitelist:
+	whitelist := a.config.Whitelist
+	if len(whitelist) > 0 {
+		for _, w := range whitelist {
+			w = strings.TrimSpace(w)
+			if w == "" {
+				continue
+			}
+			user := a.getTargetUser(e)
+			if user != "" && strings.Contains(strings.ToLower(user), strings.ToLower(w)) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 type KerberosAnalysis struct {

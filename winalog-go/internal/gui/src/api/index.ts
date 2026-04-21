@@ -195,24 +195,24 @@ export const systemAPI = {
     api.get('/system/info'),
   getMetrics: () =>
     api.get('/system/metrics'),
-  getProcesses: (limit = 100) =>
-    api.get(`/system/processes?limit=${limit}`),
-  getNetwork: (limit = 100, protocol?: string) =>
-    api.get(`/system/network?limit=${limit}${protocol ? `&protocol=${protocol}` : ''}`),
+  getProcesses: (limit = 100, enabled = true) =>
+    api.get(`/system/processes?limit=${limit}&enabled=${enabled}`),
+  getNetwork: (limit = 100, enabled = true, protocol?: string) =>
+    api.get(`/system/network?limit=${limit}&enabled=${enabled}${protocol ? `&protocol=${protocol}` : ''}`),
   getEnvVariables: () =>
     api.get('/system/env'),
-  getLoadedDLLs: (limit = 100) =>
-    api.get(`/system/dlls?limit=${limit}`),
+  getLoadedDLLs: (limit = 100, enabled = true) =>
+    api.get(`/system/dlls?limit=${limit}&enabled=${enabled}`),
   getProcessDLLs: (pid: number) =>
     api.get(`/system/process/${pid}/dlls`),
-  getDrivers: () =>
-    api.get('/system/drivers'),
-  getUsers: () =>
-    api.get('/system/users'),
-  getRegistry: () =>
-    api.get('/system/registry'),
-  getTasks: () =>
-    api.get('/system/tasks'),
+  getDrivers: (enabled = true) =>
+    api.get(`/system/drivers?enabled=${enabled}`),
+  getUsers: (enabled = true) =>
+    api.get(`/system/users?enabled=${enabled}`),
+  getRegistry: (enabled = true) =>
+    api.get(`/system/registry?enabled=${enabled}`),
+  getTasks: (enabled = true) =>
+    api.get(`/system/tasks?enabled=${enabled}`),
 }
 
 export const rulesAPI = {

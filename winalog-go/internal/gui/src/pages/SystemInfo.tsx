@@ -125,9 +125,14 @@ function SystemInfo() {
   }
 
   const fetchProcesses = () => {
+    const enabled = enabledModules.processes
+    if (!enabled) {
+      setProcesses([])
+      return
+    }
     if (processes.length > 0) return
     setLoading(true)
-    systemAPI.getProcesses(50)
+    systemAPI.getProcesses(50, enabled)
       .then(res => {
         setProcesses(res.data.processes || [])
         setModuleErrors(m => ({ ...m, processes: '' }))
@@ -143,9 +148,14 @@ function SystemInfo() {
   }
 
   const fetchNetwork = () => {
+    const enabled = enabledModules.network
+    if (!enabled) {
+      setNetworkConnections([])
+      return
+    }
     if (networkConnections.length > 0) return
     setLoading(true)
-    systemAPI.getNetwork(50)
+    systemAPI.getNetwork(50, enabled)
       .then(res => {
         setNetworkConnections(res.data.connections || [])
         setLoading(false)
@@ -165,6 +175,11 @@ function SystemInfo() {
   }
 
   const fetchDlls = (pid?: number) => {
+    const enabled = enabledModules.dlls
+    if (!enabled) {
+      setDlls([])
+      return
+    }
     setLoading(true)
     if (pid) {
       setSelectedDllPid(pid)
@@ -175,7 +190,7 @@ function SystemInfo() {
         })
         .catch(() => setLoading(false))
     } else {
-      systemAPI.getLoadedDLLs(100)
+      systemAPI.getLoadedDLLs(100, enabled)
         .then(res => {
           setDlls(res.data.modules || [])
           setLoading(false)
@@ -185,9 +200,14 @@ function SystemInfo() {
   }
 
   const fetchDrivers = () => {
+    const enabled = enabledModules.drivers
+    if (!enabled) {
+      setDrivers([])
+      return
+    }
     if (drivers.length > 0) return
     setLoading(true)
-    systemAPI.getDrivers()
+    systemAPI.getDrivers(enabled)
       .then(res => {
         setDrivers(res.data.drivers || [])
         setLoading(false)
@@ -196,9 +216,14 @@ function SystemInfo() {
   }
 
   const fetchUsers = () => {
+    const enabled = enabledModules.users
+    if (!enabled) {
+      setUsers([])
+      return
+    }
     if (users.length > 0) return
     setLoading(true)
-    systemAPI.getUsers()
+    systemAPI.getUsers(enabled)
       .then(res => {
         setUsers(res.data.users || [])
         setModuleErrors(m => ({ ...m, users: '' }))
@@ -214,9 +239,14 @@ function SystemInfo() {
   }
 
   const fetchRegistry = () => {
+    const enabled = enabledModules.registry
+    if (!enabled) {
+      setRegistry([])
+      return
+    }
     if (registry.length > 0) return
     setLoading(true)
-    systemAPI.getRegistry()
+    systemAPI.getRegistry(enabled)
       .then(res => {
         setRegistry(res.data.run_keys || [])
         setLoading(false)
@@ -225,9 +255,14 @@ function SystemInfo() {
   }
 
   const fetchTasks = () => {
+    const enabled = enabledModules.tasks
+    if (!enabled) {
+      setTasks([])
+      return
+    }
     if (tasks.length > 0) return
     setLoading(true)
-    systemAPI.getTasks()
+    systemAPI.getTasks(enabled)
       .then(res => {
         setTasks(res.data.tasks || [])
         setModuleErrors(m => ({ ...m, tasks: '' }))

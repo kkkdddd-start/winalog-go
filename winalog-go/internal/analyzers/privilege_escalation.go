@@ -10,12 +10,28 @@ import (
 
 type PrivilegeEscalationAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewPrivilegeEscalationAnalyzer() *PrivilegeEscalationAnalyzer {
 	return &PrivilegeEscalationAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "privilege_escalation"},
+		config: &AnalyzerConfig{
+			EventIDs:  []int32{4672, 4673, 4674, 4688, 4689, 4656, 4657, 4659},
+			Patterns:  []string{},
+			Whitelist: []string{},
+		},
 	}
+}
+
+func (a *PrivilegeEscalationAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *PrivilegeEscalationAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
 }
 
 type PrivilegeEvent struct {

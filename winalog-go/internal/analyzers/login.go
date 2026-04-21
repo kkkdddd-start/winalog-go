@@ -10,12 +10,77 @@ import (
 
 type LoginAnalyzer struct {
 	BaseAnalyzer
+	config *AnalyzerConfig
 }
 
 func NewLoginAnalyzer() *LoginAnalyzer {
 	return &LoginAnalyzer{
 		BaseAnalyzer: BaseAnalyzer{name: "login"},
+		config: &AnalyzerConfig{
+			EventIDs:  []int32{4624, 4625},
+			Patterns:  []string{},
+			Whitelist: []string{},
+		},
 	}
+}
+
+func (a *LoginAnalyzer) SetConfig(config *AnalyzerConfig) {
+	if config != nil {
+		a.config = config
+	}
+}
+
+func (a *LoginAnalyzer) GetConfig() *AnalyzerConfig {
+	return a.config
+}
+
+func (a *LoginAnalyzer) shouldProcessEvent(e *types.Event) bool {
+	eventIDs := a.config.EventIDs
+	if len(eventIDs) == 0 {
+		eventIDs = []int32{4624, 4625}
+	}
+
+	for _, id := range eventIDs {
+		if e.EventID == id {
+			goto checkWhitelist
+		}
+	}
+	return false
+
+checkWhitelist:
+	whitelist := a.config.Whitelist
+	if len(whitelist) > 0 {
+		for _, w := range whitelist {
+			w = strings.TrimSpace(w)
+			if w == "" {
+				continue
+			}
+			user := a.getTargetUser(e)
+			ip := a.getSourceIP(e)
+			if (user != "" && strings.Contains(user, w)) || (ip != "" && strings.Contains(ip, w)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (a *LoginAnalyzer) matchesPattern(e *types.Event) bool {
+	patterns := a.config.Patterns
+	if len(patterns) == 0 {
+		return true
+	}
+
+	for _, pattern := range patterns {
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			continue
+		}
+		if strings.Contains(strings.ToLower(e.Message), strings.ToLower(pattern)) {
+			return true
+		}
+	}
+	return len(patterns) == 0
 }
 
 type LoginAnalysis struct {
@@ -65,6 +130,14 @@ func (a *LoginAnalyzer) performAnalysis(events []*types.Event) *LoginAnalysis {
 	}
 
 	for _, e := range events {
+		if !a.shouldProcessEvent(e) {
+			continue
+		}
+
+		if !a.matchesPattern(e) {
+			continue
+		}
+
 		switch e.EventID {
 		case 4624:
 			analysis.SuccessfulLogins++
