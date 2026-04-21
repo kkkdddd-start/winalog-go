@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -66,6 +67,30 @@ func getLogFile() *os.File {
 }
 
 func initLogFile() error {
+	exePath, err := os.Executable()
+	if err != nil {
+		exePath, _ = os.Getwd()
+	}
+	exeDir := filepath.Dir(exePath)
+	logDir := filepath.Join(exeDir, "logs")
+
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		logDir = os.TempDir()
+	}
+
+	logPath := filepath.Join(logDir, "winalog.log")
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %w", err)
+	}
+
+	logFileInstance = file
+
+	log.SetOutput(file)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	log.Printf("[INFO] log file initialized: %s", logPath)
+
 	return nil
 }
 
