@@ -4,15 +4,23 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type BootExecuteDetector struct{}
+type BootExecuteDetector struct {
+	config *DetectorConfig
+}
 
 func NewBootExecuteDetector() *BootExecuteDetector {
-	return &BootExecuteDetector{}
+	return &BootExecuteDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4697},
+		},
+	}
 }
 
 func (d *BootExecuteDetector) Name() string {
@@ -25,6 +33,18 @@ func (d *BootExecuteDetector) GetTechnique() Technique {
 
 func (d *BootExecuteDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *BootExecuteDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *BootExecuteDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var BootExecuteRegistryPaths = []string{
@@ -48,6 +68,10 @@ var SuspiciousBootExecuteIndicators = []string{
 }
 
 func (d *BootExecuteDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	for _, keyPath := range BootExecuteRegistryPaths {

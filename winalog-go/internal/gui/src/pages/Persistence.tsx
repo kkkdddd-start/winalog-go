@@ -101,6 +101,7 @@ function Persistence() {
   const [editingRule, setEditingRule] = useState<DetectorRule | null>(null)
   const [ruleLoading, setRuleLoading] = useState(false)
   const [generatingReport, setGeneratingReport] = useState(false)
+  const [reportFormat, setReportFormat] = useState('html')
 
   useEffect(() => {
     fetchDetections()
@@ -257,12 +258,12 @@ function Persistence() {
       setGeneratingReport(true)
       const response = await reportsAPI.generate({
         type: 'persistence',
-        format: 'pdf',
+        format: reportFormat,
       })
       if (response.data.id) {
         const link = document.createElement('a')
-        link.href = `/api/reports/${response.data.id}/download?format=pdf`
-        link.download = `persistence_report_${new Date().toISOString().slice(0, 10)}.pdf`
+        link.href = `/api/reports/${response.data.id}/download?format=${reportFormat}`
+        link.download = `persistence_report_${new Date().toISOString().slice(0, 10)}.${reportFormat}`
         link.click()
       }
     } catch (err: any) {
@@ -353,6 +354,16 @@ function Persistence() {
         <button onClick={handleShowDetectorConfig} className="btn btn-secondary">
           {t('persistence.detectorConfig') || 'Detector Config'}
         </button>
+        <select 
+          value={reportFormat} 
+          onChange={e => setReportFormat(e.target.value)}
+          className="report-format-select"
+          style={{ marginRight: '8px', padding: '8px', borderRadius: '6px', background: '#16213e', color: '#eee', border: '1px solid #333' }}
+        >
+          <option value="html">HTML</option>
+          <option value="pdf">PDF</option>
+          <option value="json">JSON</option>
+        </select>
         <button onClick={handleGenerateReport} className="btn btn-secondary" disabled={generatingReport}>
           {generatingReport ? 'Generating...' : 'Generate Report'}
         </button>

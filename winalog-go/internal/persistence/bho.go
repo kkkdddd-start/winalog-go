@@ -4,13 +4,21 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 )
 
-type BHODetector struct{}
+type BHODetector struct {
+	config *DetectorConfig
+}
 
 func NewBHODetector() *BHODetector {
-	return &BHODetector{}
+	return &BHODetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4697},
+		},
+	}
 }
 
 func (d *BHODetector) Name() string {
@@ -23,6 +31,18 @@ func (d *BHODetector) GetTechnique() Technique {
 
 func (d *BHODetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *BHODetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *BHODetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var BHORegistryPaths = []string{
@@ -51,6 +71,10 @@ var KnownBenignBHONames = []string{
 }
 
 func (d *BHODetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	for _, keyPath := range BHORegistryPaths {

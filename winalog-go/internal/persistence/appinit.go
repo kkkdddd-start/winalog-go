@@ -4,16 +4,24 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type AppInitDetector struct{}
+type AppInitDetector struct {
+	config *DetectorConfig
+}
 
 func NewAppInitDetector() *AppInitDetector {
-	return &AppInitDetector{}
+	return &AppInitDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4697},
+		},
+	}
 }
 
 func (d *AppInitDetector) Name() string {
@@ -26,6 +34,18 @@ func (d *AppInitDetector) GetTechnique() Technique {
 
 func (d *AppInitDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *AppInitDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *AppInitDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var AppInitPaths = []string{
@@ -41,6 +61,10 @@ var SuspiciousAppInitDLLs = []string{
 }
 
 func (d *AppInitDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	for _, basePath := range AppInitPaths {

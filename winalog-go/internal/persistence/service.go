@@ -13,10 +13,21 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type ServicePersistenceDetector struct{}
+type ServicePersistenceDetector struct {
+	config           *DetectorConfig
+	configSuspicious []string
+	configNames      []string
+}
 
 func NewServicePersistenceDetector() *ServicePersistenceDetector {
-	return &ServicePersistenceDetector{}
+	return &ServicePersistenceDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4697, 7045},
+		},
+		configSuspicious: nil,
+		configNames:      nil,
+	}
 }
 
 func (d *ServicePersistenceDetector) Name() string {
@@ -29,6 +40,24 @@ func (d *ServicePersistenceDetector) GetTechnique() Technique {
 
 func (d *ServicePersistenceDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *ServicePersistenceDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	if len(config.Paths) > 0 {
+		d.configSuspicious = config.Paths
+	}
+	if len(config.Patterns) > 0 {
+		d.configNames = config.Patterns
+	}
+	return nil
+}
+
+func (d *ServicePersistenceDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 type ServiceInfo struct {
@@ -55,6 +84,10 @@ var SuspiciousServiceNames = []string{
 }
 
 func (d *ServicePersistenceDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	services, err := d.enumerateServices()
@@ -144,7 +177,19 @@ func (d *ServicePersistenceDetector) getServicePath(serviceName string) string {
 }
 
 func (d *ServicePersistenceDetector) AnalyzeServiceCreation(event *types.Event) *Detection {
-	if event.EventID != 4697 {
+	if d.config != nil && !d.config.Enabled {
+		return nil
+	}
+
+	eventIDs := d.getEventIDs()
+	isAllowedEventID := false
+	for _, id := range eventIDs {
+		if event.EventID == id {
+			isAllowedEventID = true
+			break
+		}
+	}
+	if !isAllowedEventID && len(eventIDs) > 0 {
 		return nil
 	}
 
@@ -236,19 +281,53 @@ func (d *ServicePersistenceDetector) isSuspiciousService(name, path string) bool
 		return false
 	}
 
-	for _, suspicious := range SuspiciousServicePaths {
+	suspiciousPaths := d.getSuspiciousPaths()
+	for _, suspicious := range suspiciousPaths {
 		if strings.Contains(pathLower, strings.ToLower(suspicious)) {
 			return true
 		}
 	}
 
-	for _, suspicious := range SuspiciousServiceNames {
+	suspiciousNames := d.getSuspiciousNames()
+	for _, suspicious := range suspiciousNames {
 		if strings.Contains(nameLower, suspicious) && !d.isKnownLegitimate(nameLower) {
 			return true
 		}
 	}
 
 	return false
+}
+
+func (d *ServicePersistenceDetector) getSuspiciousPaths() []string {
+	if d.configSuspicious != nil {
+		return d.configSuspicious
+	}
+	return []string{
+		"%TEMP%", "%APPDATA%", "%LOCALAPPDATA%",
+		"\\temp\\", "\\tmp\\",
+		"\\\\UNC\\", "\\\\127\\", "\\\\localhost\\",
+		"\\downloads\\", "\\desktop\\",
+		".ps1", ".vbs", ".js", ".bat", ".cmd",
+	}
+}
+
+func (d *ServicePersistenceDetector) getSuspiciousNames() []string {
+	if d.configNames != nil {
+		return d.configNames
+	}
+	return []string{
+		"update", "updates", "updatecheck",
+		"security", "defender", "antivirus",
+		"system", "windows",
+		"microsoft", "google", "adobe",
+	}
+}
+
+func (d *ServicePersistenceDetector) getEventIDs() []int32 {
+	if d.config != nil && len(d.config.EventIDs) > 0 {
+		return d.config.EventIDs
+	}
+	return []int32{4697, 7045}
 }
 
 func (d *ServicePersistenceDetector) isKnownLegitimate(name string) bool {

@@ -13,10 +13,23 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type RunKeyDetector struct{}
+type RunKeyDetector struct {
+	config           *DetectorConfig
+	configPaths      []string
+	configIndicators []string
+	configWhitelist  []string
+}
 
 func NewRunKeyDetector() *RunKeyDetector {
-	return &RunKeyDetector{}
+	return &RunKeyDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4657},
+		},
+		configPaths:      nil,
+		configIndicators: nil,
+		configWhitelist:  nil,
+	}
 }
 
 func (d *RunKeyDetector) Name() string {
@@ -31,33 +44,76 @@ func (d *RunKeyDetector) RequiresAdmin() bool {
 	return true
 }
 
-var RunKeyPaths = []string{
-	`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
-	`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`,
-	`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceEx`,
-	`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
-	`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`,
-	`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceEx`,
-	`HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run`,
-	`HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce`,
-	`HKCU\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run`,
+func (d *RunKeyDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	if len(config.Paths) > 0 {
+		d.configPaths = config.Paths
+	}
+	if len(config.Patterns) > 0 {
+		d.configIndicators = config.Patterns
+	}
+	if len(config.Whitelist) > 0 {
+		d.configWhitelist = config.Whitelist
+	}
+	return nil
 }
 
-var SuspiciousRunKeyIndicators = []string{
-	"%TEMP%", "%TMP%", "%APPDATA%", "%LOCALAPPDATA%",
-	"\\temp\\", "\\tmp\\",
-	"\\\\UNC\\", "\\\\127\\", "\\\\localhost\\",
-	".ps1", ".vbs", ".js", ".wsf", ".bat", ".cmd",
-	"powershell", "wscript", "cscript",
-	"regsvr32", "rundll32",
-	"base64", "-enc", "-encodedcommand",
-	"mimikatz", "pwdump", "net user",
+func (d *RunKeyDetector) GetConfig() *DetectorConfig {
+	return d.config
+}
+
+func (d *RunKeyDetector) getPaths() []string {
+	if d.configPaths != nil {
+		return d.configPaths
+	}
+	return []string{
+		`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
+		`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`,
+		`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceEx`,
+		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
+		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`,
+		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceEx`,
+		`HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run`,
+		`HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\RunOnce`,
+		`HKCU\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run`,
+	}
+}
+
+func (d *RunKeyDetector) getIndicators() []string {
+	if d.configIndicators != nil {
+		return d.configIndicators
+	}
+	return []string{
+		"%TEMP%", "%TMP%", "%APPDATA%", "%LOCALAPPDATA%",
+		"\\temp\\", "\\tmp\\",
+		"\\\\UNC\\", "\\\\127\\", "\\\\localhost\\",
+		".ps1", ".vbs", ".js", ".wsf", ".bat", ".cmd",
+		"powershell", "wscript", "cscript",
+		"regsvr32", "rundll32",
+		"base64", "-enc", "-encodedcommand",
+		"mimikatz", "pwdump", "net user",
+	}
+}
+
+func (d *RunKeyDetector) getWhitelist() []string {
+	if d.configWhitelist != nil {
+		return d.configWhitelist
+	}
+	return []string{}
 }
 
 func (d *RunKeyDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
-	for _, keyPath := range RunKeyPaths {
+	paths := d.getPaths()
+	for _, keyPath := range paths {
 		entries, err := d.enumerateRunKey(keyPath)
 		if err != nil {
 			continue
@@ -122,7 +178,8 @@ func (d *RunKeyDetector) enumerateRunKey(keyPath string) ([]RunKeyEntry, error) 
 func (d *RunKeyDetector) isSuspicious(value string) bool {
 	valueLower := strings.ToLower(value)
 
-	for _, indicator := range SuspiciousRunKeyIndicators {
+	indicators := d.getIndicators()
+	for _, indicator := range indicators {
 		if strings.Contains(valueLower, strings.ToLower(indicator)) {
 			return true
 		}
@@ -198,14 +255,21 @@ func (d *RunKeyDetector) calculateFPRisk(keyPath, name, value string) string {
 	return "Medium"
 }
 
-type UserInitDetector struct{}
+type UserInitDetector struct {
+	config *DetectorConfig
+}
 
 func NewUserInitDetector() *UserInitDetector {
-	return &UserInitDetector{}
+	return &UserInitDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4688},
+		},
+	}
 }
 
 func (d *UserInitDetector) Name() string {
-	return "userinit_detector"
+	return "user_init_detector"
 }
 
 func (d *UserInitDetector) GetTechnique() Technique {
@@ -216,7 +280,22 @@ func (d *UserInitDetector) RequiresAdmin() bool {
 	return true
 }
 
+func (d *UserInitDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *UserInitDetector) GetConfig() *DetectorConfig {
+	return d.config
+}
+
 func (d *UserInitDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
 	detections := make([]*Detection, 0)
 
 	userInitPath := `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\Userinit`
@@ -282,10 +361,21 @@ func (d *UserInitDetector) Detect(ctx context.Context) ([]*Detection, error) {
 	return detections, nil
 }
 
-type StartupFolderDetector struct{}
+type StartupFolderDetector struct {
+	config      *DetectorConfig
+	configPaths []string
+	configExts  []string
+}
 
 func NewStartupFolderDetector() *StartupFolderDetector {
-	return &StartupFolderDetector{}
+	return &StartupFolderDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4657},
+		},
+		configPaths: nil,
+		configExts:  nil,
+	}
 }
 
 func (d *StartupFolderDetector) Name() string {
@@ -300,17 +390,48 @@ func (d *StartupFolderDetector) RequiresAdmin() bool {
 	return false
 }
 
-var StartupFolderPaths = []string{
-	`C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup`,
-	`C:\Users\*\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup`,
+func (d *StartupFolderDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	if len(config.Paths) > 0 {
+		d.configPaths = config.Paths
+	}
+	if len(config.Patterns) > 0 {
+		d.configExts = config.Patterns
+	}
+	return nil
 }
 
-var SuspiciousStartupExtensions = []string{".lnk", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".exe", ".dll"}
+func (d *StartupFolderDetector) GetConfig() *DetectorConfig {
+	return d.config
+}
+
+func (d *StartupFolderDetector) getPaths() []string {
+	if d.configPaths != nil {
+		return d.configPaths
+	}
+	return []string{
+		`C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup`,
+		`C:\Users\*\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup`,
+	}
+}
+
+func (d *StartupFolderDetector) getExtensions() []string {
+	if d.configExts != nil {
+		return d.configExts
+	}
+	return []string{".lnk", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".exe", ".dll"}
+}
 
 func (d *StartupFolderDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
 	detections := make([]*Detection, 0)
 
-	for _, basePath := range StartupFolderPaths {
+	for _, basePath := range d.getPaths() {
 		if strings.Contains(basePath, "*") {
 			users, err := listUserDirectories()
 			if err != nil {
@@ -370,7 +491,7 @@ func (d *StartupFolderDetector) detectInFolder(folderPath string) ([]*Detection,
 		filePath := folderPath + string(os.PathSeparator) + entry.Name()
 		ext := strings.ToLower(filepath.Ext(filePath))
 
-		if !isSuspiciousStartupExtension(ext) {
+		if !d.isSuspiciousStartupExtension(ext) {
 			continue
 		}
 
@@ -383,8 +504,8 @@ func (d *StartupFolderDetector) detectInFolder(folderPath string) ([]*Detection,
 	return detections, nil
 }
 
-func isSuspiciousStartupExtension(ext string) bool {
-	for _, suspicious := range SuspiciousStartupExtensions {
+func (d *StartupFolderDetector) isSuspiciousStartupExtension(ext string) bool {
+	for _, suspicious := range d.getExtensions() {
 		if ext == suspicious {
 			return true
 		}

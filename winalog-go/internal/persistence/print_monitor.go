@@ -4,13 +4,21 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 )
 
-type PrintMonitorDetector struct{}
+type PrintMonitorDetector struct {
+	config *DetectorConfig
+}
 
 func NewPrintMonitorDetector() *PrintMonitorDetector {
-	return &PrintMonitorDetector{}
+	return &PrintMonitorDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4697},
+		},
+	}
 }
 
 func (d *PrintMonitorDetector) Name() string {
@@ -23,6 +31,18 @@ func (d *PrintMonitorDetector) GetTechnique() Technique {
 
 func (d *PrintMonitorDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *PrintMonitorDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *PrintMonitorDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var PrintMonitorRegistryPaths = []string{
@@ -43,6 +63,10 @@ var SuspiciousPrintMonitorIndicators = []string{
 }
 
 func (d *PrintMonitorDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	for _, keyPath := range PrintMonitorRegistryPaths {

@@ -11,6 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type DetectorConfig struct {
+	Enabled   bool     `json:"enabled"`
+	EventIDs  []int32  `json:"event_ids"`
+	Paths     []string `json:"paths,omitempty"`
+	Patterns  []string `json:"patterns,omitempty"`
+	Whitelist []string `json:"whitelist,omitempty"`
+}
+
+type ConfigurableDetector interface {
+	Detector
+	SetConfig(config *DetectorConfig) error
+	GetConfig() *DetectorConfig
+}
+
 type Detector interface {
 	Name() string
 	Detect(ctx context.Context) ([]*Detection, error)
@@ -27,6 +41,7 @@ type DetectorInfo struct {
 
 type DetectionEngine struct {
 	detectors     map[string]Detector
+	configs       map[string]*DetectorConfig
 	result        *DetectionResult
 	mu            sync.RWMutex
 	adminRequired bool
@@ -35,6 +50,7 @@ type DetectionEngine struct {
 func NewDetectionEngine() *DetectionEngine {
 	return &DetectionEngine{
 		detectors: make(map[string]Detector),
+		configs:   make(map[string]*DetectorConfig),
 		result:    NewDetectionResult(),
 	}
 }
@@ -173,6 +189,74 @@ func (e *DetectionEngine) ListDetectors() []DetectorInfo {
 		})
 	}
 	return infos
+}
+
+func (e *DetectionEngine) SetDetectorConfig(name string, config *DetectorConfig) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	d, exists := e.detectors[name]
+	if !exists {
+		return fmt.Errorf("detector not found: %s", name)
+	}
+
+	cd, ok := d.(ConfigurableDetector)
+	if !ok {
+		return fmt.Errorf("detector does not support configuration: %s", name)
+	}
+
+	if err := cd.SetConfig(config); err != nil {
+		return fmt.Errorf("failed to set config for %s: %w", name, err)
+	}
+
+	e.configs[name] = config
+	return nil
+}
+
+func (e *DetectionEngine) GetDetectorConfig(name string) *DetectorConfig {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if config, exists := e.configs[name]; exists {
+		return config
+	}
+
+	d, exists := e.detectors[name]
+	if !exists {
+		return nil
+	}
+
+	cd, ok := d.(ConfigurableDetector)
+	if !ok {
+		return nil
+	}
+
+	return cd.GetConfig()
+}
+
+func (e *DetectionEngine) GetAllDetectorConfigs() map[string]*DetectorConfig {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	configs := make(map[string]*DetectorConfig)
+	for name, d := range e.detectors {
+		cd, ok := d.(ConfigurableDetector)
+		if ok {
+			configs[name] = cd.GetConfig()
+		}
+	}
+	return configs
+}
+
+func (e *DetectionEngine) IsDetectorEnabled(name string) bool {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	config, exists := e.configs[name]
+	if !exists {
+		return true
+	}
+	return config.Enabled
 }
 
 func (e *DetectionEngine) RequiresAdmin() bool {

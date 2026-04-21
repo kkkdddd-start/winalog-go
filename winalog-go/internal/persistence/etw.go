@@ -5,16 +5,24 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type ETWDetector struct{}
+type ETWDetector struct {
+	config *DetectorConfig
+}
 
 func NewETWDetector() *ETWDetector {
-	return &ETWDetector{}
+	return &ETWDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4670},
+		},
+	}
 }
 
 func (d *ETWDetector) Name() string {
@@ -27,6 +35,18 @@ func (d *ETWDetector) GetTechnique() Technique {
 
 func (d *ETWDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *ETWDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *ETWDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 type ETWProvider struct {
@@ -42,6 +62,10 @@ type ETWConsumerBinding struct {
 }
 
 func (d *ETWDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	providers, err := d.enumerateProviders()

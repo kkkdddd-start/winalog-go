@@ -4,15 +4,23 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type WinsockDetector struct{}
+type WinsockDetector struct {
+	config *DetectorConfig
+}
 
 func NewWinsockDetector() *WinsockDetector {
-	return &WinsockDetector{}
+	return &WinsockDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4697},
+		},
+	}
 }
 
 func (d *WinsockDetector) Name() string {
@@ -25,6 +33,18 @@ func (d *WinsockDetector) GetTechnique() Technique {
 
 func (d *WinsockDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *WinsockDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *WinsockDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var WinsockRegistryPaths = []string{
@@ -45,6 +65,10 @@ var SuspiciousWinsockIndicators = []string{
 }
 
 func (d *WinsockDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	for _, keyPath := range WinsockRegistryPaths {

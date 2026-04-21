@@ -4,16 +4,24 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/yusufpapurcu/wmi"
 )
 
-type WMIPersistenceDetector struct{}
+type WMIPersistenceDetector struct {
+	config *DetectorConfig
+}
 
 func NewWMIPersistenceDetector() *WMIPersistenceDetector {
-	return &WMIPersistenceDetector{}
+	return &WMIPersistenceDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4688, 5861},
+		},
+	}
 }
 
 func (d *WMIPersistenceDetector) Name() string {
@@ -26,6 +34,18 @@ func (d *WMIPersistenceDetector) GetTechnique() Technique {
 
 func (d *WMIPersistenceDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *WMIPersistenceDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *WMIPersistenceDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 type CommandLineEventConsumer struct {
@@ -75,6 +95,10 @@ type WMIBinding struct {
 }
 
 func (d *WMIPersistenceDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	consumers, err := d.enumerateConsumers()

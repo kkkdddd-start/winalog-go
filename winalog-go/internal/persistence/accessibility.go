@@ -4,16 +4,24 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type AccessibilityDetector struct{}
+type AccessibilityDetector struct {
+	config *DetectorConfig
+}
 
 func NewAccessibilityDetector() *AccessibilityDetector {
-	return &AccessibilityDetector{}
+	return &AccessibilityDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4697},
+		},
+	}
 }
 
 func (d *AccessibilityDetector) Name() string {
@@ -26,6 +34,18 @@ func (d *AccessibilityDetector) GetTechnique() Technique {
 
 func (d *AccessibilityDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *AccessibilityDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *AccessibilityDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var AccessibilityBinaries = map[string]string{
@@ -46,6 +66,10 @@ var AccessibilityPaths = []string{
 }
 
 func (d *AccessibilityDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	for binary, description := range AccessibilityBinaries {

@@ -4,16 +4,24 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type COMHijackDetector struct{}
+type COMHijackDetector struct {
+	config *DetectorConfig
+}
 
 func NewCOMHijackDetector() *COMHijackDetector {
-	return &COMHijackDetector{}
+	return &COMHijackDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4670},
+		},
+	}
 }
 
 func (d *COMHijackDetector) Name() string {
@@ -26,6 +34,18 @@ func (d *COMHijackDetector) GetTechnique() Technique {
 
 func (d *COMHijackDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *COMHijackDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *COMHijackDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var SuspiciousCLSIDPaths = []string{
@@ -64,6 +84,10 @@ var TrustedCOMPaths = []string{
 }
 
 func (d *COMHijackDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	clsidList, err := d.enumerateCLSID()

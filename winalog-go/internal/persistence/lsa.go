@@ -4,15 +4,23 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type LSAPersistenceDetector struct{}
+type LSAPersistenceDetector struct {
+	config *DetectorConfig
+}
 
 func NewLSAPersistenceDetector() *LSAPersistenceDetector {
-	return &LSAPersistenceDetector{}
+	return &LSAPersistenceDetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4670},
+		},
+	}
 }
 
 func (d *LSAPersistenceDetector) Name() string {
@@ -25,6 +33,18 @@ func (d *LSAPersistenceDetector) GetTechnique() Technique {
 
 func (d *LSAPersistenceDetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *LSAPersistenceDetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *LSAPersistenceDetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var LSARegistryPaths = []string{
@@ -46,6 +66,10 @@ var SuspiciousLSAIndicators = []string{
 }
 
 func (d *LSAPersistenceDetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	for _, keyPath := range LSARegistryPaths {

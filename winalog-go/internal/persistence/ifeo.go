@@ -4,16 +4,24 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
-type IFEODetector struct{}
+type IFEODetector struct {
+	config *DetectorConfig
+}
 
 func NewIFEODetector() *IFEODetector {
-	return &IFEODetector{}
+	return &IFEODetector{
+		config: &DetectorConfig{
+			Enabled:  false,
+			EventIDs: []int32{4697},
+		},
+	}
 }
 
 func (d *IFEODetector) Name() string {
@@ -26,6 +34,18 @@ func (d *IFEODetector) GetTechnique() Technique {
 
 func (d *IFEODetector) RequiresAdmin() bool {
 	return true
+}
+
+func (d *IFEODetector) SetConfig(config *DetectorConfig) error {
+	if config == nil {
+		return fmt.Errorf("config cannot be nil")
+	}
+	d.config = config
+	return nil
+}
+
+func (d *IFEODetector) GetConfig() *DetectorConfig {
+	return d.config
 }
 
 var IFEOPath = `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options`
@@ -86,6 +106,10 @@ var RemoteAccessTools = map[string]string{
 }
 
 func (d *IFEODetector) Detect(ctx context.Context) ([]*Detection, error) {
+	if d.config != nil && !d.config.Enabled {
+		return nil, nil
+	}
+
 	detections := make([]*Detection, 0)
 
 	targetProcesses, err := d.enumerateIFEOTargets()
