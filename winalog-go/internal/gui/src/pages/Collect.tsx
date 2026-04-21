@@ -286,14 +286,33 @@ function Collect() {
     setImportFormats(prev => ({ ...prev, [formatId]: !prev[formatId] }))
   }
 
-  // 文件选择
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 文件选择 - 上传到服务器
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.length) {
       const files = Array.from(e.target.files)
-      setSelectedFiles(prev => [...prev, ...files])
-
-      const paths = files.map(f => (f as any).path || f.name).join('\n')
-      setCustomPaths(prev => prev ? prev + '\n' + paths : paths)
+      const newPaths: string[] = []
+      
+      setLoading(true)
+      
+      for (const file of files) {
+        try {
+          const response = await collectAPI.uploadFile(file)
+          if (response.data.success) {
+            newPaths.push(response.data.path)
+          }
+        } catch (err) {
+          console.error('Failed to upload file:', file.name, err)
+          message.error(`上传文件失败: ${file.name}`)
+        }
+      }
+      
+      if (newPaths.length > 0) {
+        setSelectedFiles(prev => [...prev, ...files])
+        setCustomPaths(prev => prev ? prev + '\n' + newPaths.join('\n') : newPaths.join('\n'))
+        message.success(`成功上传 ${newPaths.length} 个文件`)
+      }
+      
+      setLoading(false)
     }
   }
 

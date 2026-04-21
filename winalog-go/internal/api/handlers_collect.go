@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -29,6 +31,7 @@ func SetupCollectRoutes(r *gin.Engine, collectHandler *CollectHandler) {
 		collect.GET("/channels", collectHandler.CollectChannels)
 		collect.POST("", collectHandler.StartCollect)
 		collect.POST("/import", collectHandler.ImportLogs)
+		collect.POST("/upload", collectHandler.UploadFiles)
 		collect.POST("/evtx2csv", collectHandler.Evtx2Csv)
 		collect.GET("/status", collectHandler.GetCollectStatus)
 	}
@@ -435,4 +438,56 @@ func (h *CollectHandler) Evtx2Csv(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *CollectHandler) UploadFiles(c *gin.Context) {
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: "no file provided: " + err.Error(),
+		})
+		return
+	}
+	defer file.Close()
+
+	tempDir := os.TempDir()
+	if runtime.GOOS == "windows" {
+		tempDir = filepath.Join(os.Getenv("TEMP"), "winalog-uploads")
+	} else {
+		tempDir = filepath.Join("/tmp", "winalog-uploads")
+	}
+
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "failed to create temp directory: " + err.Error(),
+		})
+		return
+	}
+
+	filename := fmt.Sprintf("%d-%s", time.Now().UnixNano(), header.Filename)
+	filePath := filepath.Join(tempDir, filename)
+
+	out, err := os.Create(filePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "failed to create file: " + err.Error(),
+		})
+		return
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, file); err != nil {
+		os.Remove(filePath)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "failed to save file: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":  true,
+		"filename": header.Filename,
+		"path":     filePath,
+		"size":     header.Size,
+	})
 }

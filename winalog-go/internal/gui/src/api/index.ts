@@ -133,6 +133,15 @@ export const collectAPI = {
     api.get('/collect/channels'),
   getStatus: () =>
     api.get('/collect/status'),
+  uploadFile: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/collect/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
   evtx2csv: (filePaths: string[], options?: { output_dir?: string; include_xml?: boolean; calculate_hash?: boolean; limit?: number }) =>
     api.post('/collect/evtx2csv', { file_paths: filePaths, ...options }),
 }
