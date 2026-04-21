@@ -90,6 +90,7 @@ function SystemInfo() {
     tasks: false,
   })
   const [showUnsignedOnly, setShowUnsignedOnly] = useState(false)
+  const [hoveredContent, setHoveredContent] = useState<{ text: string; x: number; y: number } | null>(null)
 
   useEffect(() => {
     fetchSystemInfo()
@@ -592,8 +593,24 @@ function SystemInfo() {
                       </span>
                     )}
                   </td>
-                  <td className="truncate mono" title={proc.exe || proc.path}>{proc.exe || proc.path || '-'}</td>
-                  <td className="truncate" title={proc.args || proc.command_line}>{(proc.args || proc.command_line) || '-'}</td>
+                  <td className="truncate mono" 
+                      onMouseEnter={(e) => {
+                        const text = proc.exe || proc.path
+                        if (text && text.length > 50) {
+                          setHoveredContent({ text, x: e.clientX, y: e.clientY })
+                        }
+                      }}
+                      onMouseLeave={() => setHoveredContent(null)}
+                  >{proc.exe || proc.path || '-'}</td>
+                  <td className="truncate" 
+                      onMouseEnter={(e) => {
+                        const text = proc.args || proc.command_line
+                        if (text && text.length > 50) {
+                          setHoveredContent({ text, x: e.clientX, y: e.clientY })
+                        }
+                      }}
+                      onMouseLeave={() => setHoveredContent(null)}
+                  >{(proc.args || proc.command_line) || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -849,6 +866,20 @@ function SystemInfo() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {hoveredContent && (
+        <div 
+          className="content-float-panel"
+          style={{ 
+            left: hoveredContent.x + 10, 
+            top: hoveredContent.y + 10,
+            position: 'fixed',
+            zIndex: 9999
+          }}
+        >
+          <div className="float-panel-content">{hoveredContent.text}</div>
         </div>
       )}
 
@@ -1229,6 +1260,25 @@ function SystemInfo() {
         .signature-badge.unsigned {
           background: rgba(239, 68, 68, 0.2);
           color: #ef4444;
+        }
+
+        .content-float-panel {
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+          border: 1px solid #00d9ff;
+          border-radius: 8px;
+          padding: 12px 16px;
+          max-width: 600px;
+          max-height: 300px;
+          overflow: auto;
+          box-shadow: 0 4px 20px rgba(0, 217, 255, 0.3);
+        }
+
+        .content-float-panel .float-panel-content {
+          color: #eee;
+          font-family: monospace;
+          font-size: 0.9rem;
+          white-space: pre-wrap;
+          word-break: break-all;
         }
       `}</style>
     </div>
