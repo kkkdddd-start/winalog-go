@@ -28,6 +28,7 @@ type Settings struct {
 	ExportDirectory      string `json:"export_directory"`
 	ParserWorkers        int    `json:"parser_workers"`
 	MemoryLimit          int    `json:"memory_limit"`
+	RequestTimeout       int    `json:"request_timeout"`
 }
 
 func NewSettingsHandler(cfg *config.Config, configPath string) *SettingsHandler {
@@ -54,6 +55,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		ExportDirectory:      h.cfg.Report.OutputDir,
 		ParserWorkers:        h.cfg.Parser.Workers,
 		MemoryLimit:          h.cfg.Parser.MemoryLimit,
+		RequestTimeout:       int(h.cfg.API.RequestTimeout.Seconds()),
 	})
 }
 
@@ -78,6 +80,7 @@ func (h *SettingsHandler) SaveSettings(c *gin.Context) {
 	h.cfg.Report.OutputDir = settings.ExportDirectory
 	h.cfg.Parser.Workers = settings.ParserWorkers
 	h.cfg.Parser.MemoryLimit = settings.MemoryLimit
+	h.cfg.API.RequestTimeout = time.Duration(settings.RequestTimeout) * time.Second
 
 	if h.configPath != "" {
 		loader := config.NewLoader()

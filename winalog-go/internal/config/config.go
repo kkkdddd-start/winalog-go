@@ -105,10 +105,11 @@ type ForensicsConfig struct {
 }
 
 type APIConfig struct {
-	Host string     `yaml:"host"`
-	Port int        `yaml:"port"`
-	Mode string     `yaml:"mode"`
-	CORS CORSConfig `yaml:"cors"`
+	Host           string        `yaml:"host"`
+	Port           int           `yaml:"port"`
+	Mode           string        `yaml:"mode"`
+	CORS           CORSConfig    `yaml:"cors"`
+	RequestTimeout time.Duration `yaml:"request_timeout"`
 }
 
 type CORSConfig struct {
@@ -279,6 +280,7 @@ func DefaultConfig() *Config {
 				AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 				AllowedHeaders: []string{"*"},
 			},
+			RequestTimeout: 30 * time.Second,
 		},
 		Auth: AuthConfig{
 			Enabled: false,
