@@ -26,10 +26,53 @@ type CollectHandler struct {
 func SetupCollectRoutes(r *gin.Engine, collectHandler *CollectHandler) {
 	collect := r.Group("/api/collect")
 	{
+		collect.GET("/channels", collectHandler.CollectChannels)
 		collect.POST("", collectHandler.StartCollect)
 		collect.POST("/import", collectHandler.ImportLogs)
 		collect.POST("/evtx2csv", collectHandler.Evtx2Csv)
 		collect.GET("/status", collectHandler.GetCollectStatus)
+	}
+}
+
+// LogChannel 日志通道
+type LogChannel struct {
+	Name     string `json:"name"`
+	Category string `json:"category"`
+}
+
+// CollectChannels 获取可用的日志通道
+// GET /api/collect/channels
+func (h *CollectHandler) CollectChannels(c *gin.Context) {
+	channels, err := collectors.GetRegisteredChannels()
+	if err != nil {
+		channels = getDefaultChannels()
+	}
+
+	response := make([]LogChannel, 0, len(channels))
+	for _, ch := range channels {
+		response = append(response, LogChannel{
+			Name:     ch,
+			Category: collectors.CategorizeChannel(ch),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"channels": response,
+		"total":    len(response),
+	})
+}
+
+// getDefaultChannels 返回默认的日志通道
+func getDefaultChannels() []string {
+	return []string{
+		"Security",
+		"System",
+		"Application",
+		"Setup",
+		"Microsoft-Windows-Sysmon/Operational",
+		"Microsoft-Windows-PowerShell/Operational",
+		"Microsoft-Windows-WMI-Activity/Operational",
+		"Microsoft-Windows-TaskScheduler/Operational",
 	}
 }
 
@@ -43,28 +86,29 @@ type LogCollectResponse struct {
 }
 
 type LogCollectRequest struct {
+	Sources []string          `json:"sources"`
+	Formats []string          `json:"formats"`
 	Options LogCollectOptions `json:"options"`
 }
 
 type LogCollectOptions struct {
-	Workers           int      `json:"workers"`
-	IncludePrefetch   bool     `json:"include_prefetch"`
-	IncludeRegistry   bool     `json:"include_registry"`
-	IncludeSystemInfo bool     `json:"include_system_info"`
-	IncludeShimCache  bool     `json:"include_shimcache"`
-	IncludeAmcache    bool     `json:"include_amcache"`
-	IncludeUserassist bool     `json:"include_userassist"`
-	IncludeTasks      bool     `json:"include_tasks"`
-	IncludeLogs       bool     `json:"include_logs"`
-	IncludeProcesses  bool     `json:"include_processes"`
-	IncludeNetwork    bool     `json:"include_network"`
-	IncludeDlls       bool     `json:"include_dlls"`
-	IncludeDrivers    bool     `json:"include_drivers"`
-	IncludeUsers      bool     `json:"include_users"`
-	Compress          bool     `json:"compress"`
-	CalculateHash     bool     `json:"calculate_hash"`
-	OutputPath        string   `json:"output_path"`
-	Sources           []string `json:"sources"`
+	Workers           int    `json:"workers"`
+	IncludePrefetch   bool   `json:"include_prefetch"`
+	IncludeRegistry   bool   `json:"include_registry"`
+	IncludeSystemInfo bool   `json:"include_system_info"`
+	IncludeShimCache  bool   `json:"include_shimcache"`
+	IncludeAmcache    bool   `json:"include_amcache"`
+	IncludeUserassist bool   `json:"include_userassist"`
+	IncludeTasks      bool   `json:"include_tasks"`
+	IncludeLogs       bool   `json:"include_logs"`
+	IncludeProcesses  bool   `json:"include_processes"`
+	IncludeNetwork    bool   `json:"include_network"`
+	IncludeDlls       bool   `json:"include_dlls"`
+	IncludeDrivers    bool   `json:"include_drivers"`
+	IncludeUsers      bool   `json:"include_users"`
+	Compress          bool   `json:"compress"`
+	CalculateHash     bool   `json:"calculate_hash"`
+	OutputPath        string `json:"output_path"`
 }
 
 type LogImportRequest struct {
@@ -128,8 +172,11 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 	if req.Options.OutputPath != "" {
 		opts.OutputPath = req.Options.OutputPath
 	}
-	if len(req.Options.Sources) > 0 {
-		opts.SelectedSources = req.Options.Sources
+	if len(req.Sources) > 0 {
+		opts.SelectedSources = req.Sources
+	}
+	if len(req.Formats) > 0 {
+		opts.Formats = req.Formats
 	}
 
 	ctx := context.Background()

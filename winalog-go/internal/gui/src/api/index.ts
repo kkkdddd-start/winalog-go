@@ -90,6 +90,7 @@ export const alertsAPI = {
 
 export interface CollectParams {
   sources?: string[]
+  formats?: string[]
   excludes?: string[]
   options?: {
     workers?: number
@@ -115,15 +116,22 @@ export interface CollectParams {
 export const collectAPI = {
   collect: (params: CollectParams) =>
     api.post('/collect', params),
+  getChannels: () =>
+    api.get('/collect/channels'),
   getStatus: () =>
     api.get('/collect/status'),
-  evtx2csv: (filePaths: string[], outputDir?: string, limit?: number) =>
-    api.post('/collect/evtx2csv', { file_paths: filePaths, output_dir: outputDir, limit }),
+  evtx2csv: (filePaths: string[], options?: { output_dir?: string; include_xml?: boolean; calculate_hash?: boolean; limit?: number }) =>
+    api.post('/collect/evtx2csv', { file_paths: filePaths, ...options }),
+}
+
+export interface ImportOptions {
+  enabled_formats?: string[]
+  skip_patterns?: string[]
 }
 
 export const importAPI = {
-  importLogs: (filePaths: string[]) =>
-    api.post('/import/logs', { files: filePaths }),
+  importLogs: (filePaths: string[], options?: ImportOptions) =>
+    api.post('/import/logs', { files: filePaths, ...options }),
   importLogsWithAlert: (filePaths: string[]) =>
     api.post('/import/logs', { files: filePaths, alert_on_import: true }),
   getStatus: () =>
@@ -179,6 +187,10 @@ export const systemAPI = {
     api.get('/system/drivers'),
   getUsers: () =>
     api.get('/system/users'),
+  getRegistry: () =>
+    api.get('/system/registry'),
+  getTasks: () =>
+    api.get('/system/tasks'),
 }
 
 export const rulesAPI = {
@@ -335,6 +347,7 @@ export const analyzeAPI = {
   updateRule: (rule: {
     name: string
     enabled: boolean
+    event_ids?: number[]
     thresholds?: Record<string, number>
     patterns?: string[]
     whitelist?: string[]

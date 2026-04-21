@@ -19,6 +19,7 @@ type CollectOptions struct {
 	DLLCollectionMode  string
 	SelectedPIDs       []int
 	SelectedSources    []string
+	Formats            []string
 	OutputPath         string
 	Compress           bool
 	CalculateHash      bool

@@ -38,6 +38,8 @@ type CollectConfig struct {
 	OutputPath         string
 	Compress           bool
 	CalculateHash      bool
+	SelectedSources    []string
+	EnabledFormats     []string
 }
 
 type OneClickResult struct {
@@ -104,6 +106,12 @@ func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, 
 			}
 			c.cfg.Compress = collectOpts.Compress
 			c.cfg.CalculateHash = collectOpts.CalculateHash
+			if len(collectOpts.SelectedSources) > 0 {
+				c.cfg.SelectedSources = collectOpts.SelectedSources
+			}
+			if len(collectOpts.Formats) > 0 {
+				c.cfg.EnabledFormats = collectOpts.Formats
+			}
 		}
 	}
 
@@ -414,45 +422,73 @@ func (c *OneClickCollector) CollectEvtxLogs(ctx context.Context, outputDir strin
 		return err
 	}
 
-	var logSources []string
-	if len(c.cfg.SelectedSources) > 0 {
-		logSources = c.cfg.SelectedSources
-	} else {
-		logSources = []string{
-			"Security",
-			"System",
-			"Application",
-			"Microsoft-Windows-Sysmon/Operational",
-			"Microsoft-Windows-PowerShell/Operational",
+	// 默认启用的格式
+	enabledFormats := c.cfg.EnabledFormats
+	if len(enabledFormats) == 0 {
+		enabledFormats = []string{"evtx", "etl"}
+	}
+
+	// 如果没有指定源，使用注册的通道
+	logSources := c.cfg.SelectedSources
+	if len(logSources) == 0 {
+		channels, err := GetRegisteredChannels()
+		if err == nil && len(channels) > 0 {
+			logSources = channels
+		} else {
+			logSources = []string{
+				"Security",
+				"System",
+				"Application",
+				"Microsoft-Windows-Sysmon/Operational",
+				"Microsoft-Windows-PowerShell/Operational",
+			}
 		}
 	}
 
 	for _, source := range logSources {
-		var evtxPath string
-		if strings.HasPrefix(source, "Microsoft-") {
-			evtxPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".evtx")
-		} else {
-			evtxPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".evtx")
-		}
+		// 根据格式决定采集方式
+		if isFormatEnabled(enabledFormats, "evtx") {
+			var evtxPath string
+			if strings.HasPrefix(source, "Microsoft-") {
+				evtxPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".evtx")
+			} else {
+				evtxPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".evtx")
+			}
 
-		if _, err := os.Stat(evtxPath); err == nil {
-			dst := filepath.Join(evtxDir, filepath.Base(evtxPath))
-			if err := c.CopyFileWithRetry(evtxPath, dst, 3); err == nil {
+			if _, err := os.Stat(evtxPath); err == nil {
+				dst := filepath.Join(evtxDir, filepath.Base(evtxPath))
+				if err := c.CopyFileWithRetry(evtxPath, dst, 3); err == nil {
+					continue
+				}
+			}
+
+			exportPath := filepath.Join(evtxDir, source+".evtx")
+			exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]] 2>nul`,
+				source, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
+			utils.RunPowerShell(exportCmd)
+
+			if _, err := os.Stat(exportPath); err == nil {
 				continue
 			}
+
+			exportCmd2 := fmt.Sprintf(`wevtutil epl "%s" "%s" 2>nul`, source, exportPath)
+			utils.RunPowerShell(exportCmd2)
 		}
 
-		exportPath := filepath.Join(evtxDir, source+".evtx")
-		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]] 2>nul`,
-			source, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
-		utils.RunPowerShell(exportCmd)
+		// ETL 格式支持（如果启用）
+		if isFormatEnabled(enabledFormats, "etl") {
+			var etlPath string
+			if strings.HasPrefix(source, "Microsoft-") {
+				etlPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".etl")
+			} else {
+				etlPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".etl")
+			}
 
-		if _, err := os.Stat(exportPath); err == nil {
-			continue
+			if _, err := os.Stat(etlPath); err == nil {
+				dst := filepath.Join(evtxDir, filepath.Base(etlPath))
+				c.CopyFileWithRetry(etlPath, dst, 3)
+			}
 		}
-
-		exportCmd2 := fmt.Sprintf(`wevtutil epl "%s" "%s" 2>nul`, source, exportPath)
-		utils.RunPowerShell(exportCmd2)
 	}
 
 	return nil
