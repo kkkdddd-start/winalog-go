@@ -1,11 +1,15 @@
 package reports
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/kkkdddd-start/winalog-go/internal/persistence"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
@@ -43,6 +47,7 @@ type ReportRequest struct {
 	Type         string
 	Title        string
 	Format       ReportFormat
+	Language     string // "en" or "zh"
 	StartTime    time.Time
 	EndTime      time.Time
 	IncludeRaw   bool
@@ -51,25 +56,28 @@ type ReportRequest struct {
 }
 
 type Report struct {
-	GeneratedAt      time.Time         `json:"generated_at"`
-	Title            string            `json:"title"`
-	TimeRange        TimeRange         `json:"time_range"`
-	Summary          ReportSummary     `json:"summary"`
-	Stats            *SecurityStats    `json:"stats,omitempty"`
-	TopAlerts        []*types.Alert    `json:"top_alerts,omitempty"`
-	TopEvents        []*types.Event    `json:"top_events,omitempty"`
-	EventDist        *EventDist        `json:"event_distribution,omitempty"`
-	LoginStats       *LoginStats       `json:"login_stats,omitempty"`
-	IOCs             *IOCSummary       `json:"iocs,omitempty"`
-	MITREDist        *MITREDist        `json:"mitre_distribution,omitempty"`
-	RawEvents        []*types.Event    `json:"raw_events,omitempty"`
-	ExecutiveSummary *ExecutiveSummary `json:"executive_summary,omitempty"`
-	TimelineAnalysis *TimelineAnalysis `json:"timeline_analysis,omitempty"`
-	ThreatLandscape  *ThreatLandscape  `json:"threat_landscape,omitempty"`
-	Recommendations  []Recommendation  `json:"recommendations,omitempty"`
-	AttackPatterns   []*AttackPattern  `json:"attack_patterns,omitempty"`
-	ComplianceStatus *ComplianceStatus `json:"compliance_status,omitempty"`
-	Timeline         []TimelineEntry   `json:"timeline,omitempty"`
+	GeneratedAt       time.Time          `json:"generated_at"`
+	Title             string             `json:"title"`
+	Language          string             `json:"language"` // "en" or "zh"
+	TimeRange         TimeRange          `json:"time_range"`
+	Summary           ReportSummary      `json:"summary"`
+	Stats             *SecurityStats     `json:"stats,omitempty"`
+	TopAlerts         []*types.Alert     `json:"top_alerts,omitempty"`
+	TopEvents         []*types.Event     `json:"top_events,omitempty"`
+	EventDist         *EventDist         `json:"event_distribution,omitempty"`
+	LoginStats        *LoginStats        `json:"login_stats,omitempty"`
+	IOCs              *IOCSummary        `json:"iocs,omitempty"`
+	MITREDist         *MITREDist         `json:"mitre_distribution,omitempty"`
+	RawEvents         []*types.Event     `json:"raw_events,omitempty"`
+	ExecutiveSummary  *ExecutiveSummary  `json:"executive_summary,omitempty"`
+	TimelineAnalysis  *TimelineAnalysis  `json:"timeline_analysis,omitempty"`
+	ThreatLandscape   *ThreatLandscape   `json:"threat_landscape,omitempty"`
+	Recommendations   []Recommendation   `json:"recommendations,omitempty"`
+	AttackPatterns    []*AttackPattern   `json:"attack_patterns,omitempty"`
+	ComplianceStatus  *ComplianceStatus  `json:"compliance_status,omitempty"`
+	Timeline          []TimelineEntry    `json:"timeline,omitempty"`
+	SystemSnapshot    *SystemSnapshot    `json:"system_snapshot,omitempty"`
+	PersistenceReport *PersistenceReport `json:"persistence_report,omitempty"`
 }
 
 type TimelineEntry struct {
@@ -150,6 +158,69 @@ type ComplianceStatus struct {
 	OverallStatus string   `json:"overall_status"`
 }
 
+type PersistenceReport struct {
+	TotalDetections int                    `json:"total_detections"`
+	BySeverity      map[string]int         `json:"by_severity"`
+	ByCategory      map[string]int         `json:"by_category"`
+	ByTechnique     map[string]int         `json:"by_technique"`
+	Detections      []PersistenceDetection `json:"detections,omitempty"`
+}
+
+type PersistenceDetection struct {
+	ID                string                 `json:"id"`
+	Time              string                 `json:"time"`
+	Technique         string                 `json:"technique"`
+	Category          string                 `json:"category"`
+	Severity          string                 `json:"severity"`
+	Title             string                 `json:"title"`
+	Description       string                 `json:"description"`
+	Evidence          map[string]interface{} `json:"evidence"`
+	MITRERef          []string               `json:"mitre_ref"`
+	RecommendedAction string                 `json:"recommended_action"`
+	FalsePositiveRisk string                 `json:"false_positive_risk"`
+	Explanation       string                 `json:"explanation"`
+	Recommendation    string                 `json:"recommendation"`
+	RealCase          string                 `json:"real_case"`
+}
+
+type SystemSnapshot struct {
+	Hostname      string                `json:"hostname"`
+	Domain        string                `json:"domain"`
+	OSName        string                `json:"os_name"`
+	OSVersion     string                `json:"os_version"`
+	Architecture  string                `json:"architecture"`
+	IsAdmin       bool                  `json:"is_admin"`
+	Timezone      string                `json:"timezone"`
+	LocalTime     string                `json:"local_time"`
+	UptimeSeconds int64                 `json:"uptime_seconds"`
+	CPUCount      int                   `json:"cpu_count"`
+	MemoryTotalGB float64               `json:"memory_total_gb"`
+	MemoryFreeGB  float64               `json:"memory_free_gb"`
+	ProcessCount  int                   `json:"process_count"`
+	NetworkConns  []NetworkConnSnapshot `json:"network_connections,omitempty"`
+	TopProcesses  []ProcessSnapshot     `json:"top_processes,omitempty"`
+}
+
+type NetworkConnSnapshot struct {
+	PID         int    `json:"pid"`
+	Protocol    string `json:"protocol"`
+	LocalAddr   string `json:"local_addr"`
+	LocalPort   int    `json:"local_port"`
+	RemoteAddr  string `json:"remote_addr"`
+	RemotePort  int    `json:"remote_port"`
+	State       string `json:"state"`
+	ProcessName string `json:"process_name"`
+}
+
+type ProcessSnapshot struct {
+	PID         int32  `json:"pid"`
+	Name        string `json:"name"`
+	Exe         string `json:"exe"`
+	CommandLine string `json:"command_line"`
+	IsSigned    bool   `json:"is_signed"`
+	User        string `json:"user"`
+}
+
 type TimeRange struct {
 	Start time.Time `json:"start"`
 	End   time.Time `json:"end"`
@@ -202,14 +273,22 @@ func NewGenerator(db *storage.DB) *Generator {
 }
 
 func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
+	language := req.Language
+	if language != "zh" && language != "en" {
+		language = "en"
+	}
+
 	report := &Report{
 		GeneratedAt: time.Now(),
 		Title:       req.Title,
+		Language:    language,
 		TimeRange: TimeRange{
 			Start: req.StartTime,
 			End:   req.EndTime,
 		},
 	}
+
+	report.SystemSnapshot = g.collectSystemSnapshot()
 
 	var genErr error
 
@@ -220,6 +299,8 @@ func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
 		genErr = g.generateEventReport(req, report)
 	case "timeline", "timeline_report":
 		genErr = g.generateTimelineReport(req, report)
+	case "persistence", "persistence_report":
+		genErr = g.generatePersistenceReport(req, report)
 	case "security", "security_summary", "":
 		genErr = g.generateSecuritySummaryReport(req, report)
 	default:
@@ -231,6 +312,159 @@ func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
 	}
 
 	return report, nil
+}
+
+func (g *Generator) generatePersistenceReport(req *ReportRequest, report *Report) error {
+	persistenceReport := g.collectPersistenceReport()
+	report.PersistenceReport = persistenceReport
+	return nil
+}
+
+func (g *Generator) collectPersistenceReport() *PersistenceReport {
+	pr := &PersistenceReport{
+		BySeverity:  make(map[string]int),
+		ByCategory:  make(map[string]int),
+		ByTechnique: make(map[string]int),
+		Detections:  []PersistenceDetection{},
+	}
+
+	if runtime.GOOS != "windows" {
+		return pr
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	detections, err := runPersistenceDetection(ctx)
+	if err != nil {
+		return pr
+	}
+
+	pr.TotalDetections = len(detections)
+
+	for _, d := range detections {
+		severity := string(d.Severity)
+		category := string(d.Category)
+		technique := string(d.Technique)
+
+		pr.BySeverity[severity]++
+		pr.ByCategory[category]++
+		pr.ByTechnique[technique]++
+
+		explanation, recommendation, realCase := d.GetRuleDetails()
+
+		pr.Detections = append(pr.Detections, PersistenceDetection{
+			ID:                d.ID,
+			Time:              d.Time.Format(time.RFC3339),
+			Technique:         technique,
+			Category:          category,
+			Severity:          severity,
+			Title:             d.Title,
+			Description:       d.Description,
+			Evidence:          map[string]interface{}{"type": string(d.Evidence.Type), "key": d.Evidence.Key, "value": d.Evidence.Value},
+			MITRERef:          d.MITRERef,
+			RecommendedAction: recommendation,
+			FalsePositiveRisk: d.FalsePositiveRisk,
+			Explanation:       explanation,
+			Recommendation:    recommendation,
+			RealCase:          realCase,
+		})
+	}
+
+	return pr
+}
+
+func runPersistenceDetection(ctx context.Context) ([]*persistence.Detection, error) {
+	engine := persistence.NewDetectionEngine()
+	engine.RegisterAll(persistence.AllDetectors())
+
+	result := engine.Detect(ctx)
+	if result == nil {
+		return []*persistence.Detection{}, nil
+	}
+
+	return result.Detections, nil
+}
+
+func (g *Generator) collectSystemSnapshot() *SystemSnapshot {
+	snapshot := &SystemSnapshot{}
+
+	snapshot.Hostname, _ = os.Hostname()
+	snapshot.OSName = runtime.GOOS
+	snapshot.Architecture = runtime.GOARCH
+
+	if runtime.GOOS == "windows" {
+		collectWindowsSystemSnapshot(snapshot)
+	} else {
+		collectLinuxSystemSnapshot(snapshot)
+	}
+
+	return snapshot
+}
+
+func collectWindowsSystemSnapshot(snapshot *SystemSnapshot) {
+	snapshot.OSVersion = getWindowsVersionString()
+	snapshot.Domain = getComputerDomain()
+	snapshot.IsAdmin = isRunningAsAdmin()
+	snapshot.Timezone = getSystemTimezone()
+	snapshot.LocalTime = time.Now().Format(time.RFC3339)
+	snapshot.UptimeSeconds = int64(getSystemUptimeSeconds())
+	snapshot.CPUCount = runtime.NumCPU()
+
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	snapshot.MemoryTotalGB = float64(m.Sys) / 1024 / 1024 / 1024
+	snapshot.MemoryFreeGB = float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024
+}
+
+func collectLinuxSystemSnapshot(snapshot *SystemSnapshot) {
+	snapshot.OSVersion = "Linux"
+	snapshot.LocalTime = time.Now().Format(time.RFC3339)
+	snapshot.UptimeSeconds = int64(getSystemUptimeSeconds())
+	snapshot.CPUCount = runtime.NumCPU()
+
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	snapshot.MemoryTotalGB = float64(m.Sys) / 1024 / 1024 / 1024
+	snapshot.MemoryFreeGB = float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024
+
+	if data, err := os.ReadFile("/proc/uptime"); err == nil {
+		var uptimeSeconds float64
+		fmt.Sscanf(string(data), "%f", &uptimeSeconds)
+		snapshot.UptimeSeconds = int64(uptimeSeconds)
+	}
+}
+
+func getWindowsVersionString() string {
+	return "Windows"
+}
+
+func getComputerDomain() string {
+	return ""
+}
+
+func isRunningAsAdmin() bool {
+	return false
+}
+
+func getSystemTimezone() string {
+	return time.Local.String()
+}
+
+func getSystemUptimeSeconds() float64 {
+	if runtime.GOOS == "windows" {
+		return 0
+	}
+	if data, err := os.ReadFile("/proc/uptime"); err == nil {
+		var uptime float64
+		fmt.Sscanf(string(data), "%f", &uptime)
+		return uptime
+	}
+	return 0
+}
+
+func getProcessCount() int {
+	return runtime.NumGoroutine()
 }
 
 func (g *Generator) generateSecuritySummaryReport(req *ReportRequest, report *Report) error {
@@ -281,6 +515,10 @@ func (g *Generator) generateSecuritySummaryReport(req *ReportRequest, report *Re
 		if req.IncludeRaw {
 			report.RawEvents = events
 		}
+	}
+
+	if persistenceReport := g.collectPersistenceReport(); persistenceReport != nil {
+		report.PersistenceReport = persistenceReport
 	}
 
 	if execSummary, err := g.generateExecutiveSummary(req); err != nil {

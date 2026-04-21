@@ -12,10 +12,11 @@ interface Report {
 }
 
 function Reports() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [generating, setGenerating] = useState(false)
   const [reportType, setReportType] = useState('security')
   const [format, setFormat] = useState('html')
+  const [reportLang, setReportLang] = useState(locale || 'en')
   const [dateRange, setDateRange] = useState('7d')
   const [reports, setReports] = useState<Report[]>([])
   const [lastGenerated, setLastGenerated] = useState<string | null>(null)
@@ -43,6 +44,7 @@ function Reports() {
       await reportsAPI.generate({
         type: reportType,
         format,
+        language: reportLang,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString()
       })
@@ -184,6 +186,26 @@ function Reports() {
                   {range === '90d' && 'Last 90 Days'}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="config-section">
+            <label className="section-label">Report Language</label>
+            <div className="format-row">
+              <div 
+                className={`format-option ${reportLang === 'en' ? 'selected' : ''}`}
+                onClick={() => setReportLang('en')}
+              >
+                <div className="format-icon">🇺🇸</div>
+                <div className="format-label">English</div>
+              </div>
+              <div 
+                className={`format-option ${reportLang === 'zh' ? 'selected' : ''}`}
+                onClick={() => setReportLang('zh')}
+              >
+                <div className="format-icon">🇨🇳</div>
+                <div className="format-label">中文</div>
+              </div>
             </div>
           </div>
 

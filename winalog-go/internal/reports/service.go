@@ -174,6 +174,7 @@ func truncateString(s string, maxLen int) string {
 type APIReportRequest struct {
 	Type         string
 	Format       string
+	Language     string
 	StartTime    string
 	EndTime      string
 	IncludeRaw   bool
@@ -189,6 +190,7 @@ func (s *ReportService) GenerateFromAPIRequest(apiReq *APIReportRequest) (*Repor
 		Type:         apiReq.Type,
 		Title:        apiReq.Title,
 		Format:       ReportFormat(apiReq.Format),
+		Language:     apiReq.Language,
 		IncludeRaw:   apiReq.IncludeRaw,
 		IncludeIOC:   apiReq.IncludeIOC,
 		IncludeMITRE: apiReq.IncludeMITRE,

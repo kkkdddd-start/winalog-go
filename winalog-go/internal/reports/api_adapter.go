@@ -53,12 +53,38 @@ type APIReportTimeline struct {
 }
 
 type APIReportContent struct {
-	Summary    *APIReportSummary    `json:"summary,omitempty"`
-	Alerts     []*APIReportAlert    `json:"alerts,omitempty"`
-	Events     []*APIReportEvent    `json:"events,omitempty"`
-	Timeline   []*APIReportTimeline `json:"timeline,omitempty"`
-	RawEvents  []*types.Event       `json:"raw_events,omitempty"`
-	Statistics *APIReportStatistics `json:"statistics,omitempty"`
+	Summary           *APIReportSummary     `json:"summary,omitempty"`
+	Alerts            []*APIReportAlert     `json:"alerts,omitempty"`
+	Events            []*APIReportEvent     `json:"events,omitempty"`
+	Timeline          []*APIReportTimeline  `json:"timeline,omitempty"`
+	RawEvents         []*types.Event        `json:"raw_events,omitempty"`
+	Statistics        *APIReportStatistics  `json:"statistics,omitempty"`
+	PersistenceReport *APIReportPersistence `json:"persistence_report,omitempty"`
+}
+
+type APIReportPersistence struct {
+	TotalDetections int                  `json:"total_detections"`
+	BySeverity      map[string]int       `json:"by_severity"`
+	ByCategory      map[string]int       `json:"by_category"`
+	ByTechnique     map[string]int       `json:"by_technique"`
+	Detections      []APIReportDetection `json:"detections,omitempty"`
+}
+
+type APIReportDetection struct {
+	ID                string                 `json:"id"`
+	Time              string                 `json:"time"`
+	Technique         string                 `json:"technique"`
+	Category          string                 `json:"category"`
+	Severity          string                 `json:"severity"`
+	Title             string                 `json:"title"`
+	Description       string                 `json:"description"`
+	Evidence          map[string]interface{} `json:"evidence"`
+	MITRERef          []string               `json:"mitre_ref"`
+	RecommendedAction string                 `json:"recommended_action"`
+	FalsePositiveRisk string                 `json:"false_positive_risk"`
+	Explanation       string                 `json:"explanation"`
+	Recommendation    string                 `json:"recommendation"`
+	RealCase          string                 `json:"real_case"`
 }
 
 type APIReportStatistics struct {
@@ -151,6 +177,34 @@ func AdaptReportToAPI(report *Report) *APIReportContent {
 			HourlyBreakdown: report.Stats.GetHourlyDistribution(),
 			TopEventIDs:     report.Stats.TopEventIDs,
 			LoginStats:      report.Stats.LoginStats,
+		}
+	}
+
+	if report.PersistenceReport != nil {
+		content.PersistenceReport = &APIReportPersistence{
+			TotalDetections: report.PersistenceReport.TotalDetections,
+			BySeverity:      report.PersistenceReport.BySeverity,
+			ByCategory:      report.PersistenceReport.ByCategory,
+			ByTechnique:     report.PersistenceReport.ByTechnique,
+			Detections:      make([]APIReportDetection, 0, len(report.PersistenceReport.Detections)),
+		}
+		for _, det := range report.PersistenceReport.Detections {
+			content.PersistenceReport.Detections = append(content.PersistenceReport.Detections, APIReportDetection{
+				ID:                det.ID,
+				Time:              det.Time,
+				Technique:         det.Technique,
+				Category:          det.Category,
+				Severity:          det.Severity,
+				Title:             det.Title,
+				Description:       det.Description,
+				Evidence:          det.Evidence,
+				MITRERef:          det.MITRERef,
+				RecommendedAction: det.RecommendedAction,
+				FalsePositiveRisk: det.FalsePositiveRisk,
+				Explanation:       det.Explanation,
+				Recommendation:    det.Recommendation,
+				RealCase:          det.RealCase,
+			})
 		}
 	}
 

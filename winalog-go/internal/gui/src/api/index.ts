@@ -256,6 +256,7 @@ export const reportsAPI = {
 export interface ReportParams {
   type: string
   format: string
+  language?: string
   start_time?: string
   end_time?: string
 }

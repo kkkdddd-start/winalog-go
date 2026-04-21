@@ -60,6 +60,7 @@ type ReportsHandler struct {
 type ReportRequest struct {
 	Type         string `json:"type" binding:"required"`
 	Format       string `json:"format" binding:"required"`
+	Language     string `json:"language"` // "en" or "zh"
 	StartTime    string `json:"start_time"`
 	EndTime      string `json:"end_time"`
 	IncludeRaw   bool   `json:"include_raw"`
@@ -241,6 +242,7 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 	report, err := h.svc.GenerateFromAPIRequest(&reports.APIReportRequest{
 		Type:         req.Type,
 		Format:       req.Format,
+		Language:     req.Language,
 		StartTime:    req.StartTime,
 		EndTime:      req.EndTime,
 		IncludeRaw:   req.IncludeRaw,
