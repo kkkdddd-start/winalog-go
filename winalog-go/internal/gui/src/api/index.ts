@@ -558,7 +558,7 @@ export const multiAPI = {
 }
 
 export interface QueryParams {
-  query: string
+  sql: string
   limit?: number
   offset?: number
 }

@@ -32,7 +32,7 @@ function Query() {
 
   const checkDbConnection = async () => {
     try {
-      await queryAPI.execute({ query: 'SELECT 1 as test', limit: 1 })
+      await queryAPI.execute({ sql: 'SELECT 1 as test', limit: 1 })
       setDbStatus('connected')
     } catch (err: any) {
       setDbStatus('disconnected')
@@ -55,7 +55,7 @@ function Query() {
     const startTime = performance.now()
 
     try {
-      const res = await queryAPI.execute({ query: sql, limit: 100 })
+      const res = await queryAPI.execute({ sql, limit: 100 })
       const duration = ((performance.now() - startTime) / 1000).toFixed(2)
       setExecutionTime(duration)
       setResult(res.data)
