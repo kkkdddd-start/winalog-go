@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '../locales/I18n'
 import { Line } from 'react-chartjs-2'
-import { persistenceAPI } from '../api'
+import { persistenceAPI, reportsAPI } from '../api'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -100,6 +100,7 @@ function Persistence() {
   const [detectorLoading, setDetectorLoading] = useState(false)
   const [editingRule, setEditingRule] = useState<DetectorRule | null>(null)
   const [ruleLoading, setRuleLoading] = useState(false)
+  const [generatingReport, setGeneratingReport] = useState(false)
 
   useEffect(() => {
     fetchDetections()
@@ -230,6 +231,7 @@ function Persistence() {
   const fetchDetections = async () => {
     try {
       setLoading(true)
+      setError(null)
       const params = new URLSearchParams()
       if (filter.category) params.append('category', filter.category)
       if (filter.technique) params.append('technique', filter.technique)
@@ -237,11 +239,37 @@ function Persistence() {
       const data = response.data
       setDetections(data.detections || [])
       setStats(calculateStats(data.detections || []))
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+    } catch (err: any) {
+      const msg = err.response?.status === 404 
+        ? 'Persistence detection not available (Windows only feature)'
+        : err.response?.data?.error 
+          ? `Error: ${err.response.data.error}`
+          : err.message || 'Failed to fetch detections'
+      setError(msg)
+      console.error('Persistence detection error:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGenerateReport = async () => {
+    try {
+      setGeneratingReport(true)
+      const response = await reportsAPI.generate({
+        type: 'persistence',
+        format: 'pdf',
+      })
+      if (response.data.id) {
+        const link = document.createElement('a')
+        link.href = `/api/reports/${response.data.id}/download?format=pdf`
+        link.download = `persistence_report_${new Date().toISOString().slice(0, 10)}.pdf`
+        link.click()
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to generate report')
+      console.error('Failed to generate report:', err)
+    } finally {
+      setGeneratingReport(false)
     }
   }
 
@@ -324,6 +352,9 @@ function Persistence() {
         </button>
         <button onClick={handleShowDetectorConfig} className="btn btn-secondary">
           {t('persistence.detectorConfig') || 'Detector Config'}
+        </button>
+        <button onClick={handleGenerateReport} className="btn btn-secondary" disabled={generatingReport}>
+          {generatingReport ? 'Generating...' : 'Generate Report'}
         </button>
       </div>
 
