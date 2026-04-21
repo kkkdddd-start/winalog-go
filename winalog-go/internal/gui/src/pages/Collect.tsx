@@ -676,6 +676,8 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
       <div className="channels-header">
         <span className="channels-title">日志源</span>
         <Space>
+          <Button type="link" size="small" onClick={() => selectAllChannels()}>全选</Button>
+          <Button type="link" size="small" onClick={() => deselectAllChannels()}>取消全选</Button>
           <Button type="link" size="small" icon={<ReloadOutlined />} loading={isLoadingChannels} onClick={fetchChannels}>
             {lastFetched ? '刷新' : '获取'}
           </Button>

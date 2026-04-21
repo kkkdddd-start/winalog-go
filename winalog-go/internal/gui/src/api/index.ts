@@ -1,8 +1,15 @@
 import axios from 'axios'
 
+let requestTimeout = 120000
+
 const api = axios.create({
   baseURL: '/api',
-  timeout: 120000,
+  timeout: requestTimeout,
+})
+
+api.interceptors.request.use(config => {
+  config.timeout = requestTimeout
+  return config
 })
 
 api.interceptors.response.use(
@@ -12,6 +19,12 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+export const setRequestTimeout = (timeout: number) => {
+  requestTimeout = timeout * 1000
+}
+
+export default api
 
 export const eventsAPI = {
   list: (page = 1, pageSize = 100, params?: Partial<SearchParams>) => {
@@ -370,6 +383,7 @@ export interface Settings {
   export_directory: string
   parser_workers: number
   memory_limit: number
+  request_timeout?: number
 }
 
 export const settingsAPI = {
@@ -684,5 +698,3 @@ export const monitorAPI = {
     return eventSource
   },
 }
-
-export default api

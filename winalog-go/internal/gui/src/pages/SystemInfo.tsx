@@ -50,6 +50,19 @@ interface NetworkConnInfo {
   process_name: string
 }
 
+interface RegistryKeyInfo {
+  path: string
+  name: string
+  value: string
+  type: string
+}
+
+interface TaskInfo {
+  name: string
+  path: string
+  state: string
+}
+
 function SystemInfo() {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'tasks'>('system')
@@ -60,18 +73,21 @@ function SystemInfo() {
   const [dlls, setDlls] = useState<any[]>([])
   const [drivers, setDrivers] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
+  const [registry, setRegistry] = useState<RegistryKeyInfo[]>([])
+  const [tasks, setTasks] = useState<TaskInfo[]>([])
   const [selectedDllPid, setSelectedDllPid] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [moduleErrors, setModuleErrors] = useState<Record<string, string>>({})
   const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
-    processes: true,
-    network: true,
-    dlls: true,
-    drivers: true,
+    processes: false,
+    network: false,
+    dlls: false,
+    drivers: false,
     env: false,
-    users: true,
-    registry: true,
-    tasks: true,
+    users: false,
+    registry: false,
+    tasks: false,
   })
   const [showUnsignedOnly, setShowUnsignedOnly] = useState(false)
 
@@ -98,9 +114,16 @@ function SystemInfo() {
     systemAPI.getProcesses(50)
       .then(res => {
         setProcesses(res.data.processes || [])
+        setModuleErrors(m => ({ ...m, processes: '' }))
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch((err: any) => {
+        const msg = err.response?.status === 404 
+          ? '进程信息不可用（仅支持 Windows）' 
+          : (err.message || '获取进程信息失败')
+        setModuleErrors(m => ({ ...m, processes: msg }))
+        setLoading(false)
+      })
   }
 
   const fetchNetwork = () => {
@@ -162,9 +185,45 @@ function SystemInfo() {
     systemAPI.getUsers()
       .then(res => {
         setUsers(res.data.users || [])
+        setModuleErrors(m => ({ ...m, users: '' }))
+        setLoading(false)
+      })
+      .catch((err: any) => {
+        const msg = err.response?.status === 404 
+          ? '用户信息不可用（仅支持 Windows）' 
+          : (err.message || '获取用户信息失败')
+        setModuleErrors(m => ({ ...m, users: msg }))
+        setLoading(false)
+      })
+  }
+
+  const fetchRegistry = () => {
+    if (registry.length > 0) return
+    setLoading(true)
+    systemAPI.getRegistry()
+      .then(res => {
+        setRegistry(res.data.run_keys || [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
+  }
+
+  const fetchTasks = () => {
+    if (tasks.length > 0) return
+    setLoading(true)
+    systemAPI.getTasks()
+      .then(res => {
+        setTasks(res.data.tasks || [])
+        setModuleErrors(m => ({ ...m, tasks: '' }))
+        setLoading(false)
+      })
+      .catch((err: any) => {
+        const msg = err.response?.status === 404 
+          ? '计划任务信息不可用（仅支持 Windows）' 
+          : (err.message || '获取计划任务失败')
+        setModuleErrors(m => ({ ...m, tasks: msg }))
+        setLoading(false)
+      })
   }
 
   const handleTabChange = (tab: 'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'tasks') => {
@@ -182,6 +241,8 @@ function SystemInfo() {
     }
     if (tab === 'drivers') fetchDrivers()
     if (tab === 'users') fetchUsers()
+    if (tab === 'registry') fetchRegistry()
+    if (tab === 'tasks') fetchTasks()
   }
 
   const formatUptime = (seconds: number) => {
@@ -224,7 +285,7 @@ function SystemInfo() {
         <h2>{t('systemInfo.title')}</h2>
         <div className="header-actions">
           <button className="btn-refresh" onClick={fetchSystemInfo}>
-            Refresh
+            {t('common.refresh') || '刷新'}
           </button>
         </div>
       </div>
@@ -234,13 +295,13 @@ function SystemInfo() {
           className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`}
           onClick={() => handleTabChange('system')}
         >
-          System
+          {t('systemInfo.system') || '系统'}
         </button>
         <button
           className={`tab-btn ${activeTab === 'processes' ? 'active' : ''}`}
           onClick={() => handleTabChange('processes')}
         >
-          <span className="tab-label">Processes ({processes.length || '...'})</span>
+          <span className="tab-label">{t('systemInfo.processes') || '进程'} ({processes.length || '...'})</span>
           <label className="module-toggle" onClick={e => e.stopPropagation()}>
             <input
               type="checkbox"
@@ -254,7 +315,7 @@ function SystemInfo() {
           className={`tab-btn ${activeTab === 'network' ? 'active' : ''}`}
           onClick={() => handleTabChange('network')}
         >
-          <span className="tab-label">Network ({networkConnections.length || '...'})</span>
+          <span className="tab-label">{t('systemInfo.network') || '网络'} ({networkConnections.length || '...'})</span>
           <label className="module-toggle" onClick={e => e.stopPropagation()}>
             <input
               type="checkbox"
@@ -268,7 +329,7 @@ function SystemInfo() {
           className={`tab-btn ${activeTab === 'env' ? 'active' : ''}`}
           onClick={() => handleTabChange('env')}
         >
-          <span className="tab-label">Env ({envVars.length || '...'})</span>
+          <span className="tab-label">{t('systemInfo.env') || '环境变量'} ({envVars.length || '...'})</span>
           <label className="module-toggle" onClick={e => e.stopPropagation()}>
             <input
               type="checkbox"
@@ -282,7 +343,7 @@ function SystemInfo() {
           className={`tab-btn ${activeTab === 'dlls' ? 'active' : ''}`}
           onClick={() => handleTabChange('dlls')}
         >
-          <span className="tab-label">DLLs ({dlls.length || '...'})</span>
+          <span className="tab-label">{t('systemInfo.dlls') || '动态链接库'} ({dlls.length || '...'})</span>
           <label className="module-toggle" onClick={e => e.stopPropagation()}>
             <input
               type="checkbox"
@@ -296,7 +357,7 @@ function SystemInfo() {
           className={`tab-btn ${activeTab === 'drivers' ? 'active' : ''}`}
           onClick={() => handleTabChange('drivers')}
         >
-          <span className="tab-label">Drivers ({drivers.length || '...'})</span>
+          <span className="tab-label">{t('systemInfo.drivers') || '驱动'} ({drivers.length || '...'})</span>
           <label className="module-toggle" onClick={e => e.stopPropagation()}>
             <input
               type="checkbox"
@@ -306,11 +367,11 @@ function SystemInfo() {
             <span className="toggle-slider"></span>
           </label>
         </button>
-        <button
+<button
           className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => handleTabChange('users')}
         >
-          <span className="tab-label">Users ({users.length || '...'})</span>
+          <span className="tab-label">{t('systemInfo.users') || '用户'} ({users.length || '...'})</span>
           <label className="module-toggle" onClick={e => e.stopPropagation()}>
             <input
               type="checkbox"
@@ -324,13 +385,29 @@ function SystemInfo() {
           className={`tab-btn ${activeTab === 'registry' ? 'active' : ''}`}
           onClick={() => handleTabChange('registry')}
         >
-          <span className="tab-label">Registry</span>
+          <span className="tab-label">{t('systemInfo.registry') || '注册表'} ({registry.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.registry}
+              onChange={() => setEnabledModules(m => ({...m, registry: !m.registry}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
           onClick={() => handleTabChange('tasks')}
         >
-          <span className="tab-label">Tasks</span>
+          <span className="tab-label">{t('systemInfo.tasks') || '任务'} ({tasks.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.tasks}
+              onChange={() => setEnabledModules(m => ({...m, tasks: !m.tasks}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </button>
       </div>
 
@@ -344,13 +421,13 @@ function SystemInfo() {
             
             <div className="system-status">
               <div className="status-indicator online"></div>
-              <span>System Online</span>
+              <span>{t('systemInfo.systemOnline') || '系统在线'}</span>
             </div>
             
             <div className="info-list">
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.hostname')}</span>
-                <span className="info-value highlight">{info.hostname || 'N/A'}</span>
+                <span className="info-value highlight">{info.hostname || t('common.notAvailable') || 'N/A'}</span>
               </div>
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.domain')}</span>
@@ -358,11 +435,11 @@ function SystemInfo() {
               </div>
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.osName')}</span>
-                <span className="info-value">{info.os_name || 'Unknown'}</span>
+                <span className="info-value">{info.os_name || t('common.unknown') || 'Unknown'}</span>
               </div>
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.osVersion')}</span>
-                <span className="info-value">{info.os_version || 'Unknown'}</span>
+                <span className="info-value">{info.os_version || t('common.unknown') || 'Unknown'}</span>
               </div>
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.architecture')}</span>
@@ -375,7 +452,7 @@ function SystemInfo() {
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.admin')}</span>
                 <span className={`info-value badge ${info.is_admin ? 'admin' : 'user'}`}>
-                  {info.is_admin ? 'Root/Admin' : 'Standard User'}
+                  {info.is_admin ? (t('systemInfo.adminUser') || '管理员') : (t('systemInfo.standardUser') || '标准用户')}
                 </span>
               </div>
             </div>
@@ -383,18 +460,18 @@ function SystemInfo() {
 
           <div className="system-card runtime-card">
             <div className="card-header">
-              <div className="card-icon">Runtime</div>
+              <div className="card-icon">{t('systemInfo.runtime') || '运行时'}</div>
               <h3>{t('systemInfo.runtimeInfo')}</h3>
             </div>
             
             <div className="info-list">
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.goVersion')}</span>
-                <span className="info-value mono">{info.go_version || 'Unknown'}</span>
+                <span className="info-value mono">{info.go_version || t('common.unknown') || 'Unknown'}</span>
               </div>
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.cpuCount')}</span>
-                <span className="info-value">{info.cpu_count || 0} Cores</span>
+                <span className="info-value">{info.cpu_count || 0} {t('systemInfo.cores') || '核心'}</span>
               </div>
               <div className="info-row">
                 <span className="info-label">{t('systemInfo.uptime')}</span>
@@ -405,14 +482,14 @@ function SystemInfo() {
 
           <div className="system-card resources-card">
             <div className="card-header">
-              <div className="card-icon">Resources</div>
-              <h3>System Resources</h3>
+              <div className="card-icon">{t('systemInfo.resources') || '资源'}</div>
+              <h3>{t('systemInfo.systemResources') || '系统资源'}</h3>
             </div>
             
             <div className="resource-bars">
               <div className="resource-item">
                 <div className="resource-header">
-                  <span className="resource-name">Memory</span>
+                  <span className="resource-name">{t('systemInfo.memory') || '内存'}</span>
                   <span className="resource-value">
                     {info.memory_free_gb ? (info.memory_total_gb - info.memory_free_gb).toFixed(1) : '0'} / {info.memory_total_gb?.toFixed(1) || '0'} GB
                   </span>
@@ -426,7 +503,7 @@ function SystemInfo() {
               
               <div className="resource-item">
                 <div className="resource-header">
-                  <span className="resource-name">Free Memory</span>
+                  <span className="resource-name">{t('systemInfo.freeMemory') || '可用内存'}</span>
                   <span className="resource-value">{info.memory_free_gb?.toFixed(1) || '0'} GB</span>
                 </div>
                 <div className="resource-bar">
@@ -440,8 +517,8 @@ function SystemInfo() {
 
           <div className="system-card time-card">
             <div className="card-header">
-              <div className="card-icon">Time</div>
-              <h3>Time Information</h3>
+              <div className="card-icon">{t('systemInfo.time') || '时间'}</div>
+              <h3>{t('systemInfo.timeInfo') || '时间信息'}</h3>
             </div>
             
             <div className="time-display">
@@ -455,7 +532,7 @@ function SystemInfo() {
             
             <div className="info-list">
               <div className="info-row">
-                <span className="info-label">UTC Time</span>
+                <span className="info-label">UTC {t('systemInfo.time') || '时间'}</span>
                 <span className="info-value mono">{new Date().toISOString()}</span>
               </div>
             </div>
@@ -472,15 +549,15 @@ function SystemInfo() {
                 checked={showUnsignedOnly}
                 onChange={() => setShowUnsignedOnly(!showUnsignedOnly)}
               />
-              <span>Show unsigned only (highlighted in yellow)</span>
+              <span>{t('systemInfo.showUnsignedOnly') || '仅显示未签名（黄色高亮）'}</span>
             </label>
             <span className="process-count">
               {showUnsignedOnly 
                 ? processes.filter(p => !p.is_signed).length 
-                : processes.length} processes
+                : processes.length} {t('systemInfo.processes') || '进程'}
               {!showUnsignedOnly && processes.filter(p => !p.is_signed).length > 0 && (
                 <span className="unsigned-count">
-                  ({processes.filter(p => !p.is_signed).length} unsigned)
+                  ({processes.filter(p => !p.is_signed).length} {t('systemInfo.unsigned') || '未签名'})
                 </span>
               )}
             </span>
@@ -488,13 +565,13 @@ function SystemInfo() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>PID</th>
-                <th>PPID</th>
-                <th>Name</th>
-                <th>User</th>
-                <th>Signature</th>
-                <th>Path</th>
-                <th>Command Line</th>
+                <th>{t('systemInfo.pid') || 'PID'}</th>
+                <th>{t('systemInfo.ppid') || 'PPID'}</th>
+                <th>{t('systemInfo.name') || '名称'}</th>
+                <th>{t('systemInfo.user') || '用户'}</th>
+                <th>{t('systemInfo.signature') || '签名'}</th>
+                <th>{t('systemInfo.path') || '路径'}</th>
+                <th>{t('systemInfo.commandLine') || '命令行'}</th>
               </tr>
             </thead>
             <tbody>
@@ -507,11 +584,11 @@ function SystemInfo() {
                   <td>
                     {proc.is_signed ? (
                       <span className="signature-badge valid" title={`Issuer: ${proc.signature?.issuer || 'N/A'}\nThumbprint: ${proc.signature?.thumbprint || 'N/A'}`}>
-                        ✓ Signed
+                        ✓ {t('systemInfo.signed') || '已签名'}
                       </span>
                     ) : (
                       <span className="signature-badge unsigned">
-                        ✗ Unsigned
+                        ✗ {t('systemInfo.unsigned') || '未签名'}
                       </span>
                     )}
                   </td>
@@ -522,7 +599,13 @@ function SystemInfo() {
             </tbody>
           </table>
           {processes.length === 0 && !loading && (
-            <div className="empty-state">No process data available</div>
+            <div className="empty-state">
+              {moduleErrors.processes ? (
+                <span className="error-message">{moduleErrors.processes}</span>
+              ) : (
+                t('systemInfo.noProcessData') || '暂无进程数据'
+              )}
+            </div>
           )}
         </div>
       )}
@@ -532,13 +615,13 @@ function SystemInfo() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Protocol</th>
-                <th>Local Address</th>
-                <th>Port</th>
-                <th>Remote Address</th>
-                <th>Port</th>
-                <th>State</th>
-                <th>Process</th>
+                <th>{t('systemInfo.protocol') || '协议'}</th>
+                <th>{t('systemInfo.localAddress') || '本地地址'}</th>
+                <th>{t('systemInfo.port') || '端口'}</th>
+                <th>{t('systemInfo.remoteAddress') || '远程地址'}</th>
+                <th>{t('systemInfo.port') || '端口'}</th>
+                <th>{t('systemInfo.state') || '状态'}</th>
+                <th>{t('systemInfo.process') || '进程'}</th>
               </tr>
             </thead>
             <tbody>
@@ -560,7 +643,7 @@ function SystemInfo() {
             </tbody>
           </table>
           {networkConnections.length === 0 && !loading && (
-            <div className="empty-state">No network connection data available</div>
+            <div className="empty-state">{t('systemInfo.noNetworkData') || '暂无网络连接数据'}</div>
           )}
         </div>
       )}
@@ -570,9 +653,9 @@ function SystemInfo() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Variable Name</th>
-                <th>Value</th>
-                <th>Type</th>
+                <th>{t('systemInfo.varName') || '变量名'}</th>
+                <th>{t('systemInfo.value') || '值'}</th>
+                <th>{t('systemInfo.type') || '类型'}</th>
               </tr>
             </thead>
             <tbody>
@@ -586,7 +669,7 @@ function SystemInfo() {
             </tbody>
           </table>
           {envVars.length === 0 && !loading && (
-            <div className="empty-state">No environment variables available</div>
+            <div className="empty-state">{t('systemInfo.noEnvVars') || '暂无环境变量'}</div>
           )}
         </div>
       )}
@@ -596,13 +679,13 @@ function SystemInfo() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>PID</th>
-                <th>Process</th>
-                <th>DLL Name</th>
-                <th>Version</th>
-                <th>Signed</th>
-                <th>Path</th>
-                <th>Size</th>
+                <th>{t('systemInfo.pid') || 'PID'}</th>
+                <th>{t('systemInfo.process') || '进程'}</th>
+                <th>{t('systemInfo.dllName') || 'DLL名称'}</th>
+                <th>{t('systemInfo.version') || '版本'}</th>
+                <th>{t('systemInfo.signed') || '签名'}</th>
+                <th>{t('systemInfo.path') || '路径'}</th>
+                <th>{t('systemInfo.size') || '大小'}</th>
               </tr>
             </thead>
             <tbody>
@@ -614,7 +697,7 @@ function SystemInfo() {
                   <td className="mono">{dll.version || '-'}</td>
                   <td>
                     <span className={`signature-badge ${dll.is_signed ? 'signed' : 'unsigned'}`}>
-                      {dll.is_signed ? 'Signed' : 'Unsigned'}
+                      {dll.is_signed ? (t('systemInfo.signed') || '已签名') : (t('systemInfo.unsigned') || '未签名')}
                     </span>
                   </td>
                   <td className="truncate" title={dll.path}>{dll.path}</td>
@@ -624,7 +707,7 @@ function SystemInfo() {
             </tbody>
           </table>
           {dlls.length === 0 && !loading && (
-            <div className="empty-state">No DLL information available</div>
+            <div className="empty-state">{t('systemInfo.noDllData') || '暂无DLL信息'}</div>
           )}
         </div>
       )}
@@ -634,11 +717,11 @@ function SystemInfo() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Display Name</th>
-                <th>Description</th>
-                <th>Status</th>
-                <th>Path</th>
+                <th>{t('systemInfo.name') || '名称'}</th>
+                <th>{t('systemInfo.displayName') || '显示名称'}</th>
+                <th>{t('systemInfo.description') || '描述'}</th>
+                <th>{t('systemInfo.status') || '状态'}</th>
+                <th>{t('systemInfo.path') || '路径'}</th>
               </tr>
             </thead>
             <tbody>
@@ -649,7 +732,7 @@ function SystemInfo() {
                   <td className="truncate">{driver.description || '-'}</td>
                   <td>
                     <span className={`status-badge ${driver.status?.toLowerCase() === 'running' ? 'running' : 'stopped'}`}>
-                      {driver.status || 'Unknown'}
+                      {driver.status || t('common.unknown')}
                     </span>
                   </td>
                   <td className="truncate mono" title={driver.path}>{driver.path || '-'}</td>
@@ -658,7 +741,7 @@ function SystemInfo() {
             </tbody>
           </table>
           {drivers.length === 0 && !loading && (
-            <div className="empty-state">No driver information available</div>
+            <div className="empty-state">{t('systemInfo.noDriverData') || '暂无驱动信息'}</div>
           )}
         </div>
       )}
@@ -668,12 +751,12 @@ function SystemInfo() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Full Name</th>
-                <th>SID</th>
-                <th>Type</th>
-                <th>Enabled</th>
-                <th>Home Directory</th>
+                <th>{t('systemInfo.name') || '名称'}</th>
+                <th>{t('systemInfo.fullName') || '全名'}</th>
+                <th>{t('systemInfo.sid') || 'SID'}</th>
+                <th>{t('systemInfo.type') || '类型'}</th>
+                <th>{t('systemInfo.enabled') || '已启用'}</th>
+                <th>{t('systemInfo.homeDir') || '主目录'}</th>
               </tr>
             </thead>
             <tbody>
@@ -682,10 +765,10 @@ function SystemInfo() {
                   <td className="highlight">{user.name}</td>
                   <td>{user.full_name || '-'}</td>
                   <td className="mono">{user.sid || '-'}</td>
-                  <td>{user.type || 'User'}</td>
+                  <td>{user.type || t('systemInfo.user') || '用户'}</td>
                   <td>
                     <span className={`status-badge ${user.enabled ? 'running' : 'stopped'}`}>
-                      {user.enabled ? 'Enabled' : 'Disabled'}
+                      {user.enabled ? (t('systemInfo.enabled') || '已启用') : (t('systemInfo.disabled') || '已禁用')}
                     </span>
                   </td>
                   <td className="truncate">{user.home_dir || '-'}</td>
@@ -694,20 +777,78 @@ function SystemInfo() {
             </tbody>
           </table>
           {users.length === 0 && !loading && (
-            <div className="empty-state">No user information available</div>
+            <div className="empty-state">
+              {moduleErrors.users ? (
+                <span className="error-message">{moduleErrors.users}</span>
+              ) : (
+                t('systemInfo.noUserData') || '暂无用户信息'
+              )}
+            </div>
           )}
         </div>
       )}
 
       {activeTab === 'registry' && (
         <div className="data-table-container">
-          <div className="empty-state">Registry persistence detection requires live data collection.<br/>Use the Persistence page for detection results.</div>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>{t('systemInfo.keyPath') || '注册表路径'}</th>
+                <th>{t('systemInfo.name') || '名称'}</th>
+                <th>{t('systemInfo.value') || '值'}</th>
+                <th>{t('systemInfo.type') || '类型'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registry.map((key, idx) => (
+                <tr key={`${key.path}-${idx}`}>
+                  <td className="truncate mono" title={key.path}>{key.path}</td>
+                  <td className="highlight">{key.name}</td>
+                  <td className="truncate" title={key.value}>{key.value || '-'}</td>
+                  <td><span className="type-badge">{key.type}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {registry.length === 0 && !loading && (
+            <div className="empty-state">{t('systemInfo.noRegistryData') || '暂无注册表持久化键'}</div>
+          )}
         </div>
       )}
 
       {activeTab === 'tasks' && (
         <div className="data-table-container">
-          <div className="empty-state">Scheduled task information requires live data collection.<br/>Use the Forensics page for scheduled task analysis.</div>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>{t('systemInfo.taskName') || '任务名称'}</th>
+                <th>{t('systemInfo.path') || '路径'}</th>
+                <th>{t('systemInfo.state') || '状态'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tasks.map((task, idx) => (
+                <tr key={`${task.name}-${idx}`}>
+                  <td className="highlight">{task.name}</td>
+                  <td className="truncate mono" title={task.path}>{task.path || '-'}</td>
+                  <td>
+                    <span className={`status-badge ${task.state?.toLowerCase() === 'running' ? 'running' : 'stopped'}`}>
+                      {task.state || t('common.unknown')}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {tasks.length === 0 && !loading && (
+            <div className="empty-state">
+              {moduleErrors.tasks ? (
+                <span className="error-message">{moduleErrors.tasks}</span>
+              ) : (
+                t('systemInfo.noTasksData') || '暂无计划任务'
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1049,6 +1190,16 @@ function SystemInfo() {
           padding: 40px;
           text-align: center;
           color: #888;
+        }
+
+        .empty-state .error-message {
+          color: #ef4444;
+          display: block;
+          padding: 10px;
+          background: rgba(239, 68, 68, 0.1);
+          border-radius: 6px;
+          margin: 10px auto;
+          max-width: 400px;
         }
 
         .data-table .highlight {

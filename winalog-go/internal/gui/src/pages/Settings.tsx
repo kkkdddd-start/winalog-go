@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { settingsAPI } from '../api'
+import { settingsAPI, setRequestTimeout } from '../api'
 import { useI18n } from '../locales/I18n'
 
 function Settings() {
@@ -24,11 +24,14 @@ function Settings() {
     exportDirectory: './exports',
     parserWorkers: 4,
     memoryLimit: 2048,
+    requestTimeout: 120,
   })
 
   useEffect(() => {
     settingsAPI.get().then(res => {
       const data = res.data
+      const timeout = data.request_timeout || 120
+      setRequestTimeout(timeout)
       setSettings({
         databasePath: data.database_path || './winalog.db',
         logLevel: data.log_level || 'info',
@@ -44,6 +47,7 @@ function Settings() {
         exportDirectory: data.export_directory || './exports',
         parserWorkers: data.parser_workers || 4,
         memoryLimit: data.memory_limit || 2048,
+        requestTimeout: timeout,
       })
     }).catch(console.error)
   }, [])
@@ -67,6 +71,7 @@ function Settings() {
         export_directory: settings.exportDirectory,
         parser_workers: settings.parserWorkers,
         memory_limit: settings.memoryLimit,
+        request_timeout: settings.requestTimeout,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -390,6 +395,21 @@ function Settings() {
                   className="number-input"
                   min="256"
                   max="16384"
+                />
+              </div>
+
+              <div className="setting-card">
+                <div className="setting-info">
+                  <label>{t('settings.requestTimeout') || 'Request Timeout'}</label>
+                  <p>{t('settings.requestTimeoutDesc') || 'HTTP request timeout in seconds'}</p>
+                </div>
+                <input
+                  type="number"
+                  value={settings.requestTimeout}
+                  onChange={e => handleChange('requestTimeout', Number(e.target.value))}
+                  className="number-input"
+                  min="10"
+                  max="600"
                 />
               </div>
             </div>
