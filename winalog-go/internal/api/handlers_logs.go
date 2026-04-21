@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -31,6 +32,7 @@ func (h *LogsHandler) GetLogs(c *gin.Context) {
 	metricsLogger := observability.GetMetricsLogger()
 	entries, total, err := metricsLogger.ReadLines(offset, limit)
 	if err != nil {
+		log.Printf("[ERROR] GetLogs failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

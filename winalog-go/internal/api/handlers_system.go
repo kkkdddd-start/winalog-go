@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -239,7 +240,21 @@ func (h *SystemHandler) GetMetrics(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
+	enabledStr := c.DefaultQuery("enabled", "true")
+	enabled := enabledStr == "true" || enabledStr == "1"
+
+	log.Printf("[INFO] GetNetworkConnections called with enabled=%v", enabled)
+
 	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, NetworkConnectionResponse{
+			Connections: []*NetworkConnInfo{},
+			Total:       0,
+		})
+		return
+	}
+
+	if !enabled {
+		log.Printf("[INFO] GetNetworkConnections skipped - module disabled")
 		c.JSON(http.StatusOK, NetworkConnectionResponse{
 			Connections: []*NetworkConnInfo{},
 			Total:       0,
@@ -261,6 +276,7 @@ func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
 
 	connections, err := collectors.ListNetworkConnections()
 	if err != nil {
+		log.Printf("[ERROR] GetNetworkConnections failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -282,6 +298,30 @@ func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
 		})
 		if len(result) >= limit {
 			break
+		}
+	}
+
+	if h.db != nil {
+		systemRepo := storage.NewSystemRepo(h.db)
+		storageConnections := make([]*storage.NetworkConnection, 0, len(connections))
+		now := time.Now()
+		for _, conn := range connections {
+			storageConnections = append(storageConnections, &storage.NetworkConnection{
+				PID:         conn.PID,
+				ProcessName: conn.ProcessName,
+				Protocol:    conn.Protocol,
+				LocalAddr:   conn.LocalAddr,
+				LocalPort:   conn.LocalPort,
+				RemoteAddr:  conn.RemoteAddr,
+				RemotePort:  conn.RemotePort,
+				State:       conn.State,
+				CollectedAt: now,
+			})
+		}
+		if err := systemRepo.SaveNetworkConnections(storageConnections); err != nil {
+			log.Printf("[ERROR] Failed to save network connections to database: %v", err)
+		} else {
+			log.Printf("[INFO] Saved %d network connections to database", len(storageConnections))
 		}
 	}
 
@@ -372,6 +412,7 @@ func getTimezone() string {
 func (h *SystemHandler) GetEnvironmentVariables(c *gin.Context) {
 	vars, err := collectors.ListEnvironmentVariables()
 	if err != nil {
+		log.Printf("[ERROR] GetEnvironmentVariables failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -392,7 +433,21 @@ func (h *SystemHandler) GetEnvironmentVariables(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
+	enabledStr := c.DefaultQuery("enabled", "true")
+	enabled := enabledStr == "true" || enabledStr == "1"
+
+	log.Printf("[INFO] GetLoadedDLLs called with enabled=%v", enabled)
+
 	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, DLLResponse{
+			Modules: []*DLLInfo{},
+			Total:   0,
+		})
+		return
+	}
+
+	if !enabled {
+		log.Printf("[INFO] GetLoadedDLLs skipped - module disabled")
 		c.JSON(http.StatusOK, DLLResponse{
 			Modules: []*DLLInfo{},
 			Total:   0,
@@ -412,6 +467,7 @@ func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
 
 	dlls, err := collectors.ListLoadedDLLs()
 	if err != nil {
+		log.Printf("[ERROR] GetLoadedDLLs failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -438,7 +494,21 @@ func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetDrivers(c *gin.Context) {
+	enabledStr := c.DefaultQuery("enabled", "true")
+	enabled := enabledStr == "true" || enabledStr == "1"
+
+	log.Printf("[INFO] GetDrivers called with enabled=%v", enabled)
+
 	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, DriverResponse{
+			Drivers: []*DriverInfo{},
+			Total:   0,
+		})
+		return
+	}
+
+	if !enabled {
+		log.Printf("[INFO] GetDrivers skipped - module disabled")
 		c.JSON(http.StatusOK, DriverResponse{
 			Drivers: []*DriverInfo{},
 			Total:   0,
@@ -448,6 +518,7 @@ func (h *SystemHandler) GetDrivers(c *gin.Context) {
 
 	drivers, err := collectors.ListDrivers()
 	if err != nil {
+		log.Printf("[ERROR] GetDrivers failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -470,7 +541,21 @@ func (h *SystemHandler) GetDrivers(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetUsers(c *gin.Context) {
+	enabledStr := c.DefaultQuery("enabled", "true")
+	enabled := enabledStr == "true" || enabledStr == "1"
+
+	log.Printf("[INFO] GetUsers called with enabled=%v", enabled)
+
 	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, UserResponse{
+			Users: []*UserInfo{},
+			Total: 0,
+		})
+		return
+	}
+
+	if !enabled {
+		log.Printf("[INFO] GetUsers skipped - module disabled")
 		c.JSON(http.StatusOK, UserResponse{
 			Users: []*UserInfo{},
 			Total: 0,
@@ -480,9 +565,12 @@ func (h *SystemHandler) GetUsers(c *gin.Context) {
 
 	users, err := collectors.ListLocalUsers()
 	if err != nil {
+		log.Printf("[ERROR] GetUsers failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	log.Printf("[INFO] GetUsers returned %d users", len(users))
 
 	result := make([]*UserInfo, 0, len(users))
 	for _, u := range users {
@@ -502,7 +590,21 @@ func (h *SystemHandler) GetUsers(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
+	enabledStr := c.DefaultQuery("enabled", "true")
+	enabled := enabledStr == "true" || enabledStr == "1"
+
+	log.Printf("[INFO] GetRegistryPersistence called with enabled=%v", enabled)
+
 	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, RegistryPersistenceResponse{
+			RunKeys: []*RegistryKeyInfo{},
+			Total:   0,
+		})
+		return
+	}
+
+	if !enabled {
+		log.Printf("[INFO] GetRegistryPersistence skipped - module disabled")
 		c.JSON(http.StatusOK, RegistryPersistenceResponse{
 			RunKeys: []*RegistryKeyInfo{},
 			Total:   0,
@@ -512,6 +614,7 @@ func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 
 	persistence, err := collectors.CollectRegistryPersistence(context.Background())
 	if err != nil {
+		log.Printf("[ERROR] GetRegistryPersistence failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -551,7 +654,21 @@ func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 }
 
 func (h *SystemHandler) GetScheduledTasks(c *gin.Context) {
+	enabledStr := c.DefaultQuery("enabled", "true")
+	enabled := enabledStr == "true" || enabledStr == "1"
+
+	log.Printf("[INFO] GetScheduledTasks called with enabled=%v", enabled)
+
 	if runtime.GOOS != "windows" {
+		c.JSON(http.StatusOK, TaskResponse{
+			Tasks: []*TaskInfo{},
+			Total: 0,
+		})
+		return
+	}
+
+	if !enabled {
+		log.Printf("[INFO] GetScheduledTasks skipped - module disabled")
 		c.JSON(http.StatusOK, TaskResponse{
 			Tasks: []*TaskInfo{},
 			Total: 0,
@@ -561,9 +678,12 @@ func (h *SystemHandler) GetScheduledTasks(c *gin.Context) {
 
 	tasks, err := collectors.ListScheduledTasks()
 	if err != nil {
+		log.Printf("[ERROR] GetScheduledTasks failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	log.Printf("[INFO] GetScheduledTasks returned %d tasks", len(tasks))
 
 	result := make([]*TaskInfo, 0, len(tasks))
 	for _, t := range tasks {
@@ -600,6 +720,7 @@ func (h *SystemHandler) GetProcessDLLs(c *gin.Context) {
 
 	dlls, err := collectors.GetProcessDLLs(pid)
 	if err != nil {
+		log.Printf("[ERROR] GetProcessDLLs failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

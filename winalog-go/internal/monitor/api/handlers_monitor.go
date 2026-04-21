@@ -5,6 +5,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -94,6 +95,7 @@ func (h *MonitorHandler) UpdateConfig(c *gin.Context) {
 	}
 
 	if err := h.engine.UpdateConfig(&req); err != nil {
+		log.Printf("[ERROR] UpdateConfig failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -125,6 +127,7 @@ func (h *MonitorHandler) StartStop(c *gin.Context) {
 	}
 
 	if err != nil {
+		log.Printf("[ERROR] StartStop action '%s' failed: %v", req.Action, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

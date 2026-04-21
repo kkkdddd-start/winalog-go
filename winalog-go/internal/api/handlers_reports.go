@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -154,6 +155,7 @@ func (h *ReportsHandler) ListReports(c *gin.Context) {
 		LIMIT 100
 	`)
 	if err != nil {
+		log.Printf("[ERROR] ListReports failed: %v", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -221,6 +223,7 @@ func (h *ReportsHandler) GenerateReport(c *gin.Context) {
 		reportID, req.Type, req.Format, req.Title, req.Description, generatedAt, "")
 
 	if err != nil {
+		log.Printf("[ERROR] GenerateReport insert failed: %v", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -347,6 +350,7 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "report not found"})
 			return
 		}
+		log.Printf("[ERROR] GetReport query failed: %v", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "GetReport query/scan error: " + err.Error()})
 		return
 	}
@@ -391,6 +395,7 @@ func (h *ReportsHandler) DownloadReport(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "report not found"})
 			return
 		}
+		log.Printf("[ERROR] DownloadReport query failed: %v", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "GetReport query/scan error: " + err.Error()})
 		return
 	}
@@ -429,11 +434,13 @@ func (h *ReportsHandler) DownloadReport(c *gin.Context) {
 
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "GetReport query/scan error: " + err.Error()})
+		log.Printf("[ERROR] DownloadReport filepath.Abs failed: %v", err)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to resolve file path: " + err.Error()})
 		return
 	}
 	absReportDir, _ := filepath.Abs(filepath.Join(os.TempDir(), "winalog_reports"))
 	if !strings.HasPrefix(absFilePath, absReportDir) {
+		log.Printf("[WARN] DownloadReport blocked path traversal attempt: %s", filePath)
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "Access denied"})
 		return
 	}
