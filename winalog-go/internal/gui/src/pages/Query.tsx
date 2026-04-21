@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useI18n } from '../locales/I18n'
 import { queryAPI } from '../api'
 
@@ -27,7 +27,21 @@ function Query() {
   const [history, setHistory] = useState<QueryHistoryItem[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [executionTime, setExecutionTime] = useState<string>('')
+  const [dbStatus, setDbStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const checkDbConnection = async () => {
+    try {
+      await queryAPI.execute({ query: 'SELECT 1 as test', limit: 1 })
+      setDbStatus('connected')
+    } catch (err: any) {
+      setDbStatus('disconnected')
+    }
+  }
+
+  useEffect(() => {
+    checkDbConnection()
+  }, [])
 
   const handleExecute = async () => {
     if (!sql.trim()) {
@@ -48,9 +62,23 @@ function Query() {
       addToHistory(sql, true, res.data.count, duration)
     } catch (err: any) {
       const duration = ((performance.now() - startTime) / 1000).toFixed(2)
-      setError(err.response?.data?.error || 'Failed to execute query')
+      const statusCode = err.response?.status
+      const backendError = err.response?.data?.error
+      let errorMsg = 'Failed to execute query'
+      if (statusCode === 400) {
+        errorMsg = backendError || 'Invalid SQL query'
+      } else if (statusCode === 500) {
+        errorMsg = backendError || 'Database error'
+      } else if (!err.response) {
+        errorMsg = 'Cannot connect to server - is the API running?'
+      } else {
+        errorMsg = backendError || err.message
+      }
+      if (statusCode) {
+        errorMsg = `[${statusCode}] ${errorMsg}`
+      }
+      setError(errorMsg)
       addToHistory(sql, false, 0, duration)
-      addToHistory(sql, false, 0)
     } finally {
       setLoading(false)
     }
@@ -166,6 +194,17 @@ function Query() {
       <div className="page-header">
         <h2>{t('query.title')}</h2>
         <p className="page-desc">{t('query.pageDesc')}</p>
+      </div>
+
+      <div className="db-status-bar">
+        <span className={`db-status-indicator ${dbStatus}`}>
+          {dbStatus === 'connected' && '🟢 Database Connected'}
+          {dbStatus === 'disconnected' && '🔴 Database Disconnected'}
+          {dbStatus === 'unknown' && '🟡 Checking database...'}
+        </span>
+        <button className="db-check-btn" onClick={checkDbConnection}>
+          Check Connection
+        </button>
       </div>
 
       <div className="query-toolbar">
