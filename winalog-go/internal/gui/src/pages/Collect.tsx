@@ -315,6 +315,65 @@ function Collect() {
     setCustomPaths('')
   }
 
+  // 将通道名称转换为文件路径
+  const channelToFilePath = (channelName: string): string => {
+    const basePath = 'C:\\Windows\\System32\\winevt\\Logs\\'
+    const normalizedName = channelName.replace(/\//g, '%2F')
+    return `${basePath}${normalizedName}.evtx`
+  }
+
+  // 获取选中通道对应的文件路径
+  const getSelectedChannelPaths = (): string[] => {
+    return channels.filter(ch => ch.enabled).map(ch => channelToFilePath(ch.name))
+  }
+
+  // 导入选中通道的日志
+  const handleImportChannels = async () => {
+    const paths = getSelectedChannelPaths()
+    if (paths.length === 0) {
+      message.warning('请先选择要导入的日志通道')
+      return
+    }
+
+    const enabledFormats = Object.entries(importFormats)
+      .filter(([, enabled]) => enabled)
+      .map(([format]) => format)
+
+    if (enabledFormats.length === 0) {
+      message.warning('请至少选择一种日志格式')
+      return
+    }
+
+    setLoading(true)
+    setStatus(`正在导入 ${paths.length} 个通道的日志...`)
+
+    try {
+      const response = await importAPI.importLogs(paths, {
+        enabled_formats: enabledFormats,
+        skip_patterns: exclusions.filter(e => e.type === 'path' && e.enabled).map(e => e.pattern),
+      })
+
+      if (response.data.success) {
+        const stats = `
+导入完成!
+- 成功: ${response.data.files_imported} 个文件
+- 失败: ${response.data.files_failed} 个文件
+- 事件: ${response.data.events_imported} 条
+${response.data.errors?.length > 0 ? `- 错误: ${response.data.errors.length} 个` : ''}`
+        setStatus(stats)
+        message.success('导入完成')
+      } else {
+        setStatus(`导入失败: ${response.data.errors?.join(', ')}`)
+        message.error('导入失败')
+      }
+    } catch (error: any) {
+      setStatus(`导入失败: ${error.message}`)
+      message.error('导入失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // ============ 采集操作 ============
 
   const handleCollect = async () => {
@@ -912,7 +971,12 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
           <div className="section">
             <div className="section-header">
               <h4>日志源</h4>
-              <Button type="link" size="small" icon={<ReloadOutlined />} onClick={fetchChannels}>刷新</Button>
+              <Space>
+                <Button type="link" size="small" icon={<ReloadOutlined />} onClick={fetchChannels}>刷新</Button>
+                <Button type="primary" size="small" icon={<UploadOutlined />} onClick={handleImportChannels} loading={loading} disabled={channels.filter(c => c.enabled).length === 0}>
+                  导入选中通道
+                </Button>
+              </Space>
             </div>
             <Checkbox.Group value={channels.filter(c => c.enabled).map(c => c.id)} onChange={(values) => {
               setChannels(prev => prev.map(ch => ({ ...ch, enabled: values.includes(ch.id) })))
@@ -925,6 +989,10 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
                 ))}
               </Row>
             </Checkbox.Group>
+            <div className="channel-import-hint">
+              <InfoCircleOutlined />
+              <span>选择日志源后点击"导入选中通道"直接导入，或在下方输入自定义路径</span>
+            </div>
           </div>
 
           {/* 排除选项 */}
@@ -1138,6 +1206,7 @@ winalog convert /path/to/logs --output-dir ./csv_output`}</pre>
         .last-fetched { font-size: 12px; color: #888; }
         .channel-count { font-size: 12px; color: #00d9ff; font-weight: normal; }
         .channel-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; display: inline-block; color: #eee; }
+        .channel-import-hint { font-size: 12px; color: #888; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
         
         /* Collapse Override */
         .channels-section .ant-collapse { background: transparent !important; border: none !important; }
