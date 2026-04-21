@@ -244,10 +244,10 @@ function SystemInfo() {
 
   const handleTabChange = (tab: 'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'tasks') => {
     setActiveTab(tab)
-    if (tab === 'processes') fetchProcesses()
-    if (tab === 'network') fetchNetwork()
-    if (tab === 'env') fetchEnvVars()
-    if (tab === 'dlls') {
+    if (tab === 'processes' && enabledModules.processes) fetchProcesses()
+    if (tab === 'network' && enabledModules.network) fetchNetwork()
+    if (tab === 'env' && enabledModules.env) fetchEnvVars()
+    if (tab === 'dlls' && enabledModules.dlls) {
       if (processes.length > 0 && !selectedDllPid) {
       } else if (selectedDllPid) {
         fetchDlls(selectedDllPid)
@@ -255,10 +255,10 @@ function SystemInfo() {
         fetchDlls()
       }
     }
-    if (tab === 'drivers') fetchDrivers()
-    if (tab === 'users') fetchUsers()
-    if (tab === 'registry') fetchRegistry()
-    if (tab === 'tasks') fetchTasks()
+    if (tab === 'drivers' && enabledModules.drivers) fetchDrivers()
+    if (tab === 'users' && enabledModules.users) fetchUsers()
+    if (tab === 'registry' && enabledModules.registry) fetchRegistry()
+    if (tab === 'tasks' && enabledModules.tasks) fetchTasks()
   }
 
   const formatUptime = (seconds: number) => {
