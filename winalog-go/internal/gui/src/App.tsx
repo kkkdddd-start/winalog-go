@@ -1,5 +1,7 @@
 import { Routes, Route, Link } from 'react-router-dom'
+import { useEffect } from 'react'
 import { I18nProvider, useI18n } from './locales/I18n'
+import { settingsAPI, setRequestTimeout } from './api'
 import LangSwitcher from './components/LangSwitcher'
 import Dashboard from './pages/Dashboard'
 import Events from './pages/Events'
@@ -60,6 +62,15 @@ function Navigation() {
 }
 
 function AppContent() {
+  useEffect(() => {
+    settingsAPI.get().then(res => {
+      const timeout = res.data.request_timeout || 360
+      setRequestTimeout(timeout)
+    }).catch(() => {
+      setRequestTimeout(360)
+    })
+  }, [])
+
   return (
     <>
       <LangSwitcher />

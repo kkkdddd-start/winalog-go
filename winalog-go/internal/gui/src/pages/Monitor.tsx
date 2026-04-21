@@ -95,8 +95,15 @@ function Monitor() {
   const fetchStats = useCallback(async () => {
     try {
       const response = await monitorAPI.getStats()
-      setStats(response.data.stats)
+      const backendStats = response.data.stats
+      setStats(backendStats)
       setStatsError(null)
+      setConfig({
+        process_enabled: backendStats.process_enabled,
+        network_enabled: backendStats.network_enabled,
+        dns_enabled: backendStats.dns_enabled,
+        poll_interval: 5,
+      })
     } catch (error: any) {
       const msg = error.response?.status === 404 
         ? 'Monitor stats not available (Windows only feature)' 
