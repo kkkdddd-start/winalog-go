@@ -246,7 +246,7 @@ func (h *ForensicsHandler) CollectEvidence(c *gin.Context) {
 	}
 
 	if err := h.saveEvidenceManifest(manifest); err != nil {
-		log.Printf("failed to save manifest: %v", err)
+		log.Printf("[ERROR] failed to save manifest: %v", err)
 	}
 
 	c.JSON(http.StatusOK, CollectResponse{
@@ -272,7 +272,7 @@ func (h *ForensicsHandler) saveEvidenceManifest(manifest *forensics.EvidenceMani
 			VALUES (?, ?, ?, ?, ?)
 		`, f.FilePath, f.FileHash, manifest.ID, f.CollectedAt.Format(time.RFC3339), f.Collector)
 		if err != nil {
-			log.Printf("failed to save evidence file: %v", err)
+			log.Printf("[ERROR] failed to save evidence file: %v", err)
 		}
 	}
 

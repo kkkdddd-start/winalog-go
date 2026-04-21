@@ -1,8 +1,11 @@
+//go:build windows
+
 package collectors
 
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"strings"
 	"time"
 
@@ -154,17 +157,25 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 
 	cmd := `Get-ScheduledTask | Select-Object TaskName,TaskPath,State | ForEach-Object { $_ | ConvertTo-Json -Compress }`
 
+	log.Printf("[INFO] Collecting scheduled tasks with command: Get-ScheduledTask")
+
 	result := utils.RunPowerShell(cmd)
 	if !result.Success() {
+		log.Printf("[ERROR] Get-ScheduledTask failed: %v", result.Error)
 		return tasks, result.Error
 	}
 
 	output := strings.TrimSpace(result.Output)
 	if output == "" {
+		log.Printf("[WARN] Get-ScheduledTask returned empty result")
 		return tasks, nil
 	}
 
+	log.Printf("[DEBUG] Get-ScheduledTask raw output length: %d", len(output))
+
 	lines := strings.Split(output, "\n")
+	parseCount := 0
+	errorCount := 0
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || line == "null" {
@@ -178,6 +189,8 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 		}
 
 		if err := json.Unmarshal([]byte(line), &taskRaw); err != nil {
+			log.Printf("[WARN] Failed to parse task JSON: %v, line: %s", err, line)
+			errorCount++
 			continue
 		}
 
@@ -186,7 +199,10 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 			TaskPath: taskRaw.TaskPath,
 			State:    taskRaw.State,
 		})
+		parseCount++
 	}
+
+	log.Printf("[INFO] Get-ScheduledTask parsed %d tasks, %d errors, total lines: %d", parseCount, errorCount, len(lines))
 
 	return tasks, nil
 }

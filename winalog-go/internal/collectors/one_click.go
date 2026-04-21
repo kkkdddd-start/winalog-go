@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -138,6 +139,8 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		Errors:         make([]string, 0),
 	}
 
+	log.Printf("[INFO] One-click collection started")
+
 	if c.cfg.OutputPath == "" {
 		execPath, err := os.Executable()
 		workDir := "."
@@ -146,12 +149,14 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		}
 		timestamp := time.Now().Format("20060102_150405")
 		c.cfg.OutputPath = filepath.Join(workDir, fmt.Sprintf("winalog_collect_%s", timestamp))
+		log.Printf("[INFO] Output path not specified, using: %s", c.cfg.OutputPath)
 	}
 
 	tempDir := c.cfg.OutputPath + "_temp"
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		result.Success = false
 		result.Errors = append(result.Errors, fmt.Sprintf("failed to create temp dir: %v", err))
+		log.Printf("[ERROR] Failed to create temp dir: %v", err)
 		return result, err
 	}
 	defer os.RemoveAll(tempDir)
@@ -160,113 +165,180 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	var collectedItems = make(map[string]int)
 
 	if c.cfg.IncludeSystemInfo {
+		log.Printf("[INFO] Collecting system info...")
 		if err := c.collectSystemInfoTo(tempDir); err != nil {
+			log.Printf("[ERROR] System info collection failed: %v", err)
 			allErrors = append(allErrors, fmt.Sprintf("systemInfo: %v", err))
 		} else {
+			log.Printf("[INFO] System info collected successfully")
 			collectedItems["systemInfo"] = 1
 		}
 	}
 
 	if c.cfg.IncludeRegistry {
+		log.Printf("[INFO] Collecting registry...")
 		if err := c.CollectRegistry(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Registry collection failed: %v", err)
 			allErrors = append(allErrors, fmt.Sprintf("registry: %v", err))
 		} else {
+			log.Printf("[INFO] Registry collected successfully")
 			collectedItems["registry"] = 1
 		}
 	}
 
 	if c.cfg.IncludeTasks {
+		log.Printf("[INFO] Collecting scheduled tasks...")
 		if err := c.CollectScheduledTasks(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Scheduled tasks collection failed: %v", err)
 			allErrors = append(allErrors, fmt.Sprintf("scheduledTasks: %v", err))
 		} else {
+			log.Printf("[INFO] Scheduled tasks collected successfully")
 			collectedItems["scheduledTasks"] = 1
 		}
 	}
 
 	if c.cfg.IncludeUsers {
+		log.Printf("[INFO] Collecting local users...")
 		if err := c.CollectLocalUsers(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Local users collection failed: %v", err)
 			allErrors = append(allErrors, fmt.Sprintf("localUsers: %v", err))
 		} else {
+			log.Printf("[INFO] Local users collected successfully")
 			collectedItems["localUsers"] = 1
 		}
 	}
 
 	if c.cfg.IncludePrefetch {
+		log.Printf("[INFO] Collecting prefetch...")
 		if err := c.CollectPrefetch(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Prefetch collection failed: %v", err)
 			allErrors = append(allErrors, err.Error())
+		} else {
+			log.Printf("[INFO] Prefetch collected successfully")
+			collectedItems["prefetch"] = 1
 		}
 	}
 
-	c.CollectEvtxLogs(ctx, tempDir)
+	log.Printf("[INFO] Collecting EVTX logs...")
+	if err := c.CollectEvtxLogs(ctx, tempDir); err != nil {
+		log.Printf("[ERROR] EVTX logs collection failed: %v", err)
+		allErrors = append(allErrors, fmt.Sprintf("evtxLogs: %v", err))
+	} else {
+		log.Printf("[INFO] EVTX logs collected successfully")
+		collectedItems["evtxLogs"] = 1
+	}
 
+	log.Printf("[INFO] Collecting event logs...")
 	if err := c.CollectEventLogs(ctx, tempDir); err != nil {
+		log.Printf("[ERROR] Event logs collection failed: %v", err)
 		allErrors = append(allErrors, err.Error())
+	} else {
+		log.Printf("[INFO] Event logs collected successfully")
+		collectedItems["eventLogs"] = 1
 	}
 
 	if c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs {
+		log.Printf("[INFO] Collecting process info with signatures...")
 		if err := c.collectProcessInfoWithSignaturesAndDLLs(tempDir); err != nil {
+			log.Printf("[ERROR] Process info collection failed: %v", err)
 			allErrors = append(allErrors, err.Error())
+		} else {
+			log.Printf("[INFO] Process info collected successfully")
+			collectedItems["processInfo"] = 1
 		}
 	}
 
 	if c.cfg.IncludeAmcache {
+		log.Printf("[INFO] Collecting amcache...")
 		if err := c.CollectAmcache(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Amcache collection failed: %v", err)
 			allErrors = append(allErrors, err.Error())
+		} else {
+			log.Printf("[INFO] Amcache collected successfully")
+			collectedItems["amcache"] = 1
 		}
 	}
 
 	if c.cfg.IncludeUserassist {
+		log.Printf("[INFO] Collecting userassist...")
 		if err := c.CollectUserAssist(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Userassist collection failed: %v", err)
 			allErrors = append(allErrors, err.Error())
+		} else {
+			log.Printf("[INFO] Userassist collected successfully")
+			collectedItems["userassist"] = 1
 		}
 	}
 
 	if c.cfg.IncludeUSNJournal {
+		log.Printf("[INFO] Collecting USN journal...")
 		if err := c.CollectUSNJournal(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] USN journal collection failed: %v", err)
 			allErrors = append(allErrors, err.Error())
+		} else {
+			log.Printf("[INFO] USN journal collected successfully")
+			collectedItems["usnJournal"] = 1
 		}
 	}
 
 	if c.cfg.IncludeShimCache {
+		log.Printf("[INFO] Collecting shimcache...")
 		if err := c.CollectShimCache(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Shimcache collection failed: %v", err)
 			allErrors = append(allErrors, fmt.Sprintf("shimCache: %v", err))
 		} else {
+			log.Printf("[INFO] Shimcache collected successfully")
 			collectedItems["shimCache"] = 1
 		}
 	}
 
 	if c.cfg.IncludeNetwork {
+		log.Printf("[INFO] Collecting network connections...")
 		if err := c.CollectNetworkConnections(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Network connections collection failed: %v", err)
 			allErrors = append(allErrors, fmt.Sprintf("networkConnections: %v", err))
 		} else {
+			log.Printf("[INFO] Network connections collected successfully")
 			collectedItems["networkConnections"] = 1
 		}
 	}
 
 	if c.cfg.IncludeDrivers {
+		log.Printf("[INFO] Collecting drivers...")
 		if err := c.CollectDrivers(ctx, tempDir); err != nil {
+			log.Printf("[ERROR] Drivers collection failed: %v", err)
 			allErrors = append(allErrors, fmt.Sprintf("drivers: %v", err))
 		} else {
+			log.Printf("[INFO] Drivers collected successfully")
 			collectedItems["drivers"] = 1
 		}
 	}
 
 	if c.cfg.CalculateHash {
+		log.Printf("[INFO] Calculating file hashes...")
 		hashes, err := c.CalculateFileHashes(tempDir)
 		if err == nil {
 			result.Hashes = hashes
+			log.Printf("[INFO] File hashes calculated: %d files", len(hashes))
+		} else {
+			log.Printf("[WARN] Failed to calculate file hashes: %v", err)
 		}
 	}
 
 	if c.cfg.Compress {
+		log.Printf("[INFO] Creating ZIP archive...")
 		zipPath := c.cfg.OutputPath + ".zip"
 		if err := c.CreateZipFromDir(tempDir, zipPath); err != nil {
+			log.Printf("[ERROR] Failed to create ZIP: %v", err)
 			allErrors = append(allErrors, err.Error())
 		} else {
+			log.Printf("[INFO] ZIP archive created: %s", zipPath)
 			c.cfg.OutputPath = zipPath
 		}
 	} else {
+		log.Printf("[INFO] Moving temp directory to output path...")
 		if err := os.Rename(tempDir, c.cfg.OutputPath); err != nil {
+			log.Printf("[ERROR] Failed to move directory: %v", err)
 			allErrors = append(allErrors, err.Error())
 		}
 	}
@@ -277,6 +349,14 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	result.CollectedItems = collectedItems
 	if len(allErrors) > 0 {
 		result.Success = false
+	}
+
+	log.Printf("[INFO] One-click collection completed: success=%v, collected=%d items, errors=%d, duration=%v",
+		result.Success, len(collectedItems), len(allErrors), result.Duration)
+	if len(allErrors) > 0 {
+		for i, err := range allErrors {
+			log.Printf("[ERROR] Collection error[%d]: %s", i+1, err)
+		}
 	}
 
 	return result, nil

@@ -196,15 +196,15 @@ function Reports() {
                 className={`format-option ${reportLang === 'en' ? 'selected' : ''}`}
                 onClick={() => setReportLang('en')}
               >
-                <div className="format-icon">🇺🇸</div>
-                <div className="format-label">English</div>
+                <div className="format-icon">EN</div>
+                <div className="format-label">{t('reports.languageEnglish')}</div>
               </div>
               <div 
                 className={`format-option ${reportLang === 'zh' ? 'selected' : ''}`}
                 onClick={() => setReportLang('zh')}
               >
-                <div className="format-icon">🇨🇳</div>
-                <div className="format-label">中文</div>
+                <div className="format-icon">CN</div>
+                <div className="format-label">{t('reports.languageChinese')}</div>
               </div>
             </div>
           </div>

@@ -2,12 +2,11 @@ package api
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
@@ -60,10 +59,11 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 	h.mu.Unlock()
 
 	c.SSEvent("connected", map[string]interface{}{
+		"type":    "connected",
 		"message": "Connected to live event stream",
 		"time":    time.Now().Format(time.RFC3339),
 	})
-	observability.LogServiceError("live_handler", fmt.Sprintf("SSE client connected from %s", c.ClientIP()))
+	log.Printf("[INFO] SSE client connected from %s", c.ClientIP())
 	c.Writer.Flush()
 
 	ticker := time.NewTicker(2 * time.Second)
@@ -85,7 +85,7 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 				events, _, err := h.db.ListEventsWithContext(queryCtx, filter)
 				queryCancel()
 				if err != nil {
-					observability.LogServiceError("live_handler", fmt.Sprintf("ListEvents failed: %v", err))
+					log.Printf("[ERROR] SSE ListEvents failed: %v", err)
 				} else if len(events) > 0 {
 					for _, event := range events {
 						msg := LiveEventMessage{
@@ -101,7 +101,7 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 
 				stats, err := h.db.GetStats()
 				if err != nil {
-					observability.LogServiceError("live_handler", fmt.Sprintf("GetStats failed: %v", err))
+					log.Printf("[ERROR] SSE GetStats failed: %v", err)
 				} else {
 					c.SSEvent("stats", map[string]interface{}{
 						"total_events": stats.EventCount,
@@ -110,9 +110,13 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 					})
 				}
 			}
+			if _, err := c.Writer.Write([]byte{}); err != nil {
+				log.Printf("[WARN] SSE write failed, closing stream: %v", err)
+				return
+			}
 			c.Writer.Flush()
 		case <-clientGone:
-			observability.LogServiceError("live_handler", fmt.Sprintf("SSE client disconnected from %s", c.ClientIP()))
+			log.Printf("[INFO] SSE client disconnected from %s", c.ClientIP())
 			return
 		}
 	}

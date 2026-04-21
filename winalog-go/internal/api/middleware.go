@@ -43,7 +43,12 @@ func requestLogger() gin.HandlerFunc {
 
 		jsonBytes, _ := json.Marshal(logEntry)
 		jsonBytes = append(jsonBytes, '\n')
+
 		os.Stdout.Write(jsonBytes)
+
+		if lf := getLogFile(); lf != nil {
+			lf.Write(jsonBytes)
+		}
 
 		observability.LogAPIRequest(logEntry)
 	}
@@ -78,7 +83,7 @@ func initLogFile() error {
 		logDir = os.TempDir()
 	}
 
-	logPath := filepath.Join(logDir, "winalog.log")
+	logPath := filepath.Join(logDir, "winalog_metrics.log")
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)

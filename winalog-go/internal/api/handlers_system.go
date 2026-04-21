@@ -540,55 +540,6 @@ func (h *SystemHandler) GetDrivers(c *gin.Context) {
 	})
 }
 
-func (h *SystemHandler) GetUsers(c *gin.Context) {
-	enabledStr := c.DefaultQuery("enabled", "true")
-	enabled := enabledStr == "true" || enabledStr == "1"
-
-	log.Printf("[INFO] GetUsers called with enabled=%v", enabled)
-
-	if runtime.GOOS != "windows" {
-		c.JSON(http.StatusOK, UserResponse{
-			Users: []*UserInfo{},
-			Total: 0,
-		})
-		return
-	}
-
-	if !enabled {
-		log.Printf("[INFO] GetUsers skipped - module disabled")
-		c.JSON(http.StatusOK, UserResponse{
-			Users: []*UserInfo{},
-			Total: 0,
-		})
-		return
-	}
-
-	users, err := collectors.ListLocalUsers()
-	if err != nil {
-		log.Printf("[ERROR] GetUsers failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	log.Printf("[INFO] GetUsers returned %d users", len(users))
-
-	result := make([]*UserInfo, 0, len(users))
-	for _, u := range users {
-		result = append(result, &UserInfo{
-			Name:     u.Name,
-			SID:      u.SID,
-			Enabled:  u.Enabled,
-			FullName: u.FullName,
-			Type:     u.Type,
-		})
-	}
-
-	c.JSON(http.StatusOK, UserResponse{
-		Users: result,
-		Total: len(result),
-	})
-}
-
 func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 	enabledStr := c.DefaultQuery("enabled", "true")
 	enabled := enabledStr == "true" || enabledStr == "1"
@@ -650,53 +601,6 @@ func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 	c.JSON(http.StatusOK, RegistryPersistenceResponse{
 		RunKeys: keys,
 		Total:   len(keys),
-	})
-}
-
-func (h *SystemHandler) GetScheduledTasks(c *gin.Context) {
-	enabledStr := c.DefaultQuery("enabled", "true")
-	enabled := enabledStr == "true" || enabledStr == "1"
-
-	log.Printf("[INFO] GetScheduledTasks called with enabled=%v", enabled)
-
-	if runtime.GOOS != "windows" {
-		c.JSON(http.StatusOK, TaskResponse{
-			Tasks: []*TaskInfo{},
-			Total: 0,
-		})
-		return
-	}
-
-	if !enabled {
-		log.Printf("[INFO] GetScheduledTasks skipped - module disabled")
-		c.JSON(http.StatusOK, TaskResponse{
-			Tasks: []*TaskInfo{},
-			Total: 0,
-		})
-		return
-	}
-
-	tasks, err := collectors.ListScheduledTasks()
-	if err != nil {
-		log.Printf("[ERROR] GetScheduledTasks failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	log.Printf("[INFO] GetScheduledTasks returned %d tasks", len(tasks))
-
-	result := make([]*TaskInfo, 0, len(tasks))
-	for _, t := range tasks {
-		result = append(result, &TaskInfo{
-			Name:  t.TaskName,
-			Path:  t.TaskPath,
-			State: t.State,
-		})
-	}
-
-	c.JSON(http.StatusOK, TaskResponse{
-		Tasks: result,
-		Total: len(result),
 	})
 }
 

@@ -29,11 +29,13 @@ type SignatureResult struct {
 }
 
 type OneClickResult struct {
-	OutputPath string
-	Duration   interface{}
-	Success    bool
-	Errors     []string
-	FileCount  int
+	OutputPath     string            `json:"output_path"`
+	Duration       interface{}       `json:"duration"`
+	Success        bool              `json:"success"`
+	CollectedItems map[string]int    `json:"collected_items"`
+	Errors         []string          `json:"errors,omitempty"`
+	FileCount      int               `json:"file_count"`
+	Hashes         map[string]string `json:"hashes,omitempty"`
 }
 
 type DLLModuleInfo struct {

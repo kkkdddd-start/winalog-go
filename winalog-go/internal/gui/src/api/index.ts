@@ -166,22 +166,40 @@ export const liveAPI = {
   streamEvents: (onEvent: (data: any) => void, onStats: (data: any) => void, onError?: (err: any) => void) => {
     const eventSource = new EventSource('/api/live/events')
     
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        if (data.type === 'event') {
-          onEvent(data.data)
-        } else if (data.type === 'stats') {
-          onStats(data)
-        }
-      } catch (e) {
-        console.error('Failed to parse SSE data:', e)
-      }
+    eventSource.onopen = () => {
+      console.log('[SSE] Connected to stream')
     }
     
     eventSource.onerror = (err) => {
-      console.error('SSE error:', err)
+      console.error('[SSE] Error:', err)
       onError?.(err)
+    }
+    
+    eventSource.onmessage = (event) => {
+      console.log('[SSE] Raw message received:', event)
+      console.log('[SSE] Event data type:', typeof event.data, 'Event data:', event.data)
+      
+      try {
+        let data = event.data
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
+          console.log('[SSE] Parsed data:', data)
+        }
+        
+        if (data.type === 'event') {
+          console.log('[SSE] Processing event:', data.data)
+          onEvent(data.data)
+        } else if (data.type === 'stats' || (data.total_events !== undefined && data.alerts !== undefined)) {
+          console.log('[SSE] Processing stats:', data)
+          onStats(data)
+        } else if (data.type === 'connected' || data.message) {
+          console.log('[SSE] Connection confirmed:', data.message)
+        } else {
+          console.warn('[SSE] Unknown data type or structure:', data)
+        }
+      } catch (e) {
+        console.error('[SSE] Failed to parse SSE data:', e, 'Raw data:', event.data)
+      }
     }
     
     return eventSource

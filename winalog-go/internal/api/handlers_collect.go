@@ -80,12 +80,16 @@ func getDefaultChannels() []string {
 }
 
 type LogCollectResponse struct {
-	Status     string `json:"status"`
-	Message    string `json:"message"`
-	OutputPath string `json:"output_path,omitempty"`
-	EventCount int    `json:"event_count,omitempty"`
-	Hash       string `json:"hash,omitempty"`
-	Duration   string `json:"duration,omitempty"`
+	Status         string         `json:"status"`
+	Message        string         `json:"message"`
+	OutputPath     string         `json:"output_path,omitempty"`
+	EventCount     int            `json:"event_count,omitempty"`
+	Hash           string         `json:"hash,omitempty"`
+	Duration       string         `json:"duration,omitempty"`
+	Errors         []string       `json:"errors,omitempty"`
+	CollectedItems map[string]int `json:"collected_items,omitempty"`
+	SuccessCount   int            `json:"success_count"`
+	FailedCount    int            `json:"failed_count"`
 }
 
 type LogCollectRequest struct {
@@ -202,11 +206,32 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 		return
 	}
 
+	successCount := 0
+	failedCount := len(oneClickResult.Errors)
+	for range oneClickResult.CollectedItems {
+		successCount++
+	}
+
+	statusStr := "completed"
+	message := "Collection completed successfully"
+	if len(oneClickResult.Errors) > 0 {
+		statusStr = "completed_with_errors"
+		message = fmt.Sprintf("Collection completed with %d errors", len(oneClickResult.Errors))
+	}
+	if !oneClickResult.Success {
+		statusStr = "failed"
+		message = fmt.Sprintf("Collection failed with %d errors", len(oneClickResult.Errors))
+	}
+
 	c.JSON(http.StatusOK, LogCollectResponse{
-		Status:     "completed",
-		Message:    "Collection completed successfully",
-		OutputPath: oneClickResult.OutputPath,
-		Duration:   fmt.Sprintf("%v", oneClickResult.Duration),
+		Status:         statusStr,
+		Message:        message,
+		OutputPath:     oneClickResult.OutputPath,
+		Duration:       fmt.Sprintf("%v", oneClickResult.Duration),
+		Errors:         oneClickResult.Errors,
+		CollectedItems: oneClickResult.CollectedItems,
+		SuccessCount:   successCount,
+		FailedCount:    failedCount,
 	})
 }
 

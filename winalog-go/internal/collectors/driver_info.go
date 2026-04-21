@@ -5,6 +5,7 @@ package collectors
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"strings"
 
 	"github.com/kkkdddd-start/winalog-go/internal/forensics"
@@ -76,17 +77,24 @@ func ListDrivers() ([]Driver, error) {
 
 	cmd := `Get-WmiObject -Class Win32_SystemDriver | Select-Object Name,DisplayName,Description,PathName,State,StartMode | ForEach-Object { $_ | ConvertTo-Json -Compress }`
 
+	log.Printf("[INFO] ListDrivers: executing WMI query for drivers")
+
 	result := utils.RunPowerShell(cmd)
 	if !result.Success() {
+		log.Printf("[ERROR] ListDrivers: PowerShell command failed: %v", result.Error)
 		return drivers, result.Error
 	}
 
 	output := strings.TrimSpace(result.Output)
 	if output == "" {
+		log.Printf("[WARN] ListDrivers: empty result from WMI query")
 		return drivers, nil
 	}
 
+	log.Printf("[DEBUG] ListDrivers: raw output length: %d", len(output))
+
 	lines := strings.Split(output, "\n")
+	parseCount := 0
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || line == "null" {
@@ -103,6 +111,7 @@ func ListDrivers() ([]Driver, error) {
 		}
 
 		if err := json.Unmarshal([]byte(line), &driverRaw); err != nil {
+			log.Printf("[WARN] ListDrivers: failed to parse driver JSON: %v", err)
 			continue
 		}
 
@@ -113,7 +122,10 @@ func ListDrivers() ([]Driver, error) {
 			Path:        driverRaw.PathName,
 			Status:      driverRaw.State,
 		})
+		parseCount++
 	}
+
+	log.Printf("[INFO] ListDrivers: parsed %d drivers", parseCount)
 
 	return drivers, nil
 }

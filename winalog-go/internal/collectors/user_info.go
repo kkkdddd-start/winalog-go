@@ -5,6 +5,7 @@ package collectors
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"strings"
 	"time"
 
@@ -46,17 +47,25 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 
 	cmd := `Get-LocalUser | Select-Object Name, SID, Enabled, LastLogon, PasswordRequired, PasswordAge, PasswordExpires, FullName, Description, HomeDirectory, ProfilePath | ForEach-Object { $_ | ConvertTo-Json -Compress }`
 
+	log.Printf("[INFO] Collecting local users with command: Get-LocalUser")
+
 	result := utils.RunPowerShell(cmd)
 	if !result.Success() {
+		log.Printf("[ERROR] Get-LocalUser failed: %v", result.Error)
 		return users, result.Error
 	}
 
 	output := strings.TrimSpace(result.Output)
 	if output == "" || output == "null" {
+		log.Printf("[WARN] Get-LocalUser returned empty result")
 		return users, nil
 	}
 
+	log.Printf("[DEBUG] Get-LocalUser raw output length: %d", len(output))
+
 	lines := strings.Split(output, "\n")
+	parseCount := 0
+	errorCount := 0
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || line == "null" {
@@ -78,6 +87,8 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 		}
 
 		if err := json.Unmarshal([]byte(line), &userRaw); err != nil {
+			log.Printf("[WARN] Failed to parse user JSON: %v, line: %s", err, line)
+			errorCount++
 			continue
 		}
 
@@ -103,7 +114,10 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 		}
 
 		users = append(users, user)
+		parseCount++
 	}
+
+	log.Printf("[INFO] Get-LocalUser parsed %d users, %d errors, total lines: %d", parseCount, errorCount, len(lines))
 
 	return users, nil
 }

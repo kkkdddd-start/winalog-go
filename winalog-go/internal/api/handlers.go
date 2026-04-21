@@ -937,7 +937,7 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	eventFilter.Offset = 0
 	events, _, err := h.db.ListEvents(eventFilter)
 	if err != nil {
-		log.Printf("failed to fetch events for timeline: %v", err)
+		log.Printf("[ERROR] failed to fetch events for timeline: %v", err)
 	}
 	for _, e := range events {
 		entries = append(entries, &TimelineEntry{
@@ -968,7 +968,7 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	alertFilter.Offset = 0
 	alerts, err := h.db.AlertRepo().Query(alertFilter)
 	if err != nil {
-		log.Printf("failed to fetch alerts for timeline: %v", err)
+		log.Printf("[ERROR] failed to fetch alerts for timeline: %v", err)
 	}
 	for _, a := range alerts {
 		entries = append(entries, &TimelineEntry{
@@ -1087,7 +1087,7 @@ func (h *TimelineHandler) GetTimelineStats(c *gin.Context) {
 
 	events, _, err := h.db.ListEvents(eventFilter)
 	if err != nil {
-		log.Printf("failed to fetch events for timeline stats: %v", err)
+		log.Printf("[ERROR] failed to fetch events for timeline stats: %v", err)
 	}
 
 	stats := &TimelineStats{
@@ -1115,7 +1115,7 @@ func (h *TimelineHandler) GetTimelineStats(c *gin.Context) {
 	}
 	alerts, err := h.db.AlertRepo().Query(alertFilter)
 	if err != nil {
-		log.Printf("failed to fetch alerts for timeline stats: %v", err)
+		log.Printf("[ERROR] failed to fetch alerts for timeline stats: %v", err)
 	}
 	stats.TotalAlerts = int64(len(alerts))
 
@@ -1175,7 +1175,7 @@ func (h *TimelineHandler) GetAttackChains(c *gin.Context) {
 
 	events, _, err := h.db.ListEvents(eventFilter)
 	if err != nil {
-		log.Printf("failed to fetch events for attack chains: %v", err)
+		log.Printf("[ERROR] failed to fetch events for attack chains: %v", err)
 	}
 
 	chains := detectAttackChains(events)
@@ -1274,7 +1274,7 @@ func (h *TimelineHandler) ExportTimeline(c *gin.Context) {
 
 	events, _, err := h.db.ListEvents(eventFilter)
 	if err != nil {
-		log.Printf("failed to fetch events for timeline export: %v", err)
+		log.Printf("[ERROR] failed to fetch events for timeline export: %v", err)
 	}
 
 	switch format {

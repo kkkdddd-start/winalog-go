@@ -26,7 +26,7 @@ func (e *MonitorEngine) createNetworkPoller(interval time.Duration) interface {
 } {
 	poller, err := poll.NewNetworkPoller(interval)
 	if err != nil {
-		log.Printf("ERROR: failed to create network poller: %v", err)
+		log.Printf("[ERROR] failed to create network poller: %v", err)
 		return nil
 	}
 	return poller

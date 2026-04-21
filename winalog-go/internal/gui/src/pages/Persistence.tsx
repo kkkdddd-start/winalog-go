@@ -485,13 +485,13 @@ function Persistence() {
           onChange={e => setFilter({ ...filter, category: e.target.value || undefined })}
         >
           <option value="">{t('persistence.allCategories')}</option>
-          <option value="Registry">注册表</option>
-          <option value="ScheduledTask">计划任务</option>
-          <option value="Service">服务</option>
-          <option value="WMI">WMI</option>
-          <option value="COM">COM</option>
-          <option value="BITS">BITS</option>
-          <option value="Accessibility">辅助功能</option>
+          <option value="Registry">{t('persistence.categoryRegistry')}</option>
+          <option value="ScheduledTask">{t('persistence.categoryScheduledTask')}</option>
+          <option value="Service">{t('persistence.categoryService')}</option>
+          <option value="WMI">{t('persistence.categoryWMI')}</option>
+          <option value="COM">{t('persistence.categoryCOM')}</option>
+          <option value="BITS">{t('persistence.categoryBITS')}</option>
+          <option value="Accessibility">{t('persistence.categoryAccessibility')}</option>
         </select>
         <button onClick={fetchDetections} className="btn btn-secondary">
           {t('persistence.rescan')}

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"runtime"
 	"sync"
@@ -147,7 +148,10 @@ func enrichDetections(detections []*persistence.Detection) []*EnrichedDetection 
 }
 
 func (h *PersistenceHandler) Detect(c *gin.Context) {
+	log.Printf("[INFO] Detect API called with category=%s, technique=%s", c.Query("category"), c.Query("technique"))
+
 	if runtime.GOOS != "windows" {
+		log.Printf("[INFO] Detect API returning empty - not Windows")
 		c.JSON(http.StatusOK, DetectResponse{
 			Detections: []*EnrichedDetection{},
 			Summary:    map[string]interface{}{},
@@ -159,6 +163,7 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 
 	var req DetectRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
+		log.Printf("[WARN] Detect API bad request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -184,6 +189,7 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 		if h.cache.result != nil &&
 			time.Since(h.cache.timestamp) < h.cache.ttl &&
 			h.cache.params == cacheParams {
+			log.Printf("[INFO] Detect API returning cached result")
 			response := DetectResponse{
 				Detections: enrichDetections(h.cache.result.Detections),
 				Summary:    h.cache.result.Summary(),
@@ -204,6 +210,8 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 	engine := h.detectionEngine
 	h.engineMutex.RUnlock()
 
+	log.Printf("[INFO] Detect API starting detection with timeout=%v", timeout)
+
 	if req.Technique != "" {
 		result = engine.DetectTechnique(ctx, persistence.Technique(req.Technique))
 	} else if req.Category != "" {
@@ -221,6 +229,8 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 	if result.Detections == nil {
 		result.Detections = []*persistence.Detection{}
 	}
+
+	log.Printf("[INFO] Detect API completed: totalCount=%d, errorCount=%d", result.TotalCount, result.ErrorCount)
 
 	if result.ErrorCount > 0 {
 		for _, errMsg := range result.Errors {

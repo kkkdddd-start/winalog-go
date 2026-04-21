@@ -33,6 +33,7 @@ type DNSPoller struct {
 	subMu       sync.RWMutex
 	running     bool
 	mu          sync.RWMutex
+	wg          sync.WaitGroup
 }
 
 func NewDNSPoller(interval time.Duration) *DNSPoller {
@@ -58,20 +59,23 @@ func (dp *DNSPoller) Start() error {
 	dp.running = true
 	dp.mu.Unlock()
 
+	dp.wg.Add(1)
 	go dp.run()
 	return nil
 }
 
 func (dp *DNSPoller) Stop() error {
 	dp.mu.Lock()
-	defer dp.mu.Unlock()
-
 	if !dp.running {
+		dp.mu.Unlock()
 		return nil
 	}
 
 	dp.cancel()
 	dp.running = false
+	dp.mu.Unlock()
+
+	dp.wg.Wait()
 
 	dp.subMu.Lock()
 	for _, ch := range dp.subscribers {
@@ -101,6 +105,7 @@ func (dp *DNSPoller) Subscribe(ch chan *types.MonitorEvent) func() {
 }
 
 func (dp *DNSPoller) run() {
+	defer dp.wg.Done()
 	ticker := time.NewTicker(dp.interval)
 	defer ticker.Stop()
 

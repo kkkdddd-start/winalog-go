@@ -170,7 +170,7 @@ func (s *Server) setupRoutes() {
 		path := c.Request.URL.Path
 
 		if strings.Contains(path, "..") {
-			log.Printf("WARN: Blocked path traversal attempt: %s", path)
+			log.Printf("[WARN] Blocked path traversal attempt: %s", path)
 			c.Data(403, "text/plain", []byte("Forbidden"))
 			return
 		}

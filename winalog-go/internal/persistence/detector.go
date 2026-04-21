@@ -5,6 +5,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -74,6 +75,8 @@ func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	log.Printf("[INFO] DetectionEngine.Detect started with %d detectors", len(e.detectors))
+
 	e.result = NewDetectionResult()
 
 	var wg sync.WaitGroup
@@ -82,14 +85,18 @@ func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 
 	for name, d := range e.detectors {
 		wg.Add(1)
+		log.Printf("[INFO] Running detector: %s", name)
 		go func(name string, d Detector) {
 			defer wg.Done()
 
 			detections, err := d.Detect(ctx)
 			if err != nil {
+				log.Printf("[ERROR] Detector %s failed: %v", name, err)
 				errorChan <- fmt.Sprintf("%s: %v", name, err)
 				return
 			}
+
+			log.Printf("[INFO] Detector %s returned %d detections", name, len(detections))
 
 			for _, det := range detections {
 				if det.ID == "" {
@@ -120,6 +127,9 @@ func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 
 	e.result.EndTime = time.Now()
 	e.result.Duration = e.result.EndTime.Sub(e.result.StartTime)
+
+	log.Printf("[INFO] DetectionEngine.Detect completed: total=%d, errors=%d, duration=%v",
+		e.result.TotalCount, e.result.ErrorCount, e.result.Duration)
 
 	return e.result
 }

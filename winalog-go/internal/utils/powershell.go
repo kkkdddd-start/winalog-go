@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type PowerShellResult struct {
@@ -32,24 +33,18 @@ func (r *PowerShellResult) String() string {
 	return r.Output
 }
 
+const DefaultPowerShellTimeout = 30 * time.Second
+
 func RunPowerShell(command string) *PowerShellResult {
-	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", command)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultPowerShellTimeout)
+	defer cancel()
+	return RunPowerShellWithContext(ctx, command)
+}
 
-	err := cmd.Run()
-
-	result := &PowerShellResult{
-		Output: strings.TrimSpace(out.String()),
-	}
-
-	if err != nil {
-		result.Error = fmt.Errorf("powershell error: %w, stderr: %s", err, stderr.String())
-	}
-
-	return result
+func RunPowerShellWithTimeout(command string, timeout time.Duration) *PowerShellResult {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return RunPowerShellWithContext(ctx, command)
 }
 
 func RunPowerShellAsync(ctx context.Context, command string) *PowerShellResult {

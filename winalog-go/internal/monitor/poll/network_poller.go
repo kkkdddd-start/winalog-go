@@ -27,6 +27,7 @@ type NetworkPoller struct {
 	subMu       sync.RWMutex
 	running     bool
 	mu          sync.RWMutex
+	wg          sync.WaitGroup
 }
 
 type MIB_TCPROW_OWNER_PID struct {
@@ -188,20 +189,23 @@ func (np *NetworkPoller) Start() error {
 	}
 	np.running = true
 
+	np.wg.Add(1)
 	go np.run()
 	return nil
 }
 
 func (np *NetworkPoller) Stop() error {
 	np.mu.Lock()
-	defer np.mu.Unlock()
-
 	if !np.running {
+		np.mu.Unlock()
 		return nil
 	}
 
 	np.cancel()
 	np.running = false
+	np.mu.Unlock()
+
+	np.wg.Wait()
 
 	np.subMu.Lock()
 	for _, ch := range np.subscribers {
@@ -231,6 +235,7 @@ func (np *NetworkPoller) Subscribe(ch chan *types.MonitorEvent) func() {
 }
 
 func (np *NetworkPoller) run() {
+	defer np.wg.Done()
 	ticker := time.NewTicker(np.interval)
 	defer ticker.Stop()
 
@@ -257,7 +262,7 @@ func (np *NetworkPoller) pollConnections() {
 
 	tcpConns, err := getTCPConnections()
 	if err != nil {
-		log.Printf("ERROR: getTCPConnections failed: %v", err)
+		log.Printf("[ERROR] getTCPConnections failed: %v", err)
 	} else {
 		for _, conn := range tcpConns {
 			key := fmt.Sprintf("tcp-%s-%s", conn.LocalAddr, conn.RemoteAddr)
@@ -267,7 +272,7 @@ func (np *NetworkPoller) pollConnections() {
 
 	udpConns, err := getUDPConnections()
 	if err != nil {
-		log.Printf("ERROR: getUDPConnections failed: %v", err)
+		log.Printf("[ERROR] getUDPConnections failed: %v", err)
 	} else {
 		for _, conn := range udpConns {
 			key := fmt.Sprintf("udp-%s", conn.LocalAddr)
