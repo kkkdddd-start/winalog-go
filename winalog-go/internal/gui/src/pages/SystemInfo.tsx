@@ -79,18 +79,32 @@ function SystemInfo() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [moduleErrors, setModuleErrors] = useState<Record<string, string>>({})
-  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
-    processes: false,
-    network: false,
-    dlls: false,
-    drivers: false,
-    env: false,
-    users: false,
-    registry: false,
-    tasks: false,
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('systeminfo_enabled_modules')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        // ignore parse errors
+      }
+    }
+    return {
+      processes: false,
+      network: false,
+      dlls: false,
+      drivers: false,
+      env: false,
+      users: false,
+      registry: false,
+      tasks: false,
+    }
   })
   const [showUnsignedOnly, setShowUnsignedOnly] = useState(false)
   const [hoveredContent, setHoveredContent] = useState<{ text: string; x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    localStorage.setItem('systeminfo_enabled_modules', JSON.stringify(enabledModules))
+  }, [enabledModules])
 
   useEffect(() => {
     fetchSystemInfo()
