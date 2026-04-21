@@ -89,12 +89,19 @@ function Monitor() {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'process' | 'network' | 'dns'>('all')
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
+  const [statsError, setStatsError] = useState<string | null>(null)
+  const [eventsError, setEventsError] = useState<string | null>(null)
 
   const fetchStats = useCallback(async () => {
     try {
       const response = await monitorAPI.getStats()
       setStats(response.data.stats)
-    } catch (error) {
+      setStatsError(null)
+    } catch (error: any) {
+      const msg = error.response?.status === 404 
+        ? 'Monitor stats not available (Windows only feature)' 
+        : error.message || 'Failed to fetch stats'
+      setStatsError(msg)
       console.error('Failed to fetch stats:', error)
     }
   }, [])
@@ -106,8 +113,13 @@ function Monitor() {
         filter.type = activeTab
       }
       const response = await monitorAPI.getEvents(filter)
-      setEvents(response.data.events)
-    } catch (error) {
+      setEvents(response.data.events || [])
+      setEventsError(null)
+    } catch (error: any) {
+      const msg = error.response?.status === 404 
+        ? 'Monitor events not available (Windows only feature)' 
+        : error.message || 'Failed to fetch events'
+      setEventsError(msg)
       console.error('Failed to fetch events:', error)
     }
   }, [activeTab])
@@ -224,6 +236,13 @@ function Monitor() {
           {stats?.is_running ? t('monitor.running') : t('monitor.stopped')}
         </div>
       </div>
+
+      {(statsError || eventsError) && (
+        <div className="monitor-errors">
+          {statsError && <div className="error-banner error">{statsError}</div>}
+          {eventsError && <div className="error-banner error">{eventsError}</div>}
+        </div>
+      )}
 
       <div className="monitor-grid">
         <div className="stats-row">
