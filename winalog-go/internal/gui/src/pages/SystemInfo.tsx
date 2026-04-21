@@ -101,6 +101,7 @@ function SystemInfo() {
   })
   const [showUnsignedOnly, setShowUnsignedOnly] = useState(false)
   const [hoveredContent, setHoveredContent] = useState<{ text: string; x: number; y: number } | null>(null)
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   useEffect(() => {
     localStorage.setItem('systeminfo_enabled_modules', JSON.stringify(enabledModules))
@@ -279,6 +280,54 @@ function SystemInfo() {
     }
   }
 
+  const exportToCSV = (data: any[], filename: string, headers: string[]) => {
+    if (data.length === 0) return
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(h => {
+        const value = row[h] ?? ''
+        const str = String(value)
+        return str.includes(',') || str.includes('"') || str.includes('\n') 
+          ? `"${str.replace(/"/g, '""')}"` 
+          : str
+      }).join(','))
+    ].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    setShowExportMenu(false)
+  }
+
+  const handleExport = (type: string) => {
+    switch (type) {
+      case 'processes':
+        exportToCSV(processes, 'processes', ['pid', 'ppid', 'name', 'user', 'exe', 'command_line', 'is_signed'])
+        break
+      case 'network':
+        exportToCSV(networkConnections, 'network', ['protocol', 'local_addr', 'local_port', 'remote_addr', 'remote_port', 'state', 'process_name'])
+        break
+      case 'dlls':
+        exportToCSV(dlls, 'dlls', ['process_id', 'process_name', 'name', 'path', 'size', 'version', 'is_signed'])
+        break
+      case 'drivers':
+        exportToCSV(drivers, 'drivers', ['name', 'display_name', 'description', 'path', 'status'])
+        break
+      case 'users':
+        exportToCSV(users, 'users', ['name', 'sid', 'enabled', 'full_name', 'type'])
+        break
+      case 'registry':
+        exportToCSV(registry, 'registry', ['path', 'name', 'value', 'type'])
+        break
+      case 'tasks':
+        exportToCSV(tasks, 'tasks', ['name', 'path', 'state'])
+        break
+    }
+  }
+
   if (loading && !info) return (
     <div className="systeminfo-page">
       <div className="loading-state">
@@ -302,6 +351,24 @@ function SystemInfo() {
           <button className="btn-refresh" onClick={fetchSystemInfo}>
             {t('common.refresh') || '刷新'}
           </button>
+          {['processes', 'network', 'dlls', 'drivers', 'users', 'registry', 'tasks'].includes(activeTab) && (
+            <div className="export-dropdown">
+              <button className="btn-export" onClick={() => setShowExportMenu(!showExportMenu)}>
+                {t('common.export') || '导出'} CSV
+              </button>
+              {showExportMenu && (
+                <div className="export-menu">
+                  {activeTab === 'processes' && <button onClick={() => handleExport('processes')}>导出进程</button>}
+                  {activeTab === 'network' && <button onClick={() => handleExport('network')}>导出网络</button>}
+                  {activeTab === 'dlls' && <button onClick={() => handleExport('dlls')}>导出 DLL</button>}
+                  {activeTab === 'drivers' && <button onClick={() => handleExport('drivers')}>导出驱动</button>}
+                  {activeTab === 'users' && <button onClick={() => handleExport('users')}>导出用户</button>}
+                  {activeTab === 'registry' && <button onClick={() => handleExport('registry')}>导出注册表</button>}
+                  {activeTab === 'tasks' && <button onClick={() => handleExport('tasks')}>导出任务</button>}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -929,6 +996,53 @@ function SystemInfo() {
         
         .btn-refresh:hover {
           background: rgba(0, 217, 255, 0.2);
+        }
+
+        .btn-export {
+          padding: 8px 16px;
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid #22c55e;
+          border-radius: 6px;
+          color: #22c55e;
+          cursor: pointer;
+          margin-left: 8px;
+        }
+
+        .btn-export:hover {
+          background: rgba(34, 197, 94, 0.2);
+        }
+
+        .export-dropdown {
+          position: relative;
+        }
+
+        .export-menu {
+          position: absolute;
+          top: 100%;
+          right: 0;
+          background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+          border: 1px solid #333;
+          border-radius: 8px;
+          padding: 8px 0;
+          min-width: 150px;
+          z-index: 1000;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .export-menu button {
+          display: block;
+          width: 100%;
+          padding: 10px 16px;
+          background: none;
+          border: none;
+          color: #ddd;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .export-menu button:hover {
+          background: rgba(0, 217, 255, 0.1);
+          color: #00d9ff;
         }
         
         .tab-nav {
