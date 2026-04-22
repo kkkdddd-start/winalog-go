@@ -48,7 +48,8 @@ func RunPowerShellWithTimeout(command string, timeout time.Duration) *PowerShell
 }
 
 func RunPowerShellAsync(ctx context.Context, command string) *PowerShellResult {
-	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-NonInteractive", "-Command", command)
+	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-NonInteractive", "-Command",
+		"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "+command)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -76,9 +77,9 @@ func RunPowerShellWithContext(ctx context.Context, command string) *PowerShellRe
 }
 
 func RunPowerShellScript(scriptPath string, args ...string) *PowerShellResult {
-	cmdArgs := append([]string{"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath}, args...)
+	cmdArgs := append([]string{"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command",
+		"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; . '" + scriptPath + "'"}, args...)
 	cmd := exec.Command("powershell", cmdArgs...)
-
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
