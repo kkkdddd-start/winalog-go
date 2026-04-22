@@ -3,6 +3,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -56,6 +57,7 @@ func (h *MonitorHandler) StartStop(c *gin.Context) {
 }
 
 func (h *MonitorHandler) StreamEvents(c *gin.Context) {
+	log.Printf("[INFO] [SSE] Monitor stream requested but not available on Linux")
 	c.JSON(http.StatusOK, gin.H{
 		"events": []*types.MonitorEvent{},
 	})

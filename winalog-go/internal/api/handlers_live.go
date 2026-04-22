@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -52,26 +53,36 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 
+	clientIP := c.ClientIP()
 	clientGone := c.Request.Context().Done()
 
 	h.mu.Lock()
 	h.lastImportTime = time.Now().Add(-24 * time.Hour)
 	h.mu.Unlock()
 
+	log.Printf("[INFO] [SSE] Live events stream connected from %s", clientIP)
+
 	c.SSEvent("connected", map[string]interface{}{
-		"type":    "connected",
-		"message": "Connected to live event stream",
-		"time":    time.Now().Format(time.RFC3339),
+		"type":      "connected",
+		"message":   "Connected to live event stream",
+		"time":      time.Now().Format(time.RFC3339),
+		"stream_id": fmt.Sprintf("live-%d", time.Now().Unix()),
 	})
-	log.Printf("[INFO] SSE client connected from %s", c.ClientIP())
 	c.Writer.Flush()
 
-	ticker := time.NewTicker(2 * time.Second)
+	pollInterval := 2 * time.Second
+	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
+
+	eventCount := 0
+	statsCount := 0
+	lastEventCount := 0
+	tickCount := 0
 
 	for {
 		select {
 		case <-ticker.C:
+			tickCount++
 			if h.db != nil {
 				h.mu.RLock()
 				lastImport := h.lastImportTime
@@ -85,7 +96,7 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 				events, _, err := h.db.ListEventsWithContext(queryCtx, filter)
 				queryCancel()
 				if err != nil {
-					log.Printf("[ERROR] SSE ListEvents failed: %v", err)
+					log.Printf("[ERROR] [SSE] Live ListEvents failed: %v", err)
 				} else if len(events) > 0 {
 					for _, event := range events {
 						msg := LiveEventMessage{
@@ -93,30 +104,40 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 							Data: formatLiveEvent(event),
 						}
 						c.SSEvent("event", msg)
+						eventCount++
 					}
 					h.mu.Lock()
 					h.lastImportTime = events[len(events)-1].ImportTime
 					h.mu.Unlock()
+					log.Printf("[DEBUG] [SSE] Live sent %d events to %s (total=%d)", len(events), clientIP, eventCount)
 				}
 
 				stats, err := h.db.GetStats()
 				if err != nil {
-					log.Printf("[ERROR] SSE GetStats failed: %v", err)
+					log.Printf("[ERROR] [SSE] Live GetStats failed: %v", err)
 				} else {
 					c.SSEvent("stats", map[string]interface{}{
 						"total_events": stats.EventCount,
 						"alerts":       stats.AlertCount,
+						"events_new":   eventCount - lastEventCount,
 						"timestamp":    time.Now().Format(time.RFC3339),
 					})
+					statsCount++
+					lastEventCount = eventCount
 				}
 			}
 			if _, err := c.Writer.Write([]byte{}); err != nil {
-				log.Printf("[WARN] SSE write failed, closing stream: %v", err)
+				log.Printf("[WARN] [SSE] Live write failed, closing stream: %v", err)
 				return
 			}
 			c.Writer.Flush()
+
+			if tickCount%30 == 0 {
+				log.Printf("[INFO] [SSE] Live stream stats: events=%d, stats_sent=%d, uptime_ticks=%d", eventCount, statsCount, tickCount)
+			}
 		case <-clientGone:
-			log.Printf("[INFO] SSE client disconnected from %s", c.ClientIP())
+			log.Printf("[INFO] [SSE] Live events stream disconnected from %s: events=%d, stats=%d, duration=%s",
+				clientIP, eventCount, statsCount, pollInterval*time.Duration(tickCount))
 			return
 		}
 	}
