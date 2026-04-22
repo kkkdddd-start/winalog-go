@@ -3,6 +3,7 @@
 package monitor
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -169,19 +170,12 @@ func (e *MonitorEngine) updateConfigStats() {
 }
 
 func (e *MonitorEngine) UpdateConfig(req *MonitorConfigRequest) error {
-	log.Printf("[MONITOR] UpdateConfig called: ProcessEnabled=%v, NetworkEnabled=%v, DNSEnabled=%v",
-		req.ProcessEnabled != nil && *req.ProcessEnabled,
-		req.NetworkEnabled != nil && *req.NetworkEnabled,
-		req.DNSEnabled != nil && *req.DNSEnabled)
-
 	if err := e.config.UpdateFromRequest(req); err != nil {
-		log.Printf("[MONITOR] UpdateConfig: config.UpdateFromRequest failed: %v", err)
+		log.Printf("[MONITOR] UpdateConfig failed: %v", err)
 		return err
 	}
 
 	config := e.config.Get()
-	log.Printf("[MONITOR] UpdateConfig: config after update - ProcessEnabled=%v, NetworkEnabled=%v, DNSEnabled=%v",
-		config.ProcessEnabled, config.NetworkEnabled, config.DNSEnabled)
 
 	e.mu.Lock()
 	e.stats.ProcessEnabled = config.ProcessEnabled
@@ -189,54 +183,40 @@ func (e *MonitorEngine) UpdateConfig(req *MonitorConfigRequest) error {
 	e.stats.DNSEnabled = config.DNSEnabled
 
 	if config.ProcessEnabled && e.processWatch == nil {
-		log.Printf("[MONITOR] UpdateConfig: Starting process watcher")
 		e.processWatch, _ = e.createProcessWatcher()
 		if e.processWatch != nil {
 			e.processWatch.Subscribe(e.eventCh)
 			if err := e.processWatch.Start(); err != nil {
-				log.Printf("[MONITOR] UpdateConfig: processWatch.Start() failed: %v", err)
-			} else {
-				log.Printf("[MONITOR] UpdateConfig: process watcher started successfully")
+				log.Printf("[MONITOR] Process watcher start failed: %v", err)
 			}
-		} else {
-			log.Printf("[MONITOR] UpdateConfig: createProcessWatcher returned nil")
 		}
 	} else if !config.ProcessEnabled && e.processWatch != nil {
-		log.Printf("[MONITOR] UpdateConfig: Stopping process watcher")
 		e.processWatch.Stop()
 		e.processWatch = nil
 	}
 
 	if config.NetworkEnabled && e.networkPoll == nil {
-		log.Printf("[MONITOR] UpdateConfig: Starting network poller")
 		e.networkPoll = e.createNetworkPoller(config.PollInterval)
 		if e.networkPoll != nil {
 			e.networkPoll.Subscribe(e.eventCh)
 			if err := e.networkPoll.Start(); err != nil {
-				log.Printf("[MONITOR] UpdateConfig: networkPoll.Start() failed: %v", err)
-			} else {
-				log.Printf("[MONITOR] UpdateConfig: network poller started successfully")
+				log.Printf("[MONITOR] Network poller start failed: %v", err)
 			}
 		}
 	} else if !config.NetworkEnabled && e.networkPoll != nil {
-		log.Printf("[MONITOR] UpdateConfig: Stopping network poller")
 		e.networkPoll.Stop()
 		e.networkPoll = nil
 	}
 
 	if config.DNSEnabled && e.dnsPoll == nil {
-		log.Printf("[MONITOR] UpdateConfig: Starting DNS poller")
 		e.dnsPoll = e.createDNSPoller(config.PollInterval)
 		if e.dnsPoll != nil {
 			e.dnsPoll.Subscribe(e.eventCh)
 			if err := e.dnsPoll.Start(); err != nil {
-				log.Printf("[MONITOR] UpdateConfig: dnsPoll.Start() failed: %v", err)
-			} else {
-				log.Printf("[MONITOR] UpdateConfig: DNS poller started successfully")
+				log.Printf("[MONITOR] DNS poller start failed: %v", err)
 			}
 		}
 	} else if !config.DNSEnabled && e.dnsPoll != nil {
-		log.Printf("[MONITOR] UpdateConfig: Stopping DNS poller")
 		e.dnsPoll.Stop()
 		e.dnsPoll = nil
 	}

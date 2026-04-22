@@ -267,8 +267,11 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	result.Summary.TotalCollected = len(result.Summary.CollectedItems)
 	result.Summary.TotalFailed = len(result.Summary.FailedItems)
 
-	if err := c.generateCollectionReport(tempDir, &result.Summary); err != nil {
-		log.Printf("[WARN] Failed to generate collection report: %v", err)
+	// Generate collection summary report
+	summaryPath := filepath.Join(tempDir, "collection_summary.json")
+	summaryData, _ := json.MarshalIndent(result.Summary, "", "  ")
+	if err := os.WriteFile(summaryPath, summaryData, 0644); err != nil {
+		log.Printf("[WARN] Failed to write collection summary: %v", err)
 	}
 
 	if c.cfg.Compress {
@@ -429,6 +432,7 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 		}
 
 		if _, err := os.Stat(ch.LogPath); os.IsNotExist(err) {
+			log.Printf("[DEBUG] [OneClick] Event log file does not exist: %s", ch.LogPath)
 			continue
 		}
 
@@ -654,7 +658,7 @@ func (c *OneClickCollector) DiscoverLogSources() ([]string, error) {
 func (c *OneClickCollector) IsFileLocked(path string) bool {
 	f, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
-		return os.IsPermission(err) || os.IsExist(err)
+		return os.IsPermission(err)
 	}
 	f.Close()
 	return false

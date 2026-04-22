@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -98,6 +99,7 @@ func GetChannelFilePathsFallback() ([]LogChannelInfo, error) {
 
 		channelName := strings.TrimSuffix(name, ".evtx")
 		channelName = strings.ReplaceAll(channelName, "%2F", "/")
+		channelName, _ = url.QueryUnescape(channelName)
 
 		channels = append(channels, LogChannelInfo{
 			Name:    channelName,
@@ -138,8 +140,9 @@ func parseChannelFilePaths(output string) ([]LogChannelInfo, error) {
 		isEVTX, _ := item["IsEVTX"].(bool)
 
 		if name != "" && logPath != "" {
+			decodedName, _ := url.QueryUnescape(name)
 			channels = append(channels, LogChannelInfo{
-				Name:    name,
+				Name:    decodedName,
 				LogPath: logPath,
 				IsEVTX:  isEVTX,
 			})
