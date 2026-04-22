@@ -22,7 +22,8 @@ import (
 )
 
 type CollectHandler struct {
-	db *storage.DB
+	db          *storage.DB
+	alertEngine *alerts.Engine
 }
 
 func SetupCollectRoutes(r *gin.Engine, collectHandler *CollectHandler) {
@@ -132,7 +133,7 @@ type LogCollectOptions struct {
 }
 
 type LogImportRequest struct {
-	FilePaths     []string `json:"file_paths" binding:"required"`
+	Files         []string `json:"files" binding:"required"`
 	AlertOnImport bool     `json:"alert_on_import"`
 }
 
@@ -145,8 +146,8 @@ type CollectStatus struct {
 	Duration   string `json:"duration,omitempty"`
 }
 
-func NewCollectHandler(db *storage.DB) *CollectHandler {
-	return &CollectHandler{db: db}
+func NewCollectHandler(db *storage.DB, alertEngine *alerts.Engine) *CollectHandler {
+	return &CollectHandler{db: db, alertEngine: alertEngine}
 }
 
 func (h *CollectHandler) StartCollect(c *gin.Context) {
@@ -258,7 +259,7 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 		return
 	}
 
-	if len(req.FilePaths) == 0 {
+	if len(req.Files) == 0 {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: "no file paths provided",
 		})
@@ -268,42 +269,38 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 	eng := engine.NewEngine(h.db)
 
 	importReq := &engine.ImportRequest{
-		Paths:     req.FilePaths,
+		Paths:     req.Files,
 		BatchSize: 1000,
 	}
 
 	ctx := context.Background()
 	result, err := eng.Import(ctx, importReq, nil)
 
+	response := gin.H{
+		"status":          "completed",
+		"success":         result.TotalFiles > 0 && result.FilesFailed == 0,
+		"total_files":     result.TotalFiles,
+		"files_imported":  result.FilesImported,
+		"files_failed":    result.FilesFailed,
+		"events_imported": result.EventsImported,
+		"duration":        result.Duration.String(),
+		"errors":          result.Errors,
+	}
+
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status":   "error",
-			"success":  false,
-			"message":  err.Error(),
-			"imported": 0,
-			"failed":   len(req.FilePaths),
-			"total":    len(req.FilePaths),
-		})
+		response["success"] = false
+		response["message"] = err.Error()
+		c.JSON(http.StatusOK, response)
 		return
 	}
 
-	response := gin.H{
-		"status":       "completed",
-		"success":      true,
-		"message":      "Import completed successfully",
-		"imported":     result.FilesImported,
-		"failed":       result.FilesFailed,
-		"total_events": result.EventsImported,
-		"duration":     result.Duration.String(),
-		"errors":       result.Errors,
+	if result.TotalFiles > 0 && result.FilesFailed == 0 {
+		response["message"] = "Import completed successfully"
+	} else if result.FilesFailed > 0 {
+		response["message"] = fmt.Sprintf("Import completed with errors: %d/%d files failed", result.FilesFailed, result.TotalFiles)
 	}
 
-	if req.AlertOnImport {
-		alertEngine := alerts.NewEngine(h.db, alerts.EngineConfig{
-			DedupWindow: 5 * time.Minute,
-			StatsWindow: 24 * time.Hour,
-		})
-
+	if req.AlertOnImport && h.alertEngine != nil {
 		builtinRules := builtin.GetAlertRules()
 		enabledRules := make([]*rules.AlertRule, 0)
 		for _, r := range builtinRules {
@@ -311,7 +308,7 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 				enabledRules = append(enabledRules, r)
 			}
 		}
-		alertEngine.LoadRules(enabledRules)
+		h.alertEngine.LoadRules(enabledRules)
 
 		startTime := result.StartTime
 		events, _, _ := h.db.ListEvents(&storage.EventFilter{
@@ -320,11 +317,11 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 		})
 
 		if len(events) > 0 {
-			alertResult, err := alertEngine.EvaluateBatch(context.Background(), events)
+			alertResult, err := h.alertEngine.EvaluateBatch(context.Background(), events)
 			if err != nil {
 				response["alert_error"] = err.Error()
 			} else {
-				if err := alertEngine.SaveAlerts(alertResult); err != nil {
+				if err := h.alertEngine.SaveAlerts(alertResult); err != nil {
 					response["alert_error"] = err.Error()
 				} else {
 					response["alerts_generated"] = len(alertResult)

@@ -9,11 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
 	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type RulesHandler struct {
 	customManager *rules.CustomRuleManager
+	db            *storage.DB
 }
 
 type RuleInfo struct {
@@ -62,9 +64,10 @@ type ListRulesRequest struct {
 	Keyword  string `form:"keyword"`
 }
 
-func NewRulesHandler() *RulesHandler {
+func NewRulesHandler(db *storage.DB) *RulesHandler {
 	return &RulesHandler{
 		customManager: rules.NewCustomRuleManager("./data/rules"),
+		db:            db,
 	}
 }
 
@@ -338,6 +341,9 @@ func (h *RulesHandler) ToggleRule(c *gin.Context) {
 	for _, rule := range alertRules {
 		if rule.Name == name {
 			rule.Enabled = enabled
+			if h.db != nil {
+				h.db.SetRuleEnabled(name, "alert", enabled)
+			}
 			c.JSON(http.StatusOK, SuccessResponse{
 				Message: "Rule " + name + " " + map[bool]string{true: "enabled", false: "disabled"}[enabled],
 			})
@@ -348,6 +354,9 @@ func (h *RulesHandler) ToggleRule(c *gin.Context) {
 	if rule, ok := h.customManager.Get(name); ok {
 		rule.Enabled = enabled
 		h.customManager.Update(rule)
+		if h.db != nil {
+			h.db.SetRuleEnabled(name, "custom", enabled)
+		}
 		c.JSON(http.StatusOK, SuccessResponse{
 			Message: "Rule " + name + " " + map[bool]string{true: "enabled", false: "disabled"}[enabled],
 		})
@@ -749,8 +758,22 @@ func (h *RulesHandler) ImportRules(c *gin.Context) {
 		if found {
 			imported++
 		} else {
-			errors = append(errors, "Rule not found for update: "+rule.Name)
-			failed++
+			newRule := &rules.CustomRule{
+				Name:        rule.Name,
+				Description: rule.Description,
+				Enabled:     rule.Enabled,
+				Severity:    string(types.Severity(rule.Severity)),
+				Score:       rule.Score,
+			}
+			if len(rule.MitreAttack) > 0 {
+				newRule.MitreAttack = rule.MitreAttack[0]
+			}
+			if err := h.customManager.Add(newRule); err != nil {
+				errors = append(errors, fmt.Sprintf("Failed to create rule %s: %v", rule.Name, err))
+				failed++
+			} else {
+				imported++
+			}
 		}
 	}
 

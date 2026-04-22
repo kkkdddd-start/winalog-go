@@ -97,21 +97,24 @@ function Reports() {
 
   const handleView = async (report: Report) => {
     try {
-      const res = await reportsAPI.get(report.id)
-      if (res.data.content) {
-        const newWindow = window.open('', '_blank')
-        if (newWindow) {
-          if (report.format === 'html') {
-            newWindow.document.write(res.data.content)
-            newWindow.document.close()
-          } else {
-            newWindow.document.write(`<pre>${JSON.stringify(res.data, null, 2)}</pre>`)
+      const res = await reportsAPI.download(report.id)
+      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' })
+      const url = URL.createObjectURL(blob)
+      const newWindow = window.open('', '_blank')
+      if (newWindow) {
+        if (report.format === 'html') {
+          const reader = new FileReader()
+          reader.onload = () => {
+            newWindow.document.write(reader.result as string)
             newWindow.document.close()
           }
+          reader.readAsText(blob)
+        } else {
+          newWindow.document.write(`<pre>${JSON.stringify(res.data, null, 2)}</pre>`)
+          newWindow.document.close()
         }
-      } else {
-        alert('Report content not available')
       }
+      URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Failed to view report:', error)
       alert('Failed to view report')

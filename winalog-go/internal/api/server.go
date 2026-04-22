@@ -117,7 +117,7 @@ func (s *Server) setupHandlers() {
 		db: s.db,
 	}
 	s.systemEng = NewSystemHandler(s.db)
-	s.rulesEng = NewRulesHandler()
+	s.rulesEng = NewRulesHandler(s.db)
 	s.reportsEng = NewReportsHandler(s.db)
 	s.forensicsEng = NewForensicsHandler(s.db)
 	s.dashboardEng = NewDashboardHandler(s.db)
@@ -126,7 +126,7 @@ func (s *Server) setupHandlers() {
 	analyzerManager := analyzers.NewDefaultManager()
 	s.analyzeEng = NewAnalyzeHandler(s.db, analyzerManager)
 
-	s.collectEng = NewCollectHandler(s.db)
+	s.collectEng = NewCollectHandler(s.db, s.alertEngine)
 	s.suppressEng = NewSuppressHandler(s.db, s.alertEngine)
 	s.uebaEng = NewUEBAHandler(s.db)
 	s.correlationEng = NewCorrelationHandler(s.db)

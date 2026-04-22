@@ -261,7 +261,7 @@ func (h *ForensicsHandler) CollectEvidence(c *gin.Context) {
 
 func (h *ForensicsHandler) saveEvidenceManifest(manifest *forensics.EvidenceManifest) error {
 	_, err := h.db.Exec(`
-		INSERT INTO evidence_chain (evidence_id, timestamp, operator, action, input_hash, output_hash, previous_hash)
+		INSERT OR REPLACE INTO evidence_chain (evidence_id, timestamp, operator, action, input_hash, output_hash, previous_hash)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`, manifest.ID, manifest.CreatedAt.Format(time.RFC3339),
 		manifest.CollectedBy, "manifest_created", "", manifest.Hash, "")

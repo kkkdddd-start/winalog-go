@@ -36,6 +36,10 @@ func (p *SysmonParser) GetType() string {
 }
 
 func (p *SysmonParser) Parse(path string) <-chan *types.Event {
+	return p.ParseWithError(path).Events
+}
+
+func (p *SysmonParser) ParseWithError(path string) parsers.ParseResult {
 	events := make(chan *types.Event, 1000)
 
 	go func() {
@@ -51,7 +55,7 @@ func (p *SysmonParser) Parse(path string) <-chan *types.Event {
 		}
 	}()
 
-	return events
+	return parsers.ParseResult{Events: events}
 }
 
 func (p *SysmonParser) ParseBatch(path string) ([]*types.Event, error) {

@@ -36,13 +36,19 @@ func (p *EvtxParser) GetType() string {
 }
 
 func (p *EvtxParser) Parse(path string) <-chan *types.Event {
+	return p.ParseWithError(path).Events
+}
+
+func (p *EvtxParser) ParseWithError(path string) parsers.ParseResult {
 	events := make(chan *types.Event, 1000)
+	errChan := make(chan error, 1)
 
 	go func() {
 		defer close(events)
 
 		evtxEvents, err := p.parseEvtxFile(path)
 		if err != nil {
+			errChan <- err
 			return
 		}
 
@@ -51,7 +57,10 @@ func (p *EvtxParser) Parse(path string) <-chan *types.Event {
 		}
 	}()
 
-	return events
+	return parsers.ParseResult{
+		Events: events,
+		Error:  nil,
+	}
 }
 
 func (p *EvtxParser) ParseBatch(path string) ([]*types.Event, error) {

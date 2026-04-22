@@ -7,9 +7,15 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
+type ParseResult struct {
+	Events <-chan *types.Event
+	Error  error
+}
+
 type Parser interface {
 	CanParse(path string) bool
 	Parse(path string) <-chan *types.Event
+	ParseWithError(path string) ParseResult
 	ParseBatch(path string) ([]*types.Event, error)
 	GetType() string
 	Priority() int

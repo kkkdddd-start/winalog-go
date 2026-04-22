@@ -300,7 +300,16 @@ func (im *Importer) ImportFile(ctx context.Context, path string, batchSize int) 
 	}
 
 	startTime := time.Now()
-	events := parser.Parse(path)
+	parseResult := parser.ParseWithError(path)
+	if parseResult.Error != nil {
+		return &types.ImportResult{
+			EventsImported: 0,
+			Duration:       time.Since(startTime),
+			Errors:         []*types.ImportError{{FilePath: path, Error: parseResult.Error.Error()}},
+		}, parseResult.Error
+	}
+
+	events := parseResult.Events
 
 	var batch []*types.Event
 	var totalEvents int64

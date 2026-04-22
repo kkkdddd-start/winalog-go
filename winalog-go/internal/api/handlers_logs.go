@@ -1,8 +1,10 @@
 package api
 
 import (
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -84,8 +86,22 @@ func (h *LogsHandler) GetLogFileContent(c *gin.Context) {
 		return
 	}
 
+	file, err := os.Open(targetPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to open log file"})
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read log file"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"path": targetPath,
+		"path":    targetPath,
+		"content": string(content),
 	})
 }
 

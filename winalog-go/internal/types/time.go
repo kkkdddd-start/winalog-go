@@ -27,6 +27,42 @@ func ParseTimeFilter(input string) (*TimeFilter, error) {
 
 	parts := strings.Split(input, ",")
 	if len(parts) == 2 {
+		startDuration, startErr := parseDuration(parts[0])
+		endDuration, endErr := parseDuration(parts[1])
+
+		if startErr == nil && endErr == nil {
+			start := time.Now().Add(-startDuration)
+			end := time.Now().Add(-endDuration)
+			if end.After(start) {
+				return &TimeFilter{Start: start, End: end}, nil
+			}
+			return &TimeFilter{Start: end, End: start}, nil
+		}
+
+		if startErr == nil {
+			end, err := parseTimeValue(parts[1])
+			if err != nil {
+				return nil, err
+			}
+			start := time.Now().Add(-startDuration)
+			if end.After(start) {
+				return &TimeFilter{Start: start, End: end}, nil
+			}
+			return &TimeFilter{Start: end, End: start}, nil
+		}
+
+		if endErr == nil {
+			start, err := parseTimeValue(parts[0])
+			if err != nil {
+				return nil, err
+			}
+			end := time.Now().Add(-endDuration)
+			if end.After(start) {
+				return &TimeFilter{Start: start, End: end}, nil
+			}
+			return &TimeFilter{Start: end, End: start}, nil
+		}
+
 		start, err := parseTimeValue(parts[0])
 		if err != nil {
 			return nil, err
@@ -35,7 +71,10 @@ func ParseTimeFilter(input string) (*TimeFilter, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &TimeFilter{Start: start, End: end}, nil
+		if end.After(start) {
+			return &TimeFilter{Start: start, End: end}, nil
+		}
+		return &TimeFilter{Start: end, End: start}, nil
 	}
 
 	if strings.Contains(input, "T") || strings.HasPrefix(input, "20") {
@@ -56,6 +95,12 @@ func ParseTimeFilter(input string) (*TimeFilter, error) {
 		Start: time.Now().Add(-dur),
 		End:   time.Now(),
 	}, nil
+}
+
+func parseDuration(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	s = normalizeDuration(s)
+	return time.ParseDuration(s)
 }
 
 func normalizeDuration(s string) string {

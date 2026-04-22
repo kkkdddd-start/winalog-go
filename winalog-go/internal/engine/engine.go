@@ -195,14 +195,25 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 		return nil, fmt.Errorf("failed to create import log: %w", err)
 	}
 
-	events := parser.Parse(path)
+	parseResult := parser.ParseWithError(path)
+	if parseResult.Error != nil {
+		e.db.UpdateImportLog(importID, 0, 0, "failed", parseResult.Error.Error())
+		return &ImportResult{FilesFailed: 1}, parseResult.Error
+	}
+
+	events := parseResult.Events
 
 	var batch []*types.Event
 	var totalEvents int64
 	var importErr error
 	var batchNum int
+	skipProcessing := false
 
 	for event := range events {
+		if skipProcessing {
+			continue
+		}
+
 		select {
 		case <-ctx.Done():
 			e.db.UpdateImportLog(importID, int(totalEvents), int(time.Since(startTime).Milliseconds()), "cancelled", ctx.Err().Error())
@@ -216,7 +227,8 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 			batchNum++
 			if err := e.eventRepo.InsertBatch(batch); err != nil {
 				importErr = fmt.Errorf("batch %d failed: %w", batchNum, err)
-				break
+				skipProcessing = true
+				continue
 			}
 			totalEvents += int64(len(batch))
 			batch = batch[:0]

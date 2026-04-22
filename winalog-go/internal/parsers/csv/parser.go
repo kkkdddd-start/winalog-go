@@ -44,6 +44,10 @@ func (p *CsvParser) GetType() string {
 }
 
 func (p *CsvParser) Parse(path string) <-chan *types.Event {
+	return p.ParseWithError(path).Events
+}
+
+func (p *CsvParser) ParseWithError(path string) parsers.ParseResult {
 	events := make(chan *types.Event, 1000)
 
 	go func() {
@@ -59,7 +63,7 @@ func (p *CsvParser) Parse(path string) <-chan *types.Event {
 		}
 	}()
 
-	return events
+	return parsers.ParseResult{Events: events}
 }
 
 func (p *CsvParser) ParseBatch(path string) ([]*types.Event, error) {

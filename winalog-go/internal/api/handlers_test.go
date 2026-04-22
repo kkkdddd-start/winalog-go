@@ -501,7 +501,7 @@ func TestReportsHandler_ListTemplates_WithDB(t *testing.T) {
 
 func TestRulesHandler_ListRules(t *testing.T) {
 	t.Helper()
-	handler := NewRulesHandler()
+	handler := NewRulesHandler(nil)
 
 	router := gin.New()
 	router.GET("/api/rules", handler.ListRules)
@@ -599,7 +599,7 @@ func TestCollectHandler_GetCollectStatus(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	handler := NewCollectHandler(db)
+	handler := NewCollectHandler(db, nil)
 
 	router := gin.New()
 	router.GET("/api/collect/status", handler.GetCollectStatus)

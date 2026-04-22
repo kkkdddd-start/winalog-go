@@ -142,9 +142,12 @@ func (e *Engine) Evaluate(ctx context.Context, event *types.Event) ([]*types.Ale
 }
 
 func (e *Engine) EvaluateBatch(ctx context.Context, events []*types.Event) ([]*types.Alert, error) {
+	if len(events) == 0 {
+		return []*types.Alert{}, nil
+	}
+
 	alertChan := make(chan *types.Alert, len(events))
 	errChan := make(chan error, 1)
-	var wg sync.WaitGroup
 
 	e.mu.RLock()
 	rules := make([]*rules.AlertRule, 0, len(e.rules))
@@ -153,41 +156,61 @@ func (e *Engine) EvaluateBatch(ctx context.Context, events []*types.Event) ([]*t
 	}
 	e.mu.RUnlock()
 
+	const maxWorkers = 100
+	eventChan := make(chan *types.Event, len(events))
 	for _, event := range events {
-		wg.Add(1)
-		go func(evt *types.Event) {
-			defer wg.Done()
+		eventChan <- event
+	}
+	close(eventChan)
 
-			for _, rule := range rules {
+	var wg sync.WaitGroup
+	workerCount := maxWorkers
+	if len(events) < workerCount {
+		workerCount = len(events)
+	}
+
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for evt := range eventChan {
 				select {
 				case <-ctx.Done():
 					return
 				default:
 				}
 
-				if e.suppressCache.IsSuppressed(rule, evt) {
-					continue
-				}
+				for _, rule := range rules {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
 
-				matched, err := e.evaluator.Evaluate(rule, evt)
-				if err != nil {
-					log.Printf("[ERROR] evaluator error for rule %s: %v", rule.Name, err)
-					continue
-				}
-				if !matched {
-					continue
-				}
+					if e.suppressCache.IsSuppressed(rule, evt) {
+						continue
+					}
 
-				if e.dedup.IsDuplicate(rule.Name, evt) {
-					continue
-				}
+					matched, err := e.evaluator.Evaluate(rule, evt)
+					if err != nil {
+						log.Printf("[ERROR] evaluator error for rule %s: %v", rule.Name, err)
+						continue
+					}
+					if !matched {
+						continue
+					}
 
-				alert := e.createAlert(rule, evt)
-				alertChan <- alert
-				e.dedup.Mark(rule.Name, evt)
-				e.trend.Record(alert)
+					if e.dedup.IsDuplicate(rule.Name, evt) {
+						continue
+					}
+
+					alert := e.createAlert(rule, evt)
+					alertChan <- alert
+					e.dedup.Mark(rule.Name, evt)
+					e.trend.Record(alert)
+				}
 			}
-		}(event)
+		}()
 	}
 
 	go func() {

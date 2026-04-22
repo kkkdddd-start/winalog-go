@@ -620,8 +620,23 @@ func (r *EventRepo) SearchWithContext(ctx context.Context, req *types.SearchRequ
 }
 
 func (r *EventRepo) DeleteByImportID(importID int64) error {
-	_, err := r.db.Exec("DELETE FROM events WHERE import_id = ?", importID)
-	return err
+	eventIDs, err := r.GetEventIDsByImportID(importID)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec("DELETE FROM events WHERE import_id = ?", importID)
+	if err != nil {
+		return err
+	}
+
+	if r.supportsFTS() && len(eventIDs) > 0 {
+		for _, id := range eventIDs {
+			_, _ = r.db.Exec("DELETE FROM events_fts WHERE rowid = ?", id)
+		}
+	}
+
+	return nil
 }
 
 func (r *EventRepo) DeleteOldEvents(age string) (int64, error) {
@@ -639,11 +654,45 @@ func (r *EventRepo) DeleteOldEvents(age string) (int64, error) {
 	}
 
 	cutoff := time.Now().Add(-t)
+
+	if r.supportsFTS() {
+		deletedIDs, _ := r.GetEventIDsByTimeRange(cutoff)
+		result, err := r.db.Exec("DELETE FROM events WHERE timestamp < ?", cutoff)
+		if err != nil {
+			return 0, err
+		}
+		rowsAffected, _ := result.RowsAffected()
+
+		for _, id := range deletedIDs {
+			_, _ = r.db.Exec("DELETE FROM events_fts WHERE rowid = ?", id)
+		}
+		return rowsAffected, nil
+	}
+
 	result, err := r.db.Exec("DELETE FROM events WHERE timestamp < ?", cutoff)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+func (r *EventRepo) GetEventIDsByTimeRange(cutoff time.Time) ([]int64, error) {
+	query := "SELECT id FROM events WHERE timestamp < ?"
+	rows, err := r.db.Query(query, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (r *EventRepo) GetByTimeRange(start, end string) ([]*types.Event, error) {
