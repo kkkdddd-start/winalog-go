@@ -5,6 +5,7 @@ package collectors
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -300,9 +301,9 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 		}
 
 		var taskRaw struct {
-			TaskName string `json:"TaskName"`
-			TaskPath string `json:"TaskPath"`
-			State    string `json:"State"`
+			TaskName string      `json:"TaskName"`
+			TaskPath string      `json:"TaskPath"`
+			State    interface{} `json:"State"`
 		}
 
 		if err := json.Unmarshal([]byte(line), &taskRaw); err != nil {
@@ -311,10 +312,11 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 			continue
 		}
 
+		stateStr := fmt.Sprintf("%v", taskRaw.State)
 		tasks = append(tasks, ScheduledTaskInfo{
 			TaskName: taskRaw.TaskName,
 			TaskPath: taskRaw.TaskPath,
-			State:    taskRaw.State,
+			State:    stateStr,
 		})
 		parseCount++
 	}
@@ -333,21 +335,22 @@ func GetTaskInfo(taskName string) (*ScheduledTaskInfo, error) {
 	}
 
 	var taskRaw struct {
-		TaskName    string `json:"TaskName"`
-		TaskPath    string `json:"TaskPath"`
-		State       string `json:"State"`
-		Description string `json:"Description"`
-		Author      string `json:"Author"`
+		TaskName    string      `json:"TaskName"`
+		TaskPath    string      `json:"TaskPath"`
+		State       interface{} `json:"State"`
+		Description string      `json:"Description"`
+		Author      string      `json:"Author"`
 	}
 
 	if err := json.Unmarshal([]byte(result.Output), &taskRaw); err != nil {
 		return nil, err
 	}
 
+	stateStr := fmt.Sprintf("%v", taskRaw.State)
 	return &ScheduledTaskInfo{
 		TaskName:    taskRaw.TaskName,
 		TaskPath:    taskRaw.TaskPath,
-		State:       taskRaw.State,
+		State:       stateStr,
 		Description: taskRaw.Description,
 	}, nil
 }
