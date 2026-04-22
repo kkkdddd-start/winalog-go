@@ -298,7 +298,11 @@ func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileE
 
 	totalLines := len(filteredLines)
 
-	startLine := totalLines - offset - limit
+	endLine := totalLines - offset
+	if endLine <= 0 {
+		return []LogFileEntry{}, totalLines, nil
+	}
+	startLine := endLine - limit
 	if startLine < 0 {
 		startLine = 0
 	}
@@ -310,7 +314,7 @@ func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileE
 		if lineNum <= startLine {
 			continue
 		}
-		if len(entries) >= limit {
+		if lineNum > endLine {
 			break
 		}
 
@@ -329,6 +333,10 @@ func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileE
 			entry.Category = extractMessageCategory(line)
 		}
 		entries = append(entries, entry)
+	}
+
+	for i, j := 0, len(entries)-1; i < j; i, j = i+1, j-1 {
+		entries[i], entries[j] = entries[j], entries[i]
 	}
 
 	return entries, totalLines, nil
