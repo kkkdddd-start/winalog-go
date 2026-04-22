@@ -20,7 +20,8 @@ import (
 
 type OneClickCollector struct {
 	BaseCollector
-	cfg CollectConfig
+	cfg             CollectConfig
+	failedEventLogs []CollectionItem
 }
 
 type CollectConfig struct {
@@ -240,6 +241,13 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 				Error:       err.Error(),
 			})
 		} else {
+			if item.name == "eventLogs" && len(c.failedEventLogs) > 0 {
+				for _, failed := range c.failedEventLogs {
+					result.Summary.FailedItems = append(result.Summary.FailedItems, failed)
+				}
+				log.Printf("[WARN] Event log collection had %d individual file failures", len(c.failedEventLogs))
+			}
+
 			log.Printf("[INFO] %s collected successfully", item.displayName)
 			collectedItems[item.name] = 1
 			result.Summary.CollectedItems = append(result.Summary.CollectedItems, CollectionItem{
@@ -442,10 +450,18 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 			log.Printf("[DEBUG] [OneClick] Copied event log: %s -> %s", ch.Name, filepath.Base(ch.LogPath))
 		} else {
 			log.Printf("[WARN] [OneClick] Failed to copy log %s: %v", ch.Name, err)
+			c.failedEventLogs = append(c.failedEventLogs, CollectionItem{
+				Name:        ch.Name,
+				DisplayName: ch.Name,
+				Description: "Event log file",
+				Success:     false,
+				Error:       err.Error(),
+				Path:        ch.LogPath,
+			})
 		}
 	}
 
-	log.Printf("[DEBUG] [OneClick] Event log collection completed: %d files copied", copiedCount)
+	log.Printf("[DEBUG] [OneClick] Event log collection completed: %d files copied, %d failed", copiedCount, len(c.failedEventLogs))
 	return nil
 }
 

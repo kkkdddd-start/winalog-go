@@ -239,8 +239,16 @@ func (e *MonitorEngine) GetEvents(filter *EventFilter) ([]*types.MonitorEvent, i
 }
 
 func (e *MonitorEngine) Subscribe(ch chan *types.MonitorEvent) func() {
+	go func() {
+		for event := range e.eventCh {
+			select {
+			case ch <- event:
+			default:
+			}
+		}
+	}()
 	return func() {
-		<-ch
+		close(ch)
 	}
 }
 
