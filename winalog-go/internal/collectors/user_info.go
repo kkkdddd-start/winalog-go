@@ -5,6 +5,7 @@ package collectors
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -73,17 +74,17 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 		}
 
 		var userRaw struct {
-			Name             string `json:"Name"`
-			SID              string `json:"SID"`
-			Enabled          bool   `json:"Enabled"`
-			LastLogon        string `json:"LastLogon"`
-			PasswordRequired bool   `json:"PasswordRequired"`
-			PasswordAge      int64  `json:"PasswordAge"`
-			PasswordExpires  string `json:"PasswordExpires"`
-			FullName         string `json:"FullName"`
-			Description      string `json:"Description"`
-			HomeDirectory    string `json:"HomeDirectory"`
-			ProfilePath      string `json:"ProfilePath"`
+			Name             string      `json:"Name"`
+			SID              interface{} `json:"SID"`
+			Enabled          bool        `json:"Enabled"`
+			LastLogon        string      `json:"LastLogon"`
+			PasswordRequired bool        `json:"PasswordRequired"`
+			PasswordAge      int64       `json:"PasswordAge"`
+			PasswordExpires  string      `json:"PasswordExpires"`
+			FullName         string      `json:"FullName"`
+			Description      string      `json:"Description"`
+			HomeDirectory    string      `json:"HomeDirectory"`
+			ProfilePath      string      `json:"ProfilePath"`
 		}
 
 		if err := json.Unmarshal([]byte(line), &userRaw); err != nil {
@@ -96,9 +97,16 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 			continue
 		}
 
+		sidStr := extractSIDValue(userRaw.SID)
+		if sidStr == "" {
+			log.Printf("[WARN] Failed to extract SID value for user: %s", userRaw.Name)
+			errorCount++
+			continue
+		}
+
 		user := &types.UserAccount{
 			Name:        userRaw.Name,
-			SID:         userRaw.SID,
+			SID:         sidStr,
 			Enabled:     userRaw.Enabled,
 			Type:        "Local",
 			LastLogin:   parseLastLogon(userRaw.LastLogon),
@@ -212,7 +220,38 @@ func parseLastLogon(lastLogon string) time.Time {
 	return time.Time{}
 }
 
-func ListLocalUsers() ([]*types.UserAccount, error) {
-	collector := NewUserInfoCollector()
-	return collector.collectUserInfo()
+func extractSIDValue(sid interface{}) string {
+	if sid == nil {
+		return ""
+	}
+
+	switch v := sid.(type) {
+	case string:
+		return v
+	case map[string]interface{}:
+		if val, ok := v["Value"].(string); ok {
+			return val
+		}
+		for _, val := range v {
+			if s, ok := val.(string); ok {
+				return s
+			}
+		}
+	}
+	return fmt.Sprintf("%v", sid)
+}
+
+func parseLastLogon(lastLogon string) time.Time {
+	formats := []string{
+		"2006-01-02T15:04:05.999999999Z07:00",
+		time.RFC3339,
+		"1/2/2006 3:04:05 PM",
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, lastLogon); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
 }
