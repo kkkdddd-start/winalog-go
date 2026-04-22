@@ -231,12 +231,12 @@ func getProcessUser(pid uint32) string {
 	}
 	defer windows.CloseHandle(hProcess)
 
-	var tokenHandle windows.Handle
+	var tokenHandle windows.Token
 	err = windows.OpenProcessToken(hProcess, windows.TOKEN_QUERY, &tokenHandle)
 	if err != nil {
 		return "Unknown"
 	}
-	defer windows.CloseHandle(tokenHandle)
+	defer windows.CloseHandle(windows.Handle(tokenHandle))
 
 	var bufSize uint32
 	windows.GetTokenInformation(tokenHandle, windows.TokenUser, nil, 0, &bufSize)
@@ -247,7 +247,7 @@ func getProcessUser(pid uint32) string {
 
 	buf := make([]byte, bufSize)
 	var returnedSize uint32
-	if !windows.GetTokenInformation(tokenHandle, windows.TokenUser, &buf[0], bufSize, &returnedSize) {
+	if err := windows.GetTokenInformation(tokenHandle, windows.TokenUser, &buf[0], bufSize, &returnedSize); err != nil {
 		return "Unknown"
 	}
 
@@ -257,14 +257,15 @@ func getProcessUser(pid uint32) string {
 	var domain [256]uint16
 	var nameSize uint32 = 256
 	var domainSize uint32 = 256
-	var use windows.SID_NAME_USE
+	var use uint32
 
-	if windows.LookupAccountSid(nil, tokenUser.User.Sid, &name[0], &nameSize, &domain[0], &domainSize, &use) {
-		domainStr := windows.UTF16ToString(domain[:nameSize])
-		nameStr := windows.UTF16ToString(name[:nameSize])
-		if domainStr != "" {
-			return domainStr + "\\" + nameStr
-		}
+	_ = windows.LookupAccountSid(nil, tokenUser.User.Sid, &name[0], &nameSize, &domain[0], &domainSize, &use)
+	domainStr := windows.UTF16ToString(domain[:nameSize])
+	nameStr := windows.UTF16ToString(name[:nameSize])
+	if domainStr != "" {
+		return domainStr + "\\" + nameStr
+	}
+	if nameStr != "" {
 		return nameStr
 	}
 

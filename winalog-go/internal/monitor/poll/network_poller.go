@@ -501,11 +501,6 @@ func (np *NetworkPoller) createNetworkEvent(conn *types.ConnectionInfo, isTCP bo
 		}
 	}
 
-	isListen := ""
-	if conn.State == 2 {
-		isListen = " [LISTENING]"
-	}
-
 	data := make(map[string]interface{})
 	data["protocol"] = conn.Protocol
 	data["source_ip"] = localIP.IP
@@ -542,7 +537,7 @@ func (np *NetworkPoller) createNetworkCloseEvent(conn *types.ConnectionInfo, isT
 	data["event_type"] = "close"
 
 	return &types.MonitorEvent{
-		ID:        fmt.Sprintf("net-close-%s-%d-%d", conn.Protocol, conn.LocalPort, time.Now().UnixNano()),
+		ID:        fmt.Sprintf("net-close-%s-%d-%d", conn.Protocol, extractPort(conn.LocalAddr), time.Now().UnixNano()),
 		Type:      types.EventTypeNetwork,
 		Timestamp: time.Now(),
 		Severity:  types.SeverityInfo,
