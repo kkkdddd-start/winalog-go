@@ -45,8 +45,13 @@ type LogChannel struct {
 	LogPath  string `json:"log_path,omitempty"`
 }
 
-// CollectChannels 获取可用的日志通道
-// GET /api/collect/channels
+// CollectChannels godoc
+// @Summary 获取可用的日志通道列表
+// @Description 返回所有注册的Windows事件日志通道，包括分类和文件路径
+// @Tags collect
+// @Produce json
+// @Success 200 {object} map[string]interface{} "channels": []LogChannel, "total": int
+// @Router /api/collect/channels [get]
 func (h *CollectHandler) CollectChannels(c *gin.Context) {
 	channels, err := collectors.GetRegisteredChannels()
 	if err != nil {
@@ -146,10 +151,27 @@ type CollectStatus struct {
 	Duration   string `json:"duration,omitempty"`
 }
 
+// NewCollectHandler godoc
+// @Summary 创建日志收集处理器
+// @Description 初始化CollectHandler结构体
+// @Tags collect
+// @Param db query string true "数据库实例"
+// @Param alertEngine query string true "告警引擎实例"
+// @Router /api/collect [post]
 func NewCollectHandler(db *storage.DB, alertEngine *alerts.Engine) *CollectHandler {
 	return &CollectHandler{db: db, alertEngine: alertEngine}
 }
 
+// StartCollect godoc
+// @Summary 开始日志收集
+// @Description 在Windows上执行一键日志收集，收集系统信息、注册表、Prefetch、ShimCache等
+// @Tags collect
+// @Accept json
+// @Produce json
+// @Param request body LogCollectRequest false "收集请求参数"
+// @Success 200 {object} LogCollectResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/collect [post]
 func (h *CollectHandler) StartCollect(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusOK, LogCollectResponse{
@@ -250,6 +272,16 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 	})
 }
 
+// ImportLogs godoc
+// @Summary 导入日志文件
+// @Description 从指定路径导入EVTX、ETL等日志文件到数据库
+// @Tags collect
+// @Accept json
+// @Produce json
+// @Param request body LogImportRequest true "导入请求，包含文件路径列表"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Router /api/collect/import [post]
 func (h *CollectHandler) ImportLogs(c *gin.Context) {
 	var req LogImportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -333,6 +365,13 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GetCollectStatus godoc
+// @Summary 获取收集状态
+// @Description 返回当前日志收集服务的状态
+// @Tags collect
+// @Produce json
+// @Success 200 {object} CollectStatus
+// @Router /api/collect/status [get]
 func (h *CollectHandler) GetCollectStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, CollectStatus{
 		Status:   "idle",
@@ -365,6 +404,16 @@ type Result struct {
 	Error      string `json:"error,omitempty"`
 }
 
+// Evtx2Csv godoc
+// @Summary 将EVTX文件转换为CSV格式
+// @Description 解析EVTX事件日志文件并导出为CSV格式
+// @Tags collect
+// @Accept json
+// @Produce json
+// @Param request body Evtx2CsvRequest true "EVTX转换请求"
+// @Success 200 {object} Evtx2CsvResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/collect/evtx2csv [post]
 func (h *CollectHandler) Evtx2Csv(c *gin.Context) {
 	var req Evtx2CsvRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -480,6 +529,16 @@ func (h *CollectHandler) Evtx2Csv(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// UploadFiles godoc
+// @Summary 上传日志文件
+// @Description 通过multipart/form-data上传日志文件到临时目录
+// @Tags collect
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "要上传的文件"
+// @Success 200 {object} map[string]interface{} "success": bool, "filename": string, "path": string, "size": int64
+// @Failure 400 {object} ErrorResponse
+// @Router /api/collect/upload [post]
 func (h *CollectHandler) UploadFiles(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {

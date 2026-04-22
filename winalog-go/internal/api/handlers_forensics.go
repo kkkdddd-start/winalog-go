@@ -71,10 +71,27 @@ type CollectResponse struct {
 	Message     string    `json:"message"`
 }
 
+// NewForensicsHandler godoc
+// @Summary 创建取证处理器
+// @Description 初始化ForensicsHandler
+// @Tags forensics
+// @Param db query string true "数据库实例"
+// @Router /api/forensics [get]
 func NewForensicsHandler(db *storage.DB) *ForensicsHandler {
 	return &ForensicsHandler{db: db}
 }
 
+// CalculateHash godoc
+// @Summary 计算文件哈希值
+// @Description 计算指定文件的SHA256、MD5、SHA1哈希值
+// @Tags forensics
+// @Accept json
+// @Produce json
+// @Param request body HashRequest true "文件路径请求"
+// @Success 200 {object} HashResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/hash [post]
 func (h *ForensicsHandler) CalculateHash(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusNotImplemented, ErrorResponse{
@@ -110,6 +127,17 @@ func (h *ForensicsHandler) CalculateHash(c *gin.Context) {
 	})
 }
 
+// VerifyHash godoc
+// @Summary 验证文件哈希值
+// @Description 验证文件哈希与预期值是否匹配
+// @Tags forensics
+// @Produce json
+// @Param path query string true "文件路径"
+// @Param expected query string true "预期哈希值"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/verify-hash [get]
 func (h *ForensicsHandler) VerifyHash(c *gin.Context) {
 	path := c.Query("path")
 	expected := c.Query("expected")
@@ -141,6 +169,16 @@ func (h *ForensicsHandler) VerifyHash(c *gin.Context) {
 	})
 }
 
+// VerifySignature godoc
+// @Summary 验证文件签名
+// @Description 验证Windows可执行文件的数字签名信息
+// @Tags forensics
+// @Produce json
+// @Param path query string true "文件路径"
+// @Success 200 {object} SignatureResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/signature [get]
 func (h *ForensicsHandler) VerifySignature(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusNotImplemented, ErrorResponse{
@@ -178,6 +216,16 @@ func (h *ForensicsHandler) VerifySignature(c *gin.Context) {
 	})
 }
 
+// IsSigned godoc
+// @Summary 检查文件是否签名
+// @Description 检查文件是否有有效的数字签名
+// @Tags forensics
+// @Produce json
+// @Param path query string true "文件路径"
+// @Success 200 {object} map[string]interface{} "is_signed": bool, "details": object
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/is-signed [get]
 func (h *ForensicsHandler) IsSigned(c *gin.Context) {
 	path := c.Query("path")
 
@@ -203,6 +251,17 @@ func (h *ForensicsHandler) IsSigned(c *gin.Context) {
 	})
 }
 
+// CollectEvidence godoc
+// @Summary 收集取证证据
+// @Description 收集系统取证证据包括注册表、Prefetch、ShimCache等
+// @Tags forensics
+// @Accept json
+// @Produce json
+// @Param request body CollectRequest true "取证收集请求"
+// @Success 200 {object} CollectResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/collect [post]
 func (h *ForensicsHandler) CollectEvidence(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusNotImplemented, ErrorResponse{
@@ -279,6 +338,16 @@ func (h *ForensicsHandler) saveEvidenceManifest(manifest *forensics.EvidenceMani
 	return err
 }
 
+// ListEvidence godoc
+// @Summary 列出证据列表
+// @Description 返回所有已收集的证据记录
+// @Tags forensics
+// @Produce json
+// @Param limit query int false "返回记录数量限制" default(50)
+// @Param offset query int false "偏移量" default(0)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/evidence [get]
 func (h *ForensicsHandler) ListEvidence(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusNotImplemented, ErrorResponse{
@@ -355,6 +424,17 @@ func (h *ForensicsHandler) ListEvidence(c *gin.Context) {
 	})
 }
 
+// GetEvidence godoc
+// @Summary 获取证据详情
+// @Description 根据证据ID返回证据的完整信息
+// @Tags forensics
+// @Produce json
+// @Param id path string true "证据ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/evidence/{id} [get]
 func (h *ForensicsHandler) GetEvidence(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusNotImplemented, ErrorResponse{
@@ -468,11 +548,27 @@ func (h *ForensicsHandler) GetEvidence(c *gin.Context) {
 	})
 }
 
+// GenerateManifest godoc
+// @Summary 生成证据清单
+// @Description 为证据收集生成哈希清单
+// @Tags forensics
+// @Produce json
+// @Success 200 {object} object
+// @Router /api/forensics/manifest [post]
 func (h *ForensicsHandler) GenerateManifest(c *gin.Context) {
 	manifest := forensics.GenerateManifest(nil, "web-ui", "unknown")
 	c.JSON(http.StatusOK, manifest)
 }
 
+// ChainOfCustody godoc
+// @Summary 获取证据保管链
+// @Description 返回证据的完整保管链记录
+// @Tags forensics
+// @Produce json
+// @Param evidence_id query string false "证据ID，默认为所有证据"
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/chain-of-custody [get]
 func (h *ForensicsHandler) ChainOfCustody(c *gin.Context) {
 	evidenceID := c.Query("evidence_id")
 
@@ -571,6 +667,17 @@ func (h *ForensicsHandler) ChainOfCustody(c *gin.Context) {
 	})
 }
 
+// MemoryDump godoc
+// @Summary 内存转储
+// @Description 对指定进程或整个系统进行内存转储
+// @Tags forensics
+// @Produce json
+// @Param pid query string false "进程ID，不提供则转储系统内存"
+// @Param output query string false "输出目录路径"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/forensics/memory-dump [get]
 func (h *ForensicsHandler) MemoryDump(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusNotImplemented, ErrorResponse{
@@ -631,6 +738,20 @@ func (h *ForensicsHandler) MemoryDump(c *gin.Context) {
 	})
 }
 
+// SetupForensicsRoutes godoc
+// @Summary 设置取证路由
+// @Description 配置取证分析相关的API路由
+// @Tags forensics
+// @Router /api/forensics/hash [post]
+// @Router /api/forensics/verify-hash [get]
+// @Router /api/forensics/signature [get]
+// @Router /api/forensics/is-signed [get]
+// @Router /api/forensics/collect [post]
+// @Router /api/forensics/evidence [get]
+// @Router /api/forensics/evidence/{id} [get]
+// @Router /api/forensics/manifest [post]
+// @Router /api/forensics/chain-of-custody [get]
+// @Router /api/forensics/memory-dump [get]
 func SetupForensicsRoutes(r *gin.Engine, forensicsHandler *ForensicsHandler) {
 	forensicsGroup := r.Group("/api/forensics")
 	{

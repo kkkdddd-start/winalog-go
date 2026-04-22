@@ -54,10 +54,24 @@ type MultiAnalyzeResponse struct {
 	AnalysisID      string                 `json:"analysis_id"`
 }
 
+// NewMultiHandler godoc
+// @Summary 创建多机分析处理器
+// @Description 初始化MultiHandler
+// @Tags multi
+// @Param db query string true "数据库实例"
+// @Router /api/multi [get]
 func NewMultiHandler(db *storage.DB) *MultiHandler {
 	return &MultiHandler{db: db}
 }
 
+// Analyze godoc
+// @Summary 执行多机关联分析
+// @Description 分析跨多台机器的活动，包括横向移动检测
+// @Tags multi
+// @Produce json
+// @Success 200 {object} MultiAnalyzeResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/multi/analyze [post]
 func (h *MultiHandler) Analyze(c *gin.Context) {
 	machines, err := h.getMachineContexts()
 	if err != nil {
@@ -96,6 +110,14 @@ func (h *MultiHandler) Analyze(c *gin.Context) {
 	})
 }
 
+// Lateral godoc
+// @Summary 检测横向移动
+// @Description 检测可能的横向移动活动
+// @Tags multi
+// @Produce json
+// @Success 200 {object} map[string]interface{} "lateral_movement": []LateralMovement, "count": int
+// @Failure 500 {object} ErrorResponse
+// @Router /api/multi/lateral [get]
 func (h *MultiHandler) Lateral(c *gin.Context) {
 	lateral, err := h.detectLateralMovement()
 	if err != nil {
@@ -109,6 +131,13 @@ func (h *MultiHandler) Lateral(c *gin.Context) {
 	})
 }
 
+// GetInfo godoc
+// @Summary 获取多机分析服务信息
+// @Description 返回多机分析服务的状态和可用端点
+// @Tags multi
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/multi [get]
 func (h *MultiHandler) GetInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"service": "multi",
@@ -328,6 +357,13 @@ func itoa(i int) string {
 	return strconv.Itoa(i)
 }
 
+// SetupMultiRoutes godoc
+// @Summary 设置多机分析路由
+// @Description 配置多机关联分析相关的API路由
+// @Tags multi
+// @Router /api/multi [get]
+// @Router /api/multi/analyze [post]
+// @Router /api/multi/lateral [get]
 func SetupMultiRoutes(r *gin.Engine, h *MultiHandler) {
 	multi := r.Group("/api/multi")
 	{

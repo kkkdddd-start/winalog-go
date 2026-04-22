@@ -55,6 +55,7 @@ type PaginationRequest struct {
 	PageSize int `form:"page_size,default=100" binding:"min=1,max=10000"`
 }
 
+// ListEventsRequest represents request parameters for listing events
 type ListEventsRequest struct {
 	Page      int      `form:"page,default=1" binding:"min=1"`
 	PageSize  int      `form:"page_size,default=100" binding:"min=1,max=10000"`
@@ -92,6 +93,28 @@ type ListEventsResponse struct {
 	TotalPages int            `json:"total_pages"`
 }
 
+// ListEvents godoc
+// @Summary List events
+// @Description Get a paginated list of events with optional filtering
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(100)
+// @Param levels query []int false "Filter by event levels"
+// @Param event_ids query []int32 false "Filter by event IDs"
+// @Param log_names query []string false "Filter by log names"
+// @Param sources query []string false "Filter by sources"
+// @Param users query []string false "Filter by users"
+// @Param computers query []string false "Filter by computers"
+// @Param start_time query string false "Start time (RFC3339 format)"
+// @Param end_time query string false "End time (RFC3339 format)"
+// @Param sort_by query string false "Sort field"
+// @Param sort_order query string false "Sort order (asc/desc)"
+// @Success 200 {object} ListEventsResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/events [get]
 func (h *AlertHandler) ListEvents(c *gin.Context) {
 	var req ListEventsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -148,6 +171,17 @@ func (h *AlertHandler) ListEvents(c *gin.Context) {
 	})
 }
 
+// GetEvent godoc
+// @Summary Get event by ID
+// @Description Get a single event by its database ID
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param id path int true "Event ID"
+// @Success 200 {object} types.Event
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/events/{id} [get]
 func (h *AlertHandler) GetEvent(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -165,6 +199,7 @@ func (h *AlertHandler) GetEvent(c *gin.Context) {
 	c.JSON(200, event)
 }
 
+// SearchEventsRequest represents request body for searching events
 type SearchEventsRequest struct {
 	Keywords    string   `json:"keywords"`
 	KeywordMode string   `json:"keyword_mode"`
@@ -184,6 +219,17 @@ type SearchEventsRequest struct {
 	Highlight   bool     `json:"highlight"`
 }
 
+// SearchEvents godoc
+// @Summary Search events
+// @Description Search events with full-text search and advanced filters
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param request body SearchEventsRequest true "Search parameters"
+// @Success 200 {object} types.SearchResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/events/search [post]
 func (h *AlertHandler) SearchEvents(c *gin.Context) {
 	var req SearchEventsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -275,6 +321,17 @@ type ExportResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
+// ExportEvents godoc
+// @Summary Export events
+// @Description Export events in various formats (json, csv, excel)
+// @Tags events
+// @Accept json
+// @Produce json
+// @Param request body ExportRequest true "Export parameters"
+// @Success 200 {object} ExportResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/events/export [post]
 func (h *AlertHandler) ExportEvents(c *gin.Context) {
 	var req ExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -351,6 +408,24 @@ type RunAnalysisResponse struct {
 	Errors         []string `json:"errors,omitempty"`
 }
 
+type AlertWithDetails struct {
+	*types.Alert
+	Explanation    string         `json:"explanation"`
+	Recommendation string         `json:"recommendation"`
+	RealCase       string         `json:"real_case"`
+	Keywords       string         `json:"keywords"`
+	MatchedEvents  []*types.Event `json:"matched_events,omitempty"`
+}
+
+// RunAnalysis godoc
+// @Summary Run alert analysis
+// @Description Run the alert analysis engine on all stored events
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Success 200 {object} RunAnalysisResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/alerts/run-analysis [post]
 func (h *AlertHandler) RunAnalysis(c *gin.Context) {
 	if h.alertEngine == nil {
 		c.JSON(500, ErrorResponse{Error: "alert engine not initialized", Code: types.ErrCodeInternalError})
@@ -431,6 +506,20 @@ func (h *AlertHandler) RunAnalysis(c *gin.Context) {
 	})
 }
 
+// ListAlerts godoc
+// @Summary List alerts
+// @Description Get a paginated list of alerts with optional filtering
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(100)
+// @Param severity query string false "Filter by severity (critical/high/medium/low)"
+// @Param resolved query bool false "Filter by resolved status"
+// @Success 200 {object} ListAlertsResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/alerts [get]
 func (h *AlertHandler) ListAlerts(c *gin.Context) {
 	var req struct {
 		PaginationRequest
@@ -474,6 +563,15 @@ func (h *AlertHandler) ListAlerts(c *gin.Context) {
 	})
 }
 
+// GetAlertStats godoc
+// @Summary Get alert statistics
+// @Description Get aggregated alert statistics including counts by severity, status, and top rules
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Success 200 {object} types.AlertStats
+// @Failure 500 {object} ErrorResponse
+// @Router /api/alerts/stats [get]
 func (h *AlertHandler) GetAlertStats(c *gin.Context) {
 	stats, err := h.db.AlertRepo().GetStats()
 	if err != nil {
@@ -492,6 +590,16 @@ func (h *AlertHandler) GetAlertStats(c *gin.Context) {
 	c.JSON(200, alertStats)
 }
 
+// GetAlertTrend godoc
+// @Summary Get alert trend
+// @Description Get alert trend data over a specified number of days
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param days query int false "Number of days for trend data" default(7)
+// @Success 200 {object} types.AlertTrend
+// @Failure 500 {object} ErrorResponse
+// @Router /api/alerts/trend [get]
 func (h *AlertHandler) GetAlertTrend(c *gin.Context) {
 	days, _ := strconv.Atoi(c.DefaultQuery("days", "7"))
 	if days <= 0 || days > 90 {
@@ -507,6 +615,17 @@ func (h *AlertHandler) GetAlertTrend(c *gin.Context) {
 	c.JSON(200, trend)
 }
 
+// GetAlert godoc
+// @Summary Get alert by ID
+// @Description Get a single alert with explanation, recommendation, and matched events
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param id path int true "Alert ID"
+// @Success 200 {object} AlertWithDetails
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/alerts/{id} [get]
 func (h *AlertHandler) GetAlert(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -523,15 +642,6 @@ func (h *AlertHandler) GetAlert(c *gin.Context) {
 
 	explanation, recommendation, realCase := builtin.GetRuleDetails(alert.RuleName)
 	keywords := builtin.GetAlertRuleKeywords(alert.RuleName)
-
-	type AlertWithDetails struct {
-		*types.Alert
-		Explanation    string         `json:"explanation"`
-		Recommendation string         `json:"recommendation"`
-		RealCase       string         `json:"real_case"`
-		Keywords       string         `json:"keywords"`
-		MatchedEvents  []*types.Event `json:"matched_events,omitempty"`
-	}
 
 	var relatedEvents []*types.Event
 
@@ -562,6 +672,18 @@ type ResolveAlertRequest struct {
 	Notes string `json:"notes"`
 }
 
+// ResolveAlert godoc
+// @Summary Resolve an alert
+// @Description Mark an alert as resolved with optional notes
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param id path int true "Alert ID"
+// @Param request body ResolveAlertRequest true "Resolve request"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/alerts/{id}/resolve [post]
 func (h *AlertHandler) ResolveAlert(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -599,6 +721,18 @@ type MarkFalsePositiveRequest struct {
 	Reason string `json:"reason"`
 }
 
+// MarkFalsePositive godoc
+// @Summary Mark alert as false positive
+// @Description Mark an alert as a false positive with a reason
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param id path int true "Alert ID"
+// @Param request body MarkFalsePositiveRequest true "False positive request"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/alerts/{id}/false-positive [post]
 func (h *AlertHandler) MarkFalsePositive(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -632,6 +766,17 @@ func (h *AlertHandler) MarkFalsePositive(c *gin.Context) {
 	c.JSON(200, SuccessResponse{Message: "Alert marked as false positive"})
 }
 
+// DeleteAlert godoc
+// @Summary Delete an alert
+// @Description Delete an alert by ID
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param id path int true "Alert ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/alerts/{id} [delete]
 func (h *AlertHandler) DeleteAlert(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -661,6 +806,16 @@ type BatchAlertActionRequest struct {
 	Reason string  `json:"reason"`
 }
 
+// BatchAlertAction godoc
+// @Summary Batch alert action
+// @Description Perform an action (resolve, false-positive, delete) on multiple alerts
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param request body BatchAlertActionRequest true "Batch action request"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/alerts/batch [post]
 func (h *AlertHandler) BatchAlertAction(c *gin.Context) {
 	var req BatchAlertActionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -720,6 +875,18 @@ func (h *AlertHandler) BatchAlertAction(c *gin.Context) {
 	})
 }
 
+// ExportAlerts godoc
+// @Summary Export alerts
+// @Description Export alerts in json or csv format
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param format query string false "Export format (json/csv)" default(json)
+// @Param severity query string false "Filter by severity"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/alerts/export [get]
 func (h *AlertHandler) ExportAlerts(c *gin.Context) {
 	var req struct {
 		Format   string `form:"format"`
@@ -786,6 +953,7 @@ func parseTime(s string) (*time.Time, error) {
 	return &t, nil
 }
 
+// ImportRequest represents request body for importing logs
 type ImportRequest struct {
 	Files          []string `json:"files" binding:"required"`
 	AlertOnImport  bool     `json:"alert_on_import"`
@@ -793,6 +961,17 @@ type ImportRequest struct {
 	SkipPatterns   []string `json:"skip_patterns"`
 }
 
+// ImportLogs godoc
+// @Summary Import log files
+// @Description Import Windows event log files (evtx, csv, etc.) for analysis
+// @Tags import
+// @Accept json
+// @Produce json
+// @Param request body ImportRequest true "Import request"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/import/logs [post]
 func (h *ImportHandler) ImportLogs(c *gin.Context) {
 	var req ImportRequest
 
@@ -864,6 +1043,17 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 	})
 }
 
+// GetImportStatus godoc
+// @Summary Get import status
+// @Description Get the status of a log file import operation
+// @Tags import
+// @Accept json
+// @Produce json
+// @Param path query string true "File path to check import status"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/import/status [get]
 func (h *ImportHandler) GetImportStatus(c *gin.Context) {
 	filePath := c.Query("path")
 	if filePath == "" {
@@ -880,10 +1070,12 @@ func (h *ImportHandler) GetImportStatus(c *gin.Context) {
 	c.JSON(200, log)
 }
 
+// TimelineHandler handles timeline-related operations
 type TimelineHandler struct {
 	db *storage.DB
 }
 
+// TimelineEntry represents a single entry in the timeline
 type TimelineEntry struct {
 	ID         int64     `json:"id"`
 	Timestamp  time.Time `json:"timestamp"`
@@ -901,6 +1093,7 @@ type TimelineEntry struct {
 	EventDBIDs []int64   `json:"event_db_ids,omitempty"`
 }
 
+// TimelineResponse represents the timeline API response
 type TimelineResponse struct {
 	Entries    []*TimelineEntry `json:"entries"`
 	TotalCount int              `json:"total_count"`
@@ -910,6 +1103,19 @@ type TimelineResponse struct {
 	NextOffset int              `json:"next_offset,omitempty"`
 }
 
+// GetTimeline godoc
+// @Summary Get timeline
+// @Description Get a timeline of events and alerts with pagination
+// @Tags timeline
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of entries to return" default(200)
+// @Param offset query int false "Offset for pagination" default(0)
+// @Param start_time query string false "Start time (RFC3339 format)"
+// @Param end_time query string false "End time (RFC3339 format)"
+// @Success 200 {object} TimelineResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/timeline [get]
 func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "200")
 	limit, _ := strconv.Atoi(limitStr)
@@ -1035,6 +1241,17 @@ func (h *TimelineHandler) GetTimeline(c *gin.Context) {
 	})
 }
 
+// DeleteAlert godoc
+// @Summary Delete alert from timeline
+// @Description Delete an alert from the timeline by ID
+// @Tags timeline
+// @Accept json
+// @Produce json
+// @Param id path int true "Alert ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/timeline/alerts/{id} [delete]
 func (h *TimelineHandler) DeleteAlert(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -1057,6 +1274,7 @@ func sortTimeline(entries []*TimelineEntry) {
 	})
 }
 
+// TimelineStats represents timeline statistics
 type TimelineStats struct {
 	TotalEvents  int64            `json:"total_events"`
 	TotalAlerts  int64            `json:"total_alerts"`
@@ -1068,6 +1286,7 @@ type TimelineStats struct {
 	AttackChains int              `json:"attack_chains"`
 }
 
+// AttackChainInfo represents information about an attack chain
 type AttackChainInfo struct {
 	ID         string    `json:"id"`
 	Name       string    `json:"name"`
@@ -1079,6 +1298,17 @@ type AttackChainInfo struct {
 	EndTime    time.Time `json:"end_time"`
 }
 
+// GetTimelineStats godoc
+// @Summary Get timeline statistics
+// @Description Get aggregated statistics for the timeline
+// @Tags timeline
+// @Accept json
+// @Produce json
+// @Param start_time query string false "Start time (RFC3339 format)"
+// @Param end_time query string false "End time (RFC3339 format)"
+// @Success 200 {object} TimelineStats
+// @Failure 500 {object} ErrorResponse
+// @Router /api/timeline/stats [get]
 func (h *TimelineHandler) GetTimelineStats(c *gin.Context) {
 	startTime := c.Query("start_time")
 	endTime := c.Query("end_time")
@@ -1167,6 +1397,17 @@ func categorizeEventID(eventID int32) string {
 	}
 }
 
+// GetAttackChains godoc
+// @Summary Get attack chains
+// @Description Detect and return attack chains from events
+// @Tags timeline
+// @Accept json
+// @Produce json
+// @Param start_time query string false "Start time (RFC3339 format)"
+// @Param end_time query string false "End time (RFC3339 format)"
+// @Success 200 {object} SuccessResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/timeline/chains [get]
 func (h *TimelineHandler) GetAttackChains(c *gin.Context) {
 	startTime := c.Query("start_time")
 	endTime := c.Query("end_time")
@@ -1264,6 +1505,18 @@ func detectAttackChains(events []*types.Event) []*AttackChainInfo {
 	return chains
 }
 
+// ExportTimeline godoc
+// @Summary Export timeline
+// @Description Export timeline events in various formats (json, csv, html)
+// @Tags timeline
+// @Accept json
+// @Produce json
+// @Param format query string false "Export format (json/csv/html)" default(json)
+// @Param start_time query string false "Start time (RFC3339 format)"
+// @Param end_time query string false "End time (RFC3339 format)"
+// @Success 200 {object} SuccessResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/timeline/export [get]
 func (h *TimelineHandler) ExportTimeline(c *gin.Context) {
 	format := c.DefaultQuery("format", "json")
 

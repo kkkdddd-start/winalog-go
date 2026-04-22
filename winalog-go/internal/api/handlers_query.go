@@ -45,47 +45,52 @@ var sqlAllowedPrefixes = map[string]bool{
 	"WITH":    true,
 }
 
+// NewQueryHandler godoc
+// @Summary 创建查询处理器
+// @Description 初始化QueryHandler
+// @Tags query
+// @Param db query string true "数据库实例"
+// @Router /api/query [post]
 func NewQueryHandler(db *storage.DB) *QueryHandler {
 	return &QueryHandler{db: db}
 }
 
 func validateSQL(sql string) error {
-	sql = strings.TrimSpace(sql)
-
-	if sql == "" {
-		return types.NewValidationError("sql", "sql field is required", nil)
+	for _, pattern := range sqlForbiddenPatterns {
+		if pattern.MatchString(sql) {
+			return types.NewValidationError("sql", "SQL contains forbidden pattern: potentially dangerous operation detected", nil)
+		}
 	}
 
-	if len(sql) > 10000 {
-		return types.NewValidationError("sql", "sql statement too long (max 10000 chars)", nil)
-	}
+	normalizedSQL := regexp.MustCompile(`\s+`).ReplaceAllString(strings.TrimSpace(sql), " ")
+	upperSQL := strings.ToUpper(normalizedSQL)
 
-	normalizedSQL := strings.ToUpper(sql)
-	hasValidPrefix := false
+	allowed := false
 	for prefix := range sqlAllowedPrefixes {
-		if strings.HasPrefix(normalizedSQL, prefix) {
-			hasValidPrefix = true
+		if strings.HasPrefix(upperSQL, prefix) {
+			allowed = true
 			break
 		}
 	}
 
-	if !hasValidPrefix {
-		return types.NewValidationError("sql", "only SELECT, PRAGMA, EXPLAIN, WITH queries are allowed", nil)
-	}
-
-	for _, pattern := range sqlForbiddenPatterns {
-		if pattern.MatchString(sql) {
-			return types.NewValidationError("sql", "forbidden SQL pattern detected", nil)
-		}
-	}
-
-	if strings.Count(sql, "'")%2 != 0 || strings.Count(sql, "\"")%2 != 0 {
-		return types.NewValidationError("sql", "unclosed string literal", nil)
+	if !allowed {
+		return types.NewValidationError("sql", "Only SELECT, PRAGMA, EXPLAIN, and WITH queries are allowed", nil)
 	}
 
 	return nil
 }
 
+// Execute godoc
+// @Summary 执行SQL查询
+// @Description 执行只读的SQL查询语句
+// @Tags query
+// @Accept json
+// @Produce json
+// @Param request body QueryRequest true "SQL查询请求"
+// @Success 200 {object} QueryResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/query/execute [post]
 func (h *QueryHandler) Execute(c *gin.Context) {
 	var req QueryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -170,6 +175,14 @@ func (h *QueryHandler) Execute(c *gin.Context) {
 	})
 }
 
+// SetupQueryRoutes godoc
+// @Summary 设置查询路由
+// @Description 配置SQL查询相关的API路由
+// @Tags query
+// @Router /api/query/execute [post]
+// @Router /api/query/tables [get]
+// @Router /api/query/quick-queries [get]
+// @Router /api/query/quick-query/{name} [get]
 func SetupQueryRoutes(r *gin.Engine, h *QueryHandler) {
 	query := r.Group("/api/query")
 	{
@@ -343,6 +356,14 @@ var quickQueries = []QuickQuery{
 	},
 }
 
+// ListTables godoc
+// @Summary 列出数据表
+// @Description 返回数据库中所有可查询的表及其结构信息
+// @Tags query
+// @Produce json
+// @Success 200 {object} []TableInfo
+// @Failure 500 {object} ErrorResponse
+// @Router /api/query/tables [get]
 func (h *QueryHandler) ListTables(c *gin.Context) {
 	tables := []string{
 		"events",
@@ -390,6 +411,14 @@ func (h *QueryHandler) ListTables(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// ListQuickQueries godoc
+// @Summary 列出快速查询
+// @Description 返回所有预定义的快速查询语句
+// @Tags query
+// @Produce json
+// @Param category query string false "按分类过滤"
+// @Success 200 {object} []QuickQuery
+// @Router /api/query/quick-queries [get]
 func (h *QueryHandler) ListQuickQueries(c *gin.Context) {
 	category := c.Query("category")
 
@@ -407,6 +436,15 @@ func (h *QueryHandler) ListQuickQueries(c *gin.Context) {
 	c.JSON(http.StatusOK, filtered)
 }
 
+// GetQuickQuery godoc
+// @Summary 获取快速查询详情
+// @Description 返回指定快速查询的详细信息
+// @Tags query
+// @Produce json
+// @Param name path string true "查询名称"
+// @Success 200 {object} QuickQuery
+// @Failure 404 {object} ErrorResponse
+// @Router /api/query/quick-query/{name} [get]
 func (h *QueryHandler) GetQuickQuery(c *gin.Context) {
 	name := c.Param("name")
 

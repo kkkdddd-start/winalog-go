@@ -31,10 +31,27 @@ type CorrelationResponse struct {
 	Description string    `json:"description"`
 }
 
+// NewCorrelationHandler godoc
+// @Summary 创建关联分析处理器
+// @Description 初始化CorrelationHandler
+// @Tags correlation
+// @Param db query string true "数据库实例"
+// @Router /api/correlation [get]
 func NewCorrelationHandler(db *storage.DB) *CorrelationHandler {
 	return &CorrelationHandler{db: db}
 }
 
+// Analyze godoc
+// @Summary 执行关联分析
+// @Description 对事件日志进行关联规则分析，检测跨事件模式
+// @Tags correlation
+// @Accept json
+// @Produce json
+// @Param request body CorrelationRequest false "关联分析请求参数"
+// @Success 200 {object} map[string]interface{} "results": []CorrelationResponse, "count": int
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/correlation/analyze [post]
 func (h *CorrelationHandler) Analyze(c *gin.Context) {
 	var req CorrelationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -110,6 +127,13 @@ func (h *CorrelationHandler) Analyze(c *gin.Context) {
 	})
 }
 
+// GetInfo godoc
+// @Summary 获取关联分析服务信息
+// @Description 返回关联分析服务的状态和可用端点
+// @Tags correlation
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/correlation [get]
 func (h *CorrelationHandler) GetInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"service": "correlation",
@@ -120,6 +144,12 @@ func (h *CorrelationHandler) GetInfo(c *gin.Context) {
 	})
 }
 
+// SetupCorrelationRoutes godoc
+// @Summary 设置关联分析路由
+// @Description 配置关联分析相关的API路由
+// @Tags correlation
+// @Router /api/correlation [get]
+// @Router /api/correlation/analyze [post]
 func SetupCorrelationRoutes(r *gin.Engine, h *CorrelationHandler) {
 	correlationGroup := r.Group("/api/correlation")
 	{

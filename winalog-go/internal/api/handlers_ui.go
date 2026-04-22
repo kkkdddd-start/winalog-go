@@ -59,10 +59,24 @@ type TrendPoint struct {
 	Count int64  `json:"count"`
 }
 
+// NewUIHandler godoc
+// @Summary 创建UI处理器
+// @Description 初始化UIHandler
+// @Tags ui
+// @Param db query string true "数据库实例"
+// @Router /api/ui [get]
 func NewUIHandler(db *storage.DB) *UIHandler {
 	return &UIHandler{db: db}
 }
 
+// GetDashboardOverview godoc
+// @Summary 获取仪表板概览
+// @Description 返回仪表板所需的综合数据
+// @Tags ui
+// @Produce json
+// @Success 200 {object} DashboardOverview
+// @Failure 500 {object} ErrorResponse
+// @Router /api/ui/dashboard [get]
 func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -242,6 +256,15 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 	c.JSON(http.StatusOK, overview)
 }
 
+// GetAlertGroups godoc
+// @Summary 获取告警分组
+// @Description 返回按不同维度分组的告警数据
+// @Tags ui
+// @Produce json
+// @Param group_by query string false "分组维度" default(severity)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /api/ui/alerts/groups [get]
 func (h *UIHandler) GetAlertGroups(c *gin.Context) {
 	groupBy := c.DefaultQuery("group_by", "severity")
 
@@ -350,6 +373,14 @@ func (h *UIHandler) GetAlertGroups(c *gin.Context) {
 	})
 }
 
+// GetMetrics godoc
+// @Summary 获取指标数据
+// @Description 返回用于图表展示的指标数据
+// @Tags ui
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /api/ui/metrics [get]
 func (h *UIHandler) GetMetrics(c *gin.Context) {
 	metrics := make(map[string]interface{})
 
@@ -398,6 +429,14 @@ func (h *UIHandler) GetMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, metrics)
 }
 
+// GetEventDistribution godoc
+// @Summary 获取事件分布
+// @Description 返回事件的分布统计信息
+// @Tags ui
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /api/ui/events/distribution [get]
 func (h *UIHandler) GetEventDistribution(c *gin.Context) {
 	distribution := make(map[string]interface{})
 
@@ -501,6 +540,14 @@ func formatLevel(level int) string {
 	}
 }
 
+// SetupUIRoutes godoc
+// @Summary 设置UI路由
+// @Description 配置UI仪表板相关的API路由
+// @Tags ui
+// @Router /api/ui/dashboard [get]
+// @Router /api/ui/alerts/groups [get]
+// @Router /api/ui/metrics [get]
+// @Router /api/ui/events/distribution [get]
 func SetupUIRoutes(r *gin.Engine, uiHandler *UIHandler) {
 	ui := r.Group("/api/ui")
 	{

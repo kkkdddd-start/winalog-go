@@ -11,12 +11,14 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
+// AnalyzeHandler handles analysis operations
 type AnalyzeHandler struct {
 	db          *storage.DB
 	manager     *analyzers.AnalyzerManager
 	ruleConfigs map[string]AnalyzerRuleInfo
 }
 
+// AnalyzeRequest represents request body for analysis
 type AnalyzeRequest struct {
 	Type      string `json:"type"`
 	StartTime string `json:"start_time"`
@@ -26,6 +28,7 @@ type AnalyzeRequest struct {
 	Offset    int    `json:"offset"`
 }
 
+// AnalyzeFinding represents a single finding from analysis
 type AnalyzeFinding struct {
 	Description string                 `json:"description"`
 	Severity    string                 `json:"severity"`
@@ -36,6 +39,7 @@ type AnalyzeFinding struct {
 	Evidence    []EvidenceItem         `json:"evidence,omitempty"`
 }
 
+// EvidenceItem represents evidence for a finding
 type EvidenceItem struct {
 	EventID   int32  `json:"event_id"`
 	Timestamp string `json:"timestamp"`
@@ -44,12 +48,14 @@ type EvidenceItem struct {
 	Message   string `json:"message"`
 }
 
+// Pagination represents pagination information
 type Pagination struct {
 	Limit  int   `json:"limit"`
 	Offset int   `json:"offset"`
 	Total  int64 `json:"total"`
 }
 
+// AnalyzeResult represents the result of an analysis operation
 type AnalyzeResult struct {
 	Type       string           `json:"type"`
 	Severity   string           `json:"severity"`
@@ -79,6 +85,19 @@ func NewAnalyzeHandler(db *storage.DB, manager *analyzers.AnalyzerManager) *Anal
 	}
 }
 
+// RunAnalysis godoc
+// @Summary Run analysis
+// @Description Run a specific analyzer on stored events
+// @Tags analyze
+// @Accept json
+// @Produce json
+// @Param type path string true "Analyzer type (brute-force, login, kerberos, etc.)"
+// @Param request body AnalyzeRequest false "Analysis parameters"
+// @Success 200 {object} AnalyzeResult
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/analyze/{type} [post]
 func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 	analyzerType := c.Param("type")
 	if analyzerType == "" {
@@ -210,6 +229,14 @@ func (h *AnalyzeHandler) RunAnalysis(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// ListAnalyzers godoc
+// @Summary List available analyzers
+// @Description Get a list of all available analyzer types
+// @Tags analyze
+// @Accept json
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Router /api/analyzers [get]
 func (h *AnalyzeHandler) ListAnalyzers(c *gin.Context) {
 	if h.manager == nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -223,6 +250,16 @@ func (h *AnalyzeHandler) ListAnalyzers(c *gin.Context) {
 	})
 }
 
+// GetAnalyzerInfo godoc
+// @Summary Get analyzer info
+// @Description Get information about a specific analyzer
+// @Tags analyze
+// @Accept json
+// @Produce json
+// @Param type path string true "Analyzer type"
+// @Success 200 {object} SuccessResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/analyzers/{type} [get]
 func (h *AnalyzeHandler) GetAnalyzerInfo(c *gin.Context) {
 	analyzerType := c.Param("type")
 
@@ -249,6 +286,7 @@ func (h *AnalyzeHandler) GetAnalyzerInfo(c *gin.Context) {
 	})
 }
 
+// AnalyzerRuleInfo represents configuration for an analyzer rule
 type AnalyzerRuleInfo struct {
 	Name        string         `json:"name"`
 	Type        string         `json:"type"`
@@ -265,6 +303,14 @@ type AnalyzerRuleInfo struct {
 	Category    string         `json:"category"`
 }
 
+// ListRules godoc
+// @Summary List analyzer rules
+// @Description Get a list of all analyzer rule configurations
+// @Tags analyze
+// @Accept json
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Router /api/analyzer-rules [get]
 func (h *AnalyzeHandler) ListRules(c *gin.Context) {
 	rules := make([]AnalyzerRuleInfo, 0, len(h.ruleConfigs))
 	for _, rule := range h.ruleConfigs {
@@ -274,6 +320,17 @@ func (h *AnalyzeHandler) ListRules(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rules": rules})
 }
 
+// GetRule godoc
+// @Summary Get analyzer rule
+// @Description Get configuration for a specific analyzer rule
+// @Tags analyze
+// @Accept json
+// @Produce json
+// @Param type path string true "Rule type"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/analyzer-rules/{type} [get]
 func (h *AnalyzeHandler) GetRule(c *gin.Context) {
 	ruleName := c.Param("type")
 	if ruleName == "" {
@@ -292,6 +349,7 @@ func (h *AnalyzeHandler) GetRule(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rule": rule})
 }
 
+// AnalyzerRuleUpdate represents request body for updating an analyzer rule
 type AnalyzerRuleUpdate struct {
 	Name       string         `json:"name"`
 	Enabled    bool           `json:"enabled"`
@@ -301,6 +359,18 @@ type AnalyzerRuleUpdate struct {
 	Whitelist  []string       `json:"whitelist,omitempty"`
 }
 
+// UpdateRule godoc
+// @Summary Update analyzer rule
+// @Description Update configuration for a specific analyzer rule
+// @Tags analyze
+// @Accept json
+// @Produce json
+// @Param type path string true "Rule type"
+// @Param request body AnalyzerRuleUpdate true "Rule configuration"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/analyzer-rules/{type} [put]
 func (h *AnalyzeHandler) UpdateRule(c *gin.Context) {
 	ruleName := c.Param("type")
 	if ruleName == "" {

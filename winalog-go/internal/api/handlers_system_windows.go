@@ -16,6 +16,16 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// GetProcesses godoc
+// @Summary 获取进程列表
+// @Description 返回系统进程列表(Windows)
+// @Tags system
+// @Produce json
+// @Param enabled query string false "是否启用" default(true)
+// @Param limit query int false "返回数量限制" default(100)
+// @Success 200 {object} ProcessResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/processes [get]
 func (h *SystemHandler) GetProcesses(c *gin.Context) {
 	cfg := config.DefaultConfig()
 	defaultLimit := cfg.Search.DefaultProcessLimit
@@ -116,6 +126,15 @@ func (h *SystemHandler) GetProcesses(c *gin.Context) {
 	})
 }
 
+// GetUsers godoc
+// @Summary 获取用户列表
+// @Description 返回系统本地用户列表(Windows)
+// @Tags system
+// @Produce json
+// @Param enabled query string false "是否启用" default(true)
+// @Success 200 {object} UserResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/users [get]
 func (h *SystemHandler) GetUsers(c *gin.Context) {
 	enabledStr := c.DefaultQuery("enabled", "true")
 	enabled := enabledStr == "true" || enabledStr == "1"
@@ -157,6 +176,15 @@ func (h *SystemHandler) GetUsers(c *gin.Context) {
 	})
 }
 
+// GetScheduledTasks godoc
+// @Summary 获取计划任务列表
+// @Description 返回系统计划任务列表(Windows)
+// @Tags system
+// @Produce json
+// @Param enabled query string false "是否启用" default(true)
+// @Success 200 {object} TaskResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/tasks [get]
 func (h *SystemHandler) GetScheduledTasks(c *gin.Context) {
 	enabledStr := c.DefaultQuery("enabled", "true")
 	enabled := enabledStr == "true" || enabledStr == "1"

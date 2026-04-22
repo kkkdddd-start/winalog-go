@@ -20,10 +20,24 @@ type CollectionStatsResponse struct {
 	LastImport  string           `json:"last_import"`
 }
 
+// NewDashboardHandler godoc
+// @Summary 创建仪表板处理器
+// @Description 初始化DashboardHandler
+// @Tags dashboard
+// @Param db query string true "数据库实例"
+// @Router /api/dashboard [get]
 func NewDashboardHandler(db *storage.DB) *DashboardHandler {
 	return &DashboardHandler{db: db}
 }
 
+// GetLogNames godoc
+// @Summary 获取日志名称列表
+// @Description 返回数据库中所有不重复的日志名称
+// @Tags dashboard
+// @Produce json
+// @Success 200 {object} map[string]interface{} "log_names": []string
+// @Failure 500 {object} ErrorResponse
+// @Router /api/dashboard/log-names [get]
 func (h *DashboardHandler) GetLogNames(c *gin.Context) {
 	rows, err := h.db.Query(`
 		SELECT DISTINCT log_name
@@ -47,6 +61,14 @@ func (h *DashboardHandler) GetLogNames(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"log_names": logNames})
 }
 
+// GetCollectionStats godoc
+// @Summary 获取收集统计信息
+// @Description 返回事件收集的统计数据，包括总数、大小、数据源等
+// @Tags dashboard
+// @Produce json
+// @Success 200 {object} CollectionStatsResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/dashboard/stats [get]
 func (h *DashboardHandler) GetCollectionStats(c *gin.Context) {
 	stats, err := h.db.GetStats()
 	if err != nil {

@@ -37,10 +37,24 @@ type ParameterInfo struct {
 	Options     []string `json:"options,omitempty"`
 }
 
+// NewPolicyHandler godoc
+// @Summary 创建策略处理器
+// @Description 初始化PolicyHandler
+// @Tags policy
+// @Param engine query string true "告警引擎实例"
+// @Router /api/policy [get]
 func NewPolicyHandler(engine *alerts.Engine) *PolicyHandler {
 	return &PolicyHandler{engine: engine}
 }
 
+// ListTemplates godoc
+// @Summary 列出策略模板
+// @Description 返回所有可用的策略模板
+// @Tags policy
+// @Produce json
+// @Success 200 {object} map[string]interface{} "templates": []PolicyTemplateInfo, "total": int
+// @Failure 500 {object} ErrorResponse
+// @Router /api/policy-templates [get]
 func (h *PolicyHandler) ListTemplates(c *gin.Context) {
 	policyMgr := alerts.GetPolicyManager()
 	templates := policyMgr.ListTemplates()
@@ -77,6 +91,15 @@ func (h *PolicyHandler) ListTemplates(c *gin.Context) {
 	})
 }
 
+// GetTemplate godoc
+// @Summary 获取策略模板详情
+// @Description 返回指定策略模板的详细信息
+// @Tags policy
+// @Produce json
+// @Param name path string true "模板名称"
+// @Success 200 {object} PolicyTemplateInfo
+// @Failure 404 {object} ErrorResponse
+// @Router /api/policy-templates/{name} [get]
 func (h *PolicyHandler) GetTemplate(c *gin.Context) {
 	name := c.Param("name")
 
@@ -114,6 +137,18 @@ func (h *PolicyHandler) GetTemplate(c *gin.Context) {
 	})
 }
 
+// InstantiateTemplate godoc
+// @Summary 实例化策略模板
+// @Description 从模板创建策略实例
+// @Tags policy
+// @Accept json
+// @Produce json
+// @Param request body PolicyTemplateRequest true "模板实例化请求"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/policy-templates [post]
 func (h *PolicyHandler) InstantiateTemplate(c *gin.Context) {
 	var req PolicyTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -168,6 +203,13 @@ func (h *PolicyHandler) InstantiateTemplate(c *gin.Context) {
 	})
 }
 
+// ListInstances godoc
+// @Summary 列出策略实例
+// @Description 返回所有策略实例
+// @Tags policy
+// @Produce json
+// @Success 200 {object} map[string]interface{} "instances": []object, "total": int
+// @Router /api/policy-instances [get]
 func (h *PolicyHandler) ListInstances(c *gin.Context) {
 	policyMgr := alerts.GetPolicyManager()
 	instances := policyMgr.ListInstances()
@@ -178,6 +220,15 @@ func (h *PolicyHandler) ListInstances(c *gin.Context) {
 	})
 }
 
+// DeleteInstance godoc
+// @Summary 删除策略实例
+// @Description 删除指定的策略实例
+// @Tags policy
+// @Produce json
+// @Param key path string true "实例键名"
+// @Success 200 {object} SuccessResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/policy-instances/{key} [delete]
 func (h *PolicyHandler) DeleteInstance(c *gin.Context) {
 	key := c.Param("key")
 
@@ -195,6 +246,14 @@ func (h *PolicyHandler) DeleteInstance(c *gin.Context) {
 	})
 }
 
+// ApplyTemplates godoc
+// @Summary 应用策略模板
+// @Description 将所有策略模板应用到告警引擎
+// @Tags policy
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/policy-templates/apply [post]
 func (h *PolicyHandler) ApplyTemplates(c *gin.Context) {
 	if h.engine == nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
@@ -241,6 +300,17 @@ type ActionInfo struct {
 	Parameters map[string]interface{} `json:"parameters"`
 }
 
+// CreateCustomPolicy godoc
+// @Summary 创建自定义策略
+// @Description 创建新的自定义策略模板
+// @Tags policy
+// @Accept json
+// @Produce json
+// @Param request body CreateCustomPolicyRequest true "自定义策略请求"
+// @Success 201 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Router /api/policies [post]
 func (h *PolicyHandler) CreateCustomPolicy(c *gin.Context) {
 	var req CreateCustomPolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -322,6 +392,15 @@ func (h *PolicyHandler) CreateCustomPolicy(c *gin.Context) {
 	})
 }
 
+// DeleteCustomPolicy godoc
+// @Summary 删除自定义策略
+// @Description 删除指定的自定义策略模板
+// @Tags policy
+// @Produce json
+// @Param name path string true "策略名称"
+// @Success 200 {object} SuccessResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/policies/{name} [delete]
 func (h *PolicyHandler) DeleteCustomPolicy(c *gin.Context) {
 	name := c.Param("name")
 
@@ -339,6 +418,19 @@ func (h *PolicyHandler) DeleteCustomPolicy(c *gin.Context) {
 	})
 }
 
+// SetupPolicyRoutes godoc
+// @Summary 设置策略路由
+// @Description 配置策略管理相关的API路由
+// @Tags policy
+// @Router /api/policy-templates [get]
+// @Router /api/policy-templates/{name} [get]
+// @Router /api/policy-templates [post]
+// @Router /api/policy-templates/apply [post]
+// @Router /api/policy-templates/{name} [delete]
+// @Router /api/policy-instances [get]
+// @Router /api/policy-instances/{key} [delete]
+// @Router /api/policies [post]
+// @Router /api/policies/{name} [delete]
 func SetupPolicyRoutes(r *gin.Engine, policyHandler *PolicyHandler) {
 	policy := r.Group("/api/policy-templates")
 	{

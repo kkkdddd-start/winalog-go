@@ -30,6 +30,12 @@ type UEBAResult struct {
 	Duration        string                `json:"duration"`
 }
 
+// NewUEBAHandler godoc
+// @Summary 创建UEBA处理器
+// @Description 初始化UEBAHandler
+// @Tags ueba
+// @Param db query string true "数据库实例"
+// @Router /api/ueba [get]
 func NewUEBAHandler(db *storage.DB) *UEBAHandler {
 	engine := ueba.NewEngine(ueba.EngineConfig{
 		LearningWindow:       7 * 24 * time.Hour,
@@ -43,6 +49,17 @@ func NewUEBAHandler(db *storage.DB) *UEBAHandler {
 	}
 }
 
+// Analyze godoc
+// @Summary 执行UEBA分析
+// @Description 对用户行为进行分析，检测异常活动
+// @Tags ueba
+// @Accept json
+// @Produce json
+// @Param request body UEBARequest false "UEBA分析请求"
+// @Success 200 {object} UEBAResult
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/ueba/analyze [post]
 func (h *UEBAHandler) Analyze(c *gin.Context) {
 	startTime := time.Now()
 
@@ -116,6 +133,13 @@ func (h *UEBAHandler) Analyze(c *gin.Context) {
 	})
 }
 
+// GetProfiles godoc
+// @Summary 获取用户行为画像
+// @Description 返回所有用户的行为分析画像
+// @Tags ueba
+// @Produce json
+// @Success 200 {object} map[string]interface{} "profiles": []object, "total": int
+// @Router /api/ueba/profiles [get]
 func (h *UEBAHandler) GetProfiles(c *gin.Context) {
 	profiles := h.engine.GetUserActivity()
 
@@ -135,6 +159,13 @@ func (h *UEBAHandler) GetProfiles(c *gin.Context) {
 	})
 }
 
+// GetInfo godoc
+// @Summary 获取UEBA服务信息
+// @Description 返回UEBA服务的状态和可用端点
+// @Tags ueba
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/ueba [get]
 func (h *UEBAHandler) GetInfo(c *gin.Context) {
 	profiles := h.engine.GetUserActivity()
 	profileCount := len(profiles)
@@ -152,6 +183,14 @@ func (h *UEBAHandler) GetInfo(c *gin.Context) {
 	})
 }
 
+// GetAnomalyDetails godoc
+// @Summary 获取异常类型详情
+// @Description 返回指定异常类型的描述信息
+// @Tags ueba
+// @Produce json
+// @Param type path string true "异常类型"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/ueba/anomaly/{type} [get]
 func (h *UEBAHandler) GetAnomalyDetails(c *gin.Context) {
 	anomalyType := c.Param("type")
 
@@ -161,6 +200,13 @@ func (h *UEBAHandler) GetAnomalyDetails(c *gin.Context) {
 	})
 }
 
+// GetBaseline godoc
+// @Summary 获取行为基线
+// @Description 返回用户行为的基线数据
+// @Tags ueba
+// @Produce json
+// @Success 200 {object} map[string]interface{} "baseline": []object, "total": int
+// @Router /api/ueba/baseline [get]
 func (h *UEBAHandler) GetBaseline(c *gin.Context) {
 	profiles := h.engine.GetUserActivity()
 
@@ -192,6 +238,17 @@ func (h *UEBAHandler) GetBaseline(c *gin.Context) {
 	})
 }
 
+// LearnBaseline godoc
+// @Summary 学习行为基线
+// @Description 从历史事件中学习用户行为基线
+// @Tags ueba
+// @Accept json
+// @Produce json
+// @Param request body UEBARequest false "学习请求参数"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/ueba/baseline/learn [post]
 func (h *UEBAHandler) LearnBaseline(c *gin.Context) {
 	var req UEBARequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -246,6 +303,13 @@ func (h *UEBAHandler) LearnBaseline(c *gin.Context) {
 	})
 }
 
+// ClearBaseline godoc
+// @Summary 清除行为基线
+// @Description 清除所有学习的基线数据
+// @Tags ueba
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/ueba/baseline [delete]
 func (h *UEBAHandler) ClearBaseline(c *gin.Context) {
 	h.engine.Clear()
 	c.JSON(http.StatusOK, gin.H{
@@ -271,6 +335,17 @@ func getAnomalyDescription(anomalyType string) string {
 	return "Unknown anomaly type"
 }
 
+// SetupUEBARoutes godoc
+// @Summary 设置UEBA路由
+// @Description 配置UEBA分析相关的API路由
+// @Tags ueba
+// @Router /api/ueba [get]
+// @Router /api/ueba/analyze [post]
+// @Router /api/ueba/profiles [get]
+// @Router /api/ueba/anomaly/{type} [get]
+// @Router /api/ueba/baseline [get]
+// @Router /api/ueba/baseline/learn [post]
+// @Router /api/ueba/baseline [delete]
 func SetupUEBARoutes(r *gin.Engine, uebaHandler *UEBAHandler) {
 	ueba := r.Group("/api/ueba")
 	{

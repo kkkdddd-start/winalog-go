@@ -64,6 +64,12 @@ type ListRulesRequest struct {
 	Keyword  string `form:"keyword"`
 }
 
+// NewRulesHandler godoc
+// @Summary 创建规则处理器
+// @Description 初始化RulesHandler
+// @Tags rules
+// @Param db query string true "数据库实例"
+// @Router /api/rules [get]
 func NewRulesHandler(db *storage.DB) *RulesHandler {
 	return &RulesHandler{
 		customManager: rules.NewCustomRuleManager("./data/rules"),
@@ -71,6 +77,18 @@ func NewRulesHandler(db *storage.DB) *RulesHandler {
 	}
 }
 
+// ListRules godoc
+// @Summary 列出规则
+// @Description 返回所有告警规则，包括内置规则和自定义规则
+// @Tags rules
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页数量" default(20)
+// @Param severity query string false "严重级别过滤"
+// @Param enabled query bool false "启用状态过滤"
+// @Param keyword query string false "关键词搜索"
+// @Success 200 {object} RulesListResponse
+// @Router /api/rules [get]
 func (h *RulesHandler) ListRules(c *gin.Context) {
 	var req ListRulesRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -245,6 +263,15 @@ func applyRuleFilter(rule RuleInfo, req *ListRulesRequest) bool {
 	return true
 }
 
+// GetRule godoc
+// @Summary 获取规则详情
+// @Description 返回指定规则的详细信息
+// @Tags rules
+// @Produce json
+// @Param name path string true "规则名称"
+// @Success 200 {object} RuleInfo
+// @Failure 404 {object} ErrorResponse
+// @Router /api/rules/{name} [get]
 func (h *RulesHandler) GetRule(c *gin.Context) {
 	name := c.Param("name")
 
@@ -333,6 +360,16 @@ func (h *RulesHandler) GetRule(c *gin.Context) {
 	})
 }
 
+// ToggleRule godoc
+// @Summary 切换规则状态
+// @Description 启用或禁用指定规则
+// @Tags rules
+// @Produce json
+// @Param name path string true "规则名称"
+// @Param enabled query bool true "目标状态"
+// @Success 200 {object} SuccessResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/rules/{name}/toggle [post]
 func (h *RulesHandler) ToggleRule(c *gin.Context) {
 	name := c.Param("name")
 	enabled := c.Query("enabled") == "true"
@@ -396,6 +433,17 @@ type UpdateRuleRequest struct {
 	Message     string      `json:"message"`
 }
 
+// CreateRule godoc
+// @Summary 创建规则
+// @Description 创建新的自定义告警规则
+// @Tags rules
+// @Accept json
+// @Produce json
+// @Param request body CreateRuleRequest true "规则创建请求"
+// @Success 201 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Router /api/rules [post]
 func (h *RulesHandler) CreateRule(c *gin.Context) {
 	var req CreateRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -485,6 +533,18 @@ func (h *RulesHandler) CreateRule(c *gin.Context) {
 	})
 }
 
+// UpdateRule godoc
+// @Summary 更新规则
+// @Description 更新指定告警规则的配置
+// @Tags rules
+// @Accept json
+// @Produce json
+// @Param name path string true "规则名称"
+// @Param request body UpdateRuleRequest true "规则更新请求"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/rules/{name} [put]
 func (h *RulesHandler) UpdateRule(c *gin.Context) {
 	name := c.Param("name")
 
@@ -598,6 +658,16 @@ func (h *RulesHandler) UpdateRule(c *gin.Context) {
 	})
 }
 
+// DeleteRule godoc
+// @Summary 删除规则
+// @Description 删除指定的自定义告警规则
+// @Tags rules
+// @Produce json
+// @Param name path string true "规则名称"
+// @Success 200 {object} SuccessResponse
+// @Failure 403 {object} ErrorResponse "无法删除内置规则"
+// @Failure 404 {object} ErrorResponse
+// @Router /api/rules/{name} [delete]
 func (h *RulesHandler) DeleteRule(c *gin.Context) {
 	name := c.Param("name")
 
@@ -644,6 +714,16 @@ type ValidateRuleResponse struct {
 	Warnings []string `json:"warnings,omitempty"`
 }
 
+// ValidateRule godoc
+// @Summary 验证规则
+// @Description 验证规则配置的有效性
+// @Tags rules
+// @Accept json
+// @Produce json
+// @Param request body ValidateRuleRequest true "规则验证请求"
+// @Success 200 {object} ValidateRuleResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/rules/validate [post]
 func (h *RulesHandler) ValidateRule(c *gin.Context) {
 	var req ValidateRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -718,6 +798,16 @@ type ImportRulesResponse struct {
 	Errors   []string `json:"errors,omitempty"`
 }
 
+// ImportRules godoc
+// @Summary 导入规则
+// @Description 从请求体导入规则配置
+// @Tags rules
+// @Accept json
+// @Produce json
+// @Param request body ImportRulesRequest true "规则导入请求"
+// @Success 200 {object} ImportRulesResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/rules/import [post]
 func (h *RulesHandler) ImportRules(c *gin.Context) {
 	var req ImportRulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -784,6 +874,14 @@ func (h *RulesHandler) ImportRules(c *gin.Context) {
 	})
 }
 
+// ExportRules godoc
+// @Summary 导出规则
+// @Description 导出所有规则为JSON或YAML格式
+// @Tags rules
+// @Produce json
+// @Param format query string false "导出格式" default(json)
+// @Success 200 {object} map[string]interface{}
+// @Router /api/rules/export [get]
 func (h *RulesHandler) ExportRules(c *gin.Context) {
 	format := c.DefaultQuery("format", "json")
 
@@ -833,6 +931,22 @@ func (h *RulesHandler) ExportRules(c *gin.Context) {
 	})
 }
 
+// SetupRulesRoutes godoc
+// @Summary 设置规则路由
+// @Description 配置规则管理相关的API路由
+// @Tags rules
+// @Router /api/rules [get]
+// @Router /api/rules [post]
+// @Router /api/rules/{name} [get]
+// @Router /api/rules/{name} [put]
+// @Router /api/rules/{name} [delete]
+// @Router /api/rules/{name}/toggle [post]
+// @Router /api/rules/validate [post]
+// @Router /api/rules/import [post]
+// @Router /api/rules/export [get]
+// @Router /api/rules/templates [get]
+// @Router /api/rules/templates/{name} [get]
+// @Router /api/rules/templates/{name}/instantiate [post]
 func SetupRulesRoutes(r *gin.Engine, rulesHandler *RulesHandler) {
 	rulesGroup := r.Group("/api/rules")
 	{
@@ -872,6 +986,13 @@ type InstantiateTemplateRequest struct {
 	Params map[string]string `json:"params"`
 }
 
+// ListTemplates godoc
+// @Summary 列出规则模板
+// @Description 返回所有可用的规则模板
+// @Tags rules
+// @Produce json
+// @Success 200 {object} map[string]interface{} "templates": []TemplateInfo, "total": int
+// @Router /api/rules/templates [get]
 func (h *RulesHandler) ListTemplates(c *gin.Context) {
 	templates := h.customManager.ListTemplates()
 	response := make([]TemplateInfo, 0, len(templates))
@@ -900,6 +1021,15 @@ func (h *RulesHandler) ListTemplates(c *gin.Context) {
 	})
 }
 
+// GetTemplate godoc
+// @Summary 获取规则模板详情
+// @Description 返回指定规则模板的详细信息
+// @Tags rules
+// @Produce json
+// @Param name path string true "模板名称"
+// @Success 200 {object} TemplateInfo
+// @Failure 404 {object} ErrorResponse
+// @Router /api/rules/templates/{name} [get]
 func (h *RulesHandler) GetTemplate(c *gin.Context) {
 	name := c.Param("name")
 	template, ok := h.customManager.GetTemplate(name)
@@ -931,6 +1061,18 @@ func (h *RulesHandler) GetTemplate(c *gin.Context) {
 	})
 }
 
+// InstantiateTemplate godoc
+// @Summary 实例化规则模板
+// @Description 从模板创建规则实例
+// @Tags rules
+// @Accept json
+// @Produce json
+// @Param name path string true "模板名称"
+// @Param request body InstantiateTemplateRequest true "模板实例化请求"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/rules/templates/{name}/instantiate [post]
 func (h *RulesHandler) InstantiateTemplate(c *gin.Context) {
 	name := c.Param("name")
 

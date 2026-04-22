@@ -45,6 +45,11 @@ type DetectionCache struct {
 	ttl       time.Duration
 }
 
+// NewPersistenceHandler godoc
+// @Summary 创建持久化检测处理器
+// @Description 初始化PersistenceHandler，注册所有持久化检测器
+// @Tags persistence
+// @Router /api/persistence [get]
 func NewPersistenceHandler() *PersistenceHandler {
 	engine := persistence.NewDetectionEngine()
 	engine.RegisterAll(persistence.AllDetectors())
@@ -147,6 +152,21 @@ func enrichDetections(detections []*persistence.Detection) []*EnrichedDetection 
 	return enriched
 }
 
+// Detect godoc
+// @Summary 检测持久化威胁
+// @Description 执行Windows持久化机制检测，包括注册表、计划任务、服务等
+// @Tags persistence
+// @Accept json
+// @Produce json
+// @Param category query string false "检测类别"
+// @Param technique query string false "MITRE ATT&CK技术ID"
+// @Param format query string false "返回格式" default(json)
+// @Param timeout query string false "检测超时时间" default(5m)
+// @Param force query string false "强制刷新缓存" default(false)
+// @Success 200 {object} DetectResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/persistence/detect [get]
 func (h *PersistenceHandler) Detect(c *gin.Context) {
 	log.Printf("[DEBUG] Detect API called with category=%s, technique=%s, force=%s", c.Query("category"), c.Query("technique"), c.Query("force"))
 
@@ -276,6 +296,13 @@ func exportDetectionsToCSV(detections []*persistence.Detection) string {
 	return persistence.ExportDetectionsToCSVString(detections)
 }
 
+// ListCategories godoc
+// @Summary 列出持久化检测类别
+// @Description 返回所有可用的持久化检测类别
+// @Tags persistence
+// @Produce json
+// @Success 200 {object} map[string]interface{} "categories": []object
+// @Router /api/persistence/categories [get]
 func (h *PersistenceHandler) ListCategories(c *gin.Context) {
 	categories := []map[string]interface{}{
 		{
@@ -325,6 +352,13 @@ func (h *PersistenceHandler) ListCategories(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"categories": categories})
 }
 
+// ListTechniques godoc
+// @Summary 列出MITRE ATT&CK技术
+// @Description 返回所有支持的持久化检测技术
+// @Tags persistence
+// @Produce json
+// @Success 200 {object} map[string]interface{} "techniques": []object
+// @Router /api/persistence/techniques [get]
 func (h *PersistenceHandler) ListTechniques(c *gin.Context) {
 	techniques := []map[string]interface{}{
 		{"id": "T1546.001", "name": "辅助功能后门", "category": "Accessibility"},
@@ -345,6 +379,13 @@ func (h *PersistenceHandler) ListTechniques(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"techniques": techniques})
 }
 
+// ListDetectors godoc
+// @Summary 列出检测器
+// @Description 返回所有持久化检测器的配置状态
+// @Tags persistence
+// @Produce json
+// @Success 200 {object} map[string]interface{} "detectors": []DetectorConfig
+// @Router /api/persistence/detectors [get]
 func (h *PersistenceHandler) ListDetectors(c *gin.Context) {
 	h.detectorMutex.RLock()
 	defer h.detectorMutex.RUnlock()
@@ -393,6 +434,16 @@ type DetectorConfigUpdate struct {
 	} `json:"detectors"`
 }
 
+// UpdateDetectorConfig godoc
+// @Summary 更新检测器配置
+// @Description 更新持久化检测器的启用/禁用状态
+// @Tags persistence
+// @Accept json
+// @Produce json
+// @Param request body DetectorConfigUpdate true "检测器配置更新请求"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Router /api/persistence/detectors/config [post]
 func (h *PersistenceHandler) UpdateDetectorConfig(c *gin.Context) {
 	var req DetectorConfigUpdate
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -427,6 +478,13 @@ type PersistenceRuleInfo struct {
 	Whitelist   []string `json:"whitelist"`
 }
 
+// ListRules godoc
+// @Summary 列出持久化规则
+// @Description 返回所有持久化检测规则
+// @Tags persistence
+// @Produce json
+// @Success 200 {object} map[string]interface{} "rules": []PersistenceRuleInfo
+// @Router /api/persistence/rules [get]
 func (h *PersistenceHandler) ListRules(c *gin.Context) {
 	h.ruleConfigsMutex.RLock()
 	defer h.ruleConfigsMutex.RUnlock()
@@ -439,6 +497,16 @@ func (h *PersistenceHandler) ListRules(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rules": rules})
 }
 
+// GetRule godoc
+// @Summary 获取规则详情
+// @Description 返回指定持久化规则的详细信息
+// @Tags persistence
+// @Produce json
+// @Param name path string true "规则名称"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/persistence/rules/{name} [get]
 func (h *PersistenceHandler) GetRule(c *gin.Context) {
 	ruleName := c.Param("name")
 	if ruleName == "" {
@@ -471,6 +539,17 @@ type PersistenceRuleUpdate struct {
 	SuspiciousIndicators []string `json:"suspicious_indicators,omitempty"`
 }
 
+// UpdateRule godoc
+// @Summary 更新持久化规则
+// @Description 更新指定持久化规则的配置
+// @Tags persistence
+// @Accept json
+// @Produce json
+// @Param request body PersistenceRuleUpdate true "规则更新请求"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/persistence/rules [put]
 func (h *PersistenceHandler) UpdateRule(c *gin.Context) {
 	var req PersistenceRuleUpdate
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -540,6 +619,19 @@ func (h *PersistenceHandler) UpdateRule(c *gin.Context) {
 	})
 }
 
+// SetupPersistenceRoutes godoc
+// @Summary 设置持久化检测路由
+// @Description 配置持久化检测相关的API路由
+// @Tags persistence
+// @Router /api/persistence/detect [get]
+// @Router /api/persistence/detect/stream [get]
+// @Router /api/persistence/categories [get]
+// @Router /api/persistence/techniques [get]
+// @Router /api/persistence/detectors [get]
+// @Router /api/persistence/detectors/config [post]
+// @Router /api/persistence/rules [get]
+// @Router /api/persistence/rules/{name} [get]
+// @Router /api/persistence/rules [put]
 func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandler) {
 	persistenceGroup := r.Group("/api/persistence")
 	{
@@ -555,6 +647,13 @@ func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandle
 	}
 }
 
+// StreamDetect godoc
+// @Summary 建立持久化检测流
+// @Description 通过Server-Sent Events推送检测结果
+// @Tags persistence
+// @Produce text/event-stream
+// @Success 200 {object} map[string]interface{}
+// @Router /api/persistence/detect/stream [get]
 func (h *PersistenceHandler) StreamDetect(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")

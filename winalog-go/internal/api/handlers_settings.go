@@ -31,6 +31,13 @@ type Settings struct {
 	RequestTimeout       int    `json:"request_timeout"`
 }
 
+// NewSettingsHandler godoc
+// @Summary 创建设置处理器
+// @Description 初始化SettingsHandler
+// @Tags settings
+// @Param cfg query string true "配置实例"
+// @Param configPath query string true "配置文件路径"
+// @Router /api/settings [get]
 func NewSettingsHandler(cfg *config.Config, configPath string) *SettingsHandler {
 	return &SettingsHandler{
 		cfg:        cfg,
@@ -38,6 +45,13 @@ func NewSettingsHandler(cfg *config.Config, configPath string) *SettingsHandler 
 	}
 }
 
+// GetSettings godoc
+// @Summary 获取设置
+// @Description 返回当前系统的所有配置设置
+// @Tags settings
+// @Produce json
+// @Success 200 {object} Settings
+// @Router /api/settings [get]
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
 	retentionDays := int(h.cfg.Alerts.StatsRetention.Hours() / 24)
 	c.JSON(http.StatusOK, Settings{
@@ -59,6 +73,16 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 	})
 }
 
+// SaveSettings godoc
+// @Summary 保存设置
+// @Description 保存系统配置设置
+// @Tags settings
+// @Accept json
+// @Produce json
+// @Param settings body Settings true "设置内容"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Router /api/settings [post]
 func (h *SettingsHandler) SaveSettings(c *gin.Context) {
 	var settings Settings
 	if err := c.ShouldBindJSON(&settings); err != nil {
@@ -100,6 +124,13 @@ func (h *SettingsHandler) SaveSettings(c *gin.Context) {
 	})
 }
 
+// ResetSettings godoc
+// @Summary 重置设置
+// @Description 将所有设置重置为默认值
+// @Tags settings
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/settings/reset [post]
 func (h *SettingsHandler) ResetSettings(c *gin.Context) {
 	defaultCfg := config.DefaultConfig()
 	h.cfg.Database = defaultCfg.Database
@@ -126,6 +157,13 @@ func (h *SettingsHandler) UpdateConfig(cfg *config.Config) {
 	h.cfg = cfg
 }
 
+// SetupSettingsRoutes godoc
+// @Summary 设置设置路由
+// @Description 配置系统设置相关的API路由
+// @Tags settings
+// @Router /api/settings [get]
+// @Router /api/settings [post]
+// @Router /api/settings/reset [post]
 func SetupSettingsRoutes(r *gin.Engine, settingsHandler *SettingsHandler) {
 	settings := r.Group("/api/settings")
 	{

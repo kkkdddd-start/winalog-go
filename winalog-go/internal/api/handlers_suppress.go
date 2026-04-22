@@ -46,10 +46,25 @@ type SuppressRuleResponse struct {
 	CreatedAt  string                    `json:"created_at"`
 }
 
+// NewSuppressHandler godoc
+// @Summary 创建抑制处理器
+// @Description 初始化SuppressHandler
+// @Tags suppress
+// @Param db query string true "数据库实例"
+// @Param alertEngine query string true "告警引擎实例"
+// @Router /api/suppress [get]
 func NewSuppressHandler(db *storage.DB, alertEngine *alerts.Engine) *SuppressHandler {
 	return &SuppressHandler{db: db, alertEngine: alertEngine}
 }
 
+// ListSuppressRules godoc
+// @Summary 列出抑制规则
+// @Description 返回所有告警抑制规则
+// @Tags suppress
+// @Produce json
+// @Success 200 {object} map[string]interface{} "rules": []SuppressRuleResponse, "total": int
+// @Failure 500 {object} ErrorResponse
+// @Router /api/suppress [get]
 func (h *SuppressHandler) ListSuppressRules(c *gin.Context) {
 	rows, err := h.db.Query(`
 		SELECT id, name, conditions, duration, scope, enabled, expires_at, created_at
@@ -87,6 +102,17 @@ func (h *SuppressHandler) ListSuppressRules(c *gin.Context) {
 	})
 }
 
+// CreateSuppressRule godoc
+// @Summary 创建抑制规则
+// @Description 创建新的告警抑制规则
+// @Tags suppress
+// @Accept json
+// @Produce json
+// @Param request body SuppressRuleRequest true "抑制规则创建请求"
+// @Success 201 {object} SuppressRuleResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/suppress [post]
 func (h *SuppressHandler) CreateSuppressRule(c *gin.Context) {
 	var req SuppressRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -132,6 +158,18 @@ func (h *SuppressHandler) CreateSuppressRule(c *gin.Context) {
 	})
 }
 
+// UpdateSuppressRule godoc
+// @Summary 更新抑制规则
+// @Description 更新指定的告警抑制规则
+// @Tags suppress
+// @Accept json
+// @Produce json
+// @Param id path string true "规则ID"
+// @Param request body SuppressRuleRequest true "抑制规则更新请求"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/suppress/{id} [put]
 func (h *SuppressHandler) UpdateSuppressRule(c *gin.Context) {
 	idStr := c.Param("id")
 	var id int64
@@ -169,6 +207,16 @@ func (h *SuppressHandler) UpdateSuppressRule(c *gin.Context) {
 	c.JSON(http.StatusOK, SuccessResponse{Message: "Suppress rule updated"})
 }
 
+// DeleteSuppressRule godoc
+// @Summary 删除抑制规则
+// @Description 删除指定的告警抑制规则
+// @Tags suppress
+// @Produce json
+// @Param id path string true "规则ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/suppress/{id} [delete]
 func (h *SuppressHandler) DeleteSuppressRule(c *gin.Context) {
 	idStr := c.Param("id")
 	var id int64
@@ -188,6 +236,17 @@ func (h *SuppressHandler) DeleteSuppressRule(c *gin.Context) {
 	c.JSON(http.StatusOK, SuccessResponse{Message: "Suppress rule deleted"})
 }
 
+// ToggleSuppressRule godoc
+// @Summary 切换抑制规则状态
+// @Description 启用或禁用指定的告警抑制规则
+// @Tags suppress
+// @Produce json
+// @Param id path string true "规则ID"
+// @Param enabled query bool true "目标状态"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/suppress/{id}/toggle [post]
 func (h *SuppressHandler) ToggleSuppressRule(c *gin.Context) {
 	idStr := c.Param("id")
 	var id int64
@@ -209,6 +268,16 @@ func (h *SuppressHandler) ToggleSuppressRule(c *gin.Context) {
 	c.JSON(http.StatusOK, SuccessResponse{Message: "Suppress rule toggled"})
 }
 
+// GetSuppressRule godoc
+// @Summary 获取抑制规则详情
+// @Description 返回指定抑制规则的详细信息
+// @Tags suppress
+// @Produce json
+// @Param id path string true "规则ID"
+// @Success 200 {object} SuppressRuleResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/suppress/{id} [get]
 func (h *SuppressHandler) GetSuppressRule(c *gin.Context) {
 	idStr := c.Param("id")
 	var id int64
@@ -438,6 +507,16 @@ func (h *SuppressHandler) loadRulesToEngine() {
 	}
 }
 
+// SetupSuppressRoutes godoc
+// @Summary 设置抑制路由
+// @Description 配置告警抑制相关的API路由
+// @Tags suppress
+// @Router /api/suppress [get]
+// @Router /api/suppress [post]
+// @Router /api/suppress/{id} [get]
+// @Router /api/suppress/{id} [put]
+// @Router /api/suppress/{id} [delete]
+// @Router /api/suppress/{id}/toggle [post]
 func SetupSuppressRoutes(r *gin.Engine, suppressHandler *SuppressHandler) {
 	suppress := r.Group("/api/suppress")
 	{

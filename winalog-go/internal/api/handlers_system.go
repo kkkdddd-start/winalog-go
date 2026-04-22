@@ -183,10 +183,23 @@ type TaskInfo struct {
 
 var startTime = time.Now()
 
+// NewSystemHandler godoc
+// @Summary 创建系统处理器
+// @Description 初始化SystemHandler
+// @Tags system
+// @Param db query string true "数据库实例"
+// @Router /api/system [get]
 func NewSystemHandler(db *storage.DB) *SystemHandler {
 	return &SystemHandler{db: db}
 }
 
+// GetSystemInfo godoc
+// @Summary 获取系统信息
+// @Description 返回当前系统的详细信息
+// @Tags system
+// @Produce json
+// @Success 200 {object} SystemInfo
+// @Router /api/system/info [get]
 func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
 	hostname, _ := os.Hostname()
 	var m runtime.MemStats
@@ -250,6 +263,13 @@ func getLinuxSystemMemory() (totalGB float64, freeGB float64) {
 	return 0, 0
 }
 
+// GetMetrics godoc
+// @Summary 获取系统指标
+// @Description 返回系统运行指标信息
+// @Tags system
+// @Produce json
+// @Success 200 {object} MetricsResponse
+// @Router /api/system/metrics [get]
 func (h *SystemHandler) GetMetrics(c *gin.Context) {
 	var totalEvents int64
 	var totalAlerts int64
@@ -274,6 +294,17 @@ func (h *SystemHandler) GetMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, metrics)
 }
 
+// GetNetworkConnections godoc
+// @Summary 获取网络连接
+// @Description 返回当前网络连接列表
+// @Tags system
+// @Produce json
+// @Param enabled query string false "是否启用" default(true)
+// @Param limit query int false "返回数量限制" default(100)
+// @Param protocol query string false "协议过滤"
+// @Success 200 {object} NetworkConnectionResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/network [get]
 func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
 	enabledStr := c.DefaultQuery("enabled", "true")
 	enabled := enabledStr == "true" || enabledStr == "1"
@@ -366,6 +397,13 @@ func (h *SystemHandler) GetNetworkConnections(c *gin.Context) {
 	})
 }
 
+// GetPrometheusMetrics godoc
+// @Summary 获取Prometheus格式指标
+// @Description 返回Prometheus格式的系统指标
+// @Tags system
+// @Produce text/plain
+// @Success 200 {string} string "Prometheus格式指标"
+// @Router /api/system/prometheus [get]
 func (h *SystemHandler) GetPrometheusMetrics(c *gin.Context) {
 	var totalEvents int64
 	var totalAlerts int64
@@ -411,6 +449,21 @@ func (h *SystemHandler) GetPrometheusMetrics(c *gin.Context) {
 	c.Data(http.StatusOK, "text/plain; charset=utf-8", []byte(output))
 }
 
+// SetupSystemRoutes godoc
+// @Summary 设置系统路由
+// @Description 配置系统信息相关的API路由
+// @Tags system
+// @Router /api/system/info [get]
+// @Router /api/system/metrics [get]
+// @Router /api/system/processes [get]
+// @Router /api/system/network [get]
+// @Router /api/system/env [get]
+// @Router /api/system/dlls [get]
+// @Router /api/system/drivers [get]
+// @Router /api/system/users [get]
+// @Router /api/system/registry [get]
+// @Router /api/system/tasks [get]
+// @Router /api/system/process/{pid}/dlls [get]
 func SetupSystemRoutes(r *gin.Engine, systemHandler *SystemHandler) {
 	system := r.Group("/api/system")
 	{
@@ -444,6 +497,14 @@ func getTimezone() string {
 	return fmt.Sprintf("UTC%+d", hours)
 }
 
+// GetEnvironmentVariables godoc
+// @Summary 获取环境变量
+// @Description 返回系统环境变量列表
+// @Tags system
+// @Produce json
+// @Success 200 {object} EnvVarResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/env [get]
 func (h *SystemHandler) GetEnvironmentVariables(c *gin.Context) {
 	vars, err := collectors.ListEnvironmentVariables()
 	if err != nil {
@@ -467,6 +528,16 @@ func (h *SystemHandler) GetEnvironmentVariables(c *gin.Context) {
 	})
 }
 
+// GetLoadedDLLs godoc
+// @Summary 获取加载的DLL
+// @Description 返回系统加载的动态链接库列表
+// @Tags system
+// @Produce json
+// @Param enabled query string false "是否启用" default(true)
+// @Param limit query int false "返回数量限制" default(100)
+// @Success 200 {object} DLLResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/dlls [get]
 func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
 	enabledStr := c.DefaultQuery("enabled", "true")
 	enabled := enabledStr == "true" || enabledStr == "1"
@@ -530,6 +601,15 @@ func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
 	})
 }
 
+// GetDrivers godoc
+// @Summary 获取驱动程序
+// @Description 返回系统驱动程序列表
+// @Tags system
+// @Produce json
+// @Param enabled query string false "是否启用" default(true)
+// @Success 200 {object} DriverResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/drivers [get]
 func (h *SystemHandler) GetDrivers(c *gin.Context) {
 	enabledStr := c.DefaultQuery("enabled", "true")
 	enabled := enabledStr == "true" || enabledStr == "1"
@@ -577,6 +657,15 @@ func (h *SystemHandler) GetDrivers(c *gin.Context) {
 	})
 }
 
+// GetRegistryPersistence godoc
+// @Summary 获取注册表持久化项
+// @Description 返回系统中的注册表持久化项目
+// @Tags system
+// @Produce json
+// @Param enabled query string false "是否启用" default(true)
+// @Success 200 {object} RegistryPersistenceResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/registry [get]
 func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 	enabledStr := c.DefaultQuery("enabled", "true")
 	enabled := enabledStr == "true" || enabledStr == "1"
@@ -641,6 +730,16 @@ func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 	})
 }
 
+// GetProcessDLLs godoc
+// @Summary 获取进程DLL列表
+// @Description 返回指定进程加载的DLL列表
+// @Tags system
+// @Produce json
+// @Param pid path int true "进程ID"
+// @Success 200 {object} ProcessDLLResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/system/process/{pid}/dlls [get]
 func (h *SystemHandler) GetProcessDLLs(c *gin.Context) {
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusOK, ProcessDLLResponse{

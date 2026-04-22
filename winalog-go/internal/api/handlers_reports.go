@@ -140,6 +140,12 @@ type ReportTimeline struct {
 	Severity  string    `json:"severity,omitempty"`
 }
 
+// NewReportsHandler godoc
+// @Summary 创建报表处理器
+// @Description 初始化ReportsHandler
+// @Tags reports
+// @Param db query string true "数据库实例"
+// @Router /api/reports [get]
 func NewReportsHandler(db *storage.DB) *ReportsHandler {
 	return &ReportsHandler{
 		db:  db,
@@ -147,6 +153,14 @@ func NewReportsHandler(db *storage.DB) *ReportsHandler {
 	}
 }
 
+// ListReports godoc
+// @Summary 列出报表
+// @Description 返回所有已生成的报表
+// @Tags reports
+// @Produce json
+// @Success 200 {object} map[string]interface{} "reports": []ReportInfo, "total": int
+// @Failure 500 {object} ErrorResponse
+// @Router /api/reports [get]
 func (h *ReportsHandler) ListReports(c *gin.Context) {
 	rows, err := h.db.Query(`
 		SELECT id, report_type, format, title, description, status, generated_at, completed_at, file_path, file_size
@@ -201,6 +215,17 @@ func (h *ReportsHandler) ListReports(c *gin.Context) {
 	})
 }
 
+// GenerateReport godoc
+// @Summary 生成报表
+// @Description 异步生成新的报表
+// @Tags reports
+// @Accept json
+// @Produce json
+// @Param request body ReportRequest true "报表生成请求"
+// @Success 200 {object} map[string]interface{} "id": string, "status": string, "download_url": string
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/reports [post]
 func (h *ReportsHandler) GenerateReport(c *gin.Context) {
 	var req ReportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -330,6 +355,16 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 		time.Now(), filePath, fileSize, reportID)
 }
 
+// GetReport godoc
+// @Summary 获取报表详情
+// @Description 返回指定报表的详细信息
+// @Tags reports
+// @Produce json
+// @Param id path string true "报表ID"
+// @Success 200 {object} ReportInfo
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/reports/{id} [get]
 func (h *ReportsHandler) GetReport(c *gin.Context) {
 	reportID := c.Param("id")
 
@@ -377,6 +412,16 @@ func (h *ReportsHandler) GetReport(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+// DownloadReport godoc
+// @Summary 下载报表文件
+// @Description 下载指定报表的文件内容
+// @Tags reports
+// @Produce json
+// @Param id path string true "报表ID"
+// @Success 200 {file} file "报表文件"
+// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/reports/{id}/download [get]
 func (h *ReportsHandler) DownloadReport(c *gin.Context) {
 	reportID := c.Param("id")
 
@@ -477,6 +522,13 @@ type TemplateRequest struct {
 	Description string `json:"description"`
 }
 
+// ListTemplates godoc
+// @Summary 列出报表模板
+// @Description 返回所有可用的报表模板
+// @Tags reports
+// @Produce json
+// @Success 200 {object} map[string]interface{} "templates": []object, "total": int
+// @Router /api/report-templates [get]
 func (h *ReportsHandler) ListTemplates(c *gin.Context) {
 	tmplMgr := reporttemplate.GetManager()
 	infos := tmplMgr.ListTemplateInfo()
@@ -487,6 +539,15 @@ func (h *ReportsHandler) ListTemplates(c *gin.Context) {
 	})
 }
 
+// GetTemplate godoc
+// @Summary 获取报表模板详情
+// @Description 返回指定报表模板的详细信息
+// @Tags reports
+// @Produce json
+// @Param name path string true "模板名称"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} ErrorResponse
+// @Router /api/report-templates/{name} [get]
 func (h *ReportsHandler) GetTemplate(c *gin.Context) {
 	name := c.Param("name")
 	tmplMgr := reporttemplate.GetManager()
@@ -508,6 +569,16 @@ func (h *ReportsHandler) GetTemplate(c *gin.Context) {
 	c.JSON(404, ErrorResponse{Error: "Template not found"})
 }
 
+// CreateTemplate godoc
+// @Summary 创建报表模板
+// @Description 创建新的自定义报表模板
+// @Tags reports
+// @Accept json
+// @Produce json
+// @Param request body TemplateRequest true "模板创建请求"
+// @Success 201 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/report-templates [post]
 func (h *ReportsHandler) CreateTemplate(c *gin.Context) {
 	var req TemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -524,6 +595,17 @@ func (h *ReportsHandler) CreateTemplate(c *gin.Context) {
 	c.JSON(201, SuccessResponse{Message: "Template created"})
 }
 
+// UpdateTemplate godoc
+// @Summary 更新报表模板
+// @Description 更新指定报表模板的内容
+// @Tags reports
+// @Accept json
+// @Produce json
+// @Param name path string true "模板名称"
+// @Param request body TemplateRequest true "模板更新请求"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /api/report-templates/{name} [put]
 func (h *ReportsHandler) UpdateTemplate(c *gin.Context) {
 	name := c.Param("name")
 
@@ -542,6 +624,15 @@ func (h *ReportsHandler) UpdateTemplate(c *gin.Context) {
 	c.JSON(200, SuccessResponse{Message: "Template updated"})
 }
 
+// DeleteTemplate godoc
+// @Summary 删除报表模板
+// @Description 删除指定的自定义报表模板
+// @Tags reports
+// @Produce json
+// @Param name path string true "模板名称"
+// @Success 200 {object} SuccessResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/report-templates/{name} [delete]
 func (h *ReportsHandler) DeleteTemplate(c *gin.Context) {
 	name := c.Param("name")
 
@@ -555,6 +646,15 @@ func (h *ReportsHandler) DeleteTemplate(c *gin.Context) {
 	c.JSON(200, SuccessResponse{Message: "Template deleted"})
 }
 
+// ExportData godoc
+// @Summary 导出事件数据
+// @Description 导出事件数据为指定格式
+// @Tags reports
+// @Produce json
+// @Param format query string false "导出格式" default(json)
+// @Success 200 {file} file "导出文件"
+// @Failure 500 {object} ErrorResponse
+// @Router /api/reports/export [get]
 func (h *ReportsHandler) ExportData(c *gin.Context) {
 	format := c.DefaultQuery("format", "json")
 
@@ -573,6 +673,20 @@ func (h *ReportsHandler) ExportData(c *gin.Context) {
 	exporter.Export(events, c.Writer)
 }
 
+// SetupReportsRoutes godoc
+// @Summary 设置报表路由
+// @Description 配置报表相关的API路由
+// @Tags reports
+// @Router /api/reports [get]
+// @Router /api/reports [post]
+// @Router /api/reports/{id} [get]
+// @Router /api/reports/{id}/download [get]
+// @Router /api/reports/export [get]
+// @Router /api/report-templates [get]
+// @Router /api/report-templates/{name} [get]
+// @Router /api/report-templates [post]
+// @Router /api/report-templates/{name} [put]
+// @Router /api/report-templates/{name} [delete]
 func SetupReportsRoutes(r *gin.Engine, reportsHandler *ReportsHandler) {
 	reportsGroup := r.Group("/api/reports")
 	{

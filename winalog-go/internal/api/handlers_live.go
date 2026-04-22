@@ -41,6 +41,12 @@ func (d duration) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + time.Duration(d).String() + `"`), nil
 }
 
+// NewLiveHandler godoc
+// @Summary 创建实时事件处理器
+// @Description 初始化LiveHandler
+// @Tags live
+// @Param db query string true "数据库实例"
+// @Router /api/live [get]
 func NewLiveHandler(db *storage.DB) *LiveHandler {
 	return &LiveHandler{
 		db:        db,
@@ -48,6 +54,13 @@ func NewLiveHandler(db *storage.DB) *LiveHandler {
 	}
 }
 
+// StreamEventsSSE godoc
+// @Summary 建立实时事件流
+// @Description 通过Server-Sent Events(SSE)推送实时事件数据
+// @Tags live
+// @Produce text/event-stream
+// @Success 200 {object} LiveEventMessage
+// @Router /api/live/stream [get]
 func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
@@ -172,6 +185,13 @@ func formatLiveEvent(event *types.Event) map[string]interface{} {
 	}
 }
 
+// GetLiveStats godoc
+// @Summary 获取实时统计信息
+// @Description 返回当前实时事件的统计数据
+// @Tags live
+// @Produce json
+// @Success 200 {object} LiveStats
+// @Router /api/live/stats [get]
 func (h *LiveHandler) GetLiveStats(c *gin.Context) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
