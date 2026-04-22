@@ -219,7 +219,7 @@ func (s *Server) Start() error {
 		Addr:         s.addr,
 		Handler:      s.engine,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 5 * time.Minute,
 		IdleTimeout:  120 * time.Second,
 	}
 
