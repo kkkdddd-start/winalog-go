@@ -192,6 +192,28 @@ func (m *MetricsLogger) Path() string {
 	return m.file.Name()
 }
 
+func extractLevelFromLine(line string) string {
+	upperLine := strings.ToUpper(line)
+
+	if strings.Contains(upperLine, "[FATAL]") || strings.Contains(upperLine, "[PANIC]") {
+		return "fatal"
+	}
+	if strings.Contains(upperLine, "[ERROR]") {
+		return "error"
+	}
+	if strings.Contains(upperLine, "[WARN]") || strings.Contains(upperLine, "[WARNING]") {
+		return "warn"
+	}
+	if strings.Contains(upperLine, "[DEBUG]") {
+		return "debug"
+	}
+	if strings.Contains(upperLine, "[INFO]") {
+		return "info"
+	}
+
+	return "info"
+}
+
 func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileEntry, int, error) {
 	if m == nil {
 		return nil, 0, nil
@@ -249,7 +271,7 @@ func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileE
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			entry = LogFileEntry{
 				Timestamp: time.Now().Format(time.RFC3339),
-				Level:     "info",
+				Level:     extractLevelFromLine(line),
 				Message:   line,
 			}
 		}

@@ -587,7 +587,7 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 
 	cmd := `Get-WinEvent -ListLog * -ErrorAction SilentlyContinue | Where-Object { $_.RecordCount -gt 0 } | Select-Object -First 20 -ExpandProperty LogName | ForEach-Object { $_ }`
 
-	result := utils.RunPowerShell(cmd)
+	result := utils.RunPowerShellWithContext(ctx, cmd)
 	if !result.Success() {
 		return result.Error
 	}
@@ -599,11 +599,20 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 			continue
 		}
 
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		exportPath := filepath.Join(eventLogDir, logName+".evtx")
 		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]]`,
 			logName, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
 
-		utils.RunPowerShell(exportCmd)
+		exportResult := utils.RunPowerShellWithContext(ctx, exportCmd)
+		if !exportResult.Success() {
+			log.Printf("[WARN] Failed to export log %s: %v", logName, exportResult.Error)
+		}
 	}
 
 	return nil
