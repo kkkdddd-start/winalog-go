@@ -241,17 +241,7 @@ func extractSIDValue(sid interface{}) string {
 	return fmt.Sprintf("%v", sid)
 }
 
-func parseLastLogon(lastLogon string) time.Time {
-	formats := []string{
-		"2006-01-02T15:04:05.999999999Z07:00",
-		time.RFC3339,
-		"1/2/2006 3:04:05 PM",
-	}
-
-	for _, format := range formats {
-		if t, err := time.Parse(format, lastLogon); err == nil {
-			return t
-		}
-	}
-	return time.Time{}
+func ListLocalUsers() ([]*types.UserAccount, error) {
+	collector := NewUserInfoCollector()
+	return collector.collectUserInfo()
 }
