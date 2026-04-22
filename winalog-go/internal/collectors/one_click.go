@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -452,10 +453,14 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 			continue
 		}
 
-		dstPath := filepath.Join(eventLogDir, filepath.Base(ch.LogPath))
+		fileName := filepath.Base(ch.LogPath)
+		if decoded, err := url.QueryUnescape(fileName); err == nil {
+			fileName = decoded
+		}
+		dstPath := filepath.Join(eventLogDir, fileName)
 		if err := c.CopyFileWithRetry(ch.LogPath, dstPath, 3); err == nil {
 			copiedCount++
-			log.Printf("[DEBUG] [OneClick] Copied event log: %s -> %s", ch.Name, filepath.Base(ch.LogPath))
+			log.Printf("[DEBUG] [OneClick] Copied event log: %s -> %s", ch.Name, fileName)
 		} else {
 			log.Printf("[WARN] [OneClick] Failed to copy log %s: %v", ch.Name, err)
 			failedItems = append(failedItems, CollectionItem{
