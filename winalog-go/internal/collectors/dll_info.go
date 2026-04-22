@@ -5,6 +5,7 @@ package collectors
 import (
 	"context"
 	"fmt"
+	"log"
 	"runtime"
 	"strings"
 	"sync"
@@ -85,6 +86,7 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 
 	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS|windows.TH32CS_SNAPMODULE, 0)
 	if err != nil {
+		log.Printf("[DEBUG] [DLL] CreateToolhelp32Snapshot failed: %v", err)
 		return nil, err
 	}
 	defer windows.CloseHandle(snapshot)
@@ -94,19 +96,31 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 
 	err = windows.Process32First(snapshot, &pe)
 	if err != nil {
+		log.Printf("[DEBUG] [DLL] Process32First failed: %v", err)
 		return nil, err
 	}
+
+	processCount := 0
+	moduleCount := 0
+	errorCount := 0
 
 	for {
 		pid := int(pe.ProcessID)
 		processName := windows.UTF16ToString(pe.ExeFile[:])
+		processCount++
 
 		modules, err := enumProcessModules(pid)
-		if err == nil {
+		if err != nil {
+			errorCount++
+			if errorCount <= 5 {
+				log.Printf("[DEBUG] [DLL] enumProcessModules(pid=%d, name=%s) failed: %v", pid, processName, err)
+			}
+		} else if len(modules) > 0 {
 			for _, mod := range modules {
 				mod.ProcessID = int32(pid)
 				mod.ProcessName = processName
 				dlls = append(dlls, mod)
+				moduleCount++
 			}
 		}
 
@@ -116,6 +130,7 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 		}
 	}
 
+	log.Printf("[DEBUG] [DLL] ListLoadedDLLs: processes=%d, modules=%d, errors=%d", processCount, moduleCount, errorCount)
 	return dlls, nil
 }
 

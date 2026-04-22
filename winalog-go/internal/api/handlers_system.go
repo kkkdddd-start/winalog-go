@@ -472,6 +472,8 @@ func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
 		return
 	}
 
+	log.Printf("[INFO] GetLoadedDLLs: collected %d DLLs, limit=%d", len(dlls), limit)
+
 	result := make([]*DLLInfo, 0, len(dlls))
 	for _, dll := range dlls {
 		result = append(result, &DLLInfo{
