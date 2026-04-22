@@ -77,11 +77,11 @@ func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 		}
 
 		var taskRaw struct {
-			TaskName    string `json:"TaskName"`
-			TaskPath    string `json:"TaskPath"`
-			State       string `json:"State"`
-			Description string `json:"Description"`
-			Author      string `json:"Author"`
+			TaskName    string      `json:"TaskName"`
+			TaskPath    string      `json:"TaskPath"`
+			State       interface{} `json:"State"`
+			Description string      `json:"Description"`
+			Author      string      `json:"Author"`
 		}
 
 		if err := json.Unmarshal([]byte(line), &taskRaw); err != nil {
@@ -93,10 +93,11 @@ func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 			continue
 		}
 
+		stateStr := fmt.Sprintf("%v", taskRaw.State)
 		task := &types.ScheduledTask{
 			Name:        taskRaw.TaskName,
 			Path:        taskRaw.TaskPath,
-			State:       taskRaw.State,
+			State:       stateStr,
 			Description: taskRaw.Description,
 			Author:      taskRaw.Author,
 			LastRun:     c.getTaskLastRunTime(taskRaw.TaskName, taskRaw.TaskPath),
@@ -194,9 +195,9 @@ func (c *TaskInfoCollector) collectTaskInfoSchtasks() ([]*types.ScheduledTask, e
 		}
 
 		var taskRaw struct {
-			TaskName string `json:"TaskName"`
-			TaskPath string `json:"TaskPath"`
-			State    string `json:"State"`
+			TaskName string      `json:"TaskName"`
+			TaskPath string      `json:"TaskPath"`
+			State    interface{} `json:"State"`
 		}
 
 		if err := json.Unmarshal([]byte(line), &taskRaw); err != nil {
@@ -207,10 +208,11 @@ func (c *TaskInfoCollector) collectTaskInfoSchtasks() ([]*types.ScheduledTask, e
 			continue
 		}
 
+		stateStr := fmt.Sprintf("%v", taskRaw.State)
 		tasks = append(tasks, &types.ScheduledTask{
 			Name:  taskRaw.TaskName,
 			Path:  taskRaw.TaskPath,
-			State: taskRaw.State,
+			State: stateStr,
 		})
 	}
 
