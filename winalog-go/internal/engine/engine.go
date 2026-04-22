@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -116,7 +117,7 @@ func (e *Engine) Import(ctx context.Context, req *ImportRequest, progressFn func
 		} else {
 			errMsg = fmt.Errorf("no files found with valid extension (.evtx, .etl, .csv, .log, .txt) in %d paths", len(files)).Error()
 		}
-		return nil, fmt.Errorf(errMsg)
+		return nil, errors.New(errMsg)
 	}
 
 	files = availableFiles

@@ -9,9 +9,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/StackExchange/wmi"
 	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
+	"golang.org/x/sys/windows"
 )
 
 type ProcessWatcher struct {
@@ -22,6 +24,7 @@ type ProcessWatcher struct {
 	subMu       sync.RWMutex
 	running     bool
 	mu          sync.RWMutex
+	lastPIDs    map[uint32]bool
 }
 
 type Win32_Process struct {
@@ -40,6 +43,7 @@ func NewProcessWatcher() (*ProcessWatcher, error) {
 		events:      make(chan *types.MonitorEvent, 100),
 		subscribers: make([]chan *types.MonitorEvent, 0),
 		running:     false,
+		lastPIDs:    make(map[uint32]bool),
 	}, nil
 }
 
@@ -97,7 +101,6 @@ func (pw *ProcessWatcher) run() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	var lastProcesses = make(map[uint32]string)
 	isFirstRun := true
 
 	for {
@@ -105,13 +108,13 @@ func (pw *ProcessWatcher) run() {
 		case <-pw.ctx.Done():
 			return
 		case <-ticker.C:
-			pw.checkNewProcesses(lastProcesses, isFirstRun)
+			pw.checkProcesses(isFirstRun)
 			isFirstRun = false
 		}
 	}
 }
 
-func (pw *ProcessWatcher) checkNewProcesses(lastProcs map[uint32]string, isFirstRun bool) {
+func (pw *ProcessWatcher) checkProcesses(isFirstRun bool) {
 	select {
 	case <-pw.ctx.Done():
 		return
@@ -119,65 +122,66 @@ func (pw *ProcessWatcher) checkNewProcesses(lastProcs map[uint32]string, isFirst
 	}
 
 	var processes []Win32_Process
-	err := wmi.Query("SELECT Name, ProcessID, ParentProcessID, ExecutablePath FROM Win32_Process", &processes)
+	err := wmi.Query("SELECT Name, ProcessID, ParentProcessID, ExecutablePath, CommandLine FROM Win32_Process", &processes)
 	if err != nil {
 		log.Printf("[PROCESS] WMI query failed: %v", err)
 		return
 	}
 
-	log.Printf("[PROCESS] WMI query returned %d processes (first_run=%v)", len(processes), isFirstRun)
+	currentPIDs := make(map[uint32]bool)
+	currentProcs := make(map[uint32]*Win32_Process)
 
-	currentProcs := make(map[uint32]string)
-	for _, p := range processes {
-		currentProcs[p.ProcessID] = p.Name
+	for i := range processes {
+		p := &processes[i]
+		currentPIDs[p.ProcessID] = true
+		currentProcs[p.ProcessID] = p
 	}
 
-	for pid, name := range currentProcs {
-		_, exists := lastProcs[pid]
-		if isFirstRun || !exists {
-			event := pw.createProcessEvent(pid, name, !isFirstRun && !exists)
+	pw.mu.Lock()
+	for pid, p := range currentProcs {
+		_, existed := pw.lastPIDs[pid]
+		if !existed {
+			event := pw.createProcessEvent(p, true)
 			if event != nil {
 				pw.publishEvent(event)
 			}
 		}
 	}
+
+	for pid := range pw.lastPIDs {
+		if !currentPIDs[pid] {
+			event := pw.createProcessExitEvent(pid)
+			if event != nil {
+				pw.publishEvent(event)
+			}
+		}
+	}
+	pw.lastPIDs = currentPIDs
+	pw.mu.Unlock()
 }
 
-func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string, isNew bool) *types.MonitorEvent {
-	var processes []Win32_Process
-	query := fmt.Sprintf("WHERE ProcessID = %d", pid)
-	err := wmi.Query(query, &processes)
-	if err != nil || len(processes) == 0 {
-		return nil
-	}
-
-	p := processes[0]
-
+func (pw *ProcessWatcher) createProcessEvent(p *Win32_Process, isNew bool) *types.MonitorEvent {
 	severity := types.SeverityInfo
+	pathLower := strings.ToLower(p.ExecutablePath)
+	cmdLower := strings.ToLower(p.CommandLine)
+
 	for _, indicator := range types.SuspiciousProcessIndicators {
-		if strings.Contains(strings.ToLower(p.ExecutablePath), strings.ToLower(indicator)) ||
-			strings.Contains(strings.ToLower(p.CommandLine), strings.ToLower(indicator)) {
+		if strings.Contains(pathLower, strings.ToLower(indicator)) ||
+			strings.Contains(cmdLower, strings.ToLower(indicator)) {
 			severity = types.SeverityMedium
 			break
 		}
 	}
 
-	eventData := types.ProcessEventData{
-		PID:         p.ProcessID,
-		PPID:        p.ParentProcessID,
-		ProcessName: p.Name,
-		Path:        p.ExecutablePath,
-		CommandLine: p.CommandLine,
-		User:        getProcessUser(p.ProcessID),
-	}
+	username := getProcessUser(p.ProcessID)
 
 	data := make(map[string]interface{})
-	data["pid"] = eventData.PID
-	data["ppid"] = eventData.PPID
-	data["process_name"] = eventData.ProcessName
-	data["path"] = eventData.Path
-	data["command_line"] = eventData.CommandLine
-	data["user"] = eventData.User
+	data["pid"] = p.ProcessID
+	data["ppid"] = p.ParentProcessID
+	data["process_name"] = p.Name
+	data["path"] = p.ExecutablePath
+	data["command_line"] = p.CommandLine
+	data["user"] = username
 	data["is_new"] = isNew
 
 	return &types.MonitorEvent{
@@ -185,6 +189,21 @@ func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string, isNew bool
 		Type:      types.EventTypeProcess,
 		Timestamp: time.Now(),
 		Severity:  severity,
+		Data:      data,
+	}
+}
+
+func (pw *ProcessWatcher) createProcessExitEvent(pid uint32) *types.MonitorEvent {
+	data := make(map[string]interface{})
+	data["pid"] = pid
+	data["process_name"] = "Unknown"
+	data["is_new"] = false
+
+	return &types.MonitorEvent{
+		ID:        fmt.Sprintf("proc-exit-%d-%d", pid, time.Now().UnixNano()),
+		Type:      types.EventTypeProcess,
+		Timestamp: time.Now(),
+		Severity:  types.SeverityInfo,
 		Data:      data,
 	}
 }
@@ -202,5 +221,52 @@ func (pw *ProcessWatcher) publishEvent(event *types.MonitorEvent) {
 }
 
 func getProcessUser(pid uint32) string {
-	return "SYSTEM"
+	if pid == 0 {
+		return "SYSTEM"
+	}
+
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return "Unknown"
+	}
+	defer windows.CloseHandle(hProcess)
+
+	var tokenHandle windows.Handle
+	err = windows.OpenProcessToken(hProcess, windows.TOKEN_QUERY, &tokenHandle)
+	if err != nil {
+		return "Unknown"
+	}
+	defer windows.CloseHandle(tokenHandle)
+
+	var bufSize uint32
+	windows.GetTokenInformation(tokenHandle, windows.TokenUser, nil, 0, &bufSize)
+
+	if bufSize == 0 {
+		return "Unknown"
+	}
+
+	buf := make([]byte, bufSize)
+	var returnedSize uint32
+	if !windows.GetTokenInformation(tokenHandle, windows.TokenUser, &buf[0], bufSize, &returnedSize) {
+		return "Unknown"
+	}
+
+	tokenUser := (*windows.Tokenuser)(unsafe.Pointer(&buf[0]))
+
+	var name [256]uint16
+	var domain [256]uint16
+	var nameSize uint32 = 256
+	var domainSize uint32 = 256
+	var use windows.SID_NAME_USE
+
+	if windows.LookupAccountSid(nil, tokenUser.User.Sid, &name[0], &nameSize, &domain[0], &domainSize, &use) {
+		domainStr := windows.UTF16ToString(domain[:nameSize])
+		nameStr := windows.UTF16ToString(name[:nameSize])
+		if domainStr != "" {
+			return domainStr + "\\" + nameStr
+		}
+		return nameStr
+	}
+
+	return "Unknown"
 }

@@ -19,7 +19,9 @@ interface LiveStats {
   total_events: number
   events_per_sec: number
   uptime: string
-  alerts: number
+  process_count: number
+  network_count: number
+  dns_count: number
 }
 
 const LIVE_STORAGE_KEY = 'winalog_live_monitoring_enabled'
@@ -101,7 +103,9 @@ function Live() {
           total_events: (s.ProcessCount || 0) + (s.NetworkCount || 0) + (s.DNSCount || 0),
           events_per_sec: 0,
           uptime: s.Uptime || '0s',
-          alerts: s.AlertCount || 0,
+          process_count: s.ProcessCount || 0,
+          network_count: s.NetworkCount || 0,
+          dns_count: s.DNSCount || 0,
         })
       }
     } catch {}
@@ -285,8 +289,16 @@ function Live() {
           <span className="stat-value">{stats?.events_per_sec?.toFixed(2) || '0.00'}</span>
         </div>
         <div className="stat-item">
-          <span className="stat-label">Alerts</span>
-          <span className="stat-value alerts">{stats?.alerts || 0}</span>
+          <span className="stat-label">Process</span>
+          <span className="stat-value process">{stats?.process_count || 0}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Network</span>
+          <span className="stat-value network">{stats?.network_count || 0}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">DNS</span>
+          <span className="stat-value dns">{stats?.dns_count || 0}</span>
         </div>
         <div className="stat-item">
           <span className="stat-label">Uptime</span>
@@ -513,8 +525,16 @@ function Live() {
           color: #fff;
         }
         
-        .stat-value.alerts {
-          color: #f59e0b;
+        .stat-value.process {
+          color: #22c55e;
+        }
+
+        .stat-value.network {
+          color: #3b82f6;
+        }
+
+        .stat-value.dns {
+          color: #a855f7;
         }
         
         .stat-value.mono {

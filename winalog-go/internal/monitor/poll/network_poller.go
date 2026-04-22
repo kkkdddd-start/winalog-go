@@ -18,16 +18,20 @@ import (
 )
 
 type NetworkPoller struct {
-	ctx         context.Context
-	cancel      context.CancelFunc
-	interval    time.Duration
-	prevState   map[string]*types.ConnectionInfo
-	events      chan *types.MonitorEvent
-	subscribers []chan *types.MonitorEvent
-	subMu       sync.RWMutex
-	running     bool
-	mu          sync.RWMutex
-	wg          sync.WaitGroup
+	ctx            context.Context
+	cancel         context.CancelFunc
+	interval       time.Duration
+	prevTCPIPv4    map[string]*types.ConnectionInfo
+	prevTCPIPv6    map[string]*types.ConnectionInfo
+	prevUDPIPv4    map[string]*types.ConnectionInfo
+	prevUDPIPv6    map[string]*types.ConnectionInfo
+	listeningPorts map[uint16]uint32
+	events         chan *types.MonitorEvent
+	subscribers    []chan *types.MonitorEvent
+	subMu          sync.RWMutex
+	running        bool
+	mu             sync.RWMutex
+	wg             sync.WaitGroup
 }
 
 type MIB_TCPROW_OWNER_PID struct {
@@ -39,8 +43,23 @@ type MIB_TCPROW_OWNER_PID struct {
 	PID        uint32
 }
 
+type MIB_TCP6ROW_OWNER_PID struct {
+	LocalAddr  [16]byte
+	LocalPort  uint32
+	RemoteAddr [16]byte
+	RemotePort uint32
+	State      uint32
+	PID        uint32
+}
+
 type MIB_UDPROW_OWNER_PID struct {
 	LocalAddr [4]byte
+	LocalPort uint32
+	PID       uint32
+}
+
+type MIB_UDP6ROW_OWNER_PID struct {
+	LocalAddr [16]byte
 	LocalPort uint32
 	PID       uint32
 }
@@ -51,10 +70,12 @@ type Addr struct {
 }
 
 var (
-	iphlpapi     *syscall.DLL
-	procTcpTable *syscall.Proc
-	procUdpTable *syscall.Proc
-	dllLoaded    bool
+	iphlpapi      *syscall.DLL
+	procTcpTable  *syscall.Proc
+	procUdpTable  *syscall.Proc
+	procTcp6Table *syscall.Proc
+	procUdp6Table *syscall.Proc
+	dllLoaded     bool
 )
 
 func initDLL() error {
@@ -73,6 +94,14 @@ func initDLL() error {
 	procUdpTable, err = iphlpapi.FindProc("GetExtendedUdpTable")
 	if err != nil {
 		return fmt.Errorf("failed to find GetExtendedUdpTable: %w", err)
+	}
+	procTcp6Table, err = iphlpapi.FindProc("GetExtendedTcp6Table")
+	if err != nil {
+		log.Printf("[WARN] GetExtendedTcp6Table not available: %v", err)
+	}
+	procUdp6Table, err = iphlpapi.FindProc("GetExtendedUdp6Table")
+	if err != nil {
+		log.Printf("[WARN] GetExtendedUdp6Table not available: %v", err)
 	}
 	dllLoaded = true
 	return nil
@@ -108,13 +137,57 @@ func getTCPConnections() ([]*types.ConnectionInfo, error) {
 		localPort := windows.Ntohs(uint16(row.LocalPort))
 		remotePort := windows.Ntohs(uint16(row.RemotePort))
 
-		connections = append(connections, &types.ConnectionInfo{
+		conn := &types.ConnectionInfo{
 			Protocol:   "TCP",
 			LocalAddr:  fmt.Sprintf("%s:%d", localIP, localPort),
 			RemoteAddr: fmt.Sprintf("%s:%d", remoteIP, remotePort),
 			State:      row.State,
 			PID:        row.PID,
-		})
+		}
+		connections = append(connections, conn)
+	}
+
+	return connections, nil
+}
+
+func getTCPIPv6Connections() ([]*types.ConnectionInfo, error) {
+	if procTcp6Table == nil {
+		return []*types.ConnectionInfo{}, nil
+	}
+
+	var size uint32
+	ret, _, _ := procTcp6Table.Call(0, uintptr(unsafe.Pointer(&size)), 0, windows.AF_INET6, 5, 0)
+	if ret != 0 && ret != 122 {
+		return nil, fmt.Errorf("GetExtendedTcp6Table failed: %d", ret)
+	}
+
+	buf := make([]byte, size)
+	ret, _, _ = procTcp6Table.Call(uintptr(unsafe.Pointer(&buf[0])), uintptr(unsafe.Pointer(&size)), 0, windows.AF_INET6, 5, 0)
+	if ret != 0 {
+		return nil, fmt.Errorf("GetExtendedTcp6Table failed: %d", ret)
+	}
+
+	numEntries := uint32(buf[0]) | (uint32(buf[1]) << 8) | (uint32(buf[2]) << 16) | (uint32(buf[3]) << 24)
+	offset := 4
+
+	connections := make([]*types.ConnectionInfo, 0)
+	for i := uint32(0); i < numEntries; i++ {
+		row := (*MIB_TCP6ROW_OWNER_PID)(unsafe.Pointer(&buf[offset]))
+		offset += int(unsafe.Sizeof(*row))
+
+		localIP := net.IP(row.LocalAddr[:]).String()
+		remoteIP := net.IP(row.RemoteAddr[:]).String()
+		localPort := windows.Ntohs(uint16(row.LocalPort))
+		remotePort := windows.Ntohs(uint16(row.RemotePort))
+
+		conn := &types.ConnectionInfo{
+			Protocol:   "TCPv6",
+			LocalAddr:  fmt.Sprintf("[%s]:%d", localIP, localPort),
+			RemoteAddr: fmt.Sprintf("[%s]:%d", remoteIP, remotePort),
+			State:      row.State,
+			PID:        row.PID,
+		}
+		connections = append(connections, conn)
 	}
 
 	return connections, nil
@@ -148,13 +221,55 @@ func getUDPConnections() ([]*types.ConnectionInfo, error) {
 		localIP := net.IP(row.LocalAddr[:]).String()
 		localPort := windows.Ntohs(uint16(row.LocalPort))
 
-		connections = append(connections, &types.ConnectionInfo{
+		conn := &types.ConnectionInfo{
 			Protocol:   "UDP",
 			LocalAddr:  fmt.Sprintf("%s:%d", localIP, localPort),
 			RemoteAddr: "*:*",
 			State:      0,
 			PID:        row.PID,
-		})
+		}
+		connections = append(connections, conn)
+	}
+
+	return connections, nil
+}
+
+func getUDPIPv6Connections() ([]*types.ConnectionInfo, error) {
+	if procUdp6Table == nil {
+		return []*types.ConnectionInfo{}, nil
+	}
+
+	var size uint32
+	ret, _, _ := procUdp6Table.Call(0, uintptr(unsafe.Pointer(&size)), 0, windows.AF_INET6, 1, 0)
+	if ret != 0 && ret != 122 {
+		return nil, fmt.Errorf("GetExtendedUdp6Table failed: %d", ret)
+	}
+
+	buf := make([]byte, size)
+	ret, _, _ = procUdp6Table.Call(uintptr(unsafe.Pointer(&buf[0])), uintptr(unsafe.Pointer(&size)), 0, windows.AF_INET6, 1, 0)
+	if ret != 0 {
+		return nil, fmt.Errorf("GetExtendedUdp6Table failed: %d", ret)
+	}
+
+	numEntries := uint32(buf[0]) | (uint32(buf[1]) << 8) | (uint32(buf[2]) << 16) | (uint32(buf[3]) << 24)
+	offset := 4
+
+	connections := make([]*types.ConnectionInfo, 0)
+	for i := uint32(0); i < numEntries; i++ {
+		row := (*MIB_UDP6ROW_OWNER_PID)(unsafe.Pointer(&buf[offset]))
+		offset += int(unsafe.Sizeof(*row))
+
+		localIP := net.IP(row.LocalAddr[:]).String()
+		localPort := windows.Ntohs(uint16(row.LocalPort))
+
+		conn := &types.ConnectionInfo{
+			Protocol:   "UDPv6",
+			LocalAddr:  fmt.Sprintf("[%s]:%d", localIP, localPort),
+			RemoteAddr: "*:*",
+			State:      0,
+			PID:        row.PID,
+		}
+		connections = append(connections, conn)
 	}
 
 	return connections, nil
@@ -166,17 +281,21 @@ func NewNetworkPoller(interval time.Duration) (*NetworkPoller, error) {
 	}
 
 	if interval <= 0 {
-		interval = 5 * time.Second
+		interval = 3 * time.Second
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &NetworkPoller{
-		ctx:         ctx,
-		cancel:      cancel,
-		interval:    interval,
-		prevState:   make(map[string]*types.ConnectionInfo),
-		events:      make(chan *types.MonitorEvent, 100),
-		subscribers: make([]chan *types.MonitorEvent, 0),
-		running:     false,
+		ctx:            ctx,
+		cancel:         cancel,
+		interval:       interval,
+		prevTCPIPv4:    make(map[string]*types.ConnectionInfo),
+		prevTCPIPv6:    make(map[string]*types.ConnectionInfo),
+		prevUDPIPv4:    make(map[string]*types.ConnectionInfo),
+		prevUDPIPv6:    make(map[string]*types.ConnectionInfo),
+		listeningPorts: make(map[uint16]uint32),
+		events:         make(chan *types.MonitorEvent, 100),
+		subscribers:    make([]chan *types.MonitorEvent, 0),
+		running:        false,
 	}, nil
 }
 
@@ -257,15 +376,40 @@ func (np *NetworkPoller) pollConnections() {
 	default:
 	}
 
-	currentState := make(map[string]*types.ConnectionInfo)
+	currentTCPIPv4 := make(map[string]*types.ConnectionInfo)
+	currentTCPIPv6 := make(map[string]*types.ConnectionInfo)
+	currentUDPIPv4 := make(map[string]*types.ConnectionInfo)
+	currentUDPIPv6 := make(map[string]*types.ConnectionInfo)
 
 	tcpConns, err := getTCPConnections()
 	if err != nil {
 		log.Printf("[ERROR] getTCPConnections failed: %v", err)
 	} else {
 		for _, conn := range tcpConns {
-			key := fmt.Sprintf("tcp-%s-%s", conn.LocalAddr, conn.RemoteAddr)
-			currentState[key] = conn
+			key := fmt.Sprintf("tcp4-%s-%s", conn.LocalAddr, conn.RemoteAddr)
+			currentTCPIPv4[key] = conn
+			if conn.State == 5 {
+				port := extractPort(conn.LocalAddr)
+				if port > 0 {
+					np.listeningPorts[port] = conn.PID
+				}
+			}
+		}
+	}
+
+	tcp6Conns, err := getTCPIPv6Connections()
+	if err != nil {
+		log.Printf("[ERROR] getTCPIPv6Connections failed: %v", err)
+	} else {
+		for _, conn := range tcp6Conns {
+			key := fmt.Sprintf("tcp6-%s-%s", conn.LocalAddr, conn.RemoteAddr)
+			currentTCPIPv6[key] = conn
+			if conn.State == 5 {
+				port := extractPort(conn.LocalAddr)
+				if port > 0 {
+					np.listeningPorts[port] = conn.PID
+				}
+			}
 		}
 	}
 
@@ -274,30 +418,74 @@ func (np *NetworkPoller) pollConnections() {
 		log.Printf("[ERROR] getUDPConnections failed: %v", err)
 	} else {
 		for _, conn := range udpConns {
-			key := fmt.Sprintf("udp-%s", conn.LocalAddr)
-			currentState[key] = conn
+			key := fmt.Sprintf("udp4-%s", conn.LocalAddr)
+			currentUDPIPv4[key] = conn
+		}
+	}
+
+	udp6Conns, err := getUDPIPv6Connections()
+	if err != nil {
+		log.Printf("[ERROR] getUDPIPv6Connections failed: %v", err)
+	} else {
+		for _, conn := range udp6Conns {
+			key := fmt.Sprintf("udp6-%s", conn.LocalAddr)
+			currentUDPIPv6[key] = conn
 		}
 	}
 
 	np.mu.Lock()
-	for key, conn := range currentState {
-		if _, exists := np.prevState[key]; !exists {
-			event := np.createNetworkEvent(conn)
+	np.diffAndPublish(currentTCPIPv4, np.prevTCPIPv4, true, "TCP")
+	np.diffAndPublish(currentTCPIPv6, np.prevTCPIPv6, true, "TCPv6")
+	np.diffAndPublish(currentUDPIPv4, np.prevUDPIPv4, false, "UDP")
+	np.diffAndPublish(currentUDPIPv6, np.prevUDPIPv6, false, "UDPv6")
+
+	np.prevTCPIPv4 = currentTCPIPv4
+	np.prevTCPIPv6 = currentTCPIPv6
+	np.prevUDPIPv4 = currentUDPIPv4
+	np.prevUDPIPv6 = currentUDPIPv6
+	np.mu.Unlock()
+}
+
+func (np *NetworkPoller) diffAndPublish(current, previous map[string]*types.ConnectionInfo, isTCP bool, protocol string) {
+	for key, conn := range current {
+		if _, existed := previous[key]; !existed {
+			event := np.createNetworkEvent(conn, isTCP)
 			if event != nil {
 				np.publishEvent(event)
 			}
 		}
 	}
-	np.prevState = currentState
-	np.mu.Unlock()
+
+	for key, conn := range previous {
+		if _, exists := current[key]; !exists {
+			event := np.createNetworkCloseEvent(conn, isTCP)
+			if event != nil {
+				np.publishEvent(event)
+			}
+		}
+	}
 }
 
-func (np *NetworkPoller) createNetworkEvent(conn *types.ConnectionInfo) *types.MonitorEvent {
+func extractPort(addr string) uint16 {
+	parts := strings.Split(addr, ":")
+	if len(parts) >= 2 {
+		var port uint16
+		fmt.Sscanf(parts[len(parts)-1], "%d", &port)
+		return port
+	}
+	return 0
+}
+
+func (np *NetworkPoller) createNetworkEvent(conn *types.ConnectionInfo, isTCP bool) *types.MonitorEvent {
 	severity := types.SeverityInfo
-	processName := getProcessName(conn.PID)
+	processName, processPath := getProcessNameAndPath(conn.PID)
 
 	localIP, localPort := splitAddr(conn.LocalAddr)
 	remoteIP, remotePort := splitAddr(conn.RemoteAddr)
+
+	if conn.State == 2 {
+		severity = types.SeverityLow
+	}
 
 	for _, port := range types.SuspiciousPorts {
 		if remotePort != 0 && remotePort == port {
@@ -307,10 +495,15 @@ func (np *NetworkPoller) createNetworkEvent(conn *types.ConnectionInfo) *types.M
 	}
 
 	for _, ipRange := range types.SuspiciousIPs {
-		if strings.HasPrefix(conn.RemoteAddr, ipRange[:len(ipRange)-3]) {
+		if strings.HasPrefix(remoteIP.IP, ipRange[:len(ipRange)-3]) {
 			severity = types.SeverityMedium
 			break
 		}
+	}
+
+	isListen := ""
+	if conn.State == 2 {
+		isListen = " [LISTENING]"
 	}
 
 	data := make(map[string]interface{})
@@ -321,13 +514,38 @@ func (np *NetworkPoller) createNetworkEvent(conn *types.ConnectionInfo) *types.M
 	data["dest_port"] = remotePort
 	data["state"] = getTCPState(conn.State)
 	data["process_name"] = processName
+	data["process_path"] = processPath
 	data["pid"] = conn.PID
+	data["event_type"] = "new"
+	data["is_listening"] = conn.State == 2
 
 	return &types.MonitorEvent{
 		ID:        fmt.Sprintf("net-%s-%d-%d", conn.Protocol, localPort, time.Now().UnixNano()),
 		Type:      types.EventTypeNetwork,
 		Timestamp: time.Now(),
 		Severity:  severity,
+		Data:      data,
+	}
+}
+
+func (np *NetworkPoller) createNetworkCloseEvent(conn *types.ConnectionInfo, isTCP bool) *types.MonitorEvent {
+	processName, _ := getProcessNameAndPath(conn.PID)
+
+	data := make(map[string]interface{})
+	data["protocol"] = conn.Protocol
+	data["source_ip"], _ = splitAddr(conn.LocalAddr)
+	data["source_port"] = extractPort(conn.LocalAddr)
+	data["dest_ip"], _ = splitAddr(conn.RemoteAddr)
+	data["dest_port"] = extractPort(conn.RemoteAddr)
+	data["process_name"] = processName
+	data["pid"] = conn.PID
+	data["event_type"] = "close"
+
+	return &types.MonitorEvent{
+		ID:        fmt.Sprintf("net-close-%s-%d-%d", conn.Protocol, conn.LocalPort, time.Now().UnixNano()),
+		Type:      types.EventTypeNetwork,
+		Timestamp: time.Now(),
+		Severity:  types.SeverityInfo,
 		Data:      data,
 	}
 }
@@ -345,6 +563,16 @@ func (np *NetworkPoller) publishEvent(event *types.MonitorEvent) {
 }
 
 func splitAddr(addr string) (Addr, uint16) {
+	if strings.HasPrefix(addr, "[") {
+		endIdx := strings.LastIndex(addr, "]:")
+		if endIdx > 0 {
+			ip := addr[1:endIdx]
+			var port uint16
+			fmt.Sscanf(addr[endIdx+2:], "%d", &port)
+			return Addr{IP: ip, Port: port}, port
+		}
+	}
+
 	parts := strings.Split(addr, ":")
 	if len(parts) == 2 {
 		var port uint16
@@ -354,38 +582,39 @@ func splitAddr(addr string) (Addr, uint16) {
 	return Addr{IP: addr, Port: 0}, 0
 }
 
-func getProcessName(pid uint32) string {
+func getProcessNameAndPath(pid uint32) (string, string) {
 	if pid == 0 {
-		return "Unknown"
+		return "System", ""
 	}
 
 	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.PROCESS_QUERY_INFORMATION, false, pid)
 	if err != nil {
-		return "Unknown"
+		return "Unknown", ""
 	}
 	defer windows.CloseHandle(hProcess)
 
 	if hProcess == 0 {
-		return "Unknown"
+		return "Unknown", ""
 	}
 
 	var buf [windows.MAX_PATH]uint16
 	size := uint32(len(buf))
 	if err := windows.QueryFullProcessImageName(hProcess, 0, &buf[0], &size); err != nil {
-		return "Unknown"
+		return "Unknown", ""
 	}
 
 	path := windows.UTF16ToString(buf[:size])
 	if path == "" {
-		return "Unknown"
+		return "Unknown", ""
 	}
 
 	parts := strings.Split(path, "\\")
+	name := "Unknown"
 	if len(parts) > 0 {
-		return parts[len(parts)-1]
+		name = parts[len(parts)-1]
 	}
 
-	return path
+	return name, path
 }
 
 func getTCPState(state uint32) string {
