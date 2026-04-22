@@ -5,6 +5,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,15 +156,21 @@ func (d *RunKeyDetector) enumerateRunKey(keyPath string) ([]RunKeyEntry, error) 
 
 	subkeys, err := utils.ListRegistrySubkeys(keyPath)
 	if err != nil {
+		log.Printf("[DEBUG] [RunKeyDetector] ListRegistrySubkeys(%s) failed: %v", keyPath, err)
 		return entries, nil
 	}
 
+	log.Printf("[DEBUG] [RunKeyDetector] Found %d subkeys under %s: %v", len(subkeys), keyPath, subkeys)
+
 	for _, subkey := range subkeys {
-		value, err := utils.GetRegistryValue(keyPath, subkey)
+		fullPath := keyPath + `\` + subkey
+		value, err := utils.GetRegistryValue(fullPath, "")
 		if err != nil {
+			log.Printf("[DEBUG] [RunKeyDetector] GetRegistryValue(%s) failed: %v", fullPath, err)
 			continue
 		}
 		if value != "" {
+			log.Printf("[DEBUG] [RunKeyDetector] Found entry: %s = %s", subkey, value)
 			entries = append(entries, RunKeyEntry{
 				Name:  subkey,
 				Value: value,
