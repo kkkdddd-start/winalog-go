@@ -3,7 +3,9 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -254,15 +256,20 @@ func serializeConditions(conditions []SuppressConditionReq) string {
 	if len(conditions) == 0 {
 		return ""
 	}
-	result := "["
-	for i, c := range conditions {
-		if i > 0 {
-			result += ","
-		}
-		result += `{"field":"` + c.Field + `","operator":"` + c.Operator + `","value":"` + toString(c.Value) + `"}`
+	type cond struct {
+		Field    string      `json:"field"`
+		Operator string      `json:"operator"`
+		Value    interface{} `json:"value"`
 	}
-	result += "]"
-	return result
+	arr := make([]cond, len(conditions))
+	for i, c := range conditions {
+		arr[i] = cond{Field: c.Field, Operator: c.Operator, Value: c.Value}
+	}
+	data, err := json.Marshal(arr)
+	if err != nil {
+		return "[]"
+	}
+	return string(data)
 }
 
 func parseConditions(jsonStr string, conditions *[]types.SuppressCondition) {
@@ -359,8 +366,23 @@ func toString(v interface{}) string {
 	switch val := v.(type) {
 	case string:
 		return val
+	case int:
+		return strconv.Itoa(val)
+	case int64:
+		return strconv.FormatInt(val, 10)
+	case int32:
+		return strconv.Itoa(int(val))
+	case float64:
+		return strconv.FormatFloat(val, 'f', -1, 64)
+	case float32:
+		return strconv.FormatFloat(float64(val), 'f', -1, 32)
+	case bool:
+		return strconv.FormatBool(val)
 	default:
-		return ""
+		if v == nil {
+			return ""
+		}
+		return fmt.Sprintf("%v", v)
 	}
 }
 

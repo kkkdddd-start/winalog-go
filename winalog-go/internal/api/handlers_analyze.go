@@ -322,9 +322,7 @@ func (h *AnalyzeHandler) UpdateRule(c *gin.Context) {
 		return
 	}
 
-	if req.Enabled {
-		rule.Enabled = req.Enabled
-	}
+	rule.Enabled = req.Enabled
 	if req.EventIDs != nil {
 		rule.EventIDs = req.EventIDs
 	}

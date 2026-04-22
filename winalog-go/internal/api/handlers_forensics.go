@@ -646,7 +646,3 @@ func SetupForensicsRoutes(r *gin.Engine, forensicsHandler *ForensicsHandler) {
 		forensicsGroup.GET("/memory-dump", forensicsHandler.MemoryDump)
 	}
 }
-
-func init() {
-	os.Unsetenv("WER_SUPPORT_MODE")
-}

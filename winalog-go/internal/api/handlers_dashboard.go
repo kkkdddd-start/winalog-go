@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
@@ -72,17 +73,15 @@ func (h *DashboardHandler) GetCollectionStats(c *gin.Context) {
 		}
 	}
 
-	var lastImport string
+	var lastImportStr string
+	var lastImportTime sql.NullString
 	row := h.db.QueryRow(`
 		SELECT import_time FROM import_log 
 		WHERE status = 'success' 
 		ORDER BY import_time DESC LIMIT 1
 	`)
-	var importTime interface{}
-	if err := row.Scan(&importTime); err == nil {
-		if t, ok := importTime.(string); ok {
-			lastImport = t
-		}
+	if err := row.Scan(&lastImportTime); err == nil && lastImportTime.Valid {
+		lastImportStr = lastImportTime.String
 	}
 
 	totalSize := formatBytes(stats.DatabaseSize)
@@ -91,7 +90,7 @@ func (h *DashboardHandler) GetCollectionStats(c *gin.Context) {
 		TotalEvents: stats.EventCount,
 		TotalSize:   totalSize,
 		Sources:     sources,
-		LastImport:  lastImport,
+		LastImport:  lastImportStr,
 	})
 }
 

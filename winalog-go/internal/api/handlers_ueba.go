@@ -94,8 +94,6 @@ func (h *UEBAHandler) Analyze(c *gin.Context) {
 		return
 	}
 
-	h.engine.Learn(events)
-
 	anomalies := h.engine.DetectAnomalies(events)
 
 	highCount := 0
