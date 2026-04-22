@@ -30,7 +30,6 @@ type Win32_Process struct {
 	ParentProcessID uint32
 	ExecutablePath  string
 	CommandLine     string
-	CreationDate    time.Time
 }
 
 func NewProcessWatcher() (*ProcessWatcher, error) {
