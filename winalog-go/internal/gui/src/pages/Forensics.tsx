@@ -73,7 +73,7 @@ function Forensics() {
     setCalculatingHash(true)
     try {
       const res = await forensicsAPI.calculateHash(filePath)
-      setHashInput(res.data.hash || '')
+      setHashInput(res.data.sha256 || '')
     } catch (error: any) {
       console.error('Failed to calculate hash:', error)
       alert('Failed to calculate hash: ' + (error.response?.data?.error || error.message))
@@ -127,7 +127,7 @@ function Forensics() {
       setHashResult({
         verified: res.data.match || false,
         expected: hashInput,
-        actual: res.data.actual || hashInput,
+        actual: res.data.hash || hashInput,
         path: filePath
       })
     } catch (error: any) {

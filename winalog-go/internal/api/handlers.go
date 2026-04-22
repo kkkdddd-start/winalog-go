@@ -787,8 +787,10 @@ func parseTime(s string) (*time.Time, error) {
 }
 
 type ImportRequest struct {
-	Files         []string `json:"files" binding:"required"`
-	AlertOnImport bool     `json:"alert_on_import"`
+	Files          []string `json:"files" binding:"required"`
+	AlertOnImport  bool     `json:"alert_on_import"`
+	EnabledFormats []string `json:"enabled_formats"`
+	SkipPatterns   []string `json:"skip_patterns"`
 }
 
 func (h *ImportHandler) ImportLogs(c *gin.Context) {
