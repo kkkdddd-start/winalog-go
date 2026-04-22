@@ -70,6 +70,10 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 	})
 	c.Writer.Flush()
 
+	heartbeatInterval := 30 * time.Second
+	heartbeatTicker := time.NewTicker(heartbeatInterval)
+	defer heartbeatTicker.Stop()
+
 	pollInterval := 2 * time.Second
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
@@ -81,6 +85,17 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 
 	for {
 		select {
+		case <-clientGone:
+			log.Printf("[INFO] [SSE] Live events stream disconnected from %s: events=%d, stats=%d, ticks=%d",
+				clientIP, eventCount, statsCount, tickCount)
+			return
+		case <-heartbeatTicker.C:
+			if _, err := fmt.Fprintf(c.Writer, ": heartbeat %d\n\n", time.Now().Unix()); err != nil {
+				log.Printf("[WARN] [SSE] Live heartbeat write failed: %v", err)
+				return
+			}
+			c.Writer.Flush()
+			log.Printf("[DEBUG] [SSE] Live heartbeat sent (events=%d, ticks=%d)", eventCount, tickCount)
 		case <-ticker.C:
 			tickCount++
 			if h.db != nil {
@@ -127,18 +142,14 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 				}
 			}
 			if _, err := c.Writer.Write([]byte{}); err != nil {
-				log.Printf("[WARN] [SSE] Live write failed, closing stream: %v", err)
+				log.Printf("[WARN] [SSE] Live write check failed: %v", err)
 				return
 			}
 			c.Writer.Flush()
 
 			if tickCount%30 == 0 {
-				log.Printf("[INFO] [SSE] Live stream stats: events=%d, stats_sent=%d, uptime_ticks=%d", eventCount, statsCount, tickCount)
+				log.Printf("[INFO] [SSE] Live stream stats: events=%d, stats=%d, ticks=%d", eventCount, statsCount, tickCount)
 			}
-		case <-clientGone:
-			log.Printf("[INFO] [SSE] Live events stream disconnected from %s: events=%d, stats=%d, duration=%s",
-				clientIP, eventCount, statsCount, pollInterval*time.Duration(tickCount))
-			return
 		}
 	}
 }
