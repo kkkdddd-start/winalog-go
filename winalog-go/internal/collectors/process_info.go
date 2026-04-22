@@ -54,6 +54,12 @@ func (c *ProcessInfoCollector) Collect(ctx context.Context) ([]interface{}, erro
 }
 
 func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error) {
+	type procInfo struct {
+		pid  uint32
+		ppid uint32
+		name string
+	}
+
 	processes := make([]*types.ProcessInfo, 0)
 
 	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
@@ -70,18 +76,36 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 		return nil, err
 	}
 
+	var procList []procInfo
 	for {
-		exeName := windows.UTF16ToString(entry.ExeFile[:])
-		exePath := getProcessPath(entry.ProcessID)
+		procList = append(procList, procInfo{
+			pid:  entry.ProcessID,
+			ppid: entry.ParentProcessID,
+			name: windows.UTF16ToString(entry.ExeFile[:]),
+		})
+		err = windows.Process32Next(snapshot, &entry)
+		if err != nil {
+			break
+		}
+	}
+
+	pids := make([]uint32, len(procList))
+	for i, p := range procList {
+		pids[i] = p.pid
+	}
+	commandLines := batchGetCommandLines(pids)
+
+	for _, p := range procList {
+		exePath := getProcessPath(p.pid)
 
 		proc := &types.ProcessInfo{
-			PID:         int32(entry.ProcessID),
-			PPID:        int32(entry.ParentProcessID),
-			Name:        exeName,
+			PID:         int32(p.pid),
+			PPID:        int32(p.ppid),
+			Name:        p.name,
 			Path:        exePath,
-			CommandLine: getCommandLine(entry.ProcessID),
-			User:        getProcessUser(entry.ProcessID),
-			StartTime:   getProcessStartTime(entry.ProcessID),
+			CommandLine: commandLines[p.pid],
+			User:        getProcessUser(p.pid),
+			StartTime:   getProcessStartTime(p.pid),
 		}
 
 		if exePath != "" && !strings.HasSuffix(strings.ToLower(exePath), ".tmp") {
@@ -102,14 +126,56 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 		}
 
 		processes = append(processes, proc)
-
-		err = windows.Process32Next(snapshot, &entry)
-		if err != nil {
-			break
-		}
 	}
 
 	return processes, nil
+}
+
+func batchGetCommandLines(pids []uint32) map[uint32]string {
+	result := make(map[uint32]string)
+
+	if len(pids) == 0 {
+		return result
+	}
+
+	script := `(Get-CimInstance Win32_Process | Where-Object {`
+	for i, pid := range pids {
+		if i > 0 {
+			script += ` -or `
+		}
+		script += fmt.Sprintf(`$_.ProcessId -eq %d`, pid)
+	}
+	script += ` }) | Select-Object ProcessId, CommandLine | ConvertTo-Json -Compress`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmdResult := utils.RunPowerShellWithContext(ctx, script)
+	if !cmdResult.Success() || cmdResult.Output == "" {
+		return result
+	}
+
+	var entries []struct {
+		ProcessID   uint32 `json:"ProcessId"`
+		CommandLine string `json:"CommandLine"`
+	}
+
+	if err := json.Unmarshal([]byte(cmdResult.Output), &entries); err != nil {
+		var single struct {
+			ProcessID   uint32 `json:"ProcessId"`
+			CommandLine string `json:"CommandLine"`
+		}
+		if err2 := json.Unmarshal([]byte(cmdResult.Output), &single); err2 == nil && single.ProcessID != 0 {
+			result[single.ProcessID] = single.CommandLine
+		}
+		return result
+	}
+
+	for _, e := range entries {
+		result[e.ProcessID] = e.CommandLine
+	}
+
+	return result
 }
 
 func (c *ProcessInfoCollector) CollectProcessInfoWithSignature() ([]*types.ProcessInfo, error) {
