@@ -587,12 +587,17 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 
 	cmd := `Get-WinEvent -ListLog * -ErrorAction SilentlyContinue | Where-Object { $_.RecordCount -gt 0 } | Select-Object -First 20 -ExpandProperty LogName | ForEach-Object { $_ }`
 
+	log.Printf("[DEBUG] [OneClick] Collecting event logs...")
 	result := utils.RunPowerShellWithContext(ctx, cmd)
 	if !result.Success() {
-		return result.Error
+		log.Printf("[ERROR] [OneClick] Get-WinEvent failed: %v, output: %s", result.Error, result.Output)
+		return fmt.Errorf("powershell error: %v", result.Error)
 	}
 
 	logNames := strings.Split(strings.TrimSpace(result.Output), "\n")
+	log.Printf("[DEBUG] [OneClick] Found %d event log names", len(logNames))
+
+	exportedCount := 0
 	for _, logName := range logNames {
 		logName = strings.TrimSpace(logName)
 		if logName == "" {
@@ -611,10 +616,14 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 
 		exportResult := utils.RunPowerShellWithContext(ctx, exportCmd)
 		if !exportResult.Success() {
-			log.Printf("[WARN] Failed to export log %s: %v", logName, exportResult.Error)
+			log.Printf("[WARN] [OneClick] Failed to export log %s: %v", logName, exportResult.Error)
+		} else {
+			exportedCount++
+			log.Printf("[DEBUG] [OneClick] Exported log %s", logName)
 		}
 	}
 
+	log.Printf("[DEBUG] [OneClick] Event log collection completed: %d/%d exported", exportedCount, len(logNames))
 	return nil
 }
 
