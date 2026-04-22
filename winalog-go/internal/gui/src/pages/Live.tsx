@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useI18n } from '../locales/I18n'
-import { liveAPI, eventsAPI } from '../api'
+import { monitorAPI, MonitorEvent } from '../api'
 
 interface LiveEvent {
   id: number
@@ -22,17 +22,24 @@ interface LiveStats {
   alerts: number
 }
 
+const LIVE_STORAGE_KEY = 'winalog_live_monitoring_enabled'
+
 function Live() {
   const { t } = useI18n()
   const [events, setEvents] = useState<LiveEvent[]>([])
   const [stats, setStats] = useState<LiveStats | null>(null)
-  const [isEnabled, setIsEnabled] = useState(false)
+  const [isEnabled, setIsEnabled] = useState(() => {
+    try {
+      return localStorage.getItem(LIVE_STORAGE_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
-  const [lastEventId, setLastEventId] = useState<number>(0)
   const eventsContainerRef = useRef<HTMLDivElement>(null)
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pollInterval = 3000
+  const eventSourceRef = useRef<EventSource | null>(null)
+  const eventIdCounter = useRef(0)
 
   useEffect(() => {
     if (eventsContainerRef.current) {
@@ -40,73 +47,119 @@ function Live() {
     }
   }, [events])
 
-  const fetchLiveEvents = async () => {
-    if (!isEnabled) return
-    
+  useEffect(() => {
+    if (isEnabled) {
+      startRealTimeMonitoring()
+    } else {
+      stopRealTimeMonitoring()
+    }
+    return () => {
+      stopRealTimeMonitoring()
+    }
+  }, [isEnabled])
+
+  const startRealTimeMonitoring = async () => {
     try {
-      const response = await eventsAPI.list(1, 50)
-      const newEvents = response.data.events || []
-      
-      if (newEvents.length > 0) {
-        const latestId = newEvents[0].id
-        if (latestId !== lastEventId) {
-          setLastEventId(latestId)
-          setEvents(prev => {
-            const filtered = newEvents.filter((ne: LiveEvent) => !prev.some((p: LiveEvent) => p.id === ne.id))
-            if (filtered.length === 0) return prev
-            const combined = [...filtered, ...prev]
-            return combined.slice(0, 100)
-          })
+      await monitorAPI.startStop('start')
+    } catch (err) {
+      console.error('Failed to start monitor:', err)
+    }
+
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+    }
+
+    const eventSource = monitorAPI.streamEvents(
+      (data: MonitorEvent) => {
+        const event: LiveEvent = {
+          id: eventIdCounter.current++,
+          timestamp: data.timestamp || new Date().toISOString(),
+          event_id: 0,
+          level: mapMonitorLevel(data.type),
+          source: data.type || 'monitor',
+          log_name: data.type || 'monitor',
+          computer: 'local',
+          user: '',
+          message: formatMonitorMessage(data),
+          ip_address: '',
         }
+        setEvents(prev => [event, ...prev].slice(0, 100))
+      },
+      (err: any) => {
+        console.error('Monitor stream error:', err)
+        setError('Connection lost. Retrying...')
       }
-      
-      const statsRes = await liveAPI.getStats()
-      if (statsRes.data) {
+    )
+
+    eventSourceRef.current = eventSource as unknown as EventSource
+
+    try {
+      const statsRes = await monitorAPI.getStats()
+      if (statsRes.data?.stats) {
+        const s = statsRes.data.stats
         setStats({
-          total_events: statsRes.data.total_events || 0,
-          events_per_sec: statsRes.data.events_per_sec || 0,
-          uptime: statsRes.data.uptime || '0s',
-          alerts: statsRes.data.alerts || 0,
+          total_events: (s.ProcessCount || 0) + (s.NetworkCount || 0) + (s.DNSCount || 0),
+          events_per_sec: 0,
+          uptime: s.Uptime || '0s',
+          alerts: s.AlertCount || 0,
         })
       }
-      
-      setError(null)
-    } catch (err: any) {
-      console.error('Failed to fetch live events:', err)
-      if (err.message?.includes('timeout') || err.code === 'ECONNABORTED') {
-        setError('Request timeout. Will retry...')
-      }
+    } catch {}
+  }
+
+  const stopRealTimeMonitoring = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
     }
+    monitorAPI.startStop('stop').catch(console.error)
+  }
+
+  const mapMonitorLevel = (type: string): string => {
+    switch (type?.toLowerCase()) {
+      case 'process':
+      case 'process_start':
+      case 'process_stop':
+        return 'info'
+      case 'network':
+      case 'dns':
+        return 'info'
+      case 'alert':
+      case 'critical':
+        return 'critical'
+      case 'error':
+        return 'error'
+      case 'warning':
+        return 'warning'
+      default:
+        return 'info'
+    }
+  }
+
+  const formatMonitorMessage = (data: MonitorEvent): string => {
+    const parts: string[] = []
+    if (data.type) parts.push(data.type)
+    if (data.data?.process_name) parts.push(`Process: ${data.data.process_name}`)
+    if (data.data?.command) parts.push(`Cmd: ${data.data.command}`)
+    if (data.data?.dst_address) parts.push(`Dst: ${data.data.dst_address}`)
+    if (data.data?.dns_query) parts.push(`DNS: ${data.data.dns_query}`)
+    return parts.length > 0 ? parts.join(' | ') : `${data.type || 'event'} detected`
   }
 
   const toggleMonitoring = () => {
-    if (isEnabled) {
-      stopMonitoring()
-    } else {
-      startMonitoring()
-    }
-  }
-
-  const startMonitoring = () => {
-    setIsEnabled(true)
-    setLastEventId(0)
-    setEvents([])
-    fetchLiveEvents()
-    pollIntervalRef.current = setInterval(fetchLiveEvents, pollInterval)
-  }
-
-  const stopMonitoring = () => {
-    setIsEnabled(false)
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current)
-      pollIntervalRef.current = null
-    }
+    setIsEnabled(prev => {
+      const newValue = !prev
+      try {
+        localStorage.setItem(LIVE_STORAGE_KEY, newValue ? 'true' : 'false')
+      } catch {}
+      return newValue
+    })
   }
 
   useEffect(() => {
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
       }
     }
   }, [])

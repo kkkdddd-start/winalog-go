@@ -54,11 +54,12 @@ type SearchConfig struct {
 }
 
 type AlertsConfig struct {
-	Enabled        bool                `yaml:"enabled"`
-	DedupWindow    time.Duration       `yaml:"dedup_window"`
-	UpgradeRules   []*AlertUpgradeRule `yaml:"upgrade_rules,omitempty"`
-	SuppressRules  []*SuppressRule     `yaml:"suppress_rules,omitempty"`
-	StatsRetention time.Duration       `yaml:"stats_retention"`
+	Enabled          bool                `yaml:"enabled"`
+	DedupWindow      time.Duration       `yaml:"dedup_window"`
+	UpgradeRules     []*AlertUpgradeRule `yaml:"upgrade_rules,omitempty"`
+	SuppressRules    []*SuppressRule     `yaml:"suppress_rules,omitempty"`
+	StatsRetention   time.Duration       `yaml:"stats_retention"`
+	EnableCollection bool                `yaml:"enable_collection"`
 }
 
 type AlertUpgradeRule struct {
@@ -253,9 +254,10 @@ func DefaultConfig() *Config {
 			MaxProcessLimit:     2000,
 		},
 		Alerts: AlertsConfig{
-			Enabled:        true,
-			DedupWindow:    5 * time.Minute,
-			StatsRetention: 30 * 24 * time.Hour,
+			Enabled:          true,
+			DedupWindow:      5 * time.Minute,
+			StatsRetention:   30 * 24 * time.Hour,
+			EnableCollection: false,
 		},
 		Correlation: CorrelationConfig{
 			Enabled:    true,

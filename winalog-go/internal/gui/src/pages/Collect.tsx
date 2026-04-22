@@ -154,14 +154,14 @@ function Collect() {
   const [evtx2csvIncludeXml, setEvtx2csvIncludeXml] = useState(false)
   const [evtx2csvCalculateHash, setEvtx2csvCalculateHash] = useState(true)
 
-  // 采集选项
+  // 采集选项 - 默认全部关闭，用户手动开启
   const [collectOptions, setCollectOptions] = useState<CollectOptions>({
-    includeSystemInfo: true,
-    includeProcesses: true,
-    includeNetwork: true,
+    includeSystemInfo: false,
+    includeProcesses: false,
+    includeNetwork: false,
     includeDlls: false,
     includeDrivers: false,
-    includeUsers: true,
+    includeUsers: false,
     includeRegistry: false,
     includeTasks: false,
     includePrefetch: false,

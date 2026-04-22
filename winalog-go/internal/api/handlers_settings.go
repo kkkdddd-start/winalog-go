@@ -46,7 +46,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		MaxEvents:            h.cfg.Search.MaxResults,
 		RetentionDays:        retentionDays,
 		EnableAlerting:       h.cfg.Alerts.Enabled,
-		EnableLiveCollection: false,
+		EnableLiveCollection: h.cfg.Alerts.EnableCollection,
 		EnableAutoUpdate:     h.cfg.TUI.AutoUpdate,
 		APIPort:              h.cfg.API.Port,
 		APIHost:              h.cfg.API.Host,
@@ -72,6 +72,7 @@ func (h *SettingsHandler) SaveSettings(c *gin.Context) {
 	h.cfg.Log.Level = settings.LogLevel
 	h.cfg.Search.MaxResults = settings.MaxEvents
 	h.cfg.Alerts.Enabled = settings.EnableAlerting
+	h.cfg.Alerts.EnableCollection = settings.EnableLiveCollection
 	h.cfg.Alerts.StatsRetention = time.Duration(settings.RetentionDays) * 24 * time.Hour
 	h.cfg.TUI.AutoUpdate = settings.EnableAutoUpdate
 	h.cfg.API.Port = settings.APIPort
