@@ -3,6 +3,7 @@
 package monitor
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
@@ -15,6 +16,8 @@ type MonitorEngine struct {
 	config       *ConfigManager
 	eventCache   *EventCache
 	subscribers  []chan *types.MonitorEvent
+	ctx          context.Context
+	cancel       context.CancelFunc
 	processWatch interface {
 		Start() error
 		Stop() error
@@ -55,13 +58,15 @@ func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
 	return engine, nil
 }
 
-func (e *MonitorEngine) Start() error {
+func (e *MonitorEngine) Start(ctx context.Context) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	if e.isRunning {
 		return nil
 	}
+
+	e.ctx, e.cancel = context.WithCancel(ctx)
 
 	config := e.config.Get()
 	e.startTime = time.Now()
@@ -112,6 +117,10 @@ func (e *MonitorEngine) Stop() error {
 	e.isRunning = false
 	e.mu.Unlock()
 
+	if e.cancel != nil {
+		e.cancel()
+	}
+
 	if e.processWatch != nil {
 		e.processWatch.Stop()
 		e.processWatch = nil
@@ -131,6 +140,8 @@ func (e *MonitorEngine) Stop() error {
 
 	e.mu.Lock()
 	e.subscribers = nil
+	e.ctx = nil
+	e.cancel = nil
 	e.mu.Unlock()
 
 	return nil
@@ -139,6 +150,8 @@ func (e *MonitorEngine) Stop() error {
 func (e *MonitorEngine) processEvents() {
 	for {
 		select {
+		case <-e.ctx.Done():
+			return
 		case event, ok := <-e.eventCh:
 			if !ok {
 				return

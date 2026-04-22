@@ -3,6 +3,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -17,7 +18,7 @@ import (
 
 type MonitorHandler struct {
 	engine interface {
-		Start() error
+		Start(ctx context.Context) error
 		Stop() error
 		UpdateConfig(req *monitor.MonitorConfigRequest) error
 		GetStats() *types.MonitorStats
@@ -118,7 +119,7 @@ func (h *MonitorHandler) StartStop(c *gin.Context) {
 
 	var err error
 	if req.Action == "start" {
-		err = h.engine.Start()
+		err = h.engine.Start(c.Request.Context())
 	} else if req.Action == "stop" {
 		err = h.engine.Stop()
 	} else {

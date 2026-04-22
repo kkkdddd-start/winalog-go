@@ -3,6 +3,7 @@
 package monitor
 
 import (
+	"context"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
@@ -36,7 +37,7 @@ func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
 	}, nil
 }
 
-func (e *MonitorEngine) Start() error {
+func (e *MonitorEngine) Start(ctx context.Context) error {
 	return nil
 }
 

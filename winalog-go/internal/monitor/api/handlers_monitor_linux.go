@@ -3,6 +3,7 @@
 package api
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -13,7 +14,7 @@ import (
 
 type MonitorHandler struct {
 	engine interface {
-		Start() error
+		Start(ctx context.Context) error
 		Stop() error
 		UpdateConfig(req *monitor.MonitorConfigRequest) error
 		GetStats() *types.MonitorStats
