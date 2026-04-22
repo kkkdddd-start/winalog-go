@@ -278,6 +278,7 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status":   "error",
+			"success":  false,
 			"message":  err.Error(),
 			"imported": 0,
 			"failed":   len(req.FilePaths),
@@ -288,6 +289,7 @@ func (h *CollectHandler) ImportLogs(c *gin.Context) {
 
 	response := gin.H{
 		"status":       "completed",
+		"success":      true,
 		"message":      "Import completed successfully",
 		"imported":     result.FilesImported,
 		"failed":       result.FilesFailed,
@@ -343,9 +345,11 @@ func (h *CollectHandler) GetCollectStatus(c *gin.Context) {
 }
 
 type Evtx2CsvRequest struct {
-	FilePaths []string `json:"file_paths" binding:"required"`
-	OutputDir string   `json:"output_dir"`
-	Limit     int      `json:"limit"`
+	FilePaths     []string `json:"file_paths" binding:"required"`
+	OutputDir     string   `json:"output_dir"`
+	Limit         int      `json:"limit"`
+	IncludeXml    bool     `json:"include_xml"`
+	CalculateHash bool     `json:"calculate_hash"`
 }
 
 type Evtx2CsvResponse struct {
@@ -430,8 +434,8 @@ func (h *CollectHandler) Evtx2Csv(c *gin.Context) {
 
 		outputPath := inputPath + ".csv"
 		if outputDir != "." {
-			baseName := inputPath + ".csv"
-			outputPath = outputDir + "/" + baseName
+			baseName := filepath.Base(inputPath) + ".csv"
+			outputPath = filepath.Join(outputDir, baseName)
 		}
 
 		outputFile, err := os.Create(outputPath)

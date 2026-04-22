@@ -135,7 +135,7 @@ func enrichDetections(detections []*persistence.Detection) []*EnrichedDetection 
 			Severity:          string(d.Severity),
 			Title:             d.Title,
 			Description:       d.Description,
-			Evidence:          map[string]interface{}{"type": string(d.Evidence.Type), "key": d.Evidence.Key, "value": d.Evidence.Value, "path": d.Evidence.Path},
+			Evidence:          map[string]interface{}{"type": string(d.Evidence.Type), "key": d.Evidence.Key, "value": d.Evidence.Value, "file_path": d.Evidence.Path},
 			MITRERef:          d.MITRERef,
 			RecommendedAction: recommendation,
 			FalsePositiveRisk: d.FalsePositiveRisk,
@@ -464,7 +464,7 @@ func (h *PersistenceHandler) GetRule(c *gin.Context) {
 
 type PersistenceRuleUpdate struct {
 	Name                 string   `json:"name"`
-	Enabled              bool     `json:"enabled"`
+	Enabled              *bool    `json:"enabled"`
 	EventIDs             []int32  `json:"event_ids,omitempty"`
 	Patterns             []string `json:"patterns,omitempty"`
 	Whitelist            []string `json:"whitelist,omitempty"`
@@ -493,8 +493,8 @@ func (h *PersistenceHandler) UpdateRule(c *gin.Context) {
 		return
 	}
 
-	if req.Enabled {
-		rule.Enabled = req.Enabled
+	if req.Enabled != nil {
+		rule.Enabled = *req.Enabled
 	}
 	if req.EventIDs != nil {
 		rule.EventIDs = req.EventIDs
@@ -544,6 +544,7 @@ func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandle
 	persistenceGroup := r.Group("/api/persistence")
 	{
 		persistenceGroup.GET("/detect", persistenceHandler.Detect)
+		persistenceGroup.GET("/detect/stream", persistenceHandler.StreamDetect)
 		persistenceGroup.GET("/categories", persistenceHandler.ListCategories)
 		persistenceGroup.GET("/techniques", persistenceHandler.ListTechniques)
 		persistenceGroup.GET("/detectors", persistenceHandler.ListDetectors)
@@ -551,5 +552,45 @@ func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandle
 		persistenceGroup.GET("/rules", persistenceHandler.ListRules)
 		persistenceGroup.GET("/rules/:name", persistenceHandler.GetRule)
 		persistenceGroup.PUT("/rules", persistenceHandler.UpdateRule)
+	}
+}
+
+func (h *PersistenceHandler) StreamDetect(c *gin.Context) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	clientIP := c.ClientIP()
+	clientGone := c.Request.Context().Done()
+
+	log.Printf("[INFO] [SSE] Persistence stream connected from %s", clientIP)
+
+	c.SSEvent("connected", map[string]interface{}{
+		"type":    "connected",
+		"message": "Connected to persistence detection stream. Use /api/persistence/detect for detection results.",
+		"time":    time.Now().Format(time.RFC3339),
+	})
+	c.Writer.Flush()
+
+	heartbeatInterval := 30 * time.Second
+	heartbeatTicker := time.NewTicker(heartbeatInterval)
+	defer heartbeatTicker.Stop()
+
+	tickCount := 0
+
+	for {
+		select {
+		case <-clientGone:
+			log.Printf("[INFO] [SSE] Persistence stream disconnected from %s (ticks=%d)", clientIP, tickCount)
+			return
+		case <-heartbeatTicker.C:
+			tickCount++
+			if _, err := fmt.Fprintf(c.Writer, ": heartbeat %d\n\n", time.Now().Unix()); err != nil {
+				log.Printf("[WARN] [SSE] Persistence heartbeat write failed: %v", err)
+				return
+			}
+			c.Writer.Flush()
+		}
 	}
 }

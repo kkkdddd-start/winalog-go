@@ -13,12 +13,13 @@ import (
 )
 
 type LiveHandler struct {
-	db             *storage.DB
-	startTime      time.Time
-	eventCount     int64
-	lastCount      int64
-	mu             sync.RWMutex
-	lastImportTime time.Time
+	db              *storage.DB
+	startTime       time.Time
+	eventCount      int64
+	lastCount       int64
+	mu              sync.RWMutex
+	lastImportTime  time.Time
+	lastStatsUpdate time.Time
 }
 
 type LiveEventMessage struct {
@@ -57,7 +58,9 @@ func (h *LiveHandler) StreamEventsSSE(c *gin.Context) {
 	clientGone := c.Request.Context().Done()
 
 	h.mu.Lock()
-	h.lastImportTime = time.Now().Add(-24 * time.Hour)
+	if h.lastImportTime.IsZero() {
+		h.lastImportTime = time.Now().Add(-24 * time.Hour)
+	}
 	h.mu.Unlock()
 
 	log.Printf("[INFO] [SSE] Live events stream connected from %s", clientIP)
@@ -183,13 +186,23 @@ func (h *LiveHandler) GetLiveStats(c *gin.Context) {
 		}
 	}
 
-	uptime := time.Since(h.startTime)
+	now := time.Now()
+	uptime := now.Sub(h.startTime)
+
+	if h.lastStatsUpdate.IsZero() {
+		h.lastStatsUpdate = now
+		h.lastCount = totalEvents
+	}
+
+	elapsed := now.Sub(h.lastStatsUpdate).Seconds()
 	eventsPerSec := 0.0
-	if uptime.Seconds() > 0 {
-		eventsPerSec = float64(totalEvents-h.lastCount) / uptime.Seconds()
+	if elapsed > 1 {
+		eventsPerSec = float64(totalEvents-h.lastCount) / elapsed
 		if eventsPerSec < 0 {
 			eventsPerSec = 0
 		}
+		h.lastCount = totalEvents
+		h.lastStatsUpdate = now
 	}
 
 	stats := &LiveStats{
@@ -197,7 +210,7 @@ func (h *LiveHandler) GetLiveStats(c *gin.Context) {
 		EventsPerSec: eventsPerSec,
 		Alerts:       alertCount,
 		Uptime:       duration(uptime),
-		Timestamp:    time.Now(),
+		Timestamp:    now,
 	}
 
 	c.JSON(200, stats)

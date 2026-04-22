@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"unsafe"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"golang.org/x/sys/windows"
 )
 
 func (h *SystemHandler) GetProcesses(c *gin.Context) {
@@ -192,4 +194,30 @@ func (h *SystemHandler) GetScheduledTasks(c *gin.Context) {
 		Tasks: result,
 		Total: len(result),
 	})
+}
+
+func getWindowsSystemMemory() (totalGB float64, freeGB float64) {
+	type memoryStatusEx struct {
+		dwLength                uint32
+		dwMemoryLoad            uint32
+		ullTotalPhys            uint64
+		ullAvailPhys            uint64
+		ullTotalPageFile        uint64
+		ullAvailPageFile        uint64
+		ullTotalVirtual         uint64
+		ullAvailVirtual         uint64
+		ullAvailExtendedVirtual uint64
+	}
+
+	var msx memoryStatusEx
+	msx.dwLength = uint32(unsafe.Sizeof(msx))
+
+	ret, _, _ := windows.NewLazySystemDLL("kernel32.dll").NewProc("GlobalMemoryStatusEx").Call(
+		uintptr(unsafe.Pointer(&msx)),
+	)
+	if ret == 0 {
+		return 0, 0
+	}
+
+	return float64(msx.ullTotalPhys) / 1024 / 1024 / 1024, float64(msx.ullAvailPhys) / 1024 / 1024 / 1024
 }

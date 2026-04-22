@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,30 +23,35 @@ type SystemHandler struct {
 }
 
 type SystemInfo struct {
-	Hostname      string    `json:"hostname"`
-	Domain        string    `json:"domain"`
-	OSName        string    `json:"os_name"`
-	OSVersion     string    `json:"os_version"`
-	Architecture  string    `json:"architecture"`
-	IsAdmin       bool      `json:"is_admin"`
-	Timezone      string    `json:"timezone"`
-	LocalTime     time.Time `json:"local_time"`
-	UptimeSeconds int64     `json:"uptime_seconds"`
-	GoVersion     string    `json:"go_version"`
-	CPUCount      int       `json:"cpu_count"`
-	MemoryTotalGB float64   `json:"memory_total_gb"`
-	MemoryFreeGB  float64   `json:"memory_free_gb"`
+	Hostname            string    `json:"hostname"`
+	Domain              string    `json:"domain"`
+	OSName              string    `json:"os_name"`
+	OSVersion           string    `json:"os_version"`
+	Architecture        string    `json:"architecture"`
+	IsAdmin             bool      `json:"is_admin"`
+	Timezone            string    `json:"timezone"`
+	LocalTime           time.Time `json:"local_time"`
+	UptimeSeconds       int64     `json:"uptime_seconds"`
+	GoVersion           string    `json:"go_version"`
+	CPUCount            int       `json:"cpu_count"`
+	MemoryTotalGB       float64   `json:"memory_total_gb"`
+	MemoryFreeGB        float64   `json:"memory_free_gb"`
+	SystemMemoryTotalGB float64   `json:"system_memory_total_gb"`
+	SystemMemoryFreeGB  float64   `json:"system_memory_free_gb"`
+	GoMemoryUsageMB     float64   `json:"go_memory_usage_mb"`
 }
 
 type MetricsResponse struct {
-	TotalEvents   int64   `json:"total_events"`
-	TotalAlerts   int64   `json:"total_alerts"`
-	EventsPerMin  float64 `json:"events_per_minute"`
-	AlertsPerHour float64 `json:"alerts_per_hour"`
-	UptimeSeconds int64   `json:"uptime_seconds"`
-	CPUCount      int     `json:"cpu_count"`
-	GoVersion     string  `json:"go_version"`
-	MemoryUsageMB float64 `json:"memory_usage_mb"`
+	TotalEvents         int64   `json:"total_events"`
+	TotalAlerts         int64   `json:"total_alerts"`
+	EventsPerMin        float64 `json:"events_per_minute"`
+	AlertsPerHour       float64 `json:"alerts_per_hour"`
+	UptimeSeconds       int64   `json:"uptime_seconds"`
+	CPUCount            int     `json:"cpu_count"`
+	GoVersion           string  `json:"go_version"`
+	MemoryUsageMB       float64 `json:"memory_usage_mb"`
+	SystemMemoryTotalMB float64 `json:"system_memory_total_mb"`
+	SystemMemoryFreeMB  float64 `json:"system_memory_free_mb"`
 }
 
 type ProcessResponse struct {
@@ -149,6 +155,7 @@ type UserInfo struct {
 	Enabled  bool   `json:"enabled"`
 	FullName string `json:"full_name"`
 	Type     string `json:"type"`
+	HomeDir  string `json:"home_dir"`
 }
 
 type RegistryPersistenceResponse struct {
@@ -188,31 +195,59 @@ func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
 	isAdmin := false
 	domain := ""
 	osVersion := ""
+	sysMemTotalGB := 0.0
+	sysMemFreeGB := 0.0
+
 	if runtime.GOOS == "windows" {
 		domain = utils.GetDomain()
 		isAdmin = utils.IsAdmin()
 		osVersion = getWindowsVersionString()
+		sysMemTotalGB, sysMemFreeGB = getWindowsSystemMemory()
 	} else {
 		osVersion = "Linux Server Mode"
+		sysMemTotalGB, sysMemFreeGB = getLinuxSystemMemory()
 	}
 
 	info := SystemInfo{
-		Hostname:      hostname,
-		Domain:        domain,
-		OSName:        runtime.GOOS,
-		OSVersion:     osVersion,
-		Architecture:  runtime.GOARCH,
-		IsAdmin:       isAdmin,
-		Timezone:      getTimezone(),
-		LocalTime:     time.Now(),
-		UptimeSeconds: int64(time.Since(startTime).Seconds()),
-		GoVersion:     runtime.Version(),
-		CPUCount:      runtime.NumCPU(),
-		MemoryTotalGB: float64(m.Sys) / 1024 / 1024 / 1024,
-		MemoryFreeGB:  float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024,
+		Hostname:            hostname,
+		Domain:              domain,
+		OSName:              runtime.GOOS,
+		OSVersion:           osVersion,
+		Architecture:        runtime.GOARCH,
+		IsAdmin:             isAdmin,
+		Timezone:            getTimezone(),
+		LocalTime:           time.Now(),
+		UptimeSeconds:       int64(time.Since(startTime).Seconds()),
+		GoVersion:           runtime.Version(),
+		CPUCount:            runtime.NumCPU(),
+		MemoryTotalGB:       float64(m.Sys) / 1024 / 1024 / 1024,
+		MemoryFreeGB:        float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024,
+		SystemMemoryTotalGB: sysMemTotalGB,
+		SystemMemoryFreeGB:  sysMemFreeGB,
+		GoMemoryUsageMB:     float64(m.Alloc) / 1024 / 1024,
 	}
 
 	c.JSON(http.StatusOK, info)
+}
+
+func getLinuxSystemMemory() (totalGB float64, freeGB float64) {
+	if data, err := os.ReadFile("/proc/meminfo"); err == nil {
+		lines := strings.Split(string(data), "\n")
+		var memTotal, memFree int64
+		for _, line := range lines {
+			var key string
+			var value int64
+			if n, _ := fmt.Sscanf(line, "%s %d", &key, &value); n == 2 {
+				if key == "MemTotal:" {
+					memTotal = value * 1024
+				} else if key == "MemAvailable:" {
+					memFree = value * 1024
+				}
+			}
+		}
+		return float64(memTotal) / 1024 / 1024 / 1024, float64(memFree) / 1024 / 1024 / 1024
+	}
+	return 0, 0
 }
 
 func (h *SystemHandler) GetMetrics(c *gin.Context) {

@@ -26,3 +26,7 @@ func (h *SystemHandler) GetScheduledTasks(c *gin.Context) {
 		Total: 0,
 	})
 }
+
+func getWindowsSystemMemory() (totalGB float64, freeGB float64) {
+	return 0, 0
+}
