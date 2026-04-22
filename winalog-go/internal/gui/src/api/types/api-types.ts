@@ -415,7 +415,7 @@ export interface LiveStats {
   total_events: number /* int64 */;
   events_per_sec: number /* float64 */;
   alerts: number /* int64 */;
-  uptime: duration;
+  uptime: string;
   timestamp: string /* RFC3339 */;
 }
 

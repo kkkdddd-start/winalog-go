@@ -137,7 +137,7 @@ export const ErrCodeNotSupported: ErrorCode = "NOT_SUPPORTED";
 export interface WinError {
   Code: ErrorCode;
   Message: string;
-  Cause: error;
+  Cause: any;
 }
 export interface ParseError {
   WinError?: WinError;
@@ -150,7 +150,7 @@ export interface ValidationError {
   Value: any;
 }
 export interface AggregateError {
-  Errors: error[];
+  Errors: any[];
 }
 
 //////////
@@ -243,7 +243,7 @@ export interface CollectResult {
   TotalSize: number /* int64 */;
   Duration: number /* milliseconds */;
   Hash: string;
-  Errors: error[];
+  Errors: any[];
 }
 export interface CollectOptions {
   OutputPath: string;
@@ -348,8 +348,7 @@ export interface RuleMetadata {
   industry?: string;
   references?: string[];
 }
-export type Alias = AlertRule;
-export type Alias = CorrelationRule;
+export type RuleAlias = AlertRule | CorrelationRule;
 
 //////////
 // source: system.go

@@ -139,8 +139,6 @@ func (e *MonitorEngine) Stop() error {
 		e.dnsPoll = nil
 	}
 
-	close(e.eventCh)
-
 	e.mu.Lock()
 	e.subscribers = nil
 	e.ctx = nil

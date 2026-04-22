@@ -155,7 +155,11 @@ function Persistence() {
         })
       } else {
         const response = await persistenceAPI.listRules()
-        const rule = response.data.rules[0]
+        const rule = response.data.rules?.[0]
+        if (!rule) {
+          alert('当前没有可编辑的检测规则')
+          return
+        }
         setEditingRule({
           ...rule,
           suspicious_indicators: rule.patterns || [],
