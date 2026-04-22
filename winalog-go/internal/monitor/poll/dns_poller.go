@@ -97,7 +97,6 @@ func (dp *DNSPoller) Subscribe(ch chan *types.MonitorEvent) func() {
 		for i, c := range dp.subscribers {
 			if c == ch {
 				dp.subscribers = append(dp.subscribers[:i], dp.subscribers[i+1:]...)
-				close(ch)
 				break
 			}
 		}

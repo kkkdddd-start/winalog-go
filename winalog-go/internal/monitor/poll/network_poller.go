@@ -227,7 +227,6 @@ func (np *NetworkPoller) Subscribe(ch chan *types.MonitorEvent) func() {
 		for i, c := range np.subscribers {
 			if c == ch {
 				np.subscribers = append(np.subscribers[:i], np.subscribers[i+1:]...)
-				close(ch)
 				break
 			}
 		}

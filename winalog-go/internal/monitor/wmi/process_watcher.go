@@ -87,7 +87,6 @@ func (pw *ProcessWatcher) Subscribe(ch chan *types.MonitorEvent) func() {
 		for i, c := range pw.subscribers {
 			if c == ch {
 				pw.subscribers = append(pw.subscribers[:i], pw.subscribers[i+1:]...)
-				close(ch)
 				break
 			}
 		}
