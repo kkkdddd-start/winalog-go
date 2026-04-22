@@ -126,6 +126,11 @@ func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, 
 			c.cfg.IncludeUserassist = collectOpts.IncludeUserassist
 			c.cfg.IncludeUSNJournal = collectOpts.IncludeUSNJournal
 			c.cfg.IncludeShimCache = collectOpts.IncludeShimCache
+			c.cfg.IncludeTasks = collectOpts.IncludeTasks
+			c.cfg.IncludeLogs = collectOpts.IncludeLogs
+			c.cfg.IncludeNetwork = collectOpts.IncludeNetwork
+			c.cfg.IncludeDrivers = collectOpts.IncludeDrivers
+			c.cfg.IncludeUsers = collectOpts.IncludeUsers
 			c.cfg.DLLCollectionMode = collectOpts.DLLCollectionMode
 			c.cfg.SelectedPIDs = collectOpts.SelectedPIDs
 			if collectOpts.OutputPath != "" {
