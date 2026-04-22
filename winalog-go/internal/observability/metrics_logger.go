@@ -261,7 +261,7 @@ func extractMessageCategory(line string) string {
 	return "general"
 }
 
-func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileEntry, int, error) {
+func (m *MetricsLogger) ReadLines(offset, limit int, keyword, level, category string) ([]LogFileEntry, int, error) {
 	if m == nil {
 		return nil, 0, nil
 	}
@@ -293,6 +293,25 @@ func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileE
 		if keyword != "" && !strings.Contains(strings.ToLower(trimmed), strings.ToLower(keyword)) {
 			continue
 		}
+
+		if level != "" || category != "" {
+			var entry LogFileEntry
+			if err := json.Unmarshal([]byte(trimmed), &entry); err != nil {
+				entry = LogFileEntry{
+					Timestamp: extractTimestampFromLine(trimmed),
+					Level:     extractLevelFromLine(trimmed),
+					Category:  extractMessageCategory(trimmed),
+				}
+			}
+
+			if level != "" && entry.Level != level {
+				continue
+			}
+			if category != "" && entry.Category != category {
+				continue
+			}
+		}
+
 		filteredLines = append(filteredLines, trimmed)
 	}
 
@@ -330,7 +349,9 @@ func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileE
 			if entry.Timestamp == "" {
 				entry.Timestamp = extractTimestampFromLine(line)
 			}
-			entry.Category = extractMessageCategory(line)
+			if entry.Category == "" {
+				entry.Category = extractMessageCategory(line)
+			}
 		}
 		entries = append(entries, entry)
 	}

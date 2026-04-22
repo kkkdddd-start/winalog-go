@@ -19,6 +19,8 @@ func (h *LogsHandler) GetLogs(c *gin.Context) {
 	offsetStr := c.DefaultQuery("offset", "0")
 	limitStr := c.DefaultQuery("limit", "100")
 	keyword := c.Query("keyword")
+	level := c.Query("level")
+	category := c.Query("category")
 
 	offset, _ := strconv.Atoi(offsetStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -31,7 +33,7 @@ func (h *LogsHandler) GetLogs(c *gin.Context) {
 	}
 
 	metricsLogger := observability.GetMetricsLogger()
-	entries, total, err := metricsLogger.ReadLines(offset, limit, keyword)
+	entries, total, err := metricsLogger.ReadLines(offset, limit, keyword, level, category)
 	if err != nil {
 		log.Printf("[ERROR] GetLogs failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -39,11 +41,13 @@ func (h *LogsHandler) GetLogs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"entries": entries,
-		"total":   total,
-		"offset":  offset,
-		"limit":   limit,
-		"keyword": keyword,
+		"entries":  entries,
+		"total":    total,
+		"offset":   offset,
+		"limit":    limit,
+		"keyword":  keyword,
+		"level":    level,
+		"category": category,
 	})
 }
 

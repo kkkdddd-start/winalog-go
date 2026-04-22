@@ -63,8 +63,14 @@ function Logs() {
     setLoading(true)
     setError(null)
     
-    const keywordParam = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''
-    fetch(`/api/logs?offset=${newOffset}&limit=${limit}${keywordParam}`)
+    const params = new URLSearchParams()
+    params.append('offset', String(newOffset))
+    params.append('limit', String(limit))
+    if (keyword) params.append('keyword', keyword)
+    if (levelFilter && levelFilter !== 'all') params.append('level', levelFilter)
+    if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter)
+    
+    fetch(`/api/logs?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         setLogs(data.entries || [])
@@ -84,6 +90,14 @@ function Logs() {
 
   const handleLevelFilter = (level: string) => {
     setLevelFilter(level)
+    setOffset(0)
+    fetchLogs(0)
+  }
+
+  const handleCategoryFilter = (cat: string) => {
+    setCategoryFilter(cat)
+    setOffset(0)
+    fetchLogs(0)
   }
 
   const handleKeywordSearch = (e: React.FormEvent) => {
@@ -175,7 +189,7 @@ function Logs() {
           <span className="filter-label">{t('logs.filterByLevel')}:</span>
           <button 
             className={`filter-btn ${levelFilter === 'all' ? 'active' : ''}`}
-            onClick={() => { handleLevelFilter('all'); setCategoryFilter('all'); }}
+            onClick={() => { handleLevelFilter('all'); handleCategoryFilter('all'); }}
           >
             {t('logs.all')}
           </button>
@@ -208,43 +222,43 @@ function Logs() {
           <span className="filter-label">{t('logs.filterByCategory')}:</span>
           <button 
             className={`filter-btn ${categoryFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setCategoryFilter('all')}
+            onClick={() => handleCategoryFilter('all')}
           >
             {t('logs.all')}
           </button>
           <button 
             className={`filter-btn ${categoryFilter === 'metrics' ? 'active' : ''}`}
-            onClick={() => { setCategoryFilter('metrics'); setLevelFilter('all'); }}
+            onClick={() => { handleCategoryFilter('metrics'); handleLevelFilter('all'); }}
           >
             {t('logs.metrics')}
           </button>
           <button 
             className={`filter-btn ${categoryFilter === 'api' ? 'active' : ''}`}
-            onClick={() => { setCategoryFilter('api'); setLevelFilter('all'); }}
+            onClick={() => { handleCategoryFilter('api'); handleLevelFilter('all'); }}
           >
             API
           </button>
           <button 
             className={`filter-btn ${categoryFilter === 'startup' ? 'active' : ''}`}
-            onClick={() => { setCategoryFilter('startup'); setLevelFilter('all'); }}
+            onClick={() => { handleCategoryFilter('startup'); handleLevelFilter('all'); }}
           >
             {t('logs.startup')}
           </button>
           <button 
             className={`filter-btn ${categoryFilter === 'error' ? 'active' : ''}`}
-            onClick={() => { setCategoryFilter('error'); setLevelFilter('all'); }}
+            onClick={() => { handleCategoryFilter('error'); handleLevelFilter('all'); }}
           >
             {t('settings.error')}
           </button>
           <button 
             className={`filter-btn ${categoryFilter === 'panic' ? 'active' : ''}`}
-            onClick={() => { setCategoryFilter('panic'); setLevelFilter('all'); }}
+            onClick={() => { handleCategoryFilter('panic'); handleLevelFilter('all'); }}
           >
             {t('logs.panic')}
           </button>
           <button 
             className={`filter-btn ${categoryFilter === 'general' ? 'active' : ''}`}
-            onClick={() => { setCategoryFilter('general'); setLevelFilter('all'); }}
+            onClick={() => { handleCategoryFilter('general'); handleLevelFilter('all'); }}
           >
             {t('logs.general')}
           </button>
