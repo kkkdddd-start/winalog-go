@@ -113,6 +113,7 @@ export interface CollectParams {
     include_shimcache?: boolean
     include_amcache?: boolean
     include_userassist?: boolean
+    include_usn_journal?: boolean
     include_tasks?: boolean
     include_logs?: boolean
     include_processes?: boolean

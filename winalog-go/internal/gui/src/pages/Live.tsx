@@ -122,6 +122,44 @@ function Live() {
     }
   }
 
+  const exportToCSV = () => {
+    if (events.length === 0) return
+    const headers = ['ID', 'Timestamp', 'Level', 'Event ID', 'Source', 'Log Name', 'Computer', 'User', 'Message']
+    const csvContent = [
+      headers.join(','),
+      ...filteredEvents.map(event => [
+        event.id,
+        event.timestamp,
+        event.level,
+        event.event_id,
+        `"${(event.source || '').replace(/"/g, '""')}"`,
+        `"${(event.log_name || '').replace(/"/g, '""')}"`,
+        `"${(event.computer || '').replace(/"/g, '""')}"`,
+        `"${(event.user || '').replace(/"/g, '""')}"`,
+        `"${(event.message || '').replace(/"/g, '""')}"`
+      ].join(','))
+    ].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `live_events_${new Date().toISOString().slice(0,10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const getLogSourceStats = () => {
+    const stats: Record<string, number> = {}
+    filteredEvents.forEach(event => {
+      const source = event.log_name || 'Unknown'
+      stats[source] = (stats[source] || 0) + 1
+    })
+    return stats
+  }
+
+  const logSourceStats = getLogSourceStats()
+  const logSourceEntries = Object.entries(logSourceStats).sort((a, b) => b[1] - a[1])
+
   const filteredEvents = events.filter(event => {
     if (filter === 'all') return true
     return event.level?.toLowerCase() === filter
@@ -172,6 +210,9 @@ function Live() {
           <button className="btn-secondary" onClick={() => setEvents([])}>
             Clear
           </button>
+          <button className="btn-secondary" onClick={exportToCSV} disabled={events.length === 0}>
+            Export CSV ({events.length})
+          </button>
         </div>
       </div>
 
@@ -201,6 +242,19 @@ function Live() {
         <div className="stat-item">
           <span className="stat-label">Buffered</span>
           <span className="stat-value">{events.length}/100</span>
+        </div>
+        <div className="stat-item log-sources">
+          <span className="stat-label">Sources</span>
+          <div className="log-source-list">
+            {logSourceEntries.slice(0, 3).map(([source, count]) => (
+              <span key={source} className="log-source-badge">
+                {source}: {count}
+              </span>
+            ))}
+            {logSourceEntries.length > 3 && (
+              <span className="log-source-more">+{logSourceEntries.length - 3} more</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -520,6 +574,31 @@ function Live() {
         
         .event-ip {
           color: #f59e0b;
+        }
+        
+        .log-sources {
+          flex: 1;
+        }
+        
+        .log-source-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 4px;
+        }
+        
+        .log-source-badge {
+          background: rgba(0, 217, 255, 0.1);
+          border: 1px solid rgba(0, 217, 255, 0.3);
+          border-radius: 12px;
+          padding: 2px 8px;
+          font-size: 0.75rem;
+          color: #00d9ff;
+        }
+        
+        .log-source-more {
+          color: #888;
+          font-size: 0.75rem;
         }
       `}</style>
     </div>

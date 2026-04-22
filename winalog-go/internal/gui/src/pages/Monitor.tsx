@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useI18n } from '../locales/I18n'
 import { monitorAPI } from '../api'
+import { message } from 'antd'
 
 interface MonitorStats {
   is_running: boolean
@@ -96,6 +97,7 @@ function Monitor() {
     try {
       const response = await monitorAPI.getStats()
       const backendStats = response.data.stats
+      console.log('[MONITOR] fetchStats:', backendStats)
       setStats(backendStats)
       setStatsError(null)
       setConfig({
@@ -144,16 +146,24 @@ function Monitor() {
   }, [fetchEvents])
 
   const handleToggle = async (key: keyof MonitorConfig) => {
+    console.log('[MONITOR] handleToggle called:', key, 'current is_running:', stats?.is_running)
     if (!stats?.is_running) {
+      console.warn('Cannot toggle: monitor is not running, need to start monitor first')
+      message.warning('请先启动监控')
       return
     }
     const newConfig = { ...config, [key]: !config[key as keyof MonitorConfig] }
+    const oldConfig = { ...config }
+    console.log('[MONITOR] Toggling', key, 'from', oldConfig[key as keyof MonitorConfig], 'to', newConfig[key as keyof MonitorConfig])
+    setConfig(newConfig)
     try {
-      await monitorAPI.updateConfig(newConfig)
-      setConfig(newConfig)
+      const response = await monitorAPI.updateConfig(newConfig)
+      console.log('[MONITOR] updateConfig success:', response.data)
       fetchStats()
     } catch (error) {
       console.error('Failed to update config:', error)
+      setConfig(oldConfig)
+      message.error('配置更新失败')
     }
   }
 
@@ -206,14 +216,20 @@ function Monitor() {
       case 'process':
         return (
           <div className="event-summary-content">
-            <span className="event-main">{event.data.process_name || 'Unknown Process'}</span>
+            <span className="event-main">
+              {event.data.process_name || 'Unknown Process'}
+              {event.data.is_new && <span className="new-badge">NEW</span>}
+            </span>
             <span className="event-sub">PID: {event.data.pid || 'N/A'} | PPID: {event.data.ppid || 'N/A'}</span>
           </div>
         )
       case 'network':
         return (
           <div className="event-summary-content">
-            <span className="event-main">{event.data.protocol} Connection</span>
+            <span className="event-main">
+              {event.data.protocol} Connection
+              {event.data.is_new && <span className="new-badge">NEW</span>}
+            </span>
             <span className="event-sub">
               {event.data.source_ip}:{event.data.source_port} → {event.data.dest_ip}:{event.data.dest_port}
             </span>
@@ -222,8 +238,14 @@ function Monitor() {
       case 'dns':
         return (
           <div className="event-summary-content">
-            <span className="event-main">{event.data.query_name}</span>
-            <span className="event-sub">Type: {event.data.query_type} | TTL: {event.data.ttl || 'N/A'}</span>
+            <span className="event-main">
+              {event.data.query_name}
+              {event.data.is_new && <span className="new-badge">NEW</span>}
+              {event.data.is_ipv6 && <span className="ipv6-badge">IPv6</span>}
+            </span>
+            <span className="event-sub">
+              Type: {event.data.query_type_name || event.data.query_type} | TTL: {event.data.ttl || 'N/A'}
+            </span>
           </div>
         )
       default:
@@ -529,6 +551,10 @@ function Monitor() {
                             <span className="detail-label">{t('monitor.ppid')}</span>
                             <span className="detail-value">{event.data.ppid || 'N/A'}</span>
                           </div>
+                          <div className="detail-item">
+                            <span className="detail-label">{t('monitor.isNew')}</span>
+                            <span className="detail-value">{event.data.is_new ? 'Yes' : 'No'}</span>
+                          </div>
                           <div className="detail-item full-width">
                             <span className="detail-label">{t('monitor.path')}</span>
                             <span className="detail-value code">{event.data.path || 'N/A'}</span>
@@ -548,6 +574,10 @@ function Monitor() {
                           <div className="detail-item">
                             <span className="detail-label">{t('monitor.state')}</span>
                             <span className="detail-value">{event.data.state || 'N/A'}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">{t('monitor.isNew')}</span>
+                            <span className="detail-value">{event.data.is_new ? 'Yes' : 'No'}</span>
                           </div>
                           <div className="detail-item">
                             <span className="detail-label">{t('monitor.sourceIp')}</span>
@@ -575,11 +605,23 @@ function Monitor() {
                           </div>
                           <div className="detail-item">
                             <span className="detail-label">{t('monitor.queryType')}</span>
-                            <span className="detail-value">{event.data.query_type || 'N/A'}</span>
+                            <span className="detail-value">{event.data.query_type_name || event.data.query_type || 'N/A'}</span>
                           </div>
                           <div className="detail-item">
                             <span className="detail-label">{t('monitor.ttl')}</span>
                             <span className="detail-value">{event.data.ttl || 'N/A'}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">{t('monitor.isNew')}</span>
+                            <span className="detail-value">{event.data.is_new ? 'Yes' : 'No'}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">{t('monitor.isIPv6')}</span>
+                            <span className="detail-value">{event.data.is_ipv6 ? 'Yes' : 'No'}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">{t('monitor.section')}</span>
+                            <span className="detail-value">{event.data.section || 'N/A'}</span>
                           </div>
                           <div className="detail-item full-width">
                             <span className="detail-label">{t('monitor.results')}</span>

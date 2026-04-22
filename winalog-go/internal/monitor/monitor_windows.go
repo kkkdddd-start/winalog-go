@@ -16,7 +16,14 @@ func (e *MonitorEngine) createProcessWatcher() (interface {
 	Stop() error
 	Subscribe(ch chan *types.MonitorEvent) func()
 }, error) {
-	return wmi.NewProcessWatcher()
+	log.Printf("[MONITOR] Creating process watcher...")
+	watcher, err := wmi.NewProcessWatcher()
+	if err != nil {
+		log.Printf("[MONITOR] createProcessWatcher: failed to create watcher: %v", err)
+		return nil, err
+	}
+	log.Printf("[MONITOR] createProcessWatcher: created successfully")
+	return watcher, nil
 }
 
 func (e *MonitorEngine) createNetworkPoller(interval time.Duration) interface {

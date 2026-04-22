@@ -5,9 +5,10 @@ package poll
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"os/exec"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -15,15 +16,7 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
-type DNSEntry struct {
-	Name     string
-	Type     uint16
-	Data     string
-	TTL      uint32
-	TimeSeen time.Time
-}
-
-type DNSPoller struct {
+type DNSEventTracker struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	interval    time.Duration
@@ -36,11 +29,32 @@ type DNSPoller struct {
 	wg          sync.WaitGroup
 }
 
-func NewDNSPoller(interval time.Duration) *DNSPoller {
+type DNSEntry struct {
+	Name     string
+	Type     uint16
+	TypeName string
+	Data     string
+	TTL      uint32
+	Section  string
+	TimeSeen time.Time
+	IsIPv6   bool
+}
+
+type DnsCacheRecord struct {
+	Name     string `json:"Name"`
+	Type     uint16 `json:"Type"`
+	TypeName string `json:"TypeName"`
+	Data     string `json:"Data"`
+	TTL      uint32 `json:"TTL"`
+	Section  string `json:"Section"`
+	IPv6     bool   `json:"IPv6"`
+}
+
+func NewDNSPoller(interval time.Duration) *DNSEventTracker {
 	if interval <= 0 {
 		interval = 5 * time.Second
 	}
-	return &DNSPoller{
+	return &DNSEventTracker{
 		interval:    interval,
 		prevCache:   make(map[string]*DNSEntry),
 		events:      make(chan *types.MonitorEvent, 100),
@@ -49,7 +63,7 @@ func NewDNSPoller(interval time.Duration) *DNSPoller {
 	}
 }
 
-func (dp *DNSPoller) Start() error {
+func (dp *DNSEventTracker) Start() error {
 	dp.mu.Lock()
 	if dp.running {
 		dp.mu.Unlock()
@@ -64,7 +78,7 @@ func (dp *DNSPoller) Start() error {
 	return nil
 }
 
-func (dp *DNSPoller) Stop() error {
+func (dp *DNSEventTracker) Stop() error {
 	dp.mu.Lock()
 	if !dp.running {
 		dp.mu.Unlock()
@@ -87,7 +101,7 @@ func (dp *DNSPoller) Stop() error {
 	return nil
 }
 
-func (dp *DNSPoller) Subscribe(ch chan *types.MonitorEvent) func() {
+func (dp *DNSEventTracker) Subscribe(ch chan *types.MonitorEvent) func() {
 	dp.subMu.Lock()
 	defer dp.subMu.Unlock()
 	dp.subscribers = append(dp.subscribers, ch)
@@ -103,30 +117,33 @@ func (dp *DNSPoller) Subscribe(ch chan *types.MonitorEvent) func() {
 	}
 }
 
-func (dp *DNSPoller) run() {
+func (dp *DNSEventTracker) run() {
 	defer dp.wg.Done()
 	ticker := time.NewTicker(dp.interval)
 	defer ticker.Stop()
 
-	dp.pollDNS()
+	isFirstRun := true
+	dp.pollDNS(isFirstRun)
 
 	for {
 		select {
 		case <-dp.ctx.Done():
 			return
 		case <-ticker.C:
-			dp.pollDNS()
+			dp.pollDNS(false)
+			isFirstRun = false
 		}
 	}
 }
 
-func (dp *DNSPoller) pollDNS() {
+func (dp *DNSEventTracker) pollDNS(isFirstRun bool) {
 	currentCache := dp.getDNSCache()
 
 	dp.mu.Lock()
-	for name, entry := range currentCache {
-		if _, exists := dp.prevCache[name]; !exists {
-			event := dp.createDNSEvent(entry)
+	for key, entry := range currentCache {
+		_, exists := dp.prevCache[key]
+		if isFirstRun || !exists {
+			event := dp.createDNSEvent(entry, !isFirstRun && !exists)
 			if event != nil {
 				dp.publishEvent(event)
 			}
@@ -136,120 +153,133 @@ func (dp *DNSPoller) pollDNS() {
 	dp.mu.Unlock()
 }
 
-func (dp *DNSPoller) getDNSCache() map[string]*DNSEntry {
+func (dp *DNSEventTracker) getDNSCache() map[string]*DNSEntry {
 	cache := make(map[string]*DNSEntry)
 
 	entries, err := dp.queryDNSCache()
 	if err != nil {
+		log.Printf("[DNS] Failed to query DNS cache: %v", err)
 		return cache
 	}
 
+	log.Printf("[DNS] DNS cache query returned %d entries", len(entries))
+
 	for _, entry := range entries {
-		key := fmt.Sprintf("%s-%d", entry.Name, entry.Type)
+		key := fmt.Sprintf("%s-%d-%s", entry.Name, entry.Type, entry.Data)
 		cache[key] = entry
 	}
 
 	return cache
 }
 
-func (dp *DNSPoller) queryDNSCache() ([]*DNSEntry, error) {
-	cmd := exec.Command("ipconfig", "/displaydns")
+func (dp *DNSEventTracker) queryDNSCache() ([]*DNSEntry, error) {
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", `
+		[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+		$cache = Get-DnsClientCache -ErrorAction SilentlyContinue
+		if ($cache) {
+			$results = @()
+			foreach ($entry in $cache) {
+				$typeName = switch ($entry.Type) {
+					1 { "A" }
+					28 { "AAAA" }
+					5 { "CNAME" }
+					15 { "MX" }
+					2 { "NS" }
+					12 { "PTR" }
+					6 { "SOA" }
+					16 { "TXT" }
+					33 { "SRV" }
+					35 { "NAPTR" }
+					31 { "RRSIG" }
+					24 { "IPSECKEY" }
+					39 { "DS" }
+					40 { "NSEC" }
+					41 { "DNSKEY" }
+					46 { "RRSIG" }
+					47 { "NSEC" }
+					48 { "DNSKEY" }
+					50 { "NSEC3" }
+					51 { "NSEC3PARAM" }
+					52 { "TLSA" }
+					53 { "CDS" }
+					55 { "CDNSKEY" }
+					32768 { "TA" }
+					32769 { "DLV" }
+					default { [string]$entry.Type }
+				}
+				$ipv6 = $entry.Data -match ':'
+				$results += [PSCustomObject]@{
+					Name = $entry.Entry
+					Type = $entry.Type
+					TypeName = $typeName
+					Data = $entry.Data
+					TTL = $entry.TimeToLive
+					Section = $entry.Section.ToString()
+					IPv6 = $ipv6
+				}
+			}
+			$results | ConvertTo-Json -Compress
+		}
+	`)
+
 	var out bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = nil
+
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("failed to execute ipconfig: %w", err)
+		return nil, fmt.Errorf("failed to execute DNS query: %w", err)
 	}
 
-	return parseDNSOutput(out.String()), nil
+	return dp.parseDNSOutput(out.String()), nil
 }
 
-var (
-	recordNameRegex = regexp.MustCompile(`Record Name\s+.\s+(.+)`)
-	recordTypeRegex = regexp.MustCompile(`Record Type\s+.\s+(\d+)`)
-	dataRegex       = regexp.MustCompile(`Data Length\s+.\s+(\d+)\s+.*\n.*IP Address\s+.\s+(.+)`)
-)
-
-func parseDNSOutput(output string) []*DNSEntry {
+func (dp *DNSEventTracker) parseDNSOutput(output string) []*DNSEntry {
 	entries := make([]*DNSEntry, 0)
-	if output == "" {
+	if output == "" || output == "null" {
 		return entries
 	}
 
-	lines := strings.Split(output, "\n")
+	output = strings.TrimSpace(output)
 
-	var currentName string
-	var currentType uint16
-	var currentData []string
+	var records []DnsCacheRecord
 
-	flushEntry := func() {
-		if currentName != "" && len(currentData) > 0 {
-			for _, ip := range currentData {
-				if ip != "" && ip != "::" && !strings.Contains(ip, "::") && !strings.HasPrefix(ip, "ff") {
-					entries = append(entries, &DNSEntry{
-						Name:     currentName,
-						Type:     currentType,
-						Data:     ip,
-						TTL:      0,
-						TimeSeen: time.Now(),
-					})
-				}
-			}
+	if strings.HasPrefix(output, "[") {
+		if err := json.Unmarshal([]byte(output), &records); err != nil {
+			log.Printf("[DNS] Failed to parse DNS JSON array: %v", err)
+			return entries
 		}
-		currentName = ""
-		currentType = 0
-		currentData = nil
+	} else if strings.HasPrefix(output, "{") {
+		var record DnsCacheRecord
+		if err := json.Unmarshal([]byte(output), &record); err != nil {
+			log.Printf("[DNS] Failed to parse DNS JSON object: %v", err)
+			return entries
+		}
+		records = append(records, record)
+	} else {
+		log.Printf("[DNS] Unexpected DNS output format")
+		return entries
 	}
 
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
+	for _, r := range records {
+		if r.Name == "" || r.Data == "" {
 			continue
 		}
-
-		if strings.Contains(line, "No DNS Records") {
-			continue
-		}
-
-		if strings.Contains(line, "------------------------------") {
-			flushEntry()
-			continue
-		}
-
-		if matches := recordNameRegex.FindStringSubmatch(line); len(matches) == 2 {
-			flushEntry()
-			currentName = strings.TrimSpace(matches[1])
-			continue
-		}
-
-		if matches := recordTypeRegex.FindStringSubmatch(line); len(matches) == 2 {
-			var typeVal int
-			if _, err := fmt.Sscanf(matches[1], "%d", &typeVal); err == nil {
-				currentType = uint16(typeVal)
-			}
-			continue
-		}
-
-		lowerLine := strings.ToLower(line)
-		if strings.Contains(lowerLine, "record type") || strings.Contains(lowerLine, "data length") {
-			continue
-		}
-
-		if strings.Contains(lowerLine, "ip address") || strings.Contains(lowerLine, "ipv6") {
-			parts := strings.Split(line, ":")
-			if len(parts) >= 2 {
-				ip := strings.TrimSpace(parts[len(parts)-1])
-				if ip != "" && ip != "::" {
-					currentData = append(currentData, ip)
-				}
-			}
-		}
+		entries = append(entries, &DNSEntry{
+			Name:     r.Name,
+			Type:     r.Type,
+			TypeName: r.TypeName,
+			Data:     r.Data,
+			TTL:      r.TTL,
+			Section:  r.Section,
+			TimeSeen: time.Now(),
+			IsIPv6:   r.IPv6,
+		})
 	}
 
-	flushEntry()
 	return entries
 }
 
-func (dp *DNSPoller) createDNSEvent(entry *DNSEntry) *types.MonitorEvent {
+func (dp *DNSEventTracker) createDNSEvent(entry *DNSEntry, isNew bool) *types.MonitorEvent {
 	severity := types.SeverityInfo
 
 	for _, indicator := range types.SuspiciousDNSIndicators {
@@ -259,19 +289,27 @@ func (dp *DNSPoller) createDNSEvent(entry *DNSEntry) *types.MonitorEvent {
 		}
 	}
 
+	isPrivate := false
 	if strings.HasPrefix(entry.Data, "127.") ||
 		strings.HasPrefix(entry.Data, "192.168.") ||
-		strings.HasPrefix(entry.Data, "10.") {
-		if severity == types.SeverityInfo {
-			severity = types.SeverityLow
-		}
+		strings.HasPrefix(entry.Data, "10.") ||
+		strings.HasPrefix(entry.Data, "172.") {
+		isPrivate = true
+	}
+
+	if isPrivate && severity == types.SeverityInfo {
+		severity = types.SeverityLow
 	}
 
 	data := make(map[string]interface{})
 	data["query_name"] = entry.Name
 	data["query_type"] = entry.Type
+	data["query_type_name"] = entry.TypeName
 	data["results"] = []string{entry.Data}
 	data["ttl"] = entry.TTL
+	data["is_new"] = isNew
+	data["is_ipv6"] = entry.IsIPv6
+	data["section"] = entry.Section
 
 	return &types.MonitorEvent{
 		ID:        fmt.Sprintf("dns-%s-%d-%d", entry.Name, entry.Type, time.Now().UnixNano()),
@@ -282,7 +320,7 @@ func (dp *DNSPoller) createDNSEvent(entry *DNSEntry) *types.MonitorEvent {
 	}
 }
 
-func (dp *DNSPoller) publishEvent(event *types.MonitorEvent) {
+func (dp *DNSEventTracker) publishEvent(event *types.MonitorEvent) {
 	dp.subMu.RLock()
 	defer dp.subMu.RUnlock()
 

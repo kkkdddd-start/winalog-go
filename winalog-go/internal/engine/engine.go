@@ -1,8 +1,12 @@
 package engine
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -89,10 +93,33 @@ func (e *Engine) Import(ctx context.Context, req *ImportRequest, progressFn func
 	}
 
 	files := collectFiles(req.Paths, e.importCfg.SkipPatterns)
-	if len(files) == 0 {
-		return nil, fmt.Errorf("no files found to import")
+	fmt.Printf("[IMPORT] collectFiles returned %d files from %d input paths\n", len(files), len(req.Paths))
+
+	availableFiles, missingFiles := checkAvailableFiles(files)
+	fmt.Printf("[IMPORT] checkAvailableFiles: %d available, %d missing\n", len(availableFiles), len(missingFiles))
+	if len(missingFiles) > 0 {
+		fmt.Printf("[IMPORT] Warning: %d files do not exist:\n", len(missingFiles))
+		for _, f := range missingFiles {
+			if len(missingFiles) <= 10 {
+				fmt.Printf("  - %s\n", f)
+			}
+		}
+		if len(missingFiles) > 10 {
+			fmt.Printf("  ... and %d more\n", len(missingFiles)-10)
+		}
 	}
 
+	if len(availableFiles) == 0 {
+		var errMsg string
+		if len(missingFiles) > 0 {
+			errMsg = fmt.Sprintf("no valid files found to import (checked %d paths, %d exist)", len(files), len(availableFiles))
+		} else {
+			errMsg = fmt.Errorf("no files found with valid extension (.evtx, .etl, .csv, .log, .txt) in %d paths", len(files)).Error()
+		}
+		return nil, fmt.Errorf(errMsg)
+	}
+
+	files = availableFiles
 	result.TotalFiles = len(files)
 
 	workerPool := make(chan struct{}, e.importCfg.Workers)
@@ -246,6 +273,47 @@ type ImportRequest struct {
 func collectFiles(paths []string, skipPatterns []string) []string {
 	var files []string
 	for _, path := range paths {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			continue
+		}
+
+		fi, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+
+		if fi.IsDir() {
+			dirFiles := scanDirectory(path, skipPatterns)
+			files = append(files, dirFiles...)
+		} else {
+			ext := strings.ToLower(filepath.Ext(path))
+			if ext == ".evtx" || ext == ".etl" || ext == ".csv" || ext == ".log" || ext == ".txt" {
+				if !shouldSkip(path, skipPatterns) {
+					files = append(files, path)
+				}
+			}
+		}
+	}
+	return files
+}
+
+func scanDirectory(dir string, skipPatterns []string) []string {
+	var files []string
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return files
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subFiles := scanDirectory(filepath.Join(dir, entry.Name()), skipPatterns)
+			files = append(files, subFiles...)
+			continue
+		}
+
+		path := filepath.Join(dir, entry.Name())
 		ext := strings.ToLower(filepath.Ext(path))
 		if ext == ".evtx" || ext == ".etl" || ext == ".csv" || ext == ".log" || ext == ".txt" {
 			if !shouldSkip(path, skipPatterns) {
@@ -253,7 +321,29 @@ func collectFiles(paths []string, skipPatterns []string) []string {
 			}
 		}
 	}
+
 	return files
+}
+
+func checkAvailableFiles(paths []string) ([]string, []string) {
+	var available []string
+	var missing []string
+	for _, path := range paths {
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext == ".evtx" || ext == ".etl" || ext == ".csv" || ext == ".log" || ext == ".txt" {
+			if fileExists(path) {
+				available = append(available, path)
+			} else {
+				missing = append(missing, path)
+			}
+		}
+	}
+	return available, missing
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func shouldSkip(path string, patterns []string) bool {
@@ -263,6 +353,125 @@ func shouldSkip(path string, patterns []string) bool {
 		}
 	}
 	return false
+}
+
+type LogChannel struct {
+	Name     string `json:"Name"`
+	LogPath  string `json:"LogPath"`
+	IsSystem bool   `json:"IsSystem"`
+}
+
+func GetSystemLogChannels() ([]LogChannel, error) {
+	var channels []LogChannel
+
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", `
+		[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+		$channels = @()
+		
+		$basePath = "HKLM:\SYSTEM\CurrentControlSet\Services\EventLog"
+		try {
+			Get-ChildItem $basePath -ErrorAction SilentlyContinue | ForEach-Object {
+				$logName = $_.Name -replace '.*\\', ''
+				$logPath = ""
+				$isSystem = $false
+				
+				try {
+					$filePath = (Get-ItemProperty -Path $_.PSPath -Name "File" -ErrorAction SilentlyContinue).File
+					if ($filePath) { $logPath = $filePath }
+				} catch {}
+				
+				if ($logPath -eq "" -or $logPath -eq "%SystemRoot%\System32\winevt\Logs\$logName.evtx") {
+					$logPath = Join-Path $env:SystemRoot "System32\winevt\Logs\$logName.evtx"
+				}
+				
+				$isSystem = $logName -match "^(Application|Security|System|Setup|Windows PowerShell)$"
+				
+				$channels += [PSCustomObject]@{
+					Name = $logName
+					LogPath = $logPath
+					IsSystem = $isSystem
+				}
+			}
+		} catch {}
+		
+		$channels | ConvertTo-Json -Compress
+	`)
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = nil
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to get log channels: %w", err)
+	}
+
+	output := strings.TrimSpace(out.String())
+	if output == "" || output == "null" {
+		return channels, nil
+	}
+
+	var jsonChannels []map[string]interface{}
+	if strings.HasPrefix(output, "[") {
+		if err := json.Unmarshal([]byte(output), &jsonChannels); err != nil {
+			return nil, fmt.Errorf("failed to parse channels JSON: %w", err)
+		}
+	} else if strings.HasPrefix(output, "{") {
+		var ch map[string]interface{}
+		if err := json.Unmarshal([]byte(output), &ch); err != nil {
+			return nil, fmt.Errorf("failed to parse channel JSON: %w", err)
+		}
+		jsonChannels = append(jsonChannels, ch)
+	}
+
+	for _, ch := range jsonChannels {
+		name, _ := ch["Name"].(string)
+		logPath, _ := ch["LogPath"].(string)
+		isSystem, _ := ch["IsSystem"].(bool)
+
+		if name != "" && logPath != "" {
+			channels = append(channels, LogChannel{
+				Name:     name,
+				LogPath:  logPath,
+				IsSystem: isSystem,
+			})
+		}
+	}
+
+	return channels, nil
+}
+
+func GetLogChannelsFromDirectory() ([]LogChannel, error) {
+	var channels []LogChannel
+
+	logDir := filepath.Join(os.Getenv("SystemRoot"), "System32", "winevt", "Logs")
+
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read log directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if !strings.HasSuffix(strings.ToLower(name), ".evtx") {
+			continue
+		}
+
+		channelName := strings.TrimSuffix(name, ".evtx")
+		channelName = strings.ReplaceAll(channelName, "%2F", "/")
+
+		logPath := filepath.Join(logDir, name)
+
+		channels = append(channels, LogChannel{
+			Name:    channelName,
+			LogPath: logPath,
+		})
+	}
+
+	return channels, nil
 }
 
 func (e *Engine) Search(req *types.SearchRequest) (*types.SearchResponse, error) {

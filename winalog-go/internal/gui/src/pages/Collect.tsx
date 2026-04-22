@@ -37,6 +37,7 @@ interface LogChannel {
   name: string
   category: string
   enabled: boolean
+  log_path?: string
 }
 
 interface ExclusionPattern {
@@ -219,6 +220,7 @@ function Collect() {
           name: ch.name,
           category: ch.category || categorizeChannel(ch.name),
           enabled: existing?.enabled ?? isDefaultChannel(ch.name),
+          log_path: ch.log_path || channelToFilePath(ch.name),
         }
       })
 
@@ -341,9 +343,11 @@ function Collect() {
     return `${basePath}${normalizedName}.evtx`
   }
 
-  // 获取选中通道对应的文件路径
+  // 获取选中通道对应的文件路径（使用后端返回的真实路径）
   const getSelectedChannelPaths = (): string[] => {
-    return channels.filter(ch => ch.enabled).map(ch => channelToFilePath(ch.name))
+    return channels
+      .filter(ch => ch.enabled && ch.log_path)
+      .map(ch => ch.log_path!)
   }
 
   // 导入选中通道的日志
@@ -428,6 +432,7 @@ ${response.data.errors?.length > 0 ? `- 错误: ${response.data.errors.length} �
           include_shimcache: collectOptions.includeShimcache,
           include_amcache: collectOptions.includeAmcache,
           include_userassist: collectOptions.includeUserassist,
+          include_usn_journal: collectOptions.includeUSNJournal,
           include_logs: true,
           compress: collectOptions.compress,
           calculate_hash: collectOptions.calculateHash,

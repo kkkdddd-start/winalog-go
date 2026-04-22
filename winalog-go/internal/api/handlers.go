@@ -793,7 +793,9 @@ type ImportRequest struct {
 
 func (h *ImportHandler) ImportLogs(c *gin.Context) {
 	var req ImportRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[IMPORT] Failed to parse request: %v", err)
 		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
 		return
 	}
@@ -801,6 +803,16 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 	if len(req.Files) == 0 {
 		c.JSON(400, ErrorResponse{Error: "no files provided", Code: types.ErrCodeInvalidRequest})
 		return
+	}
+
+	log.Printf("[IMPORT] Received import request with %d files", len(req.Files))
+	for i, f := range req.Files {
+		if i < 5 {
+			log.Printf("[IMPORT]   file[%d]: %s", i, f)
+		} else if i == 5 {
+			log.Printf("[IMPORT]   ... and %d more", len(req.Files)-5)
+			break
+		}
 	}
 
 	eng := engine.NewEngine(h.db)
@@ -813,9 +825,13 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 	ctx := c.Request.Context()
 	result, err := eng.Import(ctx, importReq, nil)
 	if err != nil {
+		log.Printf("[IMPORT] Import failed: %v", err)
 		c.JSON(500, ErrorResponse{Error: err.Error()})
 		return
 	}
+
+	log.Printf("[IMPORT] Import completed: %d files imported, %d failed, %d events",
+		result.FilesImported, result.FilesFailed, result.EventsImported)
 
 	if req.AlertOnImport && h.alertEngine != nil {
 		go func() {

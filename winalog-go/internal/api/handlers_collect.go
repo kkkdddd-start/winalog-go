@@ -41,6 +41,7 @@ func SetupCollectRoutes(r *gin.Engine, collectHandler *CollectHandler) {
 type LogChannel struct {
 	Name     string `json:"name"`
 	Category string `json:"category"`
+	LogPath  string `json:"log_path,omitempty"`
 }
 
 // CollectChannels 获取可用的日志通道
@@ -51,11 +52,22 @@ func (h *CollectHandler) CollectChannels(c *gin.Context) {
 		channels = getDefaultChannels()
 	}
 
+	channelFilePaths, _ := collectors.GetChannelFilePaths()
+	filePathMap := make(map[string]string)
+	for _, ch := range channelFilePaths {
+		filePathMap[ch.Name] = ch.LogPath
+	}
+
 	response := make([]LogChannel, 0, len(channels))
 	for _, ch := range channels {
+		logPath := filePathMap[ch]
+		if logPath == "" {
+			logPath = filepath.Join(os.Getenv("SystemRoot"), "System32", "winevt", "Logs", ch+".evtx")
+		}
 		response = append(response, LogChannel{
 			Name:     ch,
 			Category: collectors.CategorizeChannel(ch),
+			LogPath:  logPath,
 		})
 	}
 
@@ -106,6 +118,7 @@ type LogCollectOptions struct {
 	IncludeShimCache  bool   `json:"include_shimcache"`
 	IncludeAmcache    bool   `json:"include_amcache"`
 	IncludeUserassist bool   `json:"include_userassist"`
+	IncludeUSNJournal bool   `json:"include_usn_journal"`
 	IncludeTasks      bool   `json:"include_tasks"`
 	IncludeLogs       bool   `json:"include_logs"`
 	IncludeProcesses  bool   `json:"include_processes"`
@@ -167,6 +180,7 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 	opts.IncludeShimCache = req.Options.IncludeShimCache
 	opts.IncludeAmcache = req.Options.IncludeAmcache
 	opts.IncludeUserassist = req.Options.IncludeUserassist
+	opts.IncludeUSNJournal = req.Options.IncludeUSNJournal
 	opts.IncludeTasks = req.Options.IncludeTasks
 	opts.IncludeLogs = req.Options.IncludeLogs
 	opts.IncludeProcessSig = req.Options.IncludeProcesses

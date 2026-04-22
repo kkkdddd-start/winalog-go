@@ -102,6 +102,7 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 
 	processCount := 0
 	moduleCount := 0
+	skipCount := 0
 	errorCount := 0
 
 	for {
@@ -109,11 +110,11 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 		processName := windows.UTF16ToString(pe.ExeFile[:])
 		processCount++
 
-		modules, err := enumProcessModules(pid)
+		modules, err := enumProcessModules(pid, processName)
 		if err != nil {
 			errorCount++
-			if errorCount <= 5 {
-				log.Printf("[DEBUG] [DLL] enumProcessModules(pid=%d, name=%s) failed: %v", pid, processName, err)
+			if errorCount <= 3 {
+				log.Printf("[DEBUG] [DLL] enumProcessModules(pid=%d, name=%s) error: %v", pid, processName, err)
 			}
 		} else if len(modules) > 0 {
 			for _, mod := range modules {
@@ -122,6 +123,8 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 				dlls = append(dlls, mod)
 				moduleCount++
 			}
+		} else {
+			skipCount++
 		}
 
 		err = windows.Process32Next(snapshot, &pe)
@@ -130,38 +133,70 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 		}
 	}
 
-	log.Printf("[DEBUG] [DLL] ListLoadedDLLs: processes=%d, modules=%d, errors=%d", processCount, moduleCount, errorCount)
+	log.Printf("[INFO] [DLL] ListLoadedDLLs: processes=%d, modules=%d, skipped=%d, errors=%d",
+		processCount, moduleCount, skipCount, errorCount)
+
+	if moduleCount == 0 && processCount > 0 {
+		log.Printf("[WARN] [DLL] No modules collected - possible permission or architecture issue (32-bit vs 64-bit)")
+	}
+
 	return dlls, nil
 }
 
-func enumProcessModules(pid int) ([]DLLModuleInfo, error) {
+func enumProcessModules(pid int, processName string) ([]DLLModuleInfo, error) {
 	modules := make([]DLLModuleInfo, 0)
 
 	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_VM_READ, false, uint32(pid))
 	if err != nil {
-		return modules, nil
+		return modules, fmt.Errorf("OpenProcess failed: %w", err)
 	}
 	defer windows.CloseHandle(hProcess)
 
 	var moduleCount uint32
 	err = windows.EnumProcessModules(hProcess, nil, 0, &moduleCount)
 	if err != nil {
+		return modules, fmt.Errorf("EnumProcessModules (size) failed: %w", err)
+	}
+
+	if moduleCount == 0 {
 		return modules, nil
 	}
 
 	handleSize := unsafe.Sizeof(windows.Handle(0))
-	moduleHandles := make([]windows.Handle, moduleCount/uint32(handleSize))
-	err = windows.EnumProcessModules(hProcess, &moduleHandles[0], uint32(len(moduleHandles))*uint32(handleSize), &moduleCount)
-	if err != nil {
-		return modules, nil
+	numModules := int(moduleCount) / int(handleSize)
+	if numModules <= 0 {
+		numModules = 1
 	}
 
-	for _, hModule := range moduleHandles {
-		var modName [windows.MAX_PATH]uint16
-		windows.GetModuleBaseName(hProcess, hModule, &modName[0], uint32(len(modName)))
+	moduleHandles := make([]windows.Handle, numModules)
+	var bytesNeeded uint32
+	err = windows.EnumProcessModules(hProcess, &moduleHandles[0], uint32(len(moduleHandles))*uint32(handleSize), &bytesNeeded)
+	if err != nil {
+		return modules, fmt.Errorf("EnumProcessModules (enum) failed: %w", err)
+	}
 
-		pathBuffer := make([]uint16, windows.MAX_PATH)
-		windows.GetModuleFileNameEx(hProcess, hModule, &pathBuffer[0], uint32(len(pathBuffer)))
+	actualModuleCount := int(bytesNeeded) / int(handleSize)
+	if actualModuleCount > numModules {
+		actualModuleCount = numModules
+	}
+
+	for i := 0; i < actualModuleCount; i++ {
+		hModule := moduleHandles[i]
+		if hModule == 0 {
+			continue
+		}
+
+		var modName [windows.MAX_PATH]uint16
+		err = windows.GetModuleBaseName(hProcess, hModule, &modName[0], uint32(len(modName)))
+		if err != nil {
+			continue
+		}
+
+		var pathBuffer [windows.MAX_PATH]uint16
+		err = windows.GetModuleFileNameEx(hProcess, hModule, &pathBuffer[0], uint32(len(pathBuffer)))
+		if err != nil {
+			continue
+		}
 
 		dll := DLLModuleInfo{
 			Name: windows.UTF16ToString(modName[:]),
@@ -177,7 +212,7 @@ func enumProcessModules(pid int) ([]DLLModuleInfo, error) {
 }
 
 func GetProcessDLLs(pid int) ([]DLLModuleInfo, error) {
-	return enumProcessModules(pid)
+	return enumProcessModules(pid, fmt.Sprintf("PID_%d", pid))
 }
 
 func GetDLLVersion(dllPath string) string {

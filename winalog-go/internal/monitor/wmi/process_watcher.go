@@ -98,23 +98,28 @@ func (pw *ProcessWatcher) run() {
 	defer ticker.Stop()
 
 	var lastProcesses = make(map[uint32]string)
+	isFirstRun := true
 
 	for {
 		select {
 		case <-pw.ctx.Done():
 			return
 		case <-ticker.C:
-			pw.checkNewProcesses(lastProcesses)
+			pw.checkNewProcesses(lastProcesses, isFirstRun)
+			isFirstRun = false
 		}
 	}
 }
 
-func (pw *ProcessWatcher) checkNewProcesses(lastProcs map[uint32]string) {
+func (pw *ProcessWatcher) checkNewProcesses(lastProcs map[uint32]string, isFirstRun bool) {
 	var processes []Win32_Process
 	err := wmi.Query("SELECT Name, ProcessID, ParentProcessID, ExecutablePath FROM Win32_Process", &processes)
 	if err != nil {
+		log.Printf("[PROCESS] WMI query failed: %v", err)
 		return
 	}
+
+	log.Printf("[PROCESS] WMI query returned %d processes (first_run=%v)", len(processes), isFirstRun)
 
 	currentProcs := make(map[uint32]string)
 	for _, p := range processes {
@@ -122,8 +127,9 @@ func (pw *ProcessWatcher) checkNewProcesses(lastProcs map[uint32]string) {
 	}
 
 	for pid, name := range currentProcs {
-		if _, exists := lastProcs[pid]; !exists {
-			event := pw.createProcessEvent(pid, name)
+		_, exists := lastProcs[pid]
+		if isFirstRun || !exists {
+			event := pw.createProcessEvent(pid, name, !isFirstRun && !exists)
 			if event != nil {
 				pw.publishEvent(event)
 			}
@@ -131,7 +137,7 @@ func (pw *ProcessWatcher) checkNewProcesses(lastProcs map[uint32]string) {
 	}
 }
 
-func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string) *types.MonitorEvent {
+func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string, isNew bool) *types.MonitorEvent {
 	var processes []Win32_Process
 	query := fmt.Sprintf("WHERE ProcessID = %d", pid)
 	err := wmi.Query(query, &processes)
@@ -166,6 +172,7 @@ func (pw *ProcessWatcher) createProcessEvent(pid uint32, name string) *types.Mon
 	data["path"] = eventData.Path
 	data["command_line"] = eventData.CommandLine
 	data["user"] = eventData.User
+	data["is_new"] = isNew
 
 	return &types.MonitorEvent{
 		ID:        fmt.Sprintf("proc-%d-%d", p.ProcessID, time.Now().UnixNano()),

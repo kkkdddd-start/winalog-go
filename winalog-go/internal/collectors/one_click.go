@@ -55,6 +55,27 @@ type OneClickResult struct {
 	CollectedItems map[string]int    `json:"collected_items"`
 	Hashes         map[string]string `json:"hashes,omitempty"`
 	Errors         []string          `json:"errors,omitempty"`
+	Summary        CollectionSummary `json:"summary"`
+}
+
+type CollectionSummary struct {
+	ComputerName   string           `json:"computer_name"`
+	CollectionTime string           `json:"collection_time"`
+	RequestedItems []CollectionItem `json:"requested_items"`
+	CollectedItems []CollectionItem `json:"collected_items"`
+	FailedItems    []CollectionItem `json:"failed_items"`
+	TotalRequested int              `json:"total_requested"`
+	TotalCollected int              `json:"total_collected"`
+	TotalFailed    int              `json:"total_failed"`
+}
+
+type CollectionItem struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	Description string `json:"description,omitempty"`
+	Success     bool   `json:"success"`
+	Error       string `json:"error,omitempty"`
+	Path        string `json:"path,omitempty"`
 }
 
 type CollectProgressCallback interface {
@@ -137,9 +158,18 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		Success:        true,
 		CollectedItems: make(map[string]int),
 		Errors:         make([]string, 0),
+		Summary: CollectionSummary{
+			CollectionTime: startTime.Format("2006-01-02 15:04:05"),
+			RequestedItems: make([]CollectionItem, 0),
+			CollectedItems: make([]CollectionItem, 0),
+			FailedItems:    make([]CollectionItem, 0),
+		},
 	}
 
 	log.Printf("[INFO] One-click collection started")
+
+	hostname, _ := os.Hostname()
+	result.Summary.ComputerName = hostname
 
 	if c.cfg.OutputPath == "" {
 		execPath, err := os.Executable()
@@ -164,153 +194,61 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	var allErrors []string
 	var collectedItems = make(map[string]int)
 
-	if c.cfg.IncludeSystemInfo {
-		log.Printf("[INFO] Collecting system info...")
-		if err := c.collectSystemInfoTo(tempDir); err != nil {
-			log.Printf("[ERROR] System info collection failed: %v", err)
-			allErrors = append(allErrors, fmt.Sprintf("systemInfo: %v", err))
-		} else {
-			log.Printf("[INFO] System info collected successfully")
-			collectedItems["systemInfo"] = 1
+	itemDefinitions := []struct {
+		name        string
+		displayName string
+		description string
+		requested   bool
+		collectFn   func() error
+	}{
+		{"systemInfo", "系统信息", "收集系统基本信息", c.cfg.IncludeSystemInfo, func() error { return c.collectSystemInfoTo(tempDir) }},
+		{"registry", "注册表", "收集注册表数据", c.cfg.IncludeRegistry, func() error { return c.CollectRegistry(ctx, tempDir) }},
+		{"scheduledTasks", "计划任务", "收集计划任务", c.cfg.IncludeTasks, func() error { return c.CollectScheduledTasks(ctx, tempDir) }},
+		{"localUsers", "本地用户", "收集本地用户", c.cfg.IncludeUsers, func() error { return c.CollectLocalUsers(ctx, tempDir) }},
+		{"prefetch", "Prefetch", "收集 Prefetch", c.cfg.IncludePrefetch, func() error { return c.CollectPrefetch(ctx, tempDir) }},
+		{"eventLogs", "事件日志", "收集 Windows 事件日志", true, func() error { return c.CollectEventLogs(ctx, tempDir) }},
+		{"processInfo", "进程信息", "收集进程和签名", c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs, func() error { return c.collectProcessInfoWithSignaturesAndDLLs(tempDir) }},
+		{"amcache", "Amcache", "收集 Amcache", c.cfg.IncludeAmcache, func() error { return c.CollectAmcache(ctx, tempDir) }},
+		{"userassist", "UserAssist", "收集 UserAssist", c.cfg.IncludeUserassist, func() error { return c.CollectUserAssist(ctx, tempDir) }},
+		{"usnJournal", "USN 日志", "收集 USN Journal", c.cfg.IncludeUSNJournal, func() error { return c.CollectUSNJournal(ctx, tempDir) }},
+		{"shimCache", "ShimCache", "收集 ShimCache", c.cfg.IncludeShimCache, func() error { return c.CollectShimCache(ctx, tempDir) }},
+		{"networkConnections", "网络连接", "收集网络连接", c.cfg.IncludeNetwork, func() error { return c.CollectNetworkConnections(ctx, tempDir) }},
+		{"drivers", "驱动", "收集驱动信息", c.cfg.IncludeDrivers, func() error { return c.CollectDrivers(ctx, tempDir) }},
+	}
+
+	for _, item := range itemDefinitions {
+		if !item.requested {
+			continue
 		}
-	}
 
-	if c.cfg.IncludeRegistry {
-		log.Printf("[INFO] Collecting registry...")
-		if err := c.CollectRegistry(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Registry collection failed: %v", err)
-			allErrors = append(allErrors, fmt.Sprintf("registry: %v", err))
+		result.Summary.RequestedItems = append(result.Summary.RequestedItems, CollectionItem{
+			Name:        item.name,
+			DisplayName: item.displayName,
+			Description: item.description,
+			Success:     false,
+		})
+
+		log.Printf("[INFO] Collecting %s...", item.displayName)
+		if err := item.collectFn(); err != nil {
+			log.Printf("[ERROR] %s collection failed: %v", item.displayName, err)
+			allErrors = append(allErrors, fmt.Sprintf("%s: %v", item.name, err))
+			result.Summary.FailedItems = append(result.Summary.FailedItems, CollectionItem{
+				Name:        item.name,
+				DisplayName: item.displayName,
+				Description: item.description,
+				Success:     false,
+				Error:       err.Error(),
+			})
 		} else {
-			log.Printf("[INFO] Registry collected successfully")
-			collectedItems["registry"] = 1
-		}
-	}
-
-	if c.cfg.IncludeTasks {
-		log.Printf("[INFO] Collecting scheduled tasks...")
-		if err := c.CollectScheduledTasks(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Scheduled tasks collection failed: %v", err)
-			allErrors = append(allErrors, fmt.Sprintf("scheduledTasks: %v", err))
-		} else {
-			log.Printf("[INFO] Scheduled tasks collected successfully")
-			collectedItems["scheduledTasks"] = 1
-		}
-	}
-
-	if c.cfg.IncludeUsers {
-		log.Printf("[INFO] Collecting local users...")
-		if err := c.CollectLocalUsers(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Local users collection failed: %v", err)
-			allErrors = append(allErrors, fmt.Sprintf("localUsers: %v", err))
-		} else {
-			log.Printf("[INFO] Local users collected successfully")
-			collectedItems["localUsers"] = 1
-		}
-	}
-
-	if c.cfg.IncludePrefetch {
-		log.Printf("[INFO] Collecting prefetch...")
-		if err := c.CollectPrefetch(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Prefetch collection failed: %v", err)
-			allErrors = append(allErrors, err.Error())
-		} else {
-			log.Printf("[INFO] Prefetch collected successfully")
-			collectedItems["prefetch"] = 1
-		}
-	}
-
-	log.Printf("[INFO] Collecting EVTX logs...")
-	if err := c.CollectEvtxLogs(ctx, tempDir); err != nil {
-		log.Printf("[ERROR] EVTX logs collection failed: %v", err)
-		allErrors = append(allErrors, fmt.Sprintf("evtxLogs: %v", err))
-	} else {
-		log.Printf("[INFO] EVTX logs collected successfully")
-		collectedItems["evtxLogs"] = 1
-	}
-
-	log.Printf("[INFO] Collecting event logs...")
-	if err := c.CollectEventLogs(ctx, tempDir); err != nil {
-		log.Printf("[ERROR] Event logs collection failed: %v", err)
-		allErrors = append(allErrors, err.Error())
-	} else {
-		log.Printf("[INFO] Event logs collected successfully")
-		collectedItems["eventLogs"] = 1
-	}
-
-	if c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs {
-		log.Printf("[INFO] Collecting process info with signatures...")
-		if err := c.collectProcessInfoWithSignaturesAndDLLs(tempDir); err != nil {
-			log.Printf("[ERROR] Process info collection failed: %v", err)
-			allErrors = append(allErrors, err.Error())
-		} else {
-			log.Printf("[INFO] Process info collected successfully")
-			collectedItems["processInfo"] = 1
-		}
-	}
-
-	if c.cfg.IncludeAmcache {
-		log.Printf("[INFO] Collecting amcache...")
-		if err := c.CollectAmcache(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Amcache collection failed: %v", err)
-			allErrors = append(allErrors, err.Error())
-		} else {
-			log.Printf("[INFO] Amcache collected successfully")
-			collectedItems["amcache"] = 1
-		}
-	}
-
-	if c.cfg.IncludeUserassist {
-		log.Printf("[INFO] Collecting userassist...")
-		if err := c.CollectUserAssist(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Userassist collection failed: %v", err)
-			allErrors = append(allErrors, err.Error())
-		} else {
-			log.Printf("[INFO] Userassist collected successfully")
-			collectedItems["userassist"] = 1
-		}
-	}
-
-	if c.cfg.IncludeUSNJournal {
-		log.Printf("[INFO] Collecting USN journal...")
-		if err := c.CollectUSNJournal(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] USN journal collection failed: %v", err)
-			allErrors = append(allErrors, err.Error())
-		} else {
-			log.Printf("[INFO] USN journal collected successfully")
-			collectedItems["usnJournal"] = 1
-		}
-	}
-
-	if c.cfg.IncludeShimCache {
-		log.Printf("[INFO] Collecting shimcache...")
-		if err := c.CollectShimCache(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Shimcache collection failed: %v", err)
-			allErrors = append(allErrors, fmt.Sprintf("shimCache: %v", err))
-		} else {
-			log.Printf("[INFO] Shimcache collected successfully")
-			collectedItems["shimCache"] = 1
-		}
-	}
-
-	if c.cfg.IncludeNetwork {
-		log.Printf("[INFO] Collecting network connections...")
-		if err := c.CollectNetworkConnections(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Network connections collection failed: %v", err)
-			allErrors = append(allErrors, fmt.Sprintf("networkConnections: %v", err))
-		} else {
-			log.Printf("[INFO] Network connections collected successfully")
-			collectedItems["networkConnections"] = 1
-		}
-	}
-
-	if c.cfg.IncludeDrivers {
-		log.Printf("[INFO] Collecting drivers...")
-		if err := c.CollectDrivers(ctx, tempDir); err != nil {
-			log.Printf("[ERROR] Drivers collection failed: %v", err)
-			allErrors = append(allErrors, fmt.Sprintf("drivers: %v", err))
-		} else {
-			log.Printf("[INFO] Drivers collected successfully")
-			collectedItems["drivers"] = 1
+			log.Printf("[INFO] %s collected successfully", item.displayName)
+			collectedItems[item.name] = 1
+			result.Summary.CollectedItems = append(result.Summary.CollectedItems, CollectionItem{
+				Name:        item.name,
+				DisplayName: item.displayName,
+				Description: item.description,
+				Success:     true,
+				Path:        filepath.Join(tempDir, item.name),
+			})
 		}
 	}
 
@@ -323,6 +261,14 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		} else {
 			log.Printf("[WARN] Failed to calculate file hashes: %v", err)
 		}
+	}
+
+	result.Summary.TotalRequested = len(result.Summary.RequestedItems)
+	result.Summary.TotalCollected = len(result.Summary.CollectedItems)
+	result.Summary.TotalFailed = len(result.Summary.FailedItems)
+
+	if err := c.generateCollectionReport(tempDir, &result.Summary); err != nil {
+		log.Printf("[WARN] Failed to generate collection report: %v", err)
 	}
 
 	if c.cfg.Compress {
@@ -357,49 +303,6 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		for i, err := range allErrors {
 			log.Printf("[ERROR] Collection error[%d]: %s", i+1, err)
 		}
-	}
-
-	return result, nil
-}
-
-func (c *OneClickCollector) FullCollectWithCallback(ctx context.Context, callback CollectProgressCallback) (*OneClickResult, error) {
-	stages := []string{
-		"systemInfo",
-		"registry",
-		"scheduledTasks",
-		"localUsers",
-		"prefetch",
-		"eventLogs",
-		"processInfo",
-		"amcache",
-		"userassist",
-		"usnjournal",
-		"shimCache",
-		"networkConnections",
-		"drivers",
-	}
-	total := len(stages)
-
-	if callback != nil {
-		callback.OnProgress("init", 0, total)
-	}
-
-	result, err := c.FullCollect(ctx)
-	if err != nil {
-		if callback != nil {
-			callback.OnError("fullCollect", err)
-		}
-		return result, err
-	}
-
-	for i, stage := range stages {
-		if callback != nil {
-			callback.OnProgress(stage, i+1, total)
-		}
-	}
-
-	if callback != nil {
-		callback.OnComplete(result)
 	}
 
 	return result, nil
@@ -501,122 +404,77 @@ func (c *OneClickCollector) collectSystemInfoTo(tempDir string) error {
 	return os.WriteFile(filepath.Join(infoDir, "system_info.json"), data, 0600)
 }
 
-func (c *OneClickCollector) CollectEvtxLogs(ctx context.Context, outputDir string) error {
-	evtxDir := filepath.Join(outputDir, "winevt_logs")
-	if err := os.MkdirAll(evtxDir, 0755); err != nil {
-		return err
-	}
-
-	// 默认启用的格式
-	enabledFormats := c.cfg.EnabledFormats
-	if len(enabledFormats) == 0 {
-		enabledFormats = []string{"evtx", "etl"}
-	}
-
-	// 如果没有指定源，使用注册的通道
-	logSources := c.cfg.SelectedSources
-	if len(logSources) == 0 {
-		channels, err := GetRegisteredChannels()
-		if err == nil && len(channels) > 0 {
-			logSources = channels
-		} else {
-			logSources = []string{
-				"Security",
-				"System",
-				"Application",
-				"Microsoft-Windows-Sysmon/Operational",
-				"Microsoft-Windows-PowerShell/Operational",
-			}
-		}
-	}
-
-	for _, source := range logSources {
-		// 根据格式决定采集方式
-		if isFormatEnabled(enabledFormats, "evtx") {
-			var evtxPath string
-			if strings.HasPrefix(source, "Microsoft-") {
-				evtxPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".evtx")
-			} else {
-				evtxPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".evtx")
-			}
-
-			if _, err := os.Stat(evtxPath); err == nil {
-				dst := filepath.Join(evtxDir, filepath.Base(evtxPath))
-				if err := c.CopyFileWithRetry(evtxPath, dst, 3); err == nil {
-					continue
-				}
-			}
-
-			exportPath := filepath.Join(evtxDir, source+".evtx")
-			exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]] 2>nul`,
-				source, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
-			utils.RunPowerShell(exportCmd)
-
-			if _, err := os.Stat(exportPath); err == nil {
-				continue
-			}
-
-			exportCmd2 := fmt.Sprintf(`wevtutil epl "%s" "%s" 2>nul`, source, exportPath)
-			utils.RunPowerShell(exportCmd2)
-		}
-
-		// ETL 格式支持（如果启用）
-		if isFormatEnabled(enabledFormats, "etl") {
-			var etlPath string
-			if strings.HasPrefix(source, "Microsoft-") {
-				etlPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".etl")
-			} else {
-				etlPath = filepath.Join(`C:\Windows\System32\winevt\Logs`, source+".etl")
-			}
-
-			if _, err := os.Stat(etlPath); err == nil {
-				dst := filepath.Join(evtxDir, filepath.Base(etlPath))
-				c.CopyFileWithRetry(etlPath, dst, 3)
-			}
-		}
-	}
-
-	return nil
-}
-
 func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir string) error {
 	eventLogDir := filepath.Join(outputDir, "event_logs")
 	if err := os.MkdirAll(eventLogDir, 0755); err != nil {
 		return err
 	}
 
-	logNames := []string{
-		"Application",
-		"System",
-		"Security",
-		"Setup",
-		"ForwardedEvents",
+	logChannels, err := GetChannelFilePaths()
+	if err != nil {
+		log.Printf("[WARN] [OneClick] Failed to get channel file paths, using fallback: %v", err)
+		logChannels = c.getEventLogFilesFallback()
 	}
 
-	exportedCount := 0
-	for _, logName := range logNames {
+	copiedCount := 0
+	for _, ch := range logChannels {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
 
-		exportPath := filepath.Join(eventLogDir, logName+".evtx")
-		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]] /overwrite:false`,
-			logName, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
+		if !strings.HasSuffix(strings.ToLower(ch.LogPath), ".evtx") {
+			continue
+		}
 
-		log.Printf("[DEBUG] [OneClick] Exporting event log: %s", logName)
-		exportResult := utils.RunPowerShellWithContext(ctx, exportCmd)
-		if !exportResult.Success() {
-			log.Printf("[WARN] [OneClick] Failed to export log %s: %v", logName, exportResult.Error)
+		if _, err := os.Stat(ch.LogPath); os.IsNotExist(err) {
+			continue
+		}
+
+		dstPath := filepath.Join(eventLogDir, filepath.Base(ch.LogPath))
+		if err := c.CopyFileWithRetry(ch.LogPath, dstPath, 3); err == nil {
+			copiedCount++
+			log.Printf("[DEBUG] [OneClick] Copied event log: %s -> %s", ch.Name, filepath.Base(ch.LogPath))
 		} else {
-			exportedCount++
-			log.Printf("[DEBUG] [OneClick] Exported event log: %s", logName)
+			log.Printf("[WARN] [OneClick] Failed to copy log %s: %v", ch.Name, err)
 		}
 	}
 
-	log.Printf("[DEBUG] [OneClick] Event log collection completed: %d/%d exported", exportedCount, len(logNames))
+	log.Printf("[DEBUG] [OneClick] Event log collection completed: %d files copied", copiedCount)
 	return nil
+}
+
+func (c *OneClickCollector) getEventLogFilesFallback() []LogChannelInfo {
+	logDir := filepath.Join(os.Getenv("SystemRoot"), "System32", "winevt", "Logs")
+
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		return nil
+	}
+
+	var channels []LogChannelInfo
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if !strings.HasSuffix(strings.ToLower(name), ".evtx") {
+			continue
+		}
+
+		channelName := strings.TrimSuffix(name, ".evtx")
+		channelName = strings.ReplaceAll(channelName, "%2F", "/")
+
+		channels = append(channels, LogChannelInfo{
+			Name:    channelName,
+			LogPath: filepath.Join(logDir, name),
+			IsEVTX:  true,
+		})
+	}
+
+	return channels
 }
 
 func (c *OneClickCollector) CollectPrefetch(ctx context.Context, outputDir string) error {
