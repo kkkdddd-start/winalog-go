@@ -585,25 +585,16 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 		return err
 	}
 
-	cmd := `Get-WinEvent -ListLog * -ErrorAction SilentlyContinue | Where-Object { $_.RecordCount -gt 0 } | Select-Object -First 20 -ExpandProperty LogName | ForEach-Object { $_ }`
-
-	log.Printf("[DEBUG] [OneClick] Collecting event logs...")
-	result := utils.RunPowerShellWithContext(ctx, cmd)
-	if !result.Success() {
-		log.Printf("[ERROR] [OneClick] Get-WinEvent failed: %v, output: %s", result.Error, result.Output)
-		return fmt.Errorf("powershell error: %v", result.Error)
+	logNames := []string{
+		"Application",
+		"System",
+		"Security",
+		"Setup",
+		"ForwardedEvents",
 	}
-
-	logNames := strings.Split(strings.TrimSpace(result.Output), "\n")
-	log.Printf("[DEBUG] [OneClick] Found %d event log names", len(logNames))
 
 	exportedCount := 0
 	for _, logName := range logNames {
-		logName = strings.TrimSpace(logName)
-		if logName == "" {
-			continue
-		}
-
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -611,15 +602,16 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 		}
 
 		exportPath := filepath.Join(eventLogDir, logName+".evtx")
-		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]]`,
+		exportCmd := fmt.Sprintf(`wevtutil epl "%s" "%s" /q:*[System[TimeCreated[@t>'%s']]] /overwrite:false`,
 			logName, exportPath, time.Now().Add(-7*24*time.Hour).Format("2006-01-02T15:04:00"))
 
+		log.Printf("[DEBUG] [OneClick] Exporting event log: %s", logName)
 		exportResult := utils.RunPowerShellWithContext(ctx, exportCmd)
 		if !exportResult.Success() {
 			log.Printf("[WARN] [OneClick] Failed to export log %s: %v", logName, exportResult.Error)
 		} else {
 			exportedCount++
-			log.Printf("[DEBUG] [OneClick] Exported log %s", logName)
+			log.Printf("[DEBUG] [OneClick] Exported event log: %s", logName)
 		}
 	}
 
