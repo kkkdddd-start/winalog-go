@@ -75,7 +75,7 @@ func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	log.Printf("[INFO] DetectionEngine.Detect started with %d detectors", len(e.detectors))
+	log.Printf("[DEBUG] DetectionEngine.Detect started with %d detectors", len(e.detectors))
 
 	e.result = NewDetectionResult()
 
@@ -85,7 +85,7 @@ func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 
 	for name, d := range e.detectors {
 		wg.Add(1)
-		log.Printf("[INFO] Running detector: %s", name)
+		log.Printf("[DEBUG] Running detector: %s", name)
 		go func(name string, d Detector) {
 			defer wg.Done()
 
@@ -96,7 +96,7 @@ func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 				return
 			}
 
-			log.Printf("[INFO] Detector %s returned %d detections", name, len(detections))
+			log.Printf("[DEBUG] Detector %s returned %d detections", name, len(detections))
 
 			for _, det := range detections {
 				if det.ID == "" {

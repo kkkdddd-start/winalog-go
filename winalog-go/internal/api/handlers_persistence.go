@@ -148,10 +148,10 @@ func enrichDetections(detections []*persistence.Detection) []*EnrichedDetection 
 }
 
 func (h *PersistenceHandler) Detect(c *gin.Context) {
-	log.Printf("[INFO] Detect API called with category=%s, technique=%s, force=%s", c.Query("category"), c.Query("technique"), c.Query("force"))
+	log.Printf("[DEBUG] Detect API called with category=%s, technique=%s, force=%s", c.Query("category"), c.Query("technique"), c.Query("force"))
 
 	if runtime.GOOS != "windows" {
-		log.Printf("[INFO] Detect API returning empty - not Windows")
+		log.Printf("[DEBUG] Detect API returning empty - not Windows")
 		c.JSON(http.StatusOK, DetectResponse{
 			Detections: []*EnrichedDetection{},
 			Summary:    map[string]interface{}{},
@@ -191,7 +191,7 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 		if h.cache.result != nil &&
 			time.Since(h.cache.timestamp) < h.cache.ttl &&
 			h.cache.params == cacheParams {
-			log.Printf("[INFO] Detect API returning cached result")
+			log.Printf("[DEBUG] Detect API returning cached result")
 			response := DetectResponse{
 				Detections: enrichDetections(h.cache.result.Detections),
 				Summary:    h.cache.result.Summary(),
@@ -207,7 +207,7 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 	}
 
 	if forceRefresh {
-		log.Printf("[INFO] Detect API force refresh - clearing cache")
+		log.Printf("[DEBUG] Detect API force refresh - clearing cache")
 		h.cacheMutex.Lock()
 		h.cache = &DetectionCache{ttl: defaultCacheTTL}
 		h.cacheMutex.Unlock()
@@ -219,7 +219,7 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 	engine := h.detectionEngine
 	h.engineMutex.RUnlock()
 
-	log.Printf("[INFO] Detect API starting detection with timeout=%v", timeout)
+	log.Printf("[DEBUG] Detect API starting detection with timeout=%v", timeout)
 
 	if req.Technique != "" {
 		result = engine.DetectTechnique(ctx, persistence.Technique(req.Technique))
