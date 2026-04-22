@@ -4,11 +4,12 @@ import { reportsAPI } from '../api'
 
 interface Report {
   id: string
-  name: string
+  title: string
   type: string
   format: string
   generated_at: string
-  size: number
+  file_size: number
+  status?: string
 }
 
 function Reports() {
@@ -41,13 +42,32 @@ function Reports() {
         case '90d': startTime.setDate(startTime.getDate() - 90); break
       }
       
-      await reportsAPI.generate({
+      const genRes = await reportsAPI.generate({
         type: reportType,
         format,
         language: reportLang,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString()
       })
+      
+      const reportId = genRes.data.id
+      
+      let status = genRes.data.status || 'generating'
+      let pollCount = 0
+      const maxPolls = 60
+      
+      while (status === 'generating' && pollCount < maxPolls) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        pollCount++
+        
+        try {
+          const statusRes = await reportsAPI.get(reportId)
+          status = statusRes.data.status || 'generating'
+        } catch (e) {
+          console.error('Error polling report status:', e)
+          break
+        }
+      }
       
       setLastGenerated(new Date().toLocaleString())
       
@@ -57,9 +77,14 @@ function Reports() {
       
       if (newReports.length > 0) {
         const latestReport = newReports[0]
-        const downloadNow = confirm(`Report generated successfully!\n\nReport: ${latestReport.name}\nType: ${latestReport.type}\nFormat: ${latestReport.format}\n\nClick OK to download now, or Cancel to view in reports list.`)
-        if (downloadNow) {
-          handleDownload(latestReport)
+        
+        if (status === 'completed') {
+          const downloadNow = confirm(`Report generated successfully!\n\nReport: ${latestReport.title || latestReport.id}\nType: ${latestReport.type}\nFormat: ${latestReport.format}\nStatus: ${status}\n\nClick OK to download now, or Cancel to view in reports list.`)
+          if (downloadNow) {
+            handleDownload(latestReport)
+          }
+        } else {
+          setGenerateError(`Report generation is still ${status}. Please check the reports list later.`)
         }
       }
     } catch (error) {
@@ -100,7 +125,7 @@ function Reports() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${report.name || report.id}.${report.format}`
+      a.download = `${report.title || report.id}.${report.format}`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -299,13 +324,13 @@ function Reports() {
                           {report.type === 'timeline' && '📊'}
                           {report.type === 'compliance' && '📋'}
                         </span>
-                        {report.name}
+                        {report.title || report.id}
                       </div>
                     </td>
                     <td><span className={`type-badge ${report.type}`}>{report.type}</span></td>
                     <td><span className="format-badge">{report.format.toUpperCase()}</span></td>
                     <td>{new Date(report.generated_at).toLocaleString()}</td>
-                    <td>{formatSize(report.size)}</td>
+                    <td>{formatSize(report.file_size)}</td>
                     <td>
                       <button className="btn-small" onClick={() => handleView(report)}>View</button>
                       <button className="btn-small" onClick={() => handleDownload(report)}>Download</button>

@@ -279,8 +279,14 @@ func (h *MultiHandler) detectLateralMovement() ([]LateralMovement, error) {
 		}
 
 		if severity != "low" || eventID == 4624 {
+			sourceMachine := "unknown"
+			if ipAddress != "" && ipAddress != "127.0.0.1" && ipAddress != "::1" {
+				sourceMachine = ipAddress + " (external)"
+			} else if eventID == 4648 {
+				sourceMachine = "remote host (explicit credentials)"
+			}
 			movements = append(movements, LateralMovement{
-				SourceMachine: computer,
+				SourceMachine: sourceMachine,
 				TargetMachine: computer,
 				User:          user,
 				EventID:       int(eventID),

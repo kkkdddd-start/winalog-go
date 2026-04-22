@@ -289,8 +289,18 @@ export const forensicsAPI = {
     api.get(`/forensics/signature?path=${path}`),
   isSigned: (path: string) =>
     api.get(`/forensics/is-signed?path=${path}`),
-  collect: (type: string, outputPath?: string) =>
-    api.post('/forensics/collect', { type, output_path: outputPath }),
+  collect: (params: {
+    type: string
+    output_path?: string
+    collect_registry?: boolean
+    collect_prefetch?: boolean
+    collect_shimcache?: boolean
+    collect_amcache?: boolean
+    collect_userassist?: boolean
+    collect_tasks?: boolean
+    collect_logs?: boolean
+  }) =>
+    api.post('/forensics/collect', params),
   listEvidence: () =>
     api.get('/forensics/evidence'),
   getEvidence: (id: string) =>

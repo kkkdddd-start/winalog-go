@@ -10,20 +10,22 @@ interface HashResult {
 }
 
 interface EvidenceItem {
-  id: string
-  type: string
-  collected_at: string
-  hash: string
-  path: string
-  size: number
+  evidence_id: string
+  timestamp: string
+  operator: string
+  action: string
+  file_count: number
 }
 
 interface ChainOfCustodyEntry {
-  id: string
-  action: string
+  id: number
+  evidence_id: string
   timestamp: string
-  user: string
-  details: string
+  operator: string
+  action: string
+  input_hash?: string
+  output_hash?: string
+  previous_hash?: string
 }
 
 function Forensics() {
@@ -48,8 +50,8 @@ function Forensics() {
   const fetchEvidence = () => {
     forensicsAPI.listEvidence()
       .then(res => {
-        if (res.data && Array.isArray(res.data)) {
-          setEvidence(res.data)
+        if (res.data && res.data.evidence) {
+          setEvidence(res.data.evidence)
         }
       })
       .catch(err => console.error('Failed to load evidence:', err))
@@ -58,8 +60,8 @@ function Forensics() {
   const fetchChainOfCustody = () => {
     forensicsAPI.chainOfCustody()
       .then(res => {
-        if (res.data && Array.isArray(res.data)) {
-          setChainOfCustody(res.data)
+        if (res.data && res.data.chain) {
+          setChainOfCustody(res.data.chain)
         }
       })
       .catch(err => console.error('Failed to load chain of custody:', err))
@@ -85,9 +87,24 @@ function Forensics() {
     setCollectStatus('starting')
     
     try {
+      const collectFlags: Record<string, { collect_registry?: boolean; collect_prefetch?: boolean; collect_shimcache?: boolean; collect_amcache?: boolean; collect_userassist?: boolean; collect_tasks?: boolean; collect_logs?: boolean }> = {
+        'registry': { collect_registry: true },
+        'prefetch': { collect_prefetch: true },
+        'shimcache': { collect_shimcache: true },
+        'amcache': { collect_amcache: true },
+        'userassist': { collect_userassist: true },
+        'tasks': { collect_tasks: true },
+        'eventlogs': { collect_logs: true },
+      }
+      
       for (const type of selectedTypes) {
         setCollectStatus(`collecting:${type}`)
-        await forensicsAPI.collect(type, `/tmp/forensics_${type}`)
+        const flags = collectFlags[type] || {}
+        await forensicsAPI.collect({
+          type: type,
+          output_path: `/tmp/forensics_${type}`,
+          ...flags
+        })
       }
       fetchEvidence()
       fetchChainOfCustody()
@@ -135,7 +152,7 @@ function Forensics() {
 
   const handleViewEvidence = async (item: EvidenceItem) => {
     try {
-      const res = await forensicsAPI.getEvidence(item.id)
+      const res = await forensicsAPI.getEvidence(item.evidence_id)
       if (res.data.content) {
         const newWindow = window.open('', '_blank')
         if (newWindow) {
@@ -153,12 +170,12 @@ function Forensics() {
 
   const handleExportEvidence = async (item: EvidenceItem) => {
     try {
-      const res = await forensicsAPI.exportEvidence(item.id, 'json')
+      const res = await forensicsAPI.exportEvidence(item.evidence_id, 'json')
       const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `evidence_${item.type}_${item.id}.json`
+      a.download = `evidence_${item.action}_${item.evidence_id}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -167,12 +184,6 @@ function Forensics() {
       console.error('Failed to export evidence:', error)
       alert('Failed to export evidence')
     }
-  }
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B'
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   return (
@@ -340,12 +351,12 @@ function Forensics() {
               </thead>
               <tbody>
                 {evidence.map(item => (
-                  <tr key={item.id}>
-                    <td><span className="evidence-type">{item.type}</span></td>
-                    <td>{new Date(item.collected_at).toLocaleString()}</td>
-                    <td><code className="evidence-path">{item.path}</code></td>
-                    <td>{formatSize(item.size)}</td>
-                    <td><code className="evidence-hash">{item.hash.substring(0, 16)}...</code></td>
+                  <tr key={item.evidence_id}>
+                    <td><span className="evidence-type">{item.action || 'N/A'}</span></td>
+                    <td>{new Date(item.timestamp).toLocaleString()}</td>
+                    <td><code className="evidence-path">{item.evidence_id}</code></td>
+                    <td>{item.file_count || 0} files</td>
+                    <td><code className="evidence-hash">{item.operator || 'N/A'}</code></td>
                     <td>
                       <button className="btn-small" onClick={() => handleViewEvidence(item)}>View</button>
                       <button className="btn-small" onClick={() => handleExportEvidence(item)}>Export</button>
@@ -379,10 +390,14 @@ function Forensics() {
                       <div className="chain-dot">{index + 1}</div>
                       <div className="chain-content">
                         <div className="chain-action">{entry.action}</div>
-                        <div className="chain-details">{entry.details}</div>
+                        <div className="chain-details">
+                          {entry.input_hash && <div>Input Hash: {entry.input_hash}</div>}
+                          {entry.output_hash && <div>Output Hash: {entry.output_hash}</div>}
+                          {entry.previous_hash && <div>Previous Hash: {entry.previous_hash}</div>}
+                        </div>
                         <div className="chain-meta">
                           <span className="chain-time">{new Date(entry.timestamp).toLocaleString()}</span>
-                          {entry.user && <span className="chain-user">by {entry.user}</span>}
+                          {entry.operator && <span className="chain-user">by {entry.operator}</span>}
                         </div>
                       </div>
                     </div>
