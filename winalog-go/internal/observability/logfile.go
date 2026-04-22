@@ -35,6 +35,7 @@ type LogFileEntry struct {
 	NumGoroutine int     `json:"num_goroutine,omitempty"`
 	NumCPU       int     `json:"num_cpu,omitempty"`
 	HeapObjects  int64   `json:"heap_objects,omitempty"`
+	Category     string  `json:"category,omitempty"`
 }
 
 var (

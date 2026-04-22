@@ -214,6 +214,53 @@ func extractLevelFromLine(line string) string {
 	return "info"
 }
 
+func extractTimestampFromLine(line string) string {
+	if len(line) < 20 {
+		return time.Now().Format(time.RFC3339)
+	}
+	prefix := line[:20]
+	timeFormats := []string{
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02 15:04:05",
+		"01/02/2006 15:04:05",
+	}
+	for _, format := range timeFormats {
+		if t, err := time.Parse(format, prefix); err == nil {
+			return t.Format(time.RFC3339)
+		}
+	}
+	return time.Now().Format(time.RFC3339)
+}
+
+func extractMessageCategory(line string) string {
+	upperLine := strings.ToUpper(line)
+	if strings.Contains(upperLine, "[METRICS]") {
+		return "metrics"
+	}
+	if strings.Contains(upperLine, "[STARTUP]") {
+		return "startup"
+	}
+	if strings.Contains(upperLine, "[PANIC]") || strings.Contains(upperLine, "[FATAL]") {
+		return "panic"
+	}
+	if strings.Contains(upperLine, "[ERROR]") {
+		return "error"
+	}
+	if strings.Contains(upperLine, "[API]") || strings.Contains(upperLine, "[API REQUEST]") {
+		return "api"
+	}
+	if strings.Contains(upperLine, "[DB]") || strings.Contains(upperLine, "[DATABASE]") {
+		return "database"
+	}
+	if strings.Contains(upperLine, "[MONITOR]") {
+		return "monitor"
+	}
+	if strings.Contains(upperLine, "[COLLECTOR]") {
+		return "collector"
+	}
+	return "general"
+}
+
 func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileEntry, int, error) {
 	if m == nil {
 		return nil, 0, nil
@@ -270,10 +317,16 @@ func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileE
 		var entry LogFileEntry
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			entry = LogFileEntry{
-				Timestamp: time.Now().Format(time.RFC3339),
+				Timestamp: extractTimestampFromLine(line),
 				Level:     extractLevelFromLine(line),
 				Message:   line,
+				Category:  extractMessageCategory(line),
 			}
+		} else {
+			if entry.Timestamp == "" {
+				entry.Timestamp = extractTimestampFromLine(line)
+			}
+			entry.Category = extractMessageCategory(line)
 		}
 		entries = append(entries, entry)
 	}

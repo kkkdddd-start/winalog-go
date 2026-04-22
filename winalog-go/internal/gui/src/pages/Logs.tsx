@@ -21,6 +21,7 @@ interface LogEntry {
   num_cpu?: number
   mem_pause_us?: number
   heap_objects?: number
+  category?: string
 }
 
 interface LogFileInfo {
@@ -41,6 +42,7 @@ function Logs() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [levelFilter, setLevelFilter] = useState<string>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [keyword, setKeyword] = useState<string>('')
 
   useEffect(() => {
@@ -107,13 +109,22 @@ function Logs() {
     }
   }
 
-  const filteredLogs = levelFilter === 'all' 
-    ? logs 
-    : logs.filter(log => log.level.toLowerCase() === levelFilter.toLowerCase())
+  const filteredLogs = logs.filter(log => {
+    const levelMatch = levelFilter === 'all' || log.level.toLowerCase() === levelFilter.toLowerCase()
+    const categoryMatch = categoryFilter === 'all' || log.category === categoryFilter || 
+      (categoryFilter === 'metrics' && (log.message === '[METRICS]' || log.category === 'metrics')) ||
+      (categoryFilter === 'startup' && (log.message === '[STARTUP]' || log.category === 'startup')) ||
+      (categoryFilter === 'api' && (log.message === '[API]' || log.category === 'api')) ||
+      (categoryFilter === 'error' && (log.message === '[ERROR]' || log.category === 'error')) ||
+      (categoryFilter === 'panic' && (log.message === '[PANIC]' || log.message === '[FATAL]' || log.category === 'panic')) ||
+      (categoryFilter === 'general' && (log.category === 'general' || !log.category || log.category === 'undefined'))
+    return levelMatch && categoryMatch
+  })
 
-  const isMetricsEntry = (log: LogEntry) => log.message === '[METRICS]'
-  const isStartupEntry = (log: LogEntry) => log.message === '[STARTUP]'
-  const isPanicEntry = (log: LogEntry) => log.message === '[PANIC]'
+  const isMetricsEntry = (log: LogEntry) => log.message === '[METRICS]' || log.category === 'metrics'
+  const isStartupEntry = (log: LogEntry) => log.message === '[STARTUP]' || log.category === 'startup'
+  const isPanicEntry = (log: LogEntry) => log.message === '[PANIC]' || log.message === '[FATAL]' || log.category === 'panic'
+  const isApiEntry = (log: LogEntry) => log.message === '[API]' || log.category === 'api'
 
   const formatTime = (timestamp: string) => {
     try {
@@ -164,7 +175,7 @@ function Logs() {
           <span className="filter-label">{t('logs.filterByLevel')}:</span>
           <button 
             className={`filter-btn ${levelFilter === 'all' ? 'active' : ''}`}
-            onClick={() => handleLevelFilter('all')}
+            onClick={() => { handleLevelFilter('all'); setCategoryFilter('all'); }}
           >
             {t('logs.all')}
           </button>
@@ -191,6 +202,51 @@ function Logs() {
             onClick={() => handleLevelFilter('error')}
           >
             {t('settings.error')}
+          </button>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">{t('logs.filterByCategory')}:</span>
+          <button 
+            className={`filter-btn ${categoryFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setCategoryFilter('all')}
+          >
+            {t('logs.all')}
+          </button>
+          <button 
+            className={`filter-btn ${categoryFilter === 'metrics' ? 'active' : ''}`}
+            onClick={() => { setCategoryFilter('metrics'); setLevelFilter('all'); }}
+          >
+            {t('logs.metrics')}
+          </button>
+          <button 
+            className={`filter-btn ${categoryFilter === 'api' ? 'active' : ''}`}
+            onClick={() => { setCategoryFilter('api'); setLevelFilter('all'); }}
+          >
+            API
+          </button>
+          <button 
+            className={`filter-btn ${categoryFilter === 'startup' ? 'active' : ''}`}
+            onClick={() => { setCategoryFilter('startup'); setLevelFilter('all'); }}
+          >
+            {t('logs.startup')}
+          </button>
+          <button 
+            className={`filter-btn ${categoryFilter === 'error' ? 'active' : ''}`}
+            onClick={() => { setCategoryFilter('error'); setLevelFilter('all'); }}
+          >
+            {t('settings.error')}
+          </button>
+          <button 
+            className={`filter-btn ${categoryFilter === 'panic' ? 'active' : ''}`}
+            onClick={() => { setCategoryFilter('panic'); setLevelFilter('all'); }}
+          >
+            {t('logs.panic')}
+          </button>
+          <button 
+            className={`filter-btn ${categoryFilter === 'general' ? 'active' : ''}`}
+            onClick={() => { setCategoryFilter('general'); setLevelFilter('all'); }}
+          >
+            {t('logs.general')}
           </button>
         </div>
         <div className="filter-group search-group">
@@ -241,6 +297,7 @@ function Logs() {
                 <tr>
                   <th>{t('logs.timestamp')}</th>
                   <th>{t('logs.level')}</th>
+                  <th>{t('logs.category')}</th>
                   <th>{t('logs.message')}</th>
                   <th>{t('logs.details')}</th>
                 </tr>
@@ -252,14 +309,20 @@ function Logs() {
                     <td className="log-level" style={{ color: getLevelColor(log.level) }}>
                       {log.level.toUpperCase()}
                     </td>
-                    <td className="log-message">
+                    <td className="log-category">
                       {isMetricsEntry(log) && <span className="log-badge metrics">{t('logs.metrics')}</span>}
                       {isStartupEntry(log) && <span className="log-badge startup">{t('logs.startup')}</span>}
                       {isPanicEntry(log) && <span className="log-badge panic">{t('logs.panic')}</span>}
+                      {isApiEntry(log) && <span className="log-badge api">API</span>}
+                      {!isMetricsEntry(log) && !isStartupEntry(log) && !isPanicEntry(log) && !isApiEntry(log) && (
+                        <span className="log-badge general">{log.category || 'general'}</span>
+                      )}
+                    </td>
+                    <td className="log-message">
                       {log.message}
                     </td>
                     <td className="log-details">
-                      {log.message === '[METRICS]' && (
+                      {isMetricsEntry(log) && (
                         <div className="metrics-details">
                           <span className="metric-item">Mem Alloc: <b>{log.mem_alloc_mb?.toFixed(2)} MB</b></span>
                           <span className="metric-item">Total: <b>{log.mem_total_mb?.toFixed(2)} MB</b></span>
@@ -269,7 +332,7 @@ function Logs() {
                           <span className="metric-item">Heap Objects: <b>{log.heap_objects?.toLocaleString()}</b></span>
                         </div>
                       )}
-                      {log.message === '[API]' && (
+                      {isApiEntry(log) && (
                         <div className="api-details">
                           <span className="api-method">{log.method}</span>
                           <span className="api-path">{log.path}</span>
@@ -278,18 +341,18 @@ function Logs() {
                           <span className="api-ip">{log.client_ip}</span>
                         </div>
                       )}
-                      {log.message === '[STARTUP]' && (
+                      {isStartupEntry(log) && (
                         <span className="startup-reason">Reason: {log.reason}</span>
                       )}
-                      {log.message === '[PANIC]' && (
+                      {isPanicEntry(log) && (
                         <div className="panic-details">
                           <span className="panic-error">{log.error}</span>
                           <span className="panic-path">Path: {log.path}</span>
                         </div>
                       )}
-                      {log.message === '[ERROR]' && (
+                      {!isMetricsEntry(log) && !isStartupEntry(log) && !isPanicEntry(log) && !isApiEntry(log) && log.error && (
                         <div className="error-details">
-                          <span className="error-module">Module: {log.module}</span>
+                          <span className="error-module"> Module: {log.module}</span>
                           <span className="error-msg">{log.error}</span>
                         </div>
                       )}
