@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
+	"github.com/kkkdddd-start/winalog-go/internal/observability"
 )
 
 type MonitorEngine struct {
@@ -37,6 +38,7 @@ type MonitorEngine struct {
 	startTime time.Time
 	stats     *types.MonitorStats
 	eventCh   chan *types.MonitorEvent
+	metrics   *observability.MetricsLogger
 }
 
 func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
@@ -53,6 +55,7 @@ func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
 			AlertCount:   0,
 		},
 		eventCh: make(chan *types.MonitorEvent, 1000),
+		metrics: observability.GetMetricsLogger(),
 	}
 
 	return engine, nil
@@ -167,8 +170,31 @@ func (e *MonitorEngine) processEvents() {
 				}
 			}
 			e.mu.Unlock()
+
+			e.logMonitorEvent(event)
 		}
 	}
+}
+
+func (e *MonitorEngine) logMonitorEvent(event *types.MonitorEvent) {
+	if e.metrics == nil {
+		return
+	}
+
+	entry := observability.MonitorLogEntry{
+		Timestamp:   time.Now().Format(time.RFC3339),
+		Level:       string(event.Severity),
+		Message:     "[MONITOR]",
+		MonitorType: string(event.Type),
+		ProcessName: event.Data["process_name"],
+		CommandLine: event.Data["command"],
+		SrcAddress:  event.Data["src_address"],
+		DstAddress:  event.Data["dst_address"],
+		DNSQuery:    event.Data["dns_query"],
+		Details:     event.Data,
+	}
+
+	e.metrics.LogMonitorEvent(entry)
 }
 
 func (e *MonitorEngine) updateStats(event *types.MonitorEvent) {

@@ -410,6 +410,19 @@ type APILogEntry struct {
 	Path      string `json:"path"`
 }
 
+type MonitorLogEntry struct {
+	Timestamp   string                 `json:"timestamp"`
+	Level       string                 `json:"level"`
+	Message     string                 `json:"message"`
+	MonitorType string                 `json:"monitor_type"`
+	ProcessName interface{}            `json:"process_name,omitempty"`
+	CommandLine interface{}            `json:"command_line,omitempty"`
+	SrcAddress  interface{}            `json:"src_address,omitempty"`
+	DstAddress  interface{}            `json:"dst_address,omitempty"`
+	DNSQuery    interface{}            `json:"dns_query,omitempty"`
+	Details     map[string]interface{} `json:"details,omitempty"`
+}
+
 func LogAPIRequest(entry APILogEntry) {
 	logger := GetMetricsLogger()
 	if logger != nil {
@@ -418,6 +431,26 @@ func LogAPIRequest(entry APILogEntry) {
 }
 
 func (m *MetricsLogger) LogAPI(entry APILogEntry) {
+	if m == nil || m.file == nil {
+		return
+	}
+
+	jsonBytes, _ := json.Marshal(entry)
+	jsonBytes = append(jsonBytes, '\n')
+
+	m.mu.Lock()
+	m.file.Write(jsonBytes)
+	m.mu.Unlock()
+}
+
+func LogMonitorEvent(entry MonitorLogEntry) {
+	logger := GetMetricsLogger()
+	if logger != nil {
+		logger.LogMonitorEvent(entry)
+	}
+}
+
+func (m *MetricsLogger) LogMonitorEvent(entry MonitorLogEntry) {
 	if m == nil || m.file == nil {
 		return
 	}
