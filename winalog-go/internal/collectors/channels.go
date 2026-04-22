@@ -99,7 +99,9 @@ func GetChannelFilePathsFallback() ([]LogChannelInfo, error) {
 
 		channelName := strings.TrimSuffix(name, ".evtx")
 		channelName = strings.ReplaceAll(channelName, "%2F", "/")
-		channelName, _ = url.QueryUnescape(channelName)
+		if decoded, err := url.QueryUnescape(channelName); err == nil {
+			channelName = decoded
+		}
 
 		channels = append(channels, LogChannelInfo{
 			Name:    channelName,
