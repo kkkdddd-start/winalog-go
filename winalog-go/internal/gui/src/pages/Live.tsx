@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useI18n } from '../locales/I18n'
-import { liveAPI } from '../api'
+import { liveAPI, eventsAPI } from '../api'
 
 interface LiveEvent {
   id: number
@@ -26,27 +26,13 @@ function Live() {
   const { t } = useI18n()
   const [events, setEvents] = useState<LiveEvent[]>([])
   const [stats, setStats] = useState<LiveStats | null>(null)
-  const [isConnected, setIsConnected] = useState(false)
+  const [isEnabled, setIsEnabled] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
-  const [reconnectAttempts, setReconnectAttempts] = useState(0)
-  const eventSourceRef = useRef<EventSource | null>(null)
+  const [lastEventId, setLastEventId] = useState<number>(0)
   const eventsContainerRef = useRef<HTMLDivElement>(null)
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const maxReconnectAttempts = 5
-
-  useEffect(() => {
-    connectToStream()
-    
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
-    }
-  }, [])
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollInterval = 3000
 
   useEffect(() => {
     if (eventsContainerRef.current) {
@@ -54,89 +40,76 @@ function Live() {
     }
   }, [events])
 
-  const connectToStream = () => {
-    setError(null)
+  const fetchLiveEvents = async () => {
+    if (!isEnabled) return
     
-    const eventSource = liveAPI.streamEvents(
-      (event) => {
-        setEvents(prev => {
-          const newEvents = [event, ...prev]
-          if (newEvents.length > 100) {
-            newEvents.pop()
-          }
-          return newEvents
-        })
-        setReconnectAttempts(0)
-      },
-      (statsData) => {
-        setStats({
-          total_events: statsData.total_events || 0,
-          events_per_sec: statsData.events_per_sec || 0,
-          uptime: statsData.uptime || '0s',
-          alerts: statsData.alerts || 0,
-        })
-      },
-      (err) => {
-        console.error('Stream error:', err)
-        setIsConnected(false)
-        if (err.type === 'error') {
-          setError('Connection lost. Reconnecting...')
-          handleReconnect()
+    try {
+      const response = await eventsAPI.list(1, 50)
+      const newEvents = response.data.events || []
+      
+      if (newEvents.length > 0) {
+        const latestId = newEvents[0].id
+        if (latestId !== lastEventId) {
+          setLastEventId(latestId)
+          setEvents(prev => {
+            const filtered = newEvents.filter((ne: LiveEvent) => !prev.some((p: LiveEvent) => p.id === ne.id))
+            if (filtered.length === 0) return prev
+            const combined = [...filtered, ...prev]
+            return combined.slice(0, 100)
+          })
         }
       }
-    )
-    
-    eventSource.onopen = () => {
-      setIsConnected(true)
+      
+      const statsRes = await liveAPI.getStats()
+      if (statsRes.data) {
+        setStats({
+          total_events: statsRes.data.total_events || 0,
+          events_per_sec: statsRes.data.events_per_sec || 0,
+          uptime: statsRes.data.uptime || '0s',
+          alerts: statsRes.data.alerts || 0,
+        })
+      }
+      
       setError(null)
+    } catch (err: any) {
+      console.error('Failed to fetch live events:', err)
+      if (err.message?.includes('timeout') || err.code === 'ECONNABORTED') {
+        setError('Request timeout. Will retry...')
+      }
     }
-    
-    eventSourceRef.current = eventSource
   }
 
-  const disconnect = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-      eventSourceRef.current = null
+  const toggleMonitoring = () => {
+    if (isEnabled) {
+      stopMonitoring()
+    } else {
+      startMonitoring()
     }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-    setIsConnected(false)
-    setReconnectAttempts(0)
   }
 
-  const reconnect = () => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-    disconnect()
-    connectToStream()
-  }
-
-  const handleReconnect = () => {
-    if (reconnectAttempts >= maxReconnectAttempts) {
-      setError('Max reconnection attempts reached. Please click Connect to retry.')
-      return
-    }
-    
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
-    setReconnectAttempts(prev => prev + 1)
-    
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-    }
-    
-    reconnectTimeoutRef.current = setTimeout(() => {
-      reconnect()
-    }, delay)
-  }
-
-  const clearEvents = () => {
+  const startMonitoring = () => {
+    setIsEnabled(true)
+    setLastEventId(0)
     setEvents([])
+    fetchLiveEvents()
+    pollIntervalRef.current = setInterval(fetchLiveEvents, pollInterval)
   }
+
+  const stopMonitoring = () => {
+    setIsEnabled(false)
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+      }
+    }
+  }, [])
 
   const getLevelColor = (level: string) => {
     switch (level?.toLowerCase()) {
@@ -167,12 +140,23 @@ function Live() {
       <div className="page-header">
         <div className="header-left">
           <h2>{t('live.title')}</h2>
-          <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+          <div className={`connection-status ${isEnabled ? 'connected' : 'disconnected'}`}>
             <span className="status-dot"></span>
-            {isConnected ? 'Connected' : 'Disconnected'}
+            {isEnabled ? 'Monitoring' : 'Stopped'}
           </div>
         </div>
         <div className="header-actions">
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={isEnabled}
+              onChange={toggleMonitoring}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+          <span style={{ marginRight: '12px', fontSize: '14px' }}>
+            {isEnabled ? 'Live Monitoring ON' : 'Live Monitoring OFF'}
+          </span>
           <select 
             className="filter-select"
             value={filter}
@@ -185,29 +169,15 @@ function Live() {
             <option value="info">Info</option>
             <option value="verbose">Verbose</option>
           </select>
-          <button className="btn-secondary" onClick={clearEvents}>
+          <button className="btn-secondary" onClick={() => setEvents([])}>
             Clear
           </button>
-          {isConnected ? (
-            <button className="btn-danger" onClick={disconnect}>
-              Disconnect
-            </button>
-          ) : (
-            <button className="btn-primary" onClick={reconnect}>
-              Connect
-            </button>
-          )}
         </div>
       </div>
 
       {error && (
         <div className="error-banner">
           {error}
-          {reconnectAttempts > 0 && reconnectAttempts < maxReconnectAttempts && (
-            <span className="reconnect-info">
-              {' '}Reconnecting in {Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000) / 1000}s... (Attempt {reconnectAttempts}/{maxReconnectAttempts})
-            </span>
-          )}
         </div>
       )}
 
@@ -239,7 +209,7 @@ function Live() {
           <div className="empty-state">
             <div className="empty-icon">📡</div>
             <div className="empty-text">
-              {isConnected ? 'Waiting for events...' : 'Click Connect to start monitoring'}
+              {isEnabled ? 'Waiting for events...' : 'Enable monitoring to start collecting events'}
             </div>
           </div>
         ) : (
