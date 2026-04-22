@@ -14,6 +14,7 @@ type MonitorEngine struct {
 	mu           sync.RWMutex
 	config       *ConfigManager
 	eventCache   *EventCache
+	subscribers  []chan *types.MonitorEvent
 	processWatch interface {
 		Start() error
 		Stop() error
@@ -140,6 +141,15 @@ func (e *MonitorEngine) processEvents() {
 			}
 			e.eventCache.Add(event)
 			e.updateStats(event)
+
+			e.mu.Lock()
+			for _, sub := range e.subscribers {
+				select {
+				case sub <- event:
+				default:
+				}
+			}
+			e.mu.Unlock()
 		}
 	}
 }
@@ -239,15 +249,19 @@ func (e *MonitorEngine) GetEvents(filter *EventFilter) ([]*types.MonitorEvent, i
 }
 
 func (e *MonitorEngine) Subscribe(ch chan *types.MonitorEvent) func() {
-	go func() {
-		for event := range e.eventCh {
-			select {
-			case ch <- event:
-			default:
+	e.mu.Lock()
+	e.subscribers = append(e.subscribers, ch)
+	e.mu.Unlock()
+
+	return func() {
+		e.mu.Lock()
+		for i, sub := range e.subscribers {
+			if sub == ch {
+				e.subscribers = append(e.subscribers[:i], e.subscribers[i+1:]...)
+				break
 			}
 		}
-	}()
-	return func() {
+		e.mu.Unlock()
 		close(ch)
 	}
 }
