@@ -137,6 +137,12 @@ func (dp *DNSEventTracker) run() {
 }
 
 func (dp *DNSEventTracker) pollDNS(isFirstRun bool) {
+	select {
+	case <-dp.ctx.Done():
+		return
+	default:
+	}
+
 	currentCache := dp.getDNSCache()
 
 	dp.mu.Lock()

@@ -112,6 +112,12 @@ func (pw *ProcessWatcher) run() {
 }
 
 func (pw *ProcessWatcher) checkNewProcesses(lastProcs map[uint32]string, isFirstRun bool) {
+	select {
+	case <-pw.ctx.Done():
+		return
+	default:
+	}
+
 	var processes []Win32_Process
 	err := wmi.Query("SELECT Name, ProcessID, ParentProcessID, ExecutablePath FROM Win32_Process", &processes)
 	if err != nil {
