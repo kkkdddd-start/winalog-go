@@ -16,7 +16,7 @@ func TestEventLevelString(t *testing.T) {
 		{EventLevelWarning, "Warning"},
 		{EventLevelInfo, "Info"},
 		{EventLevelVerbose, "Verbose"},
-		{0, "Unknown"},
+		{"Unknown", "Unknown"},
 	}
 
 	for _, tt := range tests {
@@ -48,7 +48,7 @@ func TestEventLevelUnmarshalJSON(t *testing.T) {
 		{`"Warning"`, EventLevelWarning},
 		{`"Info"`, EventLevelInfo},
 		{`"Verbose"`, EventLevelVerbose},
-		{`"Unknown"`, 0},
+		{`"Unknown"`, "Unknown"},
 	}
 
 	for _, tt := range tests {

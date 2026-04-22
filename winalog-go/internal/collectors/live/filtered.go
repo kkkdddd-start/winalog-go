@@ -11,10 +11,10 @@ type EventFilter interface {
 
 type LevelFilter struct {
 	name   string
-	levels []int
+	levels []string
 }
 
-func NewLevelFilter(levels ...int) *LevelFilter {
+func NewLevelFilter(levels ...string) *LevelFilter {
 	return &LevelFilter{
 		name:   "level_filter",
 		levels: levels,
@@ -26,7 +26,7 @@ func (f *LevelFilter) Accept(event *types.Event) bool {
 		return true
 	}
 	for _, level := range f.levels {
-		if int(event.Level) == level {
+		if string(event.Level) == level {
 			return true
 		}
 	}

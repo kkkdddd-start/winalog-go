@@ -57,7 +57,7 @@ func (r *EventRepo) Insert(event *types.Event) error {
 	result, err := r.db.Exec(query,
 		event.Timestamp.Format(time.RFC3339Nano),
 		event.EventID,
-		int(event.Level),
+		event.Level,
 		event.Source,
 		event.LogName,
 		event.Computer,
@@ -115,7 +115,7 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 		_, err := stmt.Exec(
 			event.Timestamp.Format(time.RFC3339Nano),
 			event.EventID,
-			int(event.Level),
+			event.Level,
 			event.Source,
 			event.LogName,
 			event.Computer,

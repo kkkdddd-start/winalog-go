@@ -118,7 +118,7 @@ func (p *EvtxParser) convertMapToEvent(m *evtxlib.GoEvtxMap) *types.Event {
 					levelPath := evtxlib.Path("Level")
 					level := system.GetIntStrict(&levelPath)
 					if level > 0 && level <= 5 {
-						event.Level = types.EventLevel(level)
+						event.Level = types.EventLevelFromInt(int(level))
 					}
 
 					timePath := evtxlib.Path("TimeCreated/SystemTime")

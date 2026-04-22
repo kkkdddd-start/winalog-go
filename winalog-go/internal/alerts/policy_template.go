@@ -400,7 +400,7 @@ func (m *PolicyManager) matchCondition(event *types.Event, cond PolicyCondition)
 	case "computer":
 		return m.compareValue(event.Computer, cond.Operator, cond.Value)
 	case "level":
-		return m.compareValue(int(event.Level), cond.Operator, cond.Value)
+		return m.compareValue(string(event.Level), cond.Operator, cond.Value)
 	case "log_name":
 		return m.compareValue(event.LogName, cond.Operator, cond.Value)
 	}

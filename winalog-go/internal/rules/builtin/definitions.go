@@ -29,7 +29,7 @@ func GetAlertRules() []*rules.AlertRule {
 			AggregationKey: "user",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4625},
-				Levels:   []int{2},
+				Levels:   []string{"Error"},
 			},
 			Message: "Failed login threshold exceeded: {{.Count}} failed attempts",
 			Tags:    []string{"authentication", "brute-force"},
@@ -46,7 +46,7 @@ func GetAlertRules() []*rules.AlertRule {
 			AggregationKey: "user",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Conditions: &rules.Conditions{
 				Any: []*rules.Condition{
@@ -72,7 +72,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4104},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Encoded PowerShell command detected",
 			Tags:    []string{"powershell", "defense-evasion"},
@@ -86,7 +86,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1070.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{1102},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Security log was cleared - potential attacker activity",
 			Tags:    []string{"defense-evasion", "clearing-logs"},
@@ -100,7 +100,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1078",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4740},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Account {{.User}} was locked out on {{.Computer}}",
 			Tags:    []string{"authentication", "account-management"},
@@ -114,7 +114,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1059",
 			Filter: &rules.Filter{
 				EventIDs: []int32{3},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious network connection to port {{.DestinationPort}}",
 			Tags:    []string{"network", "command-and-control"},
@@ -128,7 +128,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1569.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4697},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious service created: {{.ServiceName}}",
 			Tags:    []string{"persistence", "service"},
@@ -142,7 +142,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1053.005",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4698},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious scheduled task created: {{.TaskName}}",
 			Tags:    []string{"persistence", "scheduled-task"},
@@ -156,7 +156,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1091",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4663},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "USB device write detected on {{.Computer}}",
 			Tags:    []string{"initial-access", "physical"},
@@ -170,7 +170,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1550.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624, 4672},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Possible Pass-the-Hash attack detected for {{.User}}",
 			Tags:    []string{"credential-access", "lateral-movement"},
@@ -184,7 +184,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{1},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Mimikatz or credential dumping tool detected",
 			Tags:    []string{"credential-access", "malware"},
@@ -198,7 +198,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4104},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Encoded PowerShell remote command detected",
 			Tags:    []string{"powershell", "execution"},
@@ -212,7 +212,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1053.005",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4698},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Remote scheduled task creation detected",
 			Tags:    []string{"persistence", "remote-execution"},
@@ -226,7 +226,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1547.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4657},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious Run key modification detected",
 			Tags:    []string{"persistence", "registry"},
@@ -240,7 +240,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1574.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{7},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious DLL loaded from unusual location",
 			Tags:    []string{"defense-evasion", "persistence"},
@@ -254,7 +254,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1047",
 			Filter: &rules.Filter{
 				EventIDs: []int32{5861},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious WMI activity detected",
 			Tags:    []string{"persistence", "execution"},
@@ -268,7 +268,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1547.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{13},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Registry Run key modified: {{.TargetObject}}",
 			Tags:    []string{"persistence", "registry"},
@@ -282,7 +282,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1543.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{13},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Service registry modified: {{.TargetObject}}",
 			Tags:    []string{"persistence", "registry"},
@@ -296,7 +296,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{13},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Critical registry hive modification: {{.TargetObject}}",
 			Tags:    []string{"credential-access", "registry"},
@@ -310,7 +310,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1546.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{13},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "WMI registry persistence modification detected",
 			Tags:    []string{"persistence", "wmi"},
@@ -324,7 +324,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1548.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{13},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "UAC bypass technique via registry detected",
 			Tags:    []string{"privilege-escalation", "defense-evasion"},
@@ -338,7 +338,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1047",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious WMIC command executed",
 			Tags:    []string{"execution", "wmi"},
@@ -352,7 +352,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious WinRM activity detected",
 			Tags:    []string{"lateral-movement", "remote-execution"},
@@ -366,7 +366,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028",
 			Filter: &rules.Filter{
 				EventIDs: []int32{6},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "WinRM remote connection established",
 			Tags:    []string{"lateral-movement", "remote-execution"},
@@ -380,7 +380,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1018",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Domain reconnaissance activity detected",
 			Tags:    []string{"discovery", "active-directory"},
@@ -394,7 +394,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1078.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Domain administrator login detected from {{.IpAddress}}",
 			Tags:    []string{"privilege-access", "lateral-movement"},
@@ -408,7 +408,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003.004",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624, 4672},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Possible DCSync attack detected - domain replication",
 			Tags:    []string{"credential-access", "lateral-movement"},
@@ -422,7 +422,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1558.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4769},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Kerberoasting attack pattern detected - TGS request for {{.TargetUserName}}",
 			Tags:    []string{"credential-access", "kerberos"},
@@ -436,7 +436,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1558.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Golden ticket attack特征 detected - krbtgt login from unusual source",
 			Tags:    []string{"credential-access", "persistence"},
@@ -450,7 +450,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "PowerShell remoting session detected",
 			Tags:    []string{"lateral-movement", "powershell"},
@@ -464,7 +464,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1105",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4104},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Malicious PowerShell download detected",
 			Tags:    []string{"command-and-control", "powershell"},
@@ -478,7 +478,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1105",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "CertUtil used for malicious download detected",
 			Tags:    []string{"command-and-control", "defense-evasion"},
@@ -492,7 +492,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1021.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{5145, 5140},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "SMB lateral movement detected to {{.Computer}}",
 			Tags:    []string{"lateral-movement", "smb"},
@@ -506,7 +506,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1021.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{5140},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Unauthenticated SMB access detected",
 			Tags:    []string{"lateral-movement", "smb"},
@@ -520,7 +520,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1021.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "RDP lateral movement detected from external IP: {{.IpAddress}}",
 			Tags:    []string{"lateral-movement", "rdp"},
@@ -534,7 +534,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1110.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4625},
-				Levels:   []int{2},
+				Levels:   []string{"Error"},
 			},
 			Message: "RDP brute force attack detected - {{.Count}} failed attempts",
 			Tags:    []string{"credential-access", "brute-force"},
@@ -548,7 +548,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1546.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{5861},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "WMI event subscription created - possible persistence",
 			Tags:    []string{"persistence", "wmi"},
@@ -562,7 +562,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1546.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{13},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "COM object hijacking detected: {{.TargetObject}}",
 			Tags:    []string{"persistence", "defense-evasion"},
@@ -576,7 +576,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1574.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "DLL search order hijacking detected",
 			Tags:    []string{"persistence", "defense-evasion"},
@@ -590,7 +590,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1574.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4697},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Service DLL hijacking detected: {{.ServiceName}}",
 			Tags:    []string{"persistence", "privilege-escalation"},
@@ -604,7 +604,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1071.004",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688, 3},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "DNS tunneling特征 detected - possible C2 communication",
 			Tags:    []string{"command-and-control", "exfiltration"},
@@ -618,7 +618,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1027.005",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Cobalt Strike beacon特征 detected - {{.Computer}} may be compromised",
 			Tags:    []string{"malware", "command-and-control"},
@@ -632,7 +632,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1021.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{17, 18},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Cobalt Strike named pipe detected",
 			Tags:    []string{"malware", "command-and-control"},
@@ -646,7 +646,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4104},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "PowerShell loop execution detected - possible download cycle",
 			Tags:    []string{"persistence", "powershell"},
@@ -660,7 +660,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4104},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "PowerShell execution without profile - possible evasion",
 			Tags:    []string{"defense-evasion", "powershell"},
@@ -677,7 +677,7 @@ func GetAlertRules() []*rules.AlertRule {
 			AggregationKey: "computer",
 			Filter: &rules.Filter{
 				EventIDs: []int32{3},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Conditions: &rules.Conditions{
 				All: []*rules.Condition{
@@ -701,7 +701,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1049",
 			Filter: &rules.Filter{
 				EventIDs: []int32{3},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious outbound connection to {{.DestinationIp}}",
 			Tags:    []string{"command-and-control", "network"},
@@ -715,7 +715,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1574.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{7},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "DLL loaded from suspicious path: {{.ImageLoaded}}",
 			Tags:    []string{"defense-evasion", "persistence"},
@@ -729,7 +729,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{7},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious DLL loaded into LSASS - possible credential dumping",
 			Tags:    []string{"credential-access", "malware"},
@@ -743,7 +743,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1547.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{11},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "File created in suspicious location: {{.TargetFilename}}",
 			Tags:    []string{"persistence", "initial-access"},
@@ -757,7 +757,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1127",
 			Filter: &rules.Filter{
 				EventIDs: []int32{11},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Executable file created: {{.TargetFilename}}",
 			Tags:    []string{"initial-access", "malware"},
@@ -771,7 +771,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1021.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{17, 18},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious named pipe created: {{.PipeName}}",
 			Tags:    []string{"lateral-movement", "command-and-control"},
@@ -785,7 +785,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1078",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Off-hours login detected for {{.User}}",
 			Tags:    []string{"authentication", "anomaly-detection"},
@@ -799,7 +799,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1036",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4663},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Massive file access by {{.User}} - possible data exfiltration",
 			Tags:    []string{"exfiltration", "anomaly-detection"},
@@ -813,7 +813,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1068",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4672, 4673, 4674},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Privilege escalation detected for {{.User}}",
 			Tags:    []string{"privilege-escalation", "anomaly-detection"},
@@ -827,7 +827,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1562.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4104},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "AMSI bypass attempt detected - attacker trying to disable antivirus",
 			Tags:    []string{"defense-evasion", "anti-antivirus"},
@@ -841,7 +841,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1562.006",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4104, 4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "ETW tampering detected - possible defense evasion",
 			Tags:    []string{"defense-evasion", "clearing-logs"},
@@ -855,7 +855,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1562.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688, 4657},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Windows Defender real-time protection disabled",
 			Tags:    []string{"defense-evasion", "malware"},
@@ -869,7 +869,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1490",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Volume shadow copy deleted - possible ransomware preparation",
 			Tags:    []string{"impact", "ransomware"},
@@ -883,7 +883,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1562.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688, 4104},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Antivirus exclusion added: {{.CommandLine}}",
 			Tags:    []string{"defense-evasion", "malware"},
@@ -897,7 +897,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1070.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{104, 1102},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "System event log cleared",
 			Tags:    []string{"defense-evasion", "clearing-logs"},
@@ -911,7 +911,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1550.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "NTLMv1 authentication detected - vulnerable to relay attack",
 			Tags:    []string{"credential-access", "relay-attack"},
@@ -925,7 +925,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1018",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688, 4104},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "BloodHound/SharpHound AD reconnaissance tool detected",
 			Tags:    []string{"discovery", "active-directory"},
@@ -939,7 +939,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1570",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688, 5145},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "PsExec remote execution detected",
 			Tags:    []string{"lateral-movement", "remote-execution"},
@@ -953,7 +953,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1105",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "CertUtil used for download: {{.CommandLine}}",
 			Tags:    []string{"command-and-control", "defense-evasion"},
@@ -967,7 +967,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1542.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Boot Configuration Data modified - possible stealth technique",
 			Tags:    []string{"defense-evasion", "persistence"},
@@ -981,7 +981,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{10},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "LSASS memory dump detected - credential theft",
 			Tags:    []string{"credential-access", "malware"},
@@ -995,7 +995,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003.006",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4662},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "DCSync attack detected - unauthorized domain replication",
 			Tags:    []string{"credential-access", "lateral-movement"},
@@ -1009,7 +1009,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1090.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688, 1},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Tunneling tool detected: {{.Image}}",
 			Tags:    []string{"command-and-control", "exfiltration"},
@@ -1023,7 +1023,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1567.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{3},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Connection to cloud storage: {{.DestinationHostname}}",
 			Tags:    []string{"exfiltration", "command-and-control"},
@@ -1037,7 +1037,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1486",
 			Filter: &rules.Filter{
 				EventIDs: []int32{11},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Ransomware file encryption pattern detected: {{.TargetFilename}}",
 			Tags:    []string{"impact", "ransomware"},
@@ -1051,7 +1051,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1547.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{11},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Executable written to startup folder",
 			Tags:    []string{"persistence", "initial-access"},
@@ -1065,7 +1065,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1543.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{13},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Service registry key modified for persistence",
 			Tags:    []string{"persistence", "privilege-escalation"},
@@ -1079,7 +1079,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1110.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{20, 22},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "WinRM brute force attack detected",
 			Tags:    []string{"credential-access", "brute-force"},
@@ -1093,7 +1093,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028",
 			Filter: &rules.Filter{
 				EventIDs: []int32{6},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "WinRM service unauthorized enabled",
 			Tags:    []string{"persistence", "lateral-movement"},
@@ -1107,7 +1107,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{91, 28, 30},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious WinRM shell created",
 			Tags:    []string{"lateral-movement", "remote-execution"},
@@ -1121,7 +1121,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1059.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{33},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "PowerShell executed via WinRM remote session",
 			Tags:    []string{"lateral-movement", "powershell"},
@@ -1135,7 +1135,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028",
 			Filter: &rules.Filter{
 				EventIDs: []int32{32},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Remote command executed via WinRM",
 			Tags:    []string{"lateral-movement", "remote-execution"},
@@ -1149,7 +1149,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028.004",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "WinRM lateral movement from external IP: {{.IpAddress}}",
 			Tags:    []string{"lateral-movement", "remote-execution"},
@@ -1163,7 +1163,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028.004",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624, 30},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Admin account WinRM lateral movement detected",
 			Tags:    []string{"lateral-movement", "privilege-access"},
@@ -1177,7 +1177,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003.001",
 			Filter: &rules.Filter{
 				EventIDs: []int32{10, 30},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Credential theft特征 via WinRM: LSASS access",
 			Tags:    []string{"credential-access", "malware"},
@@ -1191,7 +1191,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1048",
 			Filter: &rules.Filter{
 				EventIDs: []int32{85, 86},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Large data transfer via WinRM: {{.Size}} bytes",
 			Tags:    []string{"exfiltration", "command-and-control"},
@@ -1205,7 +1205,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028.003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{8, 12},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Abnormal WinRM channel creation detected",
 			Tags:    []string{"command-and-control", "tunneling"},
@@ -1219,7 +1219,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1556",
 			Filter: &rules.Filter{
 				EventIDs: []int32{184, 182, 191},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "WinRM certificate mapping failure - possible reconnaissance",
 			Tags:    []string{"discovery", "authentication"},
@@ -1233,7 +1233,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1543",
 			Filter: &rules.Filter{
 				EventIDs: []int32{162},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious WinRM plugin loaded: {{.PluginName}}",
 			Tags:    []string{"persistence", "privilege-escalation"},
@@ -1247,7 +1247,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1028.004",
 			Filter: &rules.Filter{
 				EventIDs: []int32{169},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "WinRM remote port forwarding detected",
 			Tags:    []string{"lateral-movement", "tunneling"},
@@ -1261,7 +1261,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1098",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4673, 4674},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Suspicious privilege use detected",
 			Tags:    []string{"privilege-escalation", "persistence"},
@@ -1275,7 +1275,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1098",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4672},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Mass privilege assignment detected - {{.Count}} events",
 			Tags:    []string{"privilege-escalation", "persistence"},
@@ -1289,7 +1289,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003",
 			Filter: &rules.Filter{
 				EventIDs: []int32{5058, 5059, 5061},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Cryptographic key operation detected",
 			Tags:    []string{"credential-access", "discovery"},
@@ -1303,7 +1303,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1078",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 				Keywords: "LogonType 3",
 			},
 			Message: "Logon type 3 (network login) to local account detected for {{.User}} on {{.Computer}}",
@@ -1318,7 +1318,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1078.004",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4624},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 				Keywords: "Administrator,Domain Admin",
 			},
 			Message: "Admin account login from unusual location: {{.User}} on {{.Computer}} from {{.IpAddress}}",
@@ -1333,7 +1333,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1560",
 			Filter: &rules.Filter{
 				EventIDs:    []int32{4688},
-				Levels:      []int{4},
+				Levels:      []string{"Info"},
 				Keywords:    "rar,.docx,.xlsx,.pdf,.zip,.bak",
 				KeywordMode: rules.OpAnd,
 			},
@@ -1349,7 +1349,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1218",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4688},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 				Keywords: "wmic.exe,bitsadmin.exe,certutil.exe,mshta.exe",
 			},
 			Message: "LOLBAS attack detected: {{.Message}}",
@@ -1364,7 +1364,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1003.006",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4662},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 				Keywords: "DS-Replication-Get-Changes-All,0x3e7",
 			},
 			Message: "AD replication operation detected - potential DCSync attack",
@@ -1379,7 +1379,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1562.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{4719},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Audit policy change detected - potential defense evasion",
 			Tags:    []string{"defense-evasion", "policy"},
@@ -1393,7 +1393,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1071.004",
 			Filter: &rules.Filter{
 				EventIDs: []int32{22},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "DNS query to suspicious domain: {{.QueryName}}",
 			Tags:    []string{"command-and-control", "dns"},
@@ -1407,7 +1407,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1055.008",
 			Filter: &rules.Filter{
 				EventIDs: []int32{8},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "Remote thread created - possible process injection",
 			Tags:    []string{"defense-evasion", "privilege-escalation"},
@@ -1421,7 +1421,7 @@ func GetAlertRules() []*rules.AlertRule {
 			MitreAttack: "T1569.002",
 			Filter: &rules.Filter{
 				EventIDs: []int32{7045},
-				Levels:   []int{4},
+				Levels:   []string{"Info"},
 			},
 			Message: "New service installed: {{.ServiceName}} on {{.Computer}}",
 			Tags:    []string{"persistence", "service"},

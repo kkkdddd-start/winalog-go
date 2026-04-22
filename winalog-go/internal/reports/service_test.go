@@ -114,7 +114,7 @@ func TestBuildEventReportContent(t *testing.T) {
 			ID:        1,
 			Timestamp: time.Now(),
 			EventID:   4624,
-			Level:     0,
+			Level:     types.EventLevelInfo,
 			Source:    "Security",
 			LogName:   "Security",
 			Computer:  "TEST-PC",
@@ -132,7 +132,7 @@ func TestBuildEventReportContent(t *testing.T) {
 		t.Errorf("Computer mismatch: got %s, want %s", content[0].Computer, "TEST-PC")
 	}
 
-	if content[0].Level != "Level0" {
-		t.Errorf("Level mismatch: got %s, want %s", content[0].Level, "Level0")
+	if content[0].Level != "Info" {
+		t.Errorf("Level mismatch: got %s, want %s", content[0].Level, "Info")
 	}
 }

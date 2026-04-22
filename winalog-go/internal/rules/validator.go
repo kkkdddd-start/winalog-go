@@ -107,10 +107,16 @@ func (v *ValidationResult) validateFilterFields(filter *Filter) {
 		}
 	}
 
-	levelPattern := regexp.MustCompile(`^[0-4]$`)
+	levelValues := map[string]bool{
+		"Critical": true,
+		"Error":    true,
+		"Warning":  true,
+		"Info":     true,
+		"Verbose":  true,
+	}
 	for _, level := range filter.Levels {
-		if !levelPattern.MatchString(fmt.Sprintf("%d", level)) {
-			v.AddWarning(fmt.Sprintf("invalid level: %d", level))
+		if !levelValues[level] {
+			v.AddWarning(fmt.Sprintf("invalid level: %s", level))
 		}
 	}
 }

@@ -138,7 +138,7 @@ func AdaptReportToAPI(report *Report) *APIReportContent {
 
 	for _, event := range report.TopEvents {
 		levelStr := "Level0"
-		if event.Level != 0 {
+		if event.Level != "" {
 			levelStr = event.Level.String()
 		}
 		content.Events = append(content.Events, &APIReportEvent{
@@ -232,7 +232,7 @@ func BuildEventReportContent(events []*types.Event) []*APIReportEvent {
 	result := make([]*APIReportEvent, 0, len(events))
 	for _, event := range events {
 		levelStr := "Level0"
-		if event.Level != 0 {
+		if event.Level != "" {
 			levelStr = event.Level.String()
 		}
 		result = append(result, &APIReportEvent{

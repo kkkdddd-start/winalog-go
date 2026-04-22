@@ -119,7 +119,7 @@ func (e *Evaluator) matchFilter(filter *rules.Filter, event *types.Event) bool {
 		return false
 	}
 
-	if !matcher.MatchLevel(int(event.Level)) {
+	if !matcher.MatchLevel(string(event.Level)) {
 		return false
 	}
 
@@ -226,7 +226,7 @@ func (e *Evaluator) matchCondition(cond *rules.Condition, event *types.Event) bo
 	case "event_id":
 		return e.compareValue(event.EventID, cond.Operator, cond.Value)
 	case "level":
-		return e.compareValue(int(event.Level), cond.Operator, cond.Value)
+		return e.compareString(string(event.Level), cond.Operator, cond.Value, cond.Regex)
 	case "source":
 		return e.compareString(event.Source, cond.Operator, cond.Value, cond.Regex)
 	case "log_name":

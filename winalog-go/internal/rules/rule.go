@@ -88,7 +88,7 @@ type Pattern struct {
 
 type Filter struct {
 	EventIDs         []int32          `yaml:"event_ids,omitempty"`
-	Levels           []int            `yaml:"levels,omitempty"`
+	Levels           []string         `yaml:"levels,omitempty"`
 	LogNames         []string         `yaml:"log_names,omitempty"`
 	Sources          []string         `yaml:"sources,omitempty"`
 	Computers        []string         `yaml:"computers,omitempty"`
@@ -222,8 +222,8 @@ func (r *AlertRule) validateFilter(f *Filter) error {
 	}
 
 	for _, lvl := range f.Levels {
-		if lvl < 0 || lvl > 5 {
-			return fmt.Errorf("invalid level: %d (must be 0-5)", lvl)
+		if !types.EventLevel(lvl).IsValid() {
+			return fmt.Errorf("invalid level: %s (must be Critical, Error, Warning, Info, Verbose)", lvl)
 		}
 	}
 

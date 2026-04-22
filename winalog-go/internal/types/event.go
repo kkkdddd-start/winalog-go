@@ -2,7 +2,6 @@ package types
 
 import (
 	"database/sql"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -10,57 +9,44 @@ import (
 	"time"
 )
 
-type EventLevel int
+type EventLevel string
 
 const (
-	EventLevelCritical EventLevel = 1
-	EventLevelError    EventLevel = 2
-	EventLevelWarning  EventLevel = 3
-	EventLevelInfo     EventLevel = 4
-	EventLevelVerbose  EventLevel = 5
+	EventLevelCritical EventLevel = "Critical"
+	EventLevelError    EventLevel = "Error"
+	EventLevelWarning  EventLevel = "Warning"
+	EventLevelInfo     EventLevel = "Info"
+	EventLevelVerbose  EventLevel = "Verbose"
 )
 
 func (l EventLevel) String() string {
+	return string(l)
+}
+
+func (l EventLevel) IsValid() bool {
 	switch l {
-	case EventLevelCritical:
-		return "Critical"
-	case EventLevelError:
-		return "Error"
-	case EventLevelWarning:
-		return "Warning"
-	case EventLevelInfo:
-		return "Info"
-	case EventLevelVerbose:
-		return "Verbose"
+	case EventLevelCritical, EventLevelError, EventLevelWarning, EventLevelInfo, EventLevelVerbose:
+		return true
 	default:
-		return "Unknown"
+		return false
 	}
 }
 
-func (l EventLevel) MarshalJSON() ([]byte, error) {
-	return json.Marshal(l.String())
-}
-
-func (l *EventLevel) UnmarshalJSON(data []byte) error {
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	switch s {
-	case "Critical":
-		*l = EventLevelCritical
-	case "Error":
-		*l = EventLevelError
-	case "Warning":
-		*l = EventLevelWarning
-	case "Info":
-		*l = EventLevelInfo
-	case "Verbose":
-		*l = EventLevelVerbose
+func EventLevelFromInt(level int) EventLevel {
+	switch level {
+	case 1:
+		return EventLevelCritical
+	case 2:
+		return EventLevelError
+	case 3:
+		return EventLevelWarning
+	case 4:
+		return EventLevelInfo
+	case 5:
+		return EventLevelVerbose
 	default:
-		*l = 0
+		return EventLevelInfo
 	}
-	return nil
 }
 
 type Event struct {
@@ -86,7 +72,7 @@ func (e *Event) ToMap() map[string]interface{} {
 	m := map[string]interface{}{
 		"timestamp":   e.Timestamp,
 		"event_id":    e.EventID,
-		"level":       int(e.Level),
+		"level":       e.Level,
 		"source":      e.Source,
 		"log_name":    e.LogName,
 		"computer":    e.Computer,
@@ -124,7 +110,7 @@ func (e *Event) ToSlice() []interface{} {
 		e.ID,
 		e.Timestamp,
 		e.EventID,
-		int(e.Level),
+		e.Level,
 		e.Source,
 		e.LogName,
 		e.Computer,

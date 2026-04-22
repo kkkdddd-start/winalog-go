@@ -136,7 +136,7 @@ func (p *CsvParser) recordToEvent(record []string, lineNum int) *types.Event {
 			}
 		case "level":
 			if lvl, err := strconv.Atoi(col); err == nil {
-				event.Level = types.EventLevel(lvl)
+				event.Level = types.EventLevelFromInt(lvl)
 			} else if strings.Contains(strings.ToLower(col), "error") {
 				event.Level = types.EventLevelError
 			} else if strings.Contains(strings.ToLower(col), "warn") {

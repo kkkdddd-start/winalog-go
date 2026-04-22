@@ -346,11 +346,11 @@ func (m Model) renderTimeline() string {
 			levelColor := getLevelColor(event.Level)
 			sevStr := ""
 			switch event.Level {
-			case 1:
+			case "Critical":
 				sevStr = "CRIT"
-			case 2:
+			case "Error":
 				sevStr = "ERR"
-			case 3:
+			case "Warning":
 				sevStr = "WARN"
 			default:
 				sevStr = "INFO"

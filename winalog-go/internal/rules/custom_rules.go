@@ -27,7 +27,7 @@ type CustomRule struct {
 	Score       float64           `json:"score"`
 	MitreAttack string            `json:"mitre_attack"`
 	EventIDs    []int32           `json:"event_ids"`
-	Levels      []int             `json:"levels"`
+	Levels      []string          `json:"levels"`
 	Filter      *CustomRuleFilter `json:"filter"`
 	Message     string            `json:"message"`
 	Tags        []string          `json:"tags"`
@@ -109,7 +109,7 @@ func (r *CustomRule) ValidateParameters(paramValues map[string]string) error {
 
 type CustomRuleFilter struct {
 	EventIDs         []int32  `json:"event_ids,omitempty"`
-	Levels           []int    `json:"levels,omitempty"`
+	Levels           []string `json:"levels,omitempty"`
 	LogNames         []string `json:"log_names,omitempty"`
 	Sources          []string `json:"sources,omitempty"`
 	Computers        []string `json:"computers,omitempty"`

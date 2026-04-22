@@ -64,7 +64,7 @@ func (f *Filter) getFieldValue(event *Event) interface{} {
 	case "event_id":
 		return event.EventID
 	case "level":
-		return int(event.Level)
+		return event.Level
 	case "source":
 		return event.Source
 	case "log_name":
@@ -170,10 +170,27 @@ var DefaultRuleWeights = map[string]float64{
 	"recency":        0.15,
 }
 
+func eventLevelToScore(level EventLevel) float64 {
+	switch level {
+	case EventLevelCritical:
+		return 5.0
+	case EventLevelError:
+		return 4.0
+	case EventLevelWarning:
+		return 3.0
+	case EventLevelInfo:
+		return 2.0
+	case EventLevelVerbose:
+		return 1.0
+	default:
+		return 0.0
+	}
+}
+
 func CalculateRuleScore(rule *AlertRule, stats *AlertStats) float64 {
 	var score float64
 
-	score += float64(rule.Severity.Level()) * DefaultRuleWeights["severity"] * 100
+	score += eventLevelToScore(rule.Severity.Level()) * DefaultRuleWeights["severity"] * 100
 
 	if len(rule.MITREAttack) > 0 {
 		score += float64(len(rule.MITREAttack)) * DefaultRuleWeights["mitre_coverage"] * 10

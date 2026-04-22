@@ -29,14 +29,14 @@ type RuleInfo struct {
 	Tags        []string    `json:"tags"`
 	IsCustom    bool        `json:"is_custom"`
 	EventIDs    []int32     `json:"event_ids,omitempty"`
-	Levels      []int       `json:"levels,omitempty"`
+	Levels      []string    `json:"levels,omitempty"`
 	Filter      *FilterInfo `json:"filter,omitempty"`
 	Message     string      `json:"message,omitempty"`
 }
 
 type FilterInfo struct {
 	EventIDs         []int32  `json:"event_ids,omitempty"`
-	Levels           []int    `json:"levels,omitempty"`
+	Levels           []string `json:"levels,omitempty"`
 	LogNames         []string `json:"log_names,omitempty"`
 	Sources          []string `json:"sources,omitempty"`
 	Computers        []string `json:"computers,omitempty"`
@@ -378,7 +378,7 @@ type CreateRuleRequest struct {
 	MitreAttack []string    `json:"mitre_attack"`
 	Tags        []string    `json:"tags"`
 	EventIDs    []int32     `json:"event_ids"`
-	Levels      []int       `json:"levels"`
+	Levels      []string    `json:"levels"`
 	Filter      *FilterInfo `json:"filter"`
 	Message     string      `json:"message"`
 }
@@ -391,7 +391,7 @@ type UpdateRuleRequest struct {
 	MitreAttack []string    `json:"mitre_attack"`
 	Tags        []string    `json:"tags"`
 	EventIDs    []int32     `json:"event_ids"`
-	Levels      []int       `json:"levels"`
+	Levels      []string    `json:"levels"`
 	Filter      *FilterInfo `json:"filter"`
 	Message     string      `json:"message"`
 }

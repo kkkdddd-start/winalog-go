@@ -210,7 +210,7 @@ func TestSeverityScoreValue(t *testing.T) {
 func TestFilterStruct(t *testing.T) {
 	filter := &Filter{
 		EventIDs:    []int32{4624, 4625},
-		Levels:      []int{1, 2},
+		Levels:      []string{"Critical", "Error"},
 		LogNames:    []string{"Security", "System"},
 		Sources:     []string{"Microsoft-Windows-Security-Auditing"},
 		Computers:   []string{"WORKSTATION1"},

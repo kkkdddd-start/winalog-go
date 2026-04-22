@@ -2,7 +2,7 @@ package rules
 
 type FilterMatcher struct {
 	eventIDSet  map[int32]bool
-	levelSet    map[int]bool
+	levelSet    map[string]bool
 	logNameSet  map[string]bool
 	sourceSet   map[string]bool
 	computerSet map[string]bool
@@ -11,7 +11,7 @@ type FilterMatcher struct {
 func NewFilterMatcher(f *Filter) *FilterMatcher {
 	m := &FilterMatcher{
 		eventIDSet:  make(map[int32]bool, len(f.EventIDs)),
-		levelSet:    make(map[int]bool, len(f.Levels)),
+		levelSet:    make(map[string]bool, len(f.Levels)),
 		logNameSet:  make(map[string]bool, len(f.LogNames)),
 		sourceSet:   make(map[string]bool, len(f.Sources)),
 		computerSet: make(map[string]bool, len(f.Computers)),
@@ -43,7 +43,7 @@ func (m *FilterMatcher) MatchEventID(eid int32) bool {
 	return m.eventIDSet[eid]
 }
 
-func (m *FilterMatcher) MatchLevel(level int) bool {
+func (m *FilterMatcher) MatchLevel(level string) bool {
 	if len(m.levelSet) == 0 {
 		return true
 	}
