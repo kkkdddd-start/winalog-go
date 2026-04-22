@@ -247,12 +247,22 @@ func (c *TaskInfoCollector) getTaskActions(taskName, taskPath string) []string {
 }
 
 func (c *TaskInfoCollector) getTaskLastRunTime(taskName, taskPath string) time.Time {
-	cmd := `(Get-ScheduledTask -TaskName '%s' -TaskPath '%s' -ErrorAction SilentlyContinue | Get-ScheduledTaskInfo -ErrorAction SilentlyContinue).LastRunTime`
+	cmd := fmt.Sprintf(`(Get-ScheduledTask -TaskName '%s' -TaskPath '%s' -ErrorAction SilentlyContinue | Get-ScheduledTaskInfo -ErrorAction SilentlyContinue).LastRunTime`, taskName, taskPath)
 
 	result := utils.RunPowerShell(cmd)
-	if result.Success() {
-		if t, err := time.Parse("2006-01-02 15:04:05", strings.TrimSpace(result.Output)); err == nil {
-			return t
+	if result.Success() && strings.TrimSpace(result.Output) != "" && !strings.Contains(result.Output, "never") {
+		output := strings.TrimSpace(result.Output)
+		timeFormats := []string{
+			"2006-01-02 15:04:05",
+			"2006-01-02T15:04:05Z",
+			"2006-01-02T15:04:05.0000000Z",
+			"1/2/2006 3:04:05 PM",
+			time.RFC3339,
+		}
+		for _, format := range timeFormats {
+			if t, err := time.Parse(format, output); err == nil {
+				return t
+			}
 		}
 	}
 
@@ -260,12 +270,22 @@ func (c *TaskInfoCollector) getTaskLastRunTime(taskName, taskPath string) time.T
 }
 
 func (c *TaskInfoCollector) getTaskNextRunTime(taskName, taskPath string) time.Time {
-	cmd := `(Get-ScheduledTask -TaskName '%s' -TaskPath '%s' -ErrorAction SilentlyContinue | Get-ScheduledTaskInfo -ErrorAction SilentlyContinue).NextRunTime`
+	cmd := fmt.Sprintf(`(Get-ScheduledTask -TaskName '%s' -TaskPath '%s' -ErrorAction SilentlyContinue | Get-ScheduledTaskInfo -ErrorAction SilentlyContinue).NextRunTime`, taskName, taskPath)
 
 	result := utils.RunPowerShell(cmd)
-	if result.Success() {
-		if t, err := time.Parse("2006-01-02 15:04:05", strings.TrimSpace(result.Output)); err == nil {
-			return t
+	if result.Success() && strings.TrimSpace(result.Output) != "" && !strings.Contains(result.Output, "NA") && !strings.Contains(result.Output, "Disabled") {
+		output := strings.TrimSpace(result.Output)
+		timeFormats := []string{
+			"2006-01-02 15:04:05",
+			"2006-01-02T15:04:05Z",
+			"2006-01-02T15:04:05.0000000Z",
+			"1/2/2006 3:04:05 PM",
+			time.RFC3339,
+		}
+		for _, format := range timeFormats {
+			if t, err := time.Parse(format, output); err == nil {
+				return t
+			}
 		}
 	}
 
