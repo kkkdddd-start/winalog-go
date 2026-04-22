@@ -164,8 +164,6 @@ func (s *Server) setupRoutes() {
 		monitorApi.SetupMonitorRoutes(s.engine, s.monitorEng)
 	}
 
-	setupPersistenceStreamRoutes(s.engine, s.persistenceEng)
-
 	s.engine.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
