@@ -578,6 +578,10 @@ func runDBVacuum(cmd *cobra.Command, args []string) error {
 }
 
 func runDBClean(cmd *cobra.Command, args []string) error {
+	if dbCleanFlags.days < 0 {
+		return fmt.Errorf("days must be non-negative, got %d", dbCleanFlags.days)
+	}
+
 	cfg := getConfig()
 	db, err := storage.NewDB(cfg.Database.Path)
 	if err != nil {
@@ -586,7 +590,7 @@ func runDBClean(cmd *cobra.Command, args []string) error {
 	defer db.Close()
 
 	fmt.Printf("Cleaning old events (older than %d days)...\n", dbCleanFlags.days)
-	result, err := db.Exec(fmt.Sprintf("DELETE FROM events WHERE timestamp < datetime('now', '-%d days')", dbCleanFlags.days))
+	result, err := db.Exec("DELETE FROM events WHERE timestamp < datetime('now', ?)", fmt.Sprintf("-%d days", dbCleanFlags.days))
 	if err != nil {
 		return fmt.Errorf("failed to clean events: %w", err)
 	}

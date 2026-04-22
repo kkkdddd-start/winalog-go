@@ -626,33 +626,30 @@ func runLiveCollect(cmd *cobra.Command, args []string) error {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	var lastEventID int64 = 0
+	lastCheckTime := time.Now().Add(-5 * time.Second)
 	eventCount := 0
 
 	for {
 		select {
 		case <-ticker.C:
+			now := time.Now()
 			filter := &storage.EventFilter{
-				Limit: 50,
+				Limit:     1000,
+				StartTime: &lastCheckTime,
+				EndTime:   &now,
 			}
 			events, _, err := db.ListEvents(filter)
 			if err != nil {
 				continue
 			}
 
-			newEvents := 0
-			for _, event := range events {
-				if event.ID > lastEventID {
-					newEvents++
-					lastEventID = event.ID
-				}
-			}
-
+			newEvents := len(events)
 			if newEvents > 0 {
 				eventCount += newEvents
 				fmt.Printf("[%s] New events: %d (Total streamed: %d)\n",
 					time.Now().Format("15:04:05"), newEvents, eventCount)
 			}
+			lastCheckTime = now
 		case <-sigChan:
 			fmt.Println("\nStopping live collection...")
 			fmt.Printf("Total events streamed: %d\n", eventCount)

@@ -219,7 +219,9 @@ func runAlertShow(cmd *cobra.Command, args []string) error {
 	}
 
 	var id int64
-	fmt.Sscanf(args[0], "%d", &id)
+	if _, err := fmt.Sscanf(args[0], "%d", &id); err != nil {
+		return fmt.Errorf("invalid alert ID: %s", args[0])
+	}
 
 	alert, err := engine.GetAlert(id)
 	if err != nil {
@@ -264,7 +266,9 @@ func runAlertResolve(cmd *cobra.Command, args []string) error {
 	}
 
 	var id int64
-	fmt.Sscanf(args[0], "%d", &id)
+	if _, err := fmt.Sscanf(args[0], "%d", &id); err != nil {
+		return fmt.Errorf("invalid alert ID: %s", args[0])
+	}
 
 	notes := alertResolveFlags.comment
 	if notes == "" {
@@ -288,7 +292,9 @@ func runAlertDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	var id int64
-	fmt.Sscanf(args[0], "%d", &id)
+	if _, err := fmt.Sscanf(args[0], "%d", &id); err != nil {
+		return fmt.Errorf("invalid alert ID: %s", args[0])
+	}
 
 	err := engine.DeleteAlert(id)
 	if err != nil {

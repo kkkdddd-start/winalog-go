@@ -20,6 +20,16 @@ func RegisterCommands(root *cobra.Command) {
 	root.PersistentFlags().StringVar(&logLevel, "log-level", "", "Log level (debug/info/warn/error)")
 	root.PersistentFlags().StringVar(&configPath, "config", "", "Config file path")
 
+	if dbPath != "" {
+		os.Setenv("WINALOG_DATABASE_PATH", dbPath)
+	}
+	if logLevel != "" {
+		os.Setenv("WINALOG_LOG_LEVEL", logLevel)
+	}
+	if configPath != "" {
+		os.Setenv("WINALOG_CONFIG_PATH", configPath)
+	}
+
 	root.AddCommand(importCmd)
 	root.AddCommand(searchCmd)
 	root.AddCommand(collectCmd)
@@ -55,13 +65,4 @@ func initCLILogging() {
 }
 
 func init() {
-	if dbPath != "" {
-		os.Setenv("WINALOG_DATABASE_PATH", dbPath)
-	}
-	if logLevel != "" {
-		os.Setenv("WINALOG_LOG_LEVEL", logLevel)
-	}
-	if configPath != "" {
-		os.Setenv("WINALOG_CONFIG_PATH", configPath)
-	}
 }
