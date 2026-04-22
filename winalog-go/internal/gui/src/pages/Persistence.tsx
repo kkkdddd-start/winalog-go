@@ -229,14 +229,15 @@ function Persistence() {
     setEditingRule({ ...editingRule, whitelist: newWhitelist })
   }
 
-  const fetchDetections = async () => {
+  const fetchDetections = async (force = false) => {
     try {
       setLoading(true)
       setError(null)
-      const params = new URLSearchParams()
-      if (filter.category) params.append('category', filter.category)
-      if (filter.technique) params.append('technique', filter.technique)
-      const response = await persistenceAPI.detect(params.toString() ? `?${params.toString()}` : '')
+      const params: { category?: string; technique?: string; force?: boolean } = {}
+      if (filter.category) params.category = filter.category
+      if (filter.technique) params.technique = filter.technique
+      if (force) params.force = true
+      const response = await persistenceAPI.detect(params)
       const data = response.data
       setDetections(data.detections || [])
       setStats(calculateStats(data.detections || []))
@@ -337,7 +338,7 @@ function Persistence() {
     return (
       <div className="persistence-page">
         <div className="error">{t('common.error')}: {error}</div>
-        <button onClick={fetchDetections} className="btn btn-primary">
+        <button onClick={() => fetchDetections()} className="btn btn-primary">
           {t('common.confirm')}
         </button>
       </div>
@@ -348,7 +349,7 @@ function Persistence() {
     <div className="persistence-page">
       <div className="page-header">
         <h1>{t('persistence.title')}</h1>
-        <button onClick={fetchDetections} className="btn btn-primary">
+        <button onClick={() => fetchDetections(true)} className="btn btn-primary">
           {t('persistence.rescan')}
         </button>
         <button onClick={handleShowDetectorConfig} className="btn btn-secondary">
@@ -493,7 +494,7 @@ function Persistence() {
           <option value="BITS">{t('persistence.categoryBITS')}</option>
           <option value="Accessibility">{t('persistence.categoryAccessibility')}</option>
         </select>
-        <button onClick={fetchDetections} className="btn btn-secondary">
+        <button onClick={() => fetchDetections(true)} className="btn btn-secondary">
           {t('persistence.rescan')}
         </button>
       </div>
