@@ -20,8 +20,7 @@ import (
 
 type OneClickCollector struct {
 	BaseCollector
-	cfg             CollectConfig
-	failedEventLogs []CollectionItem
+	cfg CollectConfig
 }
 
 type CollectConfig struct {
@@ -200,21 +199,21 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		displayName string
 		description string
 		requested   bool
-		collectFn   func() error
+		collectFn   func() ([]CollectionItem, error)
 	}{
-		{"systemInfo", "系统信息", "收集系统基本信息", c.cfg.IncludeSystemInfo, func() error { return c.collectSystemInfoTo(tempDir) }},
-		{"registry", "注册表", "收集注册表数据", c.cfg.IncludeRegistry, func() error { return c.CollectRegistry(ctx, tempDir) }},
-		{"scheduledTasks", "计划任务", "收集计划任务", c.cfg.IncludeTasks, func() error { return c.CollectScheduledTasks(ctx, tempDir) }},
-		{"localUsers", "本地用户", "收集本地用户", c.cfg.IncludeUsers, func() error { return c.CollectLocalUsers(ctx, tempDir) }},
-		{"prefetch", "Prefetch", "收集 Prefetch", c.cfg.IncludePrefetch, func() error { return c.CollectPrefetch(ctx, tempDir) }},
-		{"eventLogs", "事件日志", "收集 Windows 事件日志", true, func() error { return c.CollectEventLogs(ctx, tempDir) }},
-		{"processInfo", "进程信息", "收集进程和签名", c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs, func() error { return c.collectProcessInfoWithSignaturesAndDLLs(tempDir) }},
-		{"amcache", "Amcache", "收集 Amcache", c.cfg.IncludeAmcache, func() error { return c.CollectAmcache(ctx, tempDir) }},
-		{"userassist", "UserAssist", "收集 UserAssist", c.cfg.IncludeUserassist, func() error { return c.CollectUserAssist(ctx, tempDir) }},
-		{"usnJournal", "USN 日志", "收集 USN Journal", c.cfg.IncludeUSNJournal, func() error { return c.CollectUSNJournal(ctx, tempDir) }},
-		{"shimCache", "ShimCache", "收集 ShimCache", c.cfg.IncludeShimCache, func() error { return c.CollectShimCache(ctx, tempDir) }},
-		{"networkConnections", "网络连接", "收集网络连接", c.cfg.IncludeNetwork, func() error { return c.CollectNetworkConnections(ctx, tempDir) }},
-		{"drivers", "驱动", "收集驱动信息", c.cfg.IncludeDrivers, func() error { return c.CollectDrivers(ctx, tempDir) }},
+		{"systemInfo", "系统信息", "收集系统基本信息", c.cfg.IncludeSystemInfo, func() ([]CollectionItem, error) { return nil, c.collectSystemInfoTo(tempDir) }},
+		{"registry", "注册表", "收集注册表数据", c.cfg.IncludeRegistry, func() ([]CollectionItem, error) { return nil, c.CollectRegistry(ctx, tempDir) }},
+		{"scheduledTasks", "计划任务", "收集计划任务", c.cfg.IncludeTasks, func() ([]CollectionItem, error) { return nil, c.CollectScheduledTasks(ctx, tempDir) }},
+		{"localUsers", "本地用户", "收集本地用户", c.cfg.IncludeUsers, func() ([]CollectionItem, error) { return nil, c.CollectLocalUsers(ctx, tempDir) }},
+		{"prefetch", "Prefetch", "收集 Prefetch", c.cfg.IncludePrefetch, func() ([]CollectionItem, error) { return nil, c.CollectPrefetch(ctx, tempDir) }},
+		{"eventLogs", "事件日志", "收集 Windows 事件日志", true, func() ([]CollectionItem, error) { return c.CollectEventLogs(ctx, tempDir) }},
+		{"processInfo", "进程信息", "收集进程和签名", c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs, func() ([]CollectionItem, error) { return nil, c.collectProcessInfoWithSignaturesAndDLLs(tempDir) }},
+		{"amcache", "Amcache", "收集 Amcache", c.cfg.IncludeAmcache, func() ([]CollectionItem, error) { return nil, c.CollectAmcache(ctx, tempDir) }},
+		{"userassist", "UserAssist", "收集 UserAssist", c.cfg.IncludeUserassist, func() ([]CollectionItem, error) { return nil, c.CollectUserAssist(ctx, tempDir) }},
+		{"usnJournal", "USN 日志", "收集 USN Journal", c.cfg.IncludeUSNJournal, func() ([]CollectionItem, error) { return nil, c.CollectUSNJournal(ctx, tempDir) }},
+		{"shimCache", "ShimCache", "收集 ShimCache", c.cfg.IncludeShimCache, func() ([]CollectionItem, error) { return nil, c.CollectShimCache(ctx, tempDir) }},
+		{"networkConnections", "网络连接", "收集网络连接", c.cfg.IncludeNetwork, func() ([]CollectionItem, error) { return nil, c.CollectNetworkConnections(ctx, tempDir) }},
+		{"drivers", "驱动", "收集驱动信息", c.cfg.IncludeDrivers, func() ([]CollectionItem, error) { return nil, c.CollectDrivers(ctx, tempDir) }},
 	}
 
 	for _, item := range itemDefinitions {
@@ -230,7 +229,8 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		})
 
 		log.Printf("[INFO] Collecting %s...", item.displayName)
-		if err := item.collectFn(); err != nil {
+		subErrors, err := item.collectFn()
+		if err != nil {
 			log.Printf("[ERROR] %s collection failed: %v", item.displayName, err)
 			allErrors = append(allErrors, fmt.Sprintf("%s: %v", item.name, err))
 			result.Summary.FailedItems = append(result.Summary.FailedItems, CollectionItem{
@@ -241,11 +241,11 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 				Error:       err.Error(),
 			})
 		} else {
-			if item.name == "eventLogs" && len(c.failedEventLogs) > 0 {
-				for _, failed := range c.failedEventLogs {
-					result.Summary.FailedItems = append(result.Summary.FailedItems, failed)
-				}
-				log.Printf("[WARN] Event log collection had %d individual file failures", len(c.failedEventLogs))
+			for _, failed := range subErrors {
+				result.Summary.FailedItems = append(result.Summary.FailedItems, failed)
+			}
+			if len(subErrors) > 0 {
+				log.Printf("[WARN] %s had %d individual item failures", item.displayName, len(subErrors))
 			}
 
 			log.Printf("[INFO] %s collected successfully", item.displayName)
@@ -277,8 +277,10 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 
 	// Generate collection summary report
 	summaryPath := filepath.Join(tempDir, "collection_summary.json")
-	summaryData, _ := json.MarshalIndent(result.Summary, "", "  ")
-	if err := os.WriteFile(summaryPath, summaryData, 0644); err != nil {
+	summaryData, err := json.MarshalIndent(result.Summary, "", "  ")
+	if err != nil {
+		log.Printf("[WARN] Failed to marshal collection summary: %v", err)
+	} else if err := os.WriteFile(summaryPath, summaryData, 0644); err != nil {
 		log.Printf("[WARN] Failed to write collection summary: %v", err)
 	}
 
@@ -415,10 +417,10 @@ func (c *OneClickCollector) collectSystemInfoTo(tempDir string) error {
 	return os.WriteFile(filepath.Join(infoDir, "system_info.json"), data, 0600)
 }
 
-func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir string) error {
+func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir string) ([]CollectionItem, error) {
 	eventLogDir := filepath.Join(outputDir, "event_logs")
 	if err := os.MkdirAll(eventLogDir, 0755); err != nil {
-		return err
+		return nil, err
 	}
 
 	logChannels, err := GetChannelFilePaths()
@@ -427,11 +429,12 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 		logChannels = c.getEventLogFilesFallback()
 	}
 
+	var failedItems []CollectionItem
 	copiedCount := 0
 	for _, ch := range logChannels {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return failedItems, ctx.Err()
 		default:
 		}
 
@@ -450,7 +453,7 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 			log.Printf("[DEBUG] [OneClick] Copied event log: %s -> %s", ch.Name, filepath.Base(ch.LogPath))
 		} else {
 			log.Printf("[WARN] [OneClick] Failed to copy log %s: %v", ch.Name, err)
-			c.failedEventLogs = append(c.failedEventLogs, CollectionItem{
+			failedItems = append(failedItems, CollectionItem{
 				Name:        ch.Name,
 				DisplayName: ch.Name,
 				Description: "Event log file",
@@ -461,8 +464,8 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 		}
 	}
 
-	log.Printf("[DEBUG] [OneClick] Event log collection completed: %d files copied, %d failed", copiedCount, len(c.failedEventLogs))
-	return nil
+	log.Printf("[DEBUG] [OneClick] Event log collection completed: %d files copied, %d failed", copiedCount, len(failedItems))
+	return failedItems, nil
 }
 
 func (c *OneClickCollector) getEventLogFilesFallback() []LogChannelInfo {
