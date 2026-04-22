@@ -700,13 +700,13 @@ function SystemInfo() {
                   <td>{proc.user || '-'}</td>
                   <td>
                     {proc.is_signed ? (
-                      <span className="signature-badge valid" title={`Issuer: ${proc.signature?.issuer || 'N/A'}\nThumbprint: ${proc.signature?.thumbprint || 'N/A'}`}>
-                        ✓ {t('systemInfo.signed') || '已签名'}
+                      <span className="signature-badge valid" title={`Subject: ${proc.signature?.subject || 'N/A'}\nIssuer: ${proc.signature?.issuer || 'N/A'}\nThumbprint: ${proc.signature?.thumbprint || 'N/A'}\nValid: ${proc.signature?.valid_from || 'N/A'} ~ ${proc.signature?.valid_to || 'N/A'}`}>
+                        ✓ {proc.signature?.subject || t('systemInfo.signed') || '已签名'}
                       </span>
                     ) : (
                       <span className="signature-badge unsigned">
                         ✗ {t('systemInfo.unsigned') || '未签名'}
-                      </span>
+                    </span>
                     )}
                   </td>
                   <td className="truncate mono" 
