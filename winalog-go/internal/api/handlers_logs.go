@@ -18,6 +18,7 @@ func NewLogsHandler() *LogsHandler {
 func (h *LogsHandler) GetLogs(c *gin.Context) {
 	offsetStr := c.DefaultQuery("offset", "0")
 	limitStr := c.DefaultQuery("limit", "100")
+	keyword := c.Query("keyword")
 
 	offset, _ := strconv.Atoi(offsetStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -30,7 +31,7 @@ func (h *LogsHandler) GetLogs(c *gin.Context) {
 	}
 
 	metricsLogger := observability.GetMetricsLogger()
-	entries, total, err := metricsLogger.ReadLines(offset, limit)
+	entries, total, err := metricsLogger.ReadLines(offset, limit, keyword)
 	if err != nil {
 		log.Printf("[ERROR] GetLogs failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -42,6 +43,7 @@ func (h *LogsHandler) GetLogs(c *gin.Context) {
 		"total":   total,
 		"offset":  offset,
 		"limit":   limit,
+		"keyword": keyword,
 	})
 }
 

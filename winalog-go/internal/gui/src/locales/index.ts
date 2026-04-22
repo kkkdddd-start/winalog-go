@@ -5,6 +5,7 @@ export const zh = {
   nav: {
     dashboard: '仪表盘',
     events: '事件',
+    logs: '日志查看',
     alerts: '告警',
     timeline: '时间线',
     collect: '日志采集',
@@ -606,6 +607,7 @@ export const zh = {
     metrics: '性能',
     startup: '启动',
     panic: '崩溃',
+    clearSearch: '清除',
   },
   ueba: {
     title: '用户行为分析',
@@ -1346,6 +1348,7 @@ export const en = {
     metrics: 'Metrics',
     startup: 'Startup',
     panic: 'Panic',
+    clearSearch: 'Clear',
   },
   ueba: {
     title: 'User Behavior Analytics',

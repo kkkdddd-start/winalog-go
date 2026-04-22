@@ -41,6 +41,7 @@ function Logs() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [levelFilter, setLevelFilter] = useState<string>('all')
+  const [keyword, setKeyword] = useState<string>('')
 
   useEffect(() => {
     fetchLogFiles()
@@ -60,7 +61,8 @@ function Logs() {
     setLoading(true)
     setError(null)
     
-    fetch(`/api/logs?offset=${newOffset}&limit=${limit}`)
+    const keywordParam = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''
+    fetch(`/api/logs?offset=${newOffset}&limit=${limit}${keywordParam}`)
       .then(res => res.json())
       .then(data => {
         setLogs(data.entries || [])
@@ -80,6 +82,18 @@ function Logs() {
 
   const handleLevelFilter = (level: string) => {
     setLevelFilter(level)
+  }
+
+  const handleKeywordSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setOffset(0)
+    fetchLogs(0)
+  }
+
+  const handleClearKeyword = () => {
+    setKeyword('')
+    setOffset(0)
+    fetchLogs(0)
   }
 
   const getLevelColor = (level: string) => {
@@ -178,6 +192,23 @@ function Logs() {
           >
             {t('settings.error')}
           </button>
+        </div>
+        <div className="filter-group search-group">
+          <form onSubmit={handleKeywordSearch} className="search-form">
+            <input
+              type="text"
+              className="search-input"
+              placeholder={t('events.searchPlaceholder')}
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+            <button type="submit" className="filter-btn">{t('events.search')}</button>
+            {keyword && (
+              <button type="button" className="filter-btn" onClick={handleClearKeyword}>
+                {t('logs.clearSearch')}
+              </button>
+            )}
+          </form>
         </div>
       </div>
 
@@ -380,6 +411,35 @@ function Logs() {
           background: rgba(0, 217, 255, 0.2);
           border-color: #00d9ff;
           color: #00d9ff;
+        }
+        
+        .search-group {
+          margin-left: auto;
+        }
+        
+        .search-form {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+        
+        .search-input {
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid #333;
+          border-radius: 6px;
+          color: #fff;
+          font-size: 13px;
+          min-width: 200px;
+        }
+        
+        .search-input:focus {
+          outline: none;
+          border-color: #00d9ff;
+        }
+        
+        .search-input::placeholder {
+          color: #666;
         }
         
         .logs-files {

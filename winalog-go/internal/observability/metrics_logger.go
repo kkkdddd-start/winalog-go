@@ -192,7 +192,7 @@ func (m *MetricsLogger) Path() string {
 	return m.file.Name()
 }
 
-func (m *MetricsLogger) ReadLines(offset, limit int) ([]LogFileEntry, int, error) {
+func (m *MetricsLogger) ReadLines(offset, limit int, keyword string) ([]LogFileEntry, int, error) {
 	if m == nil {
 		return nil, 0, nil
 	}
@@ -214,12 +214,20 @@ func (m *MetricsLogger) ReadLines(offset, limit int) ([]LogFileEntry, int, error
 	content := buf.String()
 
 	lines := strings.Split(content, "\n")
-	var totalLines int
+
+	filteredLines := make([]string, 0)
 	for _, line := range lines {
-		if strings.TrimSpace(line) != "" {
-			totalLines++
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
 		}
+		if keyword != "" && !strings.Contains(strings.ToLower(trimmed), strings.ToLower(keyword)) {
+			continue
+		}
+		filteredLines = append(filteredLines, trimmed)
 	}
+
+	totalLines := len(filteredLines)
 
 	startLine := totalLines - offset - limit
 	if startLine < 0 {
@@ -228,11 +236,7 @@ func (m *MetricsLogger) ReadLines(offset, limit int) ([]LogFileEntry, int, error
 
 	var entries []LogFileEntry
 	lineNum := 0
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
+	for _, line := range filteredLines {
 		lineNum++
 		if lineNum <= startLine {
 			continue
