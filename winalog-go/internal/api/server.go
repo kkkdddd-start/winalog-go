@@ -216,11 +216,12 @@ func (s *Server) Start() error {
 	log.Printf("Starting HTTP API server on %s", s.addr)
 
 	s.httpServer = &http.Server{
-		Addr:         s.addr,
-		Handler:      s.engine,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 5 * time.Minute,
-		IdleTimeout:  120 * time.Second,
+		Addr:           s.addr,
+		Handler:        s.engine,
+		ReadTimeout:    30 * time.Second,
+		WriteTimeout:   10 * time.Minute,
+		IdleTimeout:    120 * time.Second,
+		MaxHeaderBytes: 1 << 20,
 	}
 
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
