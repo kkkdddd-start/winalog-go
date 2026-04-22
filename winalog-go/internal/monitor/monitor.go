@@ -105,11 +105,12 @@ func (e *MonitorEngine) Start() error {
 
 func (e *MonitorEngine) Stop() error {
 	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	if !e.isRunning {
+		e.mu.Unlock()
 		return nil
 	}
+	e.isRunning = false
+	e.mu.Unlock()
 
 	if e.processWatch != nil {
 		e.processWatch.Stop()
@@ -126,8 +127,11 @@ func (e *MonitorEngine) Stop() error {
 		e.dnsPoll = nil
 	}
 
-	e.isRunning = false
-	e.stats.IsRunning = false
+	close(e.eventCh)
+
+	e.mu.Lock()
+	e.subscribers = nil
+	e.mu.Unlock()
 
 	return nil
 }

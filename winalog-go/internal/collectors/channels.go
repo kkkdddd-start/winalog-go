@@ -140,7 +140,10 @@ func parseChannelFilePaths(output string) ([]LogChannelInfo, error) {
 		isEVTX, _ := item["IsEVTX"].(bool)
 
 		if name != "" && logPath != "" {
-			decodedName, _ := url.QueryUnescape(name)
+			decodedName := name
+			if decoded, err := url.QueryUnescape(name); err == nil {
+				decodedName = decoded
+			}
 			channels = append(channels, LogChannelInfo{
 				Name:    decodedName,
 				LogPath: logPath,
