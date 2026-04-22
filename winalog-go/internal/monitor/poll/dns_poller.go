@@ -172,32 +172,20 @@ var (
 
 func parseDNSOutput(output string) []*DNSEntry {
 	entries := make([]*DNSEntry, 0)
+	if output == "" {
+		return entries
+	}
+
 	lines := strings.Split(output, "\n")
 
 	var currentName string
 	var currentType uint16
+	var currentData []string
 
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-
-		if matches := recordNameRegex.FindStringSubmatch(line); len(matches) == 2 {
-			currentName = matches[1]
-			continue
-		}
-
-		if matches := recordTypeRegex.FindStringSubmatch(line); len(matches) == 2 {
-			fmt.Sscanf(matches[1], "%d", &currentType)
-			continue
-		}
-
-		if strings.Contains(line, "No DNS Records") {
-			continue
-		}
-
-		if strings.Contains(line, "IP Address") && currentName != "" {
-			if ipMatch := strings.Split(line, ":"); len(ipMatch) >= 2 {
-				ip := strings.TrimSpace(ipMatch[len(ipMatch)-1])
-				if ip != "" && ip != "::" && !strings.Contains(ip, "::") {
+	flushEntry := func() {
+		if currentName != "" && len(currentData) > 0 {
+			for _, ip := range currentData {
+				if ip != "" && ip != "::" && !strings.Contains(ip, "::") && !strings.HasPrefix(ip, "ff") {
 					entries = append(entries, &DNSEntry{
 						Name:     currentName,
 						Type:     currentType,
@@ -208,8 +196,57 @@ func parseDNSOutput(output string) []*DNSEntry {
 				}
 			}
 		}
+		currentName = ""
+		currentType = 0
+		currentData = nil
 	}
 
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+
+		if strings.Contains(line, "No DNS Records") {
+			continue
+		}
+
+		if strings.Contains(line, "------------------------------") {
+			flushEntry()
+			continue
+		}
+
+		if matches := recordNameRegex.FindStringSubmatch(line); len(matches) == 2 {
+			flushEntry()
+			currentName = strings.TrimSpace(matches[1])
+			continue
+		}
+
+		if matches := recordTypeRegex.FindStringSubmatch(line); len(matches) == 2 {
+			var typeVal int
+			if _, err := fmt.Sscanf(matches[1], "%d", &typeVal); err == nil {
+				currentType = uint16(typeVal)
+			}
+			continue
+		}
+
+		lowerLine := strings.ToLower(line)
+		if strings.Contains(lowerLine, "record type") || strings.Contains(lowerLine, "data length") {
+			continue
+		}
+
+		if strings.Contains(lowerLine, "ip address") || strings.Contains(lowerLine, "ipv6") {
+			parts := strings.Split(line, ":")
+			if len(parts) >= 2 {
+				ip := strings.TrimSpace(parts[len(parts)-1])
+				if ip != "" && ip != "::" {
+					currentData = append(currentData, ip)
+				}
+			}
+		}
+	}
+
+	flushEntry()
 	return entries
 }
 

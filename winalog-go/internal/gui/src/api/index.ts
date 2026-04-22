@@ -424,8 +424,14 @@ export const settingsAPI = {
 }
 
 export const persistenceAPI = {
-  detect: (query?: string) =>
-    api.get(`/persistence/detect${query || ''}`),
+  detect: (params?: { category?: string, technique?: string, force?: boolean }) => {
+    const queryParts: string[] = []
+    if (params?.category) queryParts.push(`category=${encodeURIComponent(params.category)}`)
+    if (params?.technique) queryParts.push(`technique=${encodeURIComponent(params.technique)}`)
+    if (params?.force) queryParts.push('force=true')
+    const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : ''
+    return api.get(`/persistence/detect${query}`)
+  },
   detectStream: (onDetection: (data: any) => void, onError?: (err: any) => void) => {
     const eventSource = new EventSource('/api/persistence/detect/stream')
     

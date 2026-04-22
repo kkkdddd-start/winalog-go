@@ -1,5 +1,0 @@
-Starting one-click collection...
-Output: ./cli_test_results_20260420_070828/forensic_collect.zip
-Workers: 4
-Compress: true
-

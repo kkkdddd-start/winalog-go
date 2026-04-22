@@ -1,1 +1,0 @@
-{"analyzers":["brute_force","kerberos","powershell","lateral_movement","privilege_escalation","login","data_exfiltration","persistence","domain_controller"]}

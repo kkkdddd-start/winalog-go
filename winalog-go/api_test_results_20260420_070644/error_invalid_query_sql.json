@@ -1,1 +1,0 @@
-{"error":"INVALID_PARAM: only SELECT, PRAGMA, EXPLAIN, WITH queries are allowed (field: sql, value: \u003cnil\u003e)","code":"INVALID_QUERY"}

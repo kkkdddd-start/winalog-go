@@ -356,7 +356,37 @@ func splitAddr(addr string) (Addr, uint16) {
 }
 
 func getProcessName(pid uint32) string {
-	return "Unknown"
+	if pid == 0 {
+		return "Unknown"
+	}
+
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.PROCESS_QUERY_INFORMATION, false, pid)
+	if err != nil {
+		return "Unknown"
+	}
+	defer windows.CloseHandle(hProcess)
+
+	if hProcess == 0 {
+		return "Unknown"
+	}
+
+	var buf [windows.MAX_PATH]uint16
+	size := uint32(len(buf))
+	if err := windows.QueryFullProcessImageName(hProcess, 0, &buf[0], &size); err != nil {
+		return "Unknown"
+	}
+
+	path := windows.UTF16ToString(buf[:size])
+	if path == "" {
+		return "Unknown"
+	}
+
+	parts := strings.Split(path, "\\")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+
+	return path
 }
 
 func getTCPState(state uint32) string {

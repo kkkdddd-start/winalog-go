@@ -220,11 +220,19 @@ func getProcessStartTime(pid uint32) time.Time {
 		}
 	}()
 
-	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if pid == 0 {
+		return time.Time{}
+	}
+
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.PROCESS_QUERY_INFORMATION, false, pid)
 	if err != nil {
 		return time.Time{}
 	}
 	defer windows.CloseHandle(hProcess)
+
+	if hProcess == 0 {
+		return time.Time{}
+	}
 
 	var creationTime windows.Filetime
 	var exitTime windows.Filetime
@@ -235,12 +243,15 @@ func getProcessStartTime(pid uint32) time.Time {
 		return time.Time{}
 	}
 
-	if creationTime.Nanoseconds() == 0 && creationTime.HighDateTime == 0 && creationTime.LowDateTime == 0 {
+	high := uint64(creationTime.HighDateTime)
+	low := uint64(creationTime.LowDateTime)
+	if high == 0 && low == 0 {
 		return time.Time{}
 	}
 
+	ns := (high << 32) | low
 	return time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC).
-		Add(time.Duration(creationTime.Nanoseconds()) * time.Nanosecond)
+		Add(time.Duration(ns) * 100)
 }
 
 func ListProcesses() ([]Process, error) {

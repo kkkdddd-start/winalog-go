@@ -1,2 +1,0 @@
-Error: Unknown rule 'BruteForce'
-Please specify rule type using --type flag (alert or correlation)

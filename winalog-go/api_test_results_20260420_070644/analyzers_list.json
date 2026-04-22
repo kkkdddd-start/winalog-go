@@ -1,1 +1,0 @@
-{"analyzers":["kerberos","powershell","lateral_movement","persistence","privilege_escalation","domain_controller","brute_force","login","data_exfiltration"]}

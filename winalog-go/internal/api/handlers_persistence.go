@@ -148,7 +148,7 @@ func enrichDetections(detections []*persistence.Detection) []*EnrichedDetection 
 }
 
 func (h *PersistenceHandler) Detect(c *gin.Context) {
-	log.Printf("[INFO] Detect API called with category=%s, technique=%s", c.Query("category"), c.Query("technique"))
+	log.Printf("[INFO] Detect API called with category=%s, technique=%s, force=%s", c.Query("category"), c.Query("technique"), c.Query("force"))
 
 	if runtime.GOOS != "windows" {
 		log.Printf("[INFO] Detect API returning empty - not Windows")
@@ -168,6 +168,8 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 		return
 	}
 
+	forceRefresh := c.Query("force") == "true"
+
 	format := c.DefaultQuery("format", "json")
 
 	timeoutStr := c.DefaultQuery("timeout", "5m")
@@ -184,7 +186,7 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 
 	cacheParams := fmt.Sprintf("%s|%s", req.Category, req.Technique)
 
-	if req.Category == "" && req.Technique == "" {
+	if !forceRefresh && req.Category == "" && req.Technique == "" {
 		h.cacheMutex.RLock()
 		if h.cache.result != nil &&
 			time.Since(h.cache.timestamp) < h.cache.ttl &&
@@ -202,6 +204,13 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 			return
 		}
 		h.cacheMutex.RUnlock()
+	}
+
+	if forceRefresh {
+		log.Printf("[INFO] Detect API force refresh - clearing cache")
+		h.cacheMutex.Lock()
+		h.cache = &DetectionCache{ttl: defaultCacheTTL}
+		h.cacheMutex.Unlock()
 	}
 
 	var result *persistence.DetectionResult

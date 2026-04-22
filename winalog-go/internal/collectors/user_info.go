@@ -50,15 +50,15 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 	log.Printf("[INFO] Collecting local users with command: Get-LocalUser")
 
 	result := utils.RunPowerShell(cmd)
-	if !result.Success() {
-		log.Printf("[ERROR] Get-LocalUser failed: %v", result.Error)
-		return users, result.Error
+	if !result.Success() || result.Output == "" {
+		log.Printf("[WARN] Get-LocalUser failed or returned empty: %v, trying alternative method", result.Error)
+		return c.collectUserInfoAlternative()
 	}
 
 	output := strings.TrimSpace(result.Output)
-	if output == "" || output == "null" {
-		log.Printf("[WARN] Get-LocalUser returned empty result")
-		return users, nil
+	if output == "" || output == "null" || output == "[]" {
+		log.Printf("[WARN] Get-LocalUser returned empty result, trying alternative method")
+		return c.collectUserInfoAlternative()
 	}
 
 	log.Printf("[DEBUG] Get-LocalUser raw output length: %d", len(output))
@@ -92,6 +92,10 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 			continue
 		}
 
+		if userRaw.Name == "" {
+			continue
+		}
+
 		user := &types.UserAccount{
 			Name:        userRaw.Name,
 			SID:         userRaw.SID,
@@ -119,6 +123,70 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 
 	log.Printf("[INFO] Get-LocalUser parsed %d users, %d errors, total lines: %d", parseCount, errorCount, len(lines))
 
+	if parseCount == 0 && errorCount > 0 {
+		log.Printf("[WARN] Get-LocalUser had errors parsing, trying alternative method")
+		return c.collectUserInfoAlternative()
+	}
+
+	return users, nil
+}
+
+func (c *UserInfoCollector) collectUserInfoAlternative() ([]*types.UserAccount, error) {
+	users := make([]*types.UserAccount, 0)
+
+	cmd := `Get-WmiObject Win32_UserAccount -Filter "LocalAccount=True" | Select-Object Name, SID, Disabled, LastLogon, Description | ForEach-Object { $_ | ConvertTo-Json -Compress }`
+
+	log.Printf("[INFO] Collecting users with alternative command: Get-WmiObject Win32_UserAccount")
+
+	result := utils.RunPowerShell(cmd)
+	if !result.Success() || result.Output == "" {
+		log.Printf("[WARN] Alternative method also failed: %v", result.Error)
+		return users, nil
+	}
+
+	output := strings.TrimSpace(result.Output)
+	if output == "" || output == "null" || output == "[]" {
+		log.Printf("[INFO] Alternative method returned empty result")
+		return users, nil
+	}
+
+	lines := strings.Split(output, "\n")
+	parseCount := 0
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || line == "null" {
+			continue
+		}
+
+		var userRaw struct {
+			Name        string `json:"Name"`
+			SID         string `json:"SID"`
+			Disabled    bool   `json:"Disabled"`
+			LastLogon   string `json:"LastLogon"`
+			Description string `json:"Description"`
+		}
+
+		if err := json.Unmarshal([]byte(line), &userRaw); err != nil {
+			continue
+		}
+
+		if userRaw.Name == "" {
+			continue
+		}
+
+		users = append(users, &types.UserAccount{
+			Name:        userRaw.Name,
+			SID:         userRaw.SID,
+			Enabled:     !userRaw.Disabled,
+			Type:        "Local",
+			LastLogin:   parseLastLogon(userRaw.LastLogon),
+			PasswordExp: false,
+			FullName:    userRaw.Description,
+		})
+		parseCount++
+	}
+
+	log.Printf("[INFO] Alternative method parsed %d users", parseCount)
 	return users, nil
 }
 

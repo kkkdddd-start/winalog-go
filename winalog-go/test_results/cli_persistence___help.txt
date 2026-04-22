@@ -1,3 +1,0 @@
-Error: unknown command "persistence" for "winalog"
-Run 'winalog --help' for usage.
-Error: unknown command "persistence" for "winalog"
