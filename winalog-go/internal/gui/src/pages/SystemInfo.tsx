@@ -53,7 +53,6 @@ interface NetworkConnInfo {
   remote_port: number
   state: string
   process_name: string
-  created: string
 }
 
 interface RegistryKeyInfo {
@@ -484,7 +483,7 @@ function SystemInfo() {
         exportToCSV(processes, 'processes', ['pid', 'ppid', 'name', 'user', 'exe', 'command_line', 'is_signed'])
         break
       case 'network':
-        exportToCSV(networkConnections, 'network', ['protocol', 'local_addr', 'local_port', 'remote_addr', 'remote_port', 'state', 'process_name'])
+        exportToCSV(networkConnections, 'network', ['protocol', 'local_addr', 'local_port', 'remote_addr', 'remote_port', 'state', 'pid', 'process_name'])
         break
       case 'dlls':
         exportToCSV(dlls, 'dlls', ['process_id', 'process_name', 'name', 'path', 'size', 'version', 'is_signed'])
@@ -947,7 +946,6 @@ function SystemInfo() {
                 <th>{t('systemInfo.state') || '状态'}</th>
                 <th>{t('systemInfo.pid') || 'PID'}</th>
                 <th>{t('systemInfo.process') || '进程'}</th>
-                <th>{t('systemInfo.created') || '创建时间'}</th>
               </tr>
             </thead>
             <tbody>
@@ -965,7 +963,6 @@ function SystemInfo() {
                   </td>
                   <td className="mono">{conn.pid || '-'}</td>
                   <td>{conn.process_name || '-'}</td>
-                  <td className="mono">{conn.created ? new Date(conn.created).toLocaleString() : '-'}</td>
                 </tr>
               ))}
             </tbody>

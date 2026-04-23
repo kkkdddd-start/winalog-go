@@ -21,7 +21,6 @@ interface LiveStats {
   uptime: string
   process_count: number
   network_count: number
-  dns_count: number
 }
 
 const LIVE_STORAGE_KEY = 'winalog_live_monitoring_enabled'
@@ -51,7 +50,6 @@ function Live() {
       case 'process_stop':
         return 'info'
       case 'network':
-      case 'dns':
         return 'info'
       case 'alert':
       case 'critical':
@@ -69,9 +67,8 @@ function Live() {
     const parts: string[] = []
     if (data.type) parts.push(data.type)
     if (data.data?.process_name) parts.push(`Process: ${data.data.process_name}`)
-    if (data.data?.command) parts.push(`Cmd: ${data.data.command}`)
-    if (data.data?.dst_address) parts.push(`Dst: ${data.data.dst_address}`)
-    if (data.data?.dns_query) parts.push(`DNS: ${data.data.dns_query}`)
+    if (data.data?.command_line) parts.push(`Cmd: ${data.data.command_line}`)
+    if (data.data?.dest_ip) parts.push(`Dst: ${data.data.dest_ip}:${data.data.dest_port}`)
     return parts.length > 0 ? parts.join(' | ') : `${data.type || 'event'} detected`
   }
 
@@ -104,12 +101,11 @@ function Live() {
         if (statsRes.data?.stats) {
           const s = statsRes.data.stats
           setStats({
-            total_events: (s.process_count || 0) + (s.network_count || 0) + (s.dns_count || 0),
+            total_events: (s.process_count || 0) + (s.network_count || 0),
             events_per_sec: 0,
             uptime: s.uptime || '0s',
             process_count: s.process_count || 0,
             network_count: s.network_count || 0,
-            dns_count: s.dns_count || 0,
           })
         } else if (statsRes.data) {
           const s = statsRes.data
@@ -119,7 +115,6 @@ function Live() {
             uptime: s.uptime || '0s',
             process_count: 0,
             network_count: 0,
-            dns_count: 0,
           })
         }
 
@@ -149,6 +144,7 @@ function Live() {
     pollData()
 
     pollIntervalRef.current = setInterval(pollData, POLL_INTERVAL_MS)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const stopRealTimeMonitoring = useCallback(() => {
@@ -307,10 +303,6 @@ function Live() {
         <div className="stat-item">
           <span className="stat-label">Network</span>
           <span className="stat-value network">{stats?.network_count || 0}</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-label">DNS</span>
-          <span className="stat-value dns">{stats?.dns_count || 0}</span>
         </div>
         <div className="stat-item">
           <span className="stat-label">Uptime</span>
@@ -545,10 +537,6 @@ function Live() {
           color: #3b82f6;
         }
 
-        .stat-value.dns {
-          color: #a855f7;
-        }
-        
         .stat-value.mono {
           font-family: monospace;
           font-size: 1.1rem;

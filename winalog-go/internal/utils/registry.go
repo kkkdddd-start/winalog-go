@@ -32,7 +32,7 @@ func ListRegistrySubkeys(path string) ([]string, error) {
 	}
 	defer regKey.Close()
 
-	subkeys, err := regKey.ReadSubKeyNames(100)
+	subkeys, err := regKey.ReadSubKeyNames(0)
 	if err != nil {
 		return []string{}, err
 	}
@@ -41,7 +41,7 @@ func ListRegistrySubkeys(path string) ([]string, error) {
 }
 
 func GetRegistryValue(keyPath, valueName string) (string, error) {
-	hive, subkey, valName := ParseRegistryPath(keyPath)
+	hive, subkey, _ := ParseRegistryPath(keyPath)
 	if hive == "" || subkey == "" {
 		return "", nil
 	}
@@ -51,17 +51,16 @@ func GetRegistryValue(keyPath, valueName string) (string, error) {
 		key = registry.LOCAL_MACHINE
 	}
 
-	if valName == "" {
-		valName = valueName
-	}
-
 	regKey, err := registry.OpenKey(key, subkey, registry.READ)
 	if err != nil {
 		return "", err
 	}
 	defer regKey.Close()
 
-	val, _, err := regKey.GetStringValue(valName)
+	if valueName == "" {
+		valueName = ""
+	}
+	val, _, err := regKey.GetStringValue(valueName)
 	if err != nil {
 		return "", err
 	}
@@ -152,17 +151,9 @@ func ParseRegistryPath(path string) (hive, subkey, value string) {
 	}
 
 	hive = strings.ToUpper(parts[0])
+	subkey = parts[1]
 
-	remaining := parts[1]
-	if idx := strings.LastIndex(remaining, `\`); idx >= 0 {
-		subkey = remaining[:idx]
-		value = remaining[idx+1:]
-	} else {
-		subkey = ""
-		value = remaining
-	}
-
-	return hive, subkey, value
+	return hive, subkey, ""
 }
 
 func NormalizeRegistryPath(path string) string {

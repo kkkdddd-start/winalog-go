@@ -212,7 +212,7 @@ func (s *Server) Start() error {
 
 	requestTimeout := s.cfg.API.RequestTimeout
 	if requestTimeout == 0 {
-		requestTimeout = 30 * time.Second
+		requestTimeout = 5 * time.Minute
 	}
 	writeTimeout := requestTimeout * 2
 	if writeTimeout < 10*time.Minute {

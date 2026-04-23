@@ -615,17 +615,15 @@ export interface MonitorStats {
   is_running: boolean
   process_enabled: boolean
   network_enabled: boolean
-  dns_enabled: boolean
   process_count: number
   network_count: number
-  dns_count: number
   alert_count: number
   start_time?: string
 }
 
 export interface MonitorEvent {
   id: string
-  type: 'process' | 'network' | 'dns'
+  type: 'process' | 'network'
   timestamp: string
   severity: string
   data: Record<string, any>
@@ -634,7 +632,6 @@ export interface MonitorEvent {
 export interface MonitorConfig {
   process_enabled?: boolean
   network_enabled?: boolean
-  dns_enabled?: boolean
   poll_interval?: number
 }
 

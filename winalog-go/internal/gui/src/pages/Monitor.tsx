@@ -7,17 +7,15 @@ interface MonitorStats {
   is_running: boolean
   process_enabled: boolean
   network_enabled: boolean
-  dns_enabled: boolean
   process_count: number
   network_count: number
-  dns_count: number
   alert_count: number
   start_time?: string
 }
 
 interface MonitorEvent {
   id: string
-  type: 'process' | 'network' | 'dns'
+  type: 'process' | 'network'
   timestamp: string
   severity: string
   data: Record<string, any>
@@ -26,7 +24,6 @@ interface MonitorEvent {
 interface MonitorConfig {
   process_enabled?: boolean
   network_enabled?: boolean
-  dns_enabled?: boolean
   poll_interval?: number
 }
 
@@ -41,12 +38,6 @@ const NetworkIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="12" cy="12" r="10"/>
     <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-  </svg>
-)
-
-const DnsIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
   </svg>
 )
 
@@ -84,11 +75,10 @@ function Monitor() {
   const [config, setConfig] = useState<MonitorConfig>({
     process_enabled: false,
     network_enabled: false,
-    dns_enabled: false,
     poll_interval: 5,
   })
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'all' | 'process' | 'network' | 'dns'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'process' | 'network'>('all')
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
   const [statsError, setStatsError] = useState<string | null>(null)
   const [eventsError, setEventsError] = useState<string | null>(null)
@@ -103,7 +93,6 @@ function Monitor() {
       setConfig({
         process_enabled: backendStats.process_enabled,
         network_enabled: backendStats.network_enabled,
-        dns_enabled: backendStats.dns_enabled,
         poll_interval: 5,
       })
     } catch (error: any) {
@@ -174,7 +163,6 @@ function Monitor() {
         await monitorAPI.updateConfig({
           process_enabled: false,
           network_enabled: false,
-          dns_enabled: false,
         })
       }
       await monitorAPI.startStop(stats?.is_running ? 'stop' : 'start')
@@ -201,7 +189,6 @@ function Monitor() {
     switch (type) {
       case 'process': return <ProcessIcon />
       case 'network': return <NetworkIcon />
-      case 'dns': return <DnsIcon />
       default: return <AlertIcon />
     }
   }
@@ -232,19 +219,6 @@ function Monitor() {
             </span>
             <span className="event-sub">
               {event.data.source_ip}:{event.data.source_port} → {event.data.dest_ip}:{event.data.dest_port}
-            </span>
-          </div>
-        )
-      case 'dns':
-        return (
-          <div className="event-summary-content">
-            <span className="event-main">
-              {event.data.query_name}
-              {event.data.is_new && <span className="new-badge">NEW</span>}
-              {event.data.is_ipv6 && <span className="ipv6-badge">IPv6</span>}
-            </span>
-            <span className="event-sub">
-              Type: {event.data.query_type_name || event.data.query_type} | TTL: {event.data.ttl || 'N/A'}
             </span>
           </div>
         )
@@ -317,27 +291,6 @@ function Monitor() {
             </div>
           </div>
 
-          <div className="stat-card-monitor">
-            <div className="stat-icon-wrapper dns">
-              <DnsIcon />
-            </div>
-            <div className="stat-info">
-              <span className="stat-value">{stats?.dns_count || 0}</span>
-              <span className="stat-label">{t('monitor.dnsCount')}</span>
-            </div>
-            <div className={`stat-toggle ${config.dns_enabled ? 'active' : ''}`}>
-              <label className="toggle-switch-small">
-                <input
-                  type="checkbox"
-                  checked={config.dns_enabled}
-                  onChange={() => handleToggle('dns_enabled')}
-                  disabled={!stats?.is_running}
-                />
-                <span className="toggle-slider-small"></span>
-              </label>
-            </div>
-          </div>
-
           <div className="stat-card-monitor alert">
             <div className="stat-icon-wrapper alert">
               <AlertIcon />
@@ -393,25 +346,6 @@ function Monitor() {
                     type="checkbox"
                     checked={config.network_enabled}
                     onChange={() => handleToggle('network_enabled')}
-                    disabled={!stats?.is_running}
-                  />
-                  <span className="toggle-slider"></span>
-                </label>
-              </div>
-
-              <div className="toggle-item">
-                <div className="toggle-info">
-                  <div className="toggle-icon dns"><DnsIcon /></div>
-                  <div className="toggle-text">
-                    <span className="toggle-title">{t('monitor.dnsMonitoring')}</span>
-                    <span className="toggle-desc">{t('monitor.dnsMonitoringDesc')}</span>
-                  </div>
-                </div>
-                <label className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={config.dns_enabled}
-                    onChange={() => handleToggle('dns_enabled')}
                     disabled={!stats?.is_running}
                   />
                   <span className="toggle-slider"></span>
@@ -473,14 +407,6 @@ function Monitor() {
               <NetworkIcon />
               <span className="tab-label">Network</span>
               <span className="tab-count">{events.filter(e => e.type === 'network').length}</span>
-            </button>
-            <button
-              className={`filter-tab dns ${activeTab === 'dns' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dns')}
-            >
-              <DnsIcon />
-              <span className="tab-label">DNS</span>
-              <span className="tab-count">{events.filter(e => e.type === 'dns').length}</span>
             </button>
           </div>
         </div>
@@ -595,40 +521,8 @@ function Monitor() {
                             <span className="detail-label">{t('monitor.destPort')}</span>
                             <span className="detail-value">{event.data.dest_port || 'N/A'}</span>
                           </div>
-                        </>
-                      )}
-                      {event.type === 'dns' && (
-                        <>
-                          <div className="detail-item full-width">
-                            <span className="detail-label">{t('monitor.queryName')}</span>
-                            <span className="detail-value">{event.data.query_name || 'N/A'}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">{t('monitor.queryType')}</span>
-                            <span className="detail-value">{event.data.query_type_name || event.data.query_type || 'N/A'}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">{t('monitor.ttl')}</span>
-                            <span className="detail-value">{event.data.ttl || 'N/A'}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">{t('monitor.isNew')}</span>
-                            <span className="detail-value">{event.data.is_new ? 'Yes' : 'No'}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">{t('monitor.isIPv6')}</span>
-                            <span className="detail-value">{event.data.is_ipv6 ? 'Yes' : 'No'}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-label">{t('monitor.section')}</span>
-                            <span className="detail-value">{event.data.section || 'N/A'}</span>
-                          </div>
-                          <div className="detail-item full-width">
-                            <span className="detail-label">{t('monitor.results')}</span>
-                            <span className="detail-value">{(event.data.results || []).join(', ') || 'N/A'}</span>
-                          </div>
-                        </>
-                      )}
+                          </>
+                        )}
                     </div>
                   </div>
                 )}

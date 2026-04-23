@@ -110,13 +110,13 @@ func (e *MonitorEngine) Stop() error {
 		return nil
 	}
 	e.isRunning = false
+	cancel := e.cancel
 	e.subscribers = nil
 	e.ctx = nil
-	e.cancel = nil
 	e.mu.Unlock()
 
-	if e.cancel != nil {
-		e.cancel()
+	if cancel != nil {
+		cancel()
 	}
 
 	if e.processWatch != nil {
@@ -128,6 +128,8 @@ func (e *MonitorEngine) Stop() error {
 		e.networkPoll.Stop()
 		e.networkPoll = nil
 	}
+
+	close(e.eventCh)
 
 	return nil
 }

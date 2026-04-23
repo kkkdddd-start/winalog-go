@@ -48,15 +48,14 @@ type ProcessInfo struct {
 }
 
 type NetworkConnection struct {
-	Protocol    string    `json:"protocol"`
-	LocalAddr   string    `json:"local_addr"`
-	LocalPort   int       `json:"local_port"`
-	RemoteAddr  string    `json:"remote_addr"`
-	RemotePort  int       `json:"remote_port"`
-	State       string    `json:"state"`
-	PID         int32     `json:"pid"`
-	ProcessName string    `json:"process_name"`
-	Created     time.Time `json:"created"`
+	Protocol    string `json:"protocol"`
+	LocalAddr   string `json:"local_addr"`
+	LocalPort   int    `json:"local_port"`
+	RemoteAddr  string `json:"remote_addr"`
+	RemotePort  int    `json:"remote_port"`
+	State       string `json:"state"`
+	PID         int32  `json:"pid"`
+	ProcessName string `json:"process_name"`
 }
 
 type UserAccount struct {

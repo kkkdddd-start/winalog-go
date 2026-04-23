@@ -3,16 +3,13 @@
 package collectors
 
 import (
+	"bufio"
 	"context"
-	"encoding/json"
-	"log"
+	"os/exec"
+	"strconv"
 	"strings"
-	"time"
-	"unsafe"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
-	"github.com/kkkdddd-start/winalog-go/internal/utils"
-	"golang.org/x/sys/windows"
 )
 
 type NetworkInfoCollector struct {
@@ -36,7 +33,7 @@ func NewNetworkInfoCollector() *NetworkInfoCollector {
 			info: CollectorInfo{
 				Name:          "network_info",
 				Description:   "Collect network connection information",
-				RequiresAdmin: true,
+				RequiresAdmin: false,
 				Version:       "1.0.0",
 			},
 		},
@@ -56,100 +53,72 @@ func (c *NetworkInfoCollector) Collect(ctx context.Context) ([]interface{}, erro
 }
 
 func (c *NetworkInfoCollector) collectNetworkInfo() ([]*types.NetworkConnection, error) {
-	connections := make([]*types.NetworkConnection, 0)
-
-	tcpConnections, err := getTCPConnections()
-	if err == nil {
-		connections = append(connections, tcpConnections...)
-	}
-
-	udpEndpoints, err := getUDPEndpoints()
-	if err == nil {
-		connections = append(connections, udpEndpoints...)
-	}
-
-	return connections, nil
+	return collectNetworkViaNetstat()
 }
 
-func getTCPConnections() ([]*types.NetworkConnection, error) {
-	cmd := `Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess | ConvertTo-Json -Compress`
-	return executeNetworkCommand(cmd, "TCP")
-}
-
-func getUDPEndpoints() ([]*types.NetworkConnection, error) {
-	cmd := `Get-NetUDPEndpoint | Select-Object LocalAddress,LocalPort,OwningProcess | ConvertTo-Json -Compress`
-	return executeNetworkCommand(cmd, "UDP")
-}
-
-func executeNetworkCommand(cmd string, protocol string) ([]*types.NetworkConnection, error) {
-	result := utils.RunPowerShell(cmd)
-	if !result.Success() {
-		log.Printf("[WARN] [NETWORK] PowerShell command failed for %s: %v, output: %s", protocol, result.Error, result.Output)
-		return []*types.NetworkConnection{}, nil
-	}
-
-	output := strings.TrimSpace(result.Output)
-	if output == "" || output == "null" {
-		log.Printf("[WARN] [NETWORK] Empty output for %s connections", protocol)
-		return []*types.NetworkConnection{}, nil
-	}
-
-	lines := strings.Split(output, "\n")
-	connections := make([]*types.NetworkConnection, 0, len(lines))
+func collectNetworkViaNetstat() ([]*types.NetworkConnection, error) {
 	processNames := getProcessNameMap()
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
+	cmd := exec.Command("netstat", "-ano")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	connections := make([]*types.NetworkConnection, 0)
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, "TCP") && !strings.HasPrefix(line, "UDP") {
 			continue
 		}
 
-		var connRaw struct {
-			LocalAddress  string `json:"LocalAddress"`
-			LocalPort     int    `json:"LocalPort"`
-			RemoteAddress string `json:"RemoteAddress,omitempty"`
-			RemotePort    int    `json:"RemotePort,omitempty"`
-			State         string `json:"State,omitempty"`
-			OwningProcess int    `json:"OwningProcess"`
-			ProcessName   string `json:"ProcessName,omitempty"`
-			CreationDate  string `json:"CreationDate,omitempty"`
-		}
-
-		if err := json.Unmarshal([]byte(line), &connRaw); err != nil {
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
 			continue
 		}
 
-		pid := connRaw.OwningProcess
-		processName := connRaw.ProcessName
-		if processName == "" {
-			processName = processNames[pid]
-		}
-		if processName == "" {
-			processName = "Unknown"
-		}
+		protocol := fields[0]
+		localAddr := fields[1]
+		remoteAddr := fields[2]
+		
+		var pid int
+		state := ""
 
-		state := connRaw.State
-		if state == "" {
+		if protocol == "TCP" {
+			if len(fields) < 5 {
+				continue
+			}
+			state = fields[3]
+			pid, _ = strconv.Atoi(fields[4])
+		} else {
+			pid, _ = strconv.Atoi(fields[3])
 			state = "Listen"
 		}
 
-		created := time.Time{}
-		if connRaw.CreationDate != "" {
-			if t, err := time.Parse(time.RFC3339, connRaw.CreationDate); err == nil {
-				created = t
-			}
+		processName := "Unknown"
+		if name, ok := processNames[pid]; ok {
+			processName = name
+		}
+
+		localIP, localPort := parseAddr(localAddr)
+		remoteIP, remotePort := parseAddr(remoteAddr)
+
+		if protocol == "UDP" && remoteIP == "*:*" {
+			remoteIP = "*"
+			remotePort = 0
 		}
 
 		conn := &types.NetworkConnection{
-			Protocol:    protocol,
-			LocalAddr:   connRaw.LocalAddress,
-			LocalPort:   connRaw.LocalPort,
-			RemoteAddr:  connRaw.RemoteAddress,
-			RemotePort:  connRaw.RemotePort,
+			Protocol:    strings.ToUpper(protocol),
+			LocalAddr:   localIP,
+			LocalPort:   localPort,
+			RemoteAddr:  remoteIP,
+			RemotePort:  remotePort,
 			State:       state,
 			PID:         int32(pid),
 			ProcessName: processName,
-			Created:     created,
 		}
 		connections = append(connections, conn)
 	}
@@ -157,39 +126,31 @@ func executeNetworkCommand(cmd string, protocol string) ([]*types.NetworkConnect
 	return connections, nil
 }
 
-func getProcessNameMap() map[int]string {
-	nameMap := make(map[int]string)
-
-	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
-	if err != nil {
-		return nameMap
-	}
-	defer windows.CloseHandle(snapshot)
-
-	var entry windows.ProcessEntry32
-	entry.Size = uint32(unsafe.Sizeof(entry))
-
-	err = windows.Process32First(snapshot, &entry)
-	if err != nil {
-		return nameMap
+func parseAddr(addr string) (string, int) {
+	if addr == "*:*" || addr == "[::]:*" || addr == "0.0.0.0:*" {
+		return "*", 0
 	}
 
-	for {
-		pid := int(entry.ProcessID)
-		name := windows.UTF16ToString(entry.ExeFile[:])
-		nameMap[pid] = name
-
-		err = windows.Process32Next(snapshot, &entry)
-		if err != nil {
-			break
-		}
+	idx := strings.LastIndex(addr, ":")
+	if idx < 0 {
+		return addr, 0
 	}
 
-	return nameMap
+	ip := addr[:idx]
+	portStr := addr[idx+1:]
+	port, _ := strconv.Atoi(portStr)
+
+	if ip == "::" {
+		ip = "*"
+	} else if ip == "0.0.0.0" {
+		ip = "*"
+	}
+
+	return ip, port
 }
 
 func ListNetworkConnections() ([]NetConnection, error) {
-	typesConn, err := NewNetworkInfoCollector().collectNetworkInfo()
+	typesConn, err := collectNetworkViaNetstat()
 	if err != nil {
 		return []NetConnection{}, err
 	}
@@ -211,43 +172,29 @@ func ListNetworkConnections() ([]NetConnection, error) {
 }
 
 func GetTCPConnections() ([]NetConnection, error) {
-	typesConn, err := getTCPConnections()
+	all, err := ListNetworkConnections()
 	if err != nil {
-		return []NetConnection{}, err
+		return nil, err
 	}
-
-	result := make([]NetConnection, 0, len(typesConn))
-	for _, c := range typesConn {
-		result = append(result, NetConnection{
-			PID:         int(c.PID),
-			Protocol:    c.Protocol,
-			LocalAddr:   c.LocalAddr,
-			LocalPort:   c.LocalPort,
-			RemoteAddr:  c.RemoteAddr,
-			RemotePort:  c.RemotePort,
-			State:       c.State,
-			ProcessName: c.ProcessName,
-		})
+	result := make([]NetConnection, 0)
+	for _, c := range all {
+		if c.Protocol == "TCP" {
+			result = append(result, c)
+		}
 	}
 	return result, nil
 }
 
 func GetUDPEndpoints() ([]NetConnection, error) {
-	typesConn, err := getUDPEndpoints()
+	all, err := ListNetworkConnections()
 	if err != nil {
-		return []NetConnection{}, err
+		return nil, err
 	}
-
-	result := make([]NetConnection, 0, len(typesConn))
-	for _, c := range typesConn {
-		result = append(result, NetConnection{
-			PID:         int(c.PID),
-			Protocol:    c.Protocol,
-			LocalAddr:   c.LocalAddr,
-			LocalPort:   c.LocalPort,
-			State:       c.State,
-			ProcessName: c.ProcessName,
-		})
+	result := make([]NetConnection, 0)
+	for _, c := range all {
+		if c.Protocol == "UDP" {
+			result = append(result, c)
+		}
 	}
 	return result, nil
 }

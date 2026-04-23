@@ -1028,30 +1028,57 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 		}
 	}
 
+	const importBatchSize = 3
+
 	eng := engine.NewEngine(h.db)
 
-	importReq := &engine.ImportRequest{
-		Paths:     req.Files,
-		BatchSize: 1000,
+	totalResult := &engine.ImportResult{}
+
+	files := req.Files
+	for i := 0; i < len(files); i += importBatchSize {
+		end := i + importBatchSize
+		if end > len(files) {
+			end = len(files)
+		}
+		batch := files[i:end]
+
+		log.Printf("[IMPORT] Processing batch %d-%d (%d files)", i, end, len(batch))
+
+		batchReq := &engine.ImportRequest{
+			Paths:         batch,
+			BatchSize:     1000,
+			SkipPatterns:  req.SkipPatterns,
+		}
+
+		result, err := eng.Import(c.Request.Context(), batchReq, nil)
+		if err != nil {
+			log.Printf("[IMPORT] Batch %d-%d failed: %v", i, end, err)
+			totalResult.Errors = append(totalResult.Errors, &types.ImportError{
+				FilePath: batch[0],
+				Error:    err.Error(),
+			})
+			totalResult.FilesFailed += len(batch)
+			continue
+		}
+
+		totalResult.FilesImported += result.FilesImported
+		totalResult.FilesFailed += result.FilesFailed
+		totalResult.EventsImported += result.EventsImported
+		totalResult.Errors = append(totalResult.Errors, result.Errors...)
+		totalResult.Duration += result.Duration
+		if result.StartTime.Before(totalResult.StartTime) || totalResult.StartTime.IsZero() {
+			totalResult.StartTime = result.StartTime
+		}
 	}
 
-	ctx := c.Request.Context()
-	result, err := eng.Import(ctx, importReq, nil)
-	if err != nil {
-		log.Printf("[IMPORT] Import failed: %v", err)
-		c.JSON(500, ErrorResponse{Error: err.Error()})
-		return
-	}
+	log.Printf("[IMPORT] All batches completed: %d files imported, %d failed, %d events",
+		totalResult.FilesImported, totalResult.FilesFailed, totalResult.EventsImported)
 
-	log.Printf("[IMPORT] Import completed: %d files imported, %d failed, %d events",
-		result.FilesImported, result.FilesFailed, result.EventsImported)
-
-	if req.AlertOnImport && h.alertEngine != nil {
-		go func() {
-			startTime := result.StartTime
+	if totalResult.FilesImported > 0 && req.AlertOnImport && h.alertEngine != nil {
+		if !totalResult.StartTime.IsZero() {
 			events, _, _ := h.db.ListEvents(&storage.EventFilter{
 				Limit:     10000,
-				StartTime: &startTime,
+				StartTime: &totalResult.StartTime,
 			})
 
 			if len(events) > 0 {
@@ -1060,18 +1087,22 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 					h.alertEngine.SaveAlerts(alerts)
 				}
 			}
-		}()
+		}
 	}
 
-	c.JSON(200, gin.H{
-		"success":         result.TotalFiles > 0 && result.FilesFailed == 0,
-		"total_files":     result.TotalFiles,
-		"files_imported":  result.FilesImported,
-		"files_failed":    result.FilesFailed,
-		"events_imported": result.EventsImported,
-		"alert_on_import": req.AlertOnImport,
-		"duration":        fmt.Sprintf("%v", result.Duration),
-		"errors":          result.Errors,
+	resp := gin.H{
+		"success":          true,
+		"files_imported":   totalResult.FilesImported,
+		"files_failed":     totalResult.FilesFailed,
+		"events_imported":  totalResult.EventsImported,
+		"duration":         totalResult.Duration.String(),
+	}
+	if len(totalResult.Errors) > 0 {
+		resp["errors"] = totalResult.Errors
+	}
+
+	c.JSON(200, SuccessResponse{
+		Data: resp,
 	})
 }
 

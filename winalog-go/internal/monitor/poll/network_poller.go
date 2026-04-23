@@ -549,10 +549,17 @@ func (np *NetworkPoller) publishEvent(event *types.MonitorEvent) {
 	defer np.subMu.RUnlock()
 
 	for _, ch := range np.subscribers {
-		select {
-		case ch <- event:
-		default:
-		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Channel was closed, ignore
+				}
+			}()
+			select {
+			case ch <- event:
+			default:
+			}
+		}()
 	}
 }
 

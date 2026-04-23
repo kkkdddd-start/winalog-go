@@ -515,6 +515,14 @@ func SetupSystemRoutes(r *gin.Engine, systemHandler *SystemHandler) {
 		system.GET("/registry", systemHandler.GetRegistryPersistence)
 		system.GET("/tasks", systemHandler.GetScheduledTasks)
 		system.GET("/process/:pid/dlls", systemHandler.GetProcessDLLs)
+
+		system.GET("/processes/export", systemHandler.ExportProcesses)
+		system.GET("/network/export", systemHandler.ExportNetworkConnections)
+		system.GET("/env/export", systemHandler.ExportEnvironmentVariables)
+		system.GET("/drivers/export", systemHandler.ExportDrivers)
+		system.GET("/users/export", systemHandler.ExportUsers)
+		system.GET("/registry/export", systemHandler.ExportRegistryPersistence)
+		system.GET("/tasks/export", systemHandler.ExportScheduledTasks)
 	}
 }
 
