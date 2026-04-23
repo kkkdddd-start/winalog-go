@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
-	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
 func (h *SystemHandler) ExportProcesses(c *gin.Context) {
