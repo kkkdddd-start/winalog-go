@@ -42,7 +42,7 @@ func (c *SuppressCache) IsSuppressed(rule *rules.AlertRule, event *types.Event) 
 
 func (c *SuppressCache) matchesConditions(conds []types.SuppressCondition, event *types.Event) bool {
 	if len(conds) == 0 {
-		return false
+		return true
 	}
 
 	for _, cond := range conds {
@@ -84,13 +84,21 @@ func (c *SuppressCache) matchesConditions(conds []types.SuppressCondition, event
 }
 
 func (c *SuppressCache) matchesTimeWindow(rule *types.SuppressRule, event *types.Event) bool {
-	if rule.Duration == 0 {
+	if rule.Duration == 0 && rule.ExpiresAt.IsZero() {
 		return true
 	}
 
 	if !rule.ExpiresAt.IsZero() {
 		now := time.Now()
 		if now.After(rule.ExpiresAt) {
+			return false
+		}
+		return true
+	}
+
+	if rule.Duration > 0 && !rule.CreatedAt.IsZero() {
+		expiresAt := rule.CreatedAt.Add(rule.Duration)
+		if time.Now().After(expiresAt) {
 			return false
 		}
 	}

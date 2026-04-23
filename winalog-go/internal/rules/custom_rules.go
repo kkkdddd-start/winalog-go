@@ -20,22 +20,25 @@ type CustomRuleManager struct {
 }
 
 type CustomRule struct {
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Enabled     bool              `json:"enabled"`
-	Severity    string            `json:"severity"`
-	Score       float64           `json:"score"`
-	MitreAttack string            `json:"mitre_attack"`
-	EventIDs    []int32           `json:"event_ids"`
-	Levels      []string          `json:"levels"`
-	Filter      *CustomRuleFilter `json:"filter"`
-	Message     string            `json:"message"`
-	Tags        []string          `json:"tags"`
-	CreatedAt   string            `json:"created_at"`
-	UpdatedAt   string            `json:"updated_at"`
-	IsTemplate  bool              `json:"is_template"`
-	Parameters  []TemplateParam   `json:"parameters,omitempty"`
-	TemplateID  string            `json:"template_id,omitempty"`
+	Name           string            `json:"name"`
+	Description    string            `json:"description"`
+	Enabled        bool              `json:"enabled"`
+	Severity       string            `json:"severity"`
+	Score          float64           `json:"score"`
+	MitreAttack    string            `json:"mitre_attack"`
+	EventIDs       []int32           `json:"event_ids"`
+	Levels         []string          `json:"levels"`
+	Filter         *CustomRuleFilter `json:"filter"`
+	Message        string            `json:"message"`
+	Tags           []string          `json:"tags"`
+	CreatedAt      string            `json:"created_at"`
+	UpdatedAt      string            `json:"updated_at"`
+	IsTemplate     bool              `json:"is_template"`
+	Parameters     []TemplateParam   `json:"parameters,omitempty"`
+	TemplateID     string            `json:"template_id,omitempty"`
+	Threshold      int               `json:"threshold,omitempty"`
+	TimeWindow     string            `json:"time_window,omitempty"`
+	Conditions     *Conditions       `json:"conditions,omitempty"`
 }
 
 type TemplateParam struct {
@@ -67,6 +70,21 @@ func (r *CustomRule) Instantiate(paramValues map[string]string) *CustomRule {
 	rule.IsTemplate = false
 	rule.TemplateID = r.Name
 	rule.Parameters = nil
+
+	if rule.Filter != nil {
+		rule.Filter = &CustomRuleFilter{
+			EventIDs:         append([]int32{}, r.Filter.EventIDs...),
+			Levels:           append([]string{}, r.Filter.Levels...),
+			LogNames:         append([]string{}, r.Filter.LogNames...),
+			Sources:          append([]string{}, r.Filter.Sources...),
+			Computers:        append([]string{}, r.Filter.Computers...),
+			Users:            append([]string{}, r.Filter.Users...),
+			Keywords:         append([]string{}, r.Filter.Keywords...),
+			ExcludeUsers:     append([]string{}, r.Filter.ExcludeUsers...),
+			ExcludeComputers: append([]string{}, r.Filter.ExcludeComputers...),
+			IpAddress:        r.Filter.IpAddress,
+		}
+	}
 
 	for key, value := range paramValues {
 		rule.Name = strings.ReplaceAll(rule.Name, "{{"+key+"}}", value)
@@ -249,22 +267,30 @@ func (r *CustomRule) ToAlertRule() *AlertRule {
 			LogNames:         r.Filter.LogNames,
 			Sources:          r.Filter.Sources,
 			Computers:        r.Filter.Computers,
-			Keywords:         strings.Join(r.Filter.Keywords, " "),
+			Keywords:         strings.Join(r.Filter.Keywords, ","),
 			ExcludeUsers:     r.Filter.ExcludeUsers,
 			ExcludeComputers: r.Filter.ExcludeComputers,
 		}
 	}
 
+	var tw time.Duration
+	if r.TimeWindow != "" {
+		tw, _ = time.ParseDuration(r.TimeWindow)
+	}
+
 	return &AlertRule{
-		Name:        r.Name,
-		Description: r.Description,
-		Enabled:     r.Enabled,
-		Severity:    types.Severity(r.Severity),
-		Score:       r.Score,
-		MitreAttack: r.MitreAttack,
-		Filter:      filter,
-		Message:     r.Message,
-		Tags:        r.Tags,
+		Name:           r.Name,
+		Description:    r.Description,
+		Enabled:        r.Enabled,
+		Severity:       types.Severity(r.Severity),
+		Score:          r.Score,
+		MitreAttack:    r.MitreAttack,
+		Filter:         filter,
+		Conditions:     r.Conditions,
+		Threshold:      r.Threshold,
+		TimeWindow:     tw,
+		Message:        r.Message,
+		Tags:           r.Tags,
 	}
 }
 

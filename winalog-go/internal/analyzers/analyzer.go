@@ -104,6 +104,13 @@ func (r *Result) CalculateOverallScore() float64 {
 
 	var totalScore float64
 	var totalWeight float64
+	severityOrder := map[string]int{"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "": 5}
+
+	type scoreWithSeverity struct {
+		score    float64
+		severity string
+	}
+	scorer := make([]scoreWithSeverity, 0, len(r.Findings))
 
 	for _, f := range r.Findings {
 		weight := severityWeights[f.Severity]
@@ -112,12 +119,44 @@ func (r *Result) CalculateOverallScore() float64 {
 		}
 		totalScore += f.Score * weight
 		totalWeight += weight
+		scorer = append(scorer, scoreWithSeverity{f.Score, f.Severity})
 	}
 
 	if totalWeight == 0 {
 		return 0
 	}
-	return totalScore / totalWeight
+
+	avgScore := totalScore / totalWeight
+
+	maxScore := 0.0
+	maxSeverityRank := 999
+	for _, s := range scorer {
+		if s.score > maxScore {
+			maxScore = s.score
+			severityRank := severityOrder[s.severity]
+			if severityRank < maxSeverityRank {
+				maxSeverityRank = severityRank
+			}
+		}
+	}
+
+	weightFactor := 1.0
+	if maxSeverityRank == 0 {
+		weightFactor = 1.5
+	} else if maxSeverityRank == 1 {
+		weightFactor = 1.2
+	}
+
+	finalScore := avgScore
+	if maxScore*weightFactor > avgScore*1.5 {
+		finalScore = maxScore * weightFactor
+	}
+
+	if finalScore > 100 {
+		finalScore = 100
+	}
+
+	return finalScore
 }
 
 type AnalyzerManager struct {

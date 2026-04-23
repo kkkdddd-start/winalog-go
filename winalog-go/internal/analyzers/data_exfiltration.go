@@ -127,6 +127,10 @@ func (a *DataExfiltrationAnalyzer) performAnalysis(events []*types.Event) *DataE
 	}
 
 	for _, e := range events {
+		if !a.shouldProcessEvent(e) {
+			continue
+		}
+
 		switch e.EventID {
 		case 4624:
 			analysis.TotalEvents++
@@ -176,38 +180,6 @@ func (a *DataExfiltrationAnalyzer) performAnalysis(events []*types.Event) *DataE
 					})
 					break
 				}
-			}
-
-		case 3:
-			analysis.TotalEvents++
-			destIP := a.getDestIP(e)
-			if destIP != "" && types.IsExternalIP(destIP) {
-				analysis.LargeOutbound++
-				analysis.Findings = append(analysis.Findings, &ExfilFinding{
-					Type:        "External Network Traffic",
-					Time:        e.Timestamp,
-					User:        a.getUser(e),
-					Computer:    e.Computer,
-					SourceIP:    a.getSourceIP(e),
-					Destination: destIP,
-					Description: "Network traffic to external IP detected",
-					Severity:    "medium",
-					MitreAttack: "T1041",
-				})
-			}
-			if a.isCloudService(destIP) {
-				analysis.CloudUploads++
-				analysis.Findings = append(analysis.Findings, &ExfilFinding{
-					Type:        "Cloud Upload",
-					Time:        e.Timestamp,
-					User:        a.getUser(e),
-					Computer:    e.Computer,
-					SourceIP:    a.getSourceIP(e),
-					Destination: destIP,
-					Description: "Traffic to cloud service detected",
-					Severity:    "medium",
-					MitreAttack: "T1567",
-				})
 			}
 
 		case 4663:

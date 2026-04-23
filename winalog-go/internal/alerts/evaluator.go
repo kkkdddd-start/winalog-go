@@ -190,12 +190,16 @@ func (e *Evaluator) matchConditions(conditions *rules.Conditions, event *types.E
 	}
 
 	if conditions.Any != nil {
+		anyMatched := false
 		for _, cond := range conditions.Any {
 			if e.matchCondition(cond, event) {
-				return true
+				anyMatched = true
+				break
 			}
 		}
-		return false
+		if !anyMatched {
+			return false
+		}
 	}
 
 	if conditions.All != nil {
@@ -204,7 +208,6 @@ func (e *Evaluator) matchConditions(conditions *rules.Conditions, event *types.E
 				return false
 			}
 		}
-		return true
 	}
 
 	if conditions.None != nil {
@@ -213,7 +216,6 @@ func (e *Evaluator) matchConditions(conditions *rules.Conditions, event *types.E
 				return false
 			}
 		}
-		return true
 	}
 
 	return true
@@ -369,7 +371,9 @@ func (e *Evaluator) compareString(a, op, b string, regex bool) bool {
 
 func (e *Evaluator) compareStringBasic(a, op, b string) bool {
 	switch op {
-	case "==", "=", "contains":
+	case "==", "=":
+		return strings.EqualFold(a, b)
+	case "contains":
 		return strings.Contains(strings.ToLower(a), strings.ToLower(b))
 	case "!=", "not":
 		return !strings.Contains(strings.ToLower(a), strings.ToLower(b))
@@ -533,6 +537,22 @@ func (e *Evaluator) getAggregationKey(rule *rules.AlertRule, event *types.Event)
 
 func parseInt(s string, result *int32) (bool, error) {
 	var v int64
+	negative := false
+
+	s = strings.TrimSpace(s)
+	if len(s) == 0 {
+		return false, nil
+	}
+
+	if s[0] == '-' {
+		negative = true
+		s = s[1:]
+	}
+
+	if len(s) == 0 {
+		return false, nil
+	}
+
 	for i := 0; i < len(s); i++ {
 		if s[i] >= '0' && s[i] <= '9' {
 			v = v*10 + int64(s[i]-'0')
@@ -540,6 +560,11 @@ func parseInt(s string, result *int32) (bool, error) {
 			return false, nil
 		}
 	}
+
+	if negative {
+		v = -v
+	}
+
 	*result = int32(v)
 	return true, nil
 }

@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -91,7 +93,8 @@ func initLogFile() error {
 
 	logFileInstance = file
 
-	log.SetOutput(file)
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	log.SetOutput(multiWriter)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	log.Printf("[INFO] log file initialized: %s", logPath)
@@ -143,14 +146,7 @@ func corsMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 }
 
 func stringsJoin(elems []string, sep string) string {
-	if len(elems) == 0 {
-		return ""
-	}
-	result := elems[0]
-	for i := 1; i < len(elems); i++ {
-		result += sep + elems[i]
-	}
-	return result
+	return strings.Join(elems, sep)
 }
 
 func recoveryMiddleware() gin.HandlerFunc {

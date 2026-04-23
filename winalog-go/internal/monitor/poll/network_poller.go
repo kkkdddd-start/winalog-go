@@ -75,36 +75,38 @@ var (
 	procUdpTable  *syscall.Proc
 	procTcp6Table *syscall.Proc
 	procUdp6Table *syscall.Proc
-	dllLoaded     bool
+	dllLoadOnce   sync.Once
+	dllInitErr    error
 )
 
 func initDLL() error {
-	if dllLoaded {
-		return nil
-	}
-	var err error
-	iphlpapi, err = syscall.LoadDLL("iphlpapi.dll")
-	if err != nil {
-		return fmt.Errorf("failed to load iphlpapi.dll: %w", err)
-	}
-	procTcpTable, err = iphlpapi.FindProc("GetExtendedTcpTable")
-	if err != nil {
-		return fmt.Errorf("failed to find GetExtendedTcpTable: %w", err)
-	}
-	procUdpTable, err = iphlpapi.FindProc("GetExtendedUdpTable")
-	if err != nil {
-		return fmt.Errorf("failed to find GetExtendedUdpTable: %w", err)
-	}
-	procTcp6Table, err = iphlpapi.FindProc("GetExtendedTcp6Table")
-	if err != nil {
-		log.Printf("[WARN] GetExtendedTcp6Table not available: %v", err)
-	}
-	procUdp6Table, err = iphlpapi.FindProc("GetExtendedUdp6Table")
-	if err != nil {
-		log.Printf("[WARN] GetExtendedUdp6Table not available: %v", err)
-	}
-	dllLoaded = true
-	return nil
+	dllLoadOnce.Do(func() {
+		var err error
+		iphlpapi, err = syscall.LoadDLL("iphlpapi.dll")
+		if err != nil {
+			dllInitErr = fmt.Errorf("failed to load iphlpapi.dll: %w", err)
+			return
+		}
+		procTcpTable, err = iphlpapi.FindProc("GetExtendedTcpTable")
+		if err != nil {
+			dllInitErr = fmt.Errorf("failed to find GetExtendedTcpTable: %w", err)
+			return
+		}
+		procUdpTable, err = iphlpapi.FindProc("GetExtendedUdpTable")
+		if err != nil {
+			dllInitErr = fmt.Errorf("failed to find GetExtendedUdpTable: %w", err)
+			return
+		}
+		procTcp6Table, err = iphlpapi.FindProc("GetExtendedTcp6Table")
+		if err != nil {
+			log.Printf("[WARN] GetExtendedTcp6Table not available: %v", err)
+		}
+		procUdp6Table, err = iphlpapi.FindProc("GetExtendedUdp6Table")
+		if err != nil {
+			log.Printf("[WARN] GetExtendedUdp6Table not available: %v", err)
+		}
+	})
+	return dllInitErr
 }
 
 func getTCPConnections() ([]*types.ConnectionInfo, error) {
@@ -327,9 +329,6 @@ func (np *NetworkPoller) Stop() error {
 	np.wg.Wait()
 
 	np.subMu.Lock()
-	for _, ch := range np.subscribers {
-		close(ch)
-	}
 	np.subscribers = make([]chan *types.MonitorEvent, 0)
 	np.subMu.Unlock()
 

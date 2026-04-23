@@ -1,5 +1,7 @@
 package rules
 
+import "strings"
+
 type FilterMatcher struct {
 	eventIDSet  map[int32]bool
 	levelSet    map[string]bool
@@ -21,7 +23,7 @@ func NewFilterMatcher(f *Filter) *FilterMatcher {
 		m.eventIDSet[eid] = true
 	}
 	for _, lvl := range f.Levels {
-		m.levelSet[lvl] = true
+		m.levelSet[strings.ToLower(lvl)] = true
 	}
 	for _, ln := range f.LogNames {
 		m.logNameSet[ln] = true
@@ -47,7 +49,7 @@ func (m *FilterMatcher) MatchLevel(level string) bool {
 	if len(m.levelSet) == 0 {
 		return true
 	}
-	return m.levelSet[level]
+	return m.levelSet[strings.ToLower(level)]
 }
 
 func (m *FilterMatcher) MatchLogName(logName string) bool {

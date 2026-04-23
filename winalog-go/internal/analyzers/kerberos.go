@@ -50,14 +50,20 @@ func (a *KerberosAnalyzer) shouldProcessEvent(e *types.Event) bool {
 checkWhitelist:
 	whitelist := a.config.Whitelist
 	if len(whitelist) > 0 {
+		user := a.getTargetUser(e)
+		userLower := strings.ToLower(user)
 		for _, w := range whitelist {
 			w = strings.TrimSpace(w)
 			if w == "" {
 				continue
 			}
-			user := a.getTargetUser(e)
-			if user != "" && strings.Contains(strings.ToLower(user), strings.ToLower(w)) {
-				return false
+			if user != "" {
+				if strings.HasSuffix(userLower, "$") && strings.HasSuffix(w, "$") {
+					continue
+				}
+				if strings.Contains(userLower, strings.ToLower(w)) {
+					return false
+				}
 			}
 		}
 	}
@@ -235,12 +241,7 @@ func (a *KerberosAnalyzer) extractFromMessage(message, pattern1, pattern2 string
 func (a *KerberosAnalyzer) isGoldenTicket(e *types.Event) bool {
 	lifetime := a.getTicketLifetime(e)
 
-	if lifetime > 10*60*60*1000 {
-		return true
-	}
-
-	user := strings.ToLower(a.getTargetUser(e))
-	if strings.Contains(user, "krbtgt") {
+	if lifetime > 24*60*60*1000 {
 		return true
 	}
 

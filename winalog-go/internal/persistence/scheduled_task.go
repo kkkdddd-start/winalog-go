@@ -20,7 +20,7 @@ type ScheduledTaskDetector struct {
 func NewScheduledTaskDetector() *ScheduledTaskDetector {
 	return &ScheduledTaskDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4698, 4699, 4700, 4701, 4702},
 		},
 		configPaths: nil,

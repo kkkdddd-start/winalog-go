@@ -15,7 +15,7 @@ type BHODetector struct {
 func NewBHODetector() *BHODetector {
 	return &BHODetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4697},
 		},
 	}

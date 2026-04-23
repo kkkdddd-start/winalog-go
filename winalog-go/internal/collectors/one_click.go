@@ -240,17 +240,6 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	type itemResult struct {
-		name        string
-		displayName string
-		description string
-		success     bool
-		err        error
-		subErrors  []CollectionItem
-	}
-
-	results := make(chan itemResult, len(itemDefinitions))
-
 	for _, item := range itemDefinitions {
 		if !item.requested {
 			continue
@@ -308,17 +297,10 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 				})
 			}
 			mu.Unlock()
-
-			results <- itemResult{
-				name:        itm.name,
-				displayName: itm.displayName,
-				success:     err == nil,
-			}
 		}(item)
 	}
 
 	wg.Wait()
-	close(results)
 
 	if c.cfg.CalculateHash {
 		log.Printf("[INFO] Calculating file hashes...")
@@ -808,7 +790,7 @@ func (c *OneClickCollector) DiscoverLogSources() ([]string, error) {
 func (c *OneClickCollector) IsFileLocked(path string) bool {
 	f, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
-		return os.IsPermission(err)
+		return true
 	}
 	f.Close()
 	return false
@@ -852,16 +834,26 @@ func copyFile(src, dst string) error {
 	for {
 		n, err := sourceFile.Read(buf)
 		if n > 0 {
-			if _, werr := destFile.Write(buf[:n]); werr != nil {
+			written, werr := destFile.Write(buf[:n])
+			if werr != nil {
 				return werr
+			}
+			if written != n {
+				return fmt.Errorf("partial write: wrote %d bytes, expected %d", written, n)
 			}
 		}
 		if err != nil {
+			if err != io.EOF {
+				return err
+			}
 			break
 		}
 	}
 
-	sourceInfo, _ := sourceFile.Stat()
+	sourceInfo, err := sourceFile.Stat()
+	if err != nil {
+		return err
+	}
 	os.Chtimes(dst, sourceInfo.ModTime(), sourceInfo.ModTime())
 
 	return nil
@@ -931,18 +923,22 @@ type ShimCacheEntry struct {
 }
 
 func GetAmcache() ([]AmcacheEntry, error) {
+	log.Printf("[WARN] Amcache collection not implemented - returning empty result")
 	return []AmcacheEntry{}, nil
 }
 
 func GetUserAssist() ([]UserAssistEntry, error) {
+	log.Printf("[WARN] UserAssist collection not implemented - returning empty result")
 	return []UserAssistEntry{}, nil
 }
 
 func GetUSNJournal(drive string) ([]USNJournalEntry, error) {
+	log.Printf("[WARN] USN Journal collection not implemented - returning empty result")
 	return []USNJournalEntry{}, nil
 }
 
 func GetShimCache() ([]ShimCacheEntry, error) {
+	log.Printf("[WARN] ShimCache collection not implemented - returning empty result")
 	return []ShimCacheEntry{}, nil
 }
 

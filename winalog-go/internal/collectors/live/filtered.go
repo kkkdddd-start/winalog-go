@@ -1,6 +1,8 @@
 package live
 
 import (
+	"strings"
+
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
@@ -166,8 +168,9 @@ func (f *KeywordFilter) Accept(event *types.Event) bool {
 	if len(f.keywords) == 0 {
 		return true
 	}
+	msgLower := strings.ToLower(event.Message)
 	for _, keyword := range f.keywords {
-		if contains(event.Message, keyword) {
+		if strings.Contains(msgLower, strings.ToLower(keyword)) {
 			return true
 		}
 	}
@@ -176,19 +179,6 @@ func (f *KeywordFilter) Accept(event *types.Event) bool {
 
 func (f *KeywordFilter) Name() string {
 	return f.name
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 type CompositeFilter struct {

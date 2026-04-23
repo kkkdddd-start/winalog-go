@@ -2,6 +2,7 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -102,14 +103,22 @@ func (mc *MultiCollector) CollectParallel(ctx context.Context, workers int) ([]*
 	}
 
 	var results []*CollectResult
+	var errs []error
 	for i := 0; i < len(mc.collectors); i++ {
 		r := <-resultChan
 		if r.res != nil {
 			results = append(results, r.res)
 		}
+		if r.err != nil {
+			errs = append(errs, r.err)
+		}
 	}
 
 	close(resultChan)
+
+	if len(errs) > 0 {
+		return results, fmt.Errorf("%d collectors failed: %v", len(errs), errs)
+	}
 	return results, nil
 }
 

@@ -8,8 +8,9 @@ import (
 )
 
 type ParseResult struct {
-	Events <-chan *types.Event
-	Error  error
+	Events  <-chan *types.Event
+	ErrCh   <-chan error
+	Error   error
 }
 
 type Parser interface {

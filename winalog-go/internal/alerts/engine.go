@@ -397,11 +397,12 @@ func (e *Engine) applySuppressInstance(template *PolicyTemplate, instance *Polic
 			}
 
 			suppressRule := &types.SuppressRule{
-				ID:       0,
-				Name:     instance.RuleName,
-				Scope:    sourceComputer,
-				Duration: duration,
-				Enabled:  true,
+				ID:        0,
+				Name:      instance.RuleName,
+				Scope:     sourceComputer,
+				Duration:  duration,
+				Enabled:   true,
+				CreatedAt: time.Now(),
 			}
 
 			for _, cond := range template.Conditions {
@@ -436,12 +437,12 @@ func (e *Engine) EvaluateWithPolicies(ctx context.Context, event *types.Event) (
 type ProgressCallback func(processed, total int)
 
 func (e *Engine) EvaluateBatchWithProgress(ctx context.Context, events []*types.Event, callback ProgressCallback) ([]*types.Alert, error) {
-	total := len(events)
-	var processed int64
-	var mu sync.Mutex
+	if len(events) == 0 {
+		return []*types.Alert{}, nil
+	}
 
 	alertChan := make(chan *types.Alert, len(events))
-	var wg sync.WaitGroup
+	errChan := make(chan error, 1)
 
 	e.mu.RLock()
 	rules := make([]*rules.AlertRule, 0, len(e.rules))
@@ -450,54 +451,78 @@ func (e *Engine) EvaluateBatchWithProgress(ctx context.Context, events []*types.
 	}
 	e.mu.RUnlock()
 
-	for _, evt := range events {
-		wg.Add(1)
-		go func(event *types.Event) {
-			defer wg.Done()
+	const maxWorkers = 100
+	eventChan := make(chan *types.Event, len(events))
+	for _, event := range events {
+		eventChan <- event
+	}
+	close(eventChan)
 
-			for _, rule := range rules {
+	var wg sync.WaitGroup
+	workerCount := maxWorkers
+	if len(events) < workerCount {
+		workerCount = len(events)
+	}
+
+	var processed int64
+	var mu sync.Mutex
+
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for evt := range eventChan {
 				select {
 				case <-ctx.Done():
 					return
 				default:
 				}
 
-				if e.suppressCache.IsSuppressed(rule, event) {
-					continue
+				for _, rule := range rules {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+
+					if e.suppressCache.IsSuppressed(rule, evt) {
+						continue
+					}
+
+					matched, err := e.evaluator.Evaluate(rule, evt)
+					if err != nil {
+						log.Printf("[ERROR] evaluator error for rule %s: %v", rule.Name, err)
+						continue
+					}
+					if !matched {
+						continue
+					}
+
+					if e.dedup.IsDuplicate(rule.Name, evt) {
+						continue
+					}
+
+					alert := e.createAlert(rule, evt)
+					alertChan <- alert
+					e.dedup.Mark(rule.Name, evt)
+					e.trend.Record(alert)
 				}
 
-				matched, err := e.evaluator.Evaluate(rule, event)
-				if err != nil {
-					log.Printf("[ERROR] evaluator error for rule %s: %v", rule.Name, err)
-					continue
+				if callback != nil {
+					mu.Lock()
+					processed++
+					currentProcessed := processed
+					mu.Unlock()
+					callback(int(currentProcessed), len(events))
 				}
-				if !matched {
-					continue
-				}
-
-				if e.dedup.IsDuplicate(rule.Name, event) {
-					continue
-				}
-
-				alert := e.createAlert(rule, event)
-				alertChan <- alert
-				e.dedup.Mark(rule.Name, event)
-				e.trend.Record(alert)
 			}
-
-			if callback != nil {
-				mu.Lock()
-				processed++
-				currentProcessed := processed
-				mu.Unlock()
-				callback(int(currentProcessed), total)
-			}
-		}(evt)
+		}()
 	}
 
 	go func() {
 		wg.Wait()
 		close(alertChan)
+		close(errChan)
 	}()
 
 	var alerts []*types.Alert

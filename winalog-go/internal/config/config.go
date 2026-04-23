@@ -282,7 +282,7 @@ func DefaultConfig() *Config {
 				AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 				AllowedHeaders: []string{"*"},
 			},
-			RequestTimeout: 6 * time.Minute,
+			RequestTimeout: 10 * time.Minute,
 		},
 		Auth: AuthConfig{
 			Enabled: false,

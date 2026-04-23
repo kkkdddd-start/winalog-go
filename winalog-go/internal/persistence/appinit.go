@@ -18,7 +18,7 @@ type AppInitDetector struct {
 func NewAppInitDetector() *AppInitDetector {
 	return &AppInitDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4697},
 		},
 	}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useI18n } from '../locales/I18n'
 import { Line } from 'react-chartjs-2'
 import { persistenceAPI, reportsAPI } from '../api'
@@ -86,8 +86,9 @@ function Persistence() {
   const { t } = useI18n()
   const [detections, setDetections] = useState<Detection[]>([])
   const [stats, setStats] = useState<DetectionStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasStarted, setHasStarted] = useState(false)
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null)
   const [filter, setFilter] = useState<{
     severity?: string
@@ -102,10 +103,6 @@ function Persistence() {
   const [ruleLoading, setRuleLoading] = useState(false)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [reportFormat, setReportFormat] = useState('html')
-
-  useEffect(() => {
-    fetchDetections()
-  }, [])
 
   const fetchDetectors = async () => {
     try {
@@ -259,6 +256,7 @@ function Persistence() {
     try {
       setLoading(true)
       setError(null)
+      setHasStarted(true)
       const params: { category?: string; technique?: string; force?: boolean } = {}
       if (filter.category) params.category = filter.category
       if (filter.technique) params.technique = filter.technique
@@ -301,12 +299,21 @@ function Persistence() {
     }
   }
 
-  const filteredDetections = detections.filter(d => {
-    if (filter.severity && d.severity?.toLowerCase() !== filter.severity) return false
-    if (filter.category && d.category !== filter.category) return false
-    if (filter.technique && d.technique !== filter.technique) return false
-    return true
-  })
+  const filteredDetections = detections
+    .filter(d => {
+      if (filter.severity && d.severity?.toLowerCase() !== filter.severity) return false
+      if (filter.category && d.category !== filter.category) return false
+      if (filter.technique && d.technique !== filter.technique) return false
+      return true
+    })
+    .reduce((acc, d) => {
+      const key = d.id || `${d.technique}-${d.category}-${d.title}-${d.evidence?.key}`
+      if (!acc.seen.has(key)) {
+        acc.seen.add(key)
+        acc.items.push(d)
+      }
+      return acc
+    }, { seen: new Set<string>(), items: [] as Detection[] }).items
 
   const severityChartData = {
     labels: Object.keys(stats?.by_severity || {}),
@@ -338,8 +345,24 @@ function Persistence() {
         </div>
         <div className="loading-state">
           <div className="spinner"></div>
-          <p>正在检测系统持久化机制...</p>
-          <p className="hint">这可能需要几分钟时间，请耐心等待</p>
+          <p>{t('persistence.scanning')}</p>
+          <p className="hint">{t('persistence.scanningHint')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hasStarted) {
+    return (
+      <div className="persistence-page">
+        <div className="page-header">
+          <h1>{t('persistence.title')}</h1>
+        </div>
+        <div className="empty-state">
+          <p>{t('persistence.clickToStart')}</p>
+          <button onClick={() => fetchDetections(true)} className="btn btn-primary">
+            {t('persistence.startScan')}
+          </button>
         </div>
       </div>
     )
@@ -348,6 +371,9 @@ function Persistence() {
   if (error) {
     return (
       <div className="persistence-page">
+        <div className="page-header">
+          <h1>{t('persistence.title')}</h1>
+        </div>
         <div className="error">{t('common.error')}: {error}</div>
         <button onClick={() => fetchDetections()} className="btn btn-primary">
           {t('common.confirm')}
@@ -364,20 +390,20 @@ function Persistence() {
           {t('persistence.rescan')}
         </button>
         <button onClick={handleShowDetectorConfig} className="btn btn-secondary">
-          {t('persistence.detectorConfig') || 'Detector Config'}
+          {t('persistence.detectorConfig')}
         </button>
-        <select 
-          value={reportFormat} 
+        <select
+          value={reportFormat}
           onChange={e => setReportFormat(e.target.value)}
           className="report-format-select"
           style={{ marginRight: '8px', padding: '8px', borderRadius: '6px', background: '#16213e', color: '#eee', border: '1px solid #333' }}
         >
-          <option value="html">HTML</option>
-          <option value="pdf">PDF</option>
-          <option value="json">JSON</option>
+          <option value="html">{t('persistence.formatHTML')}</option>
+          <option value="pdf">{t('persistence.formatPDF')}</option>
+          <option value="json">{t('persistence.formatJSON')}</option>
         </select>
         <button onClick={handleGenerateReport} className="btn btn-secondary" disabled={generatingReport}>
-          {generatingReport ? 'Generating...' : 'Generate Report'}
+          {generatingReport ? t('persistence.generating') : t('persistence.generateReport')}
         </button>
       </div>
 
@@ -385,12 +411,12 @@ function Persistence() {
         <div className="modal-overlay" onClick={() => setShowDetectorConfig(false)}>
           <div className="modal-content detector-config-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{t('persistence.detectorConfig') || 'Detector Configuration'}</h2>
+              <h2>{t('persistence.detectorConfig')}</h2>
               <button className="close-btn" onClick={() => setShowDetectorConfig(false)}>×</button>
             </div>
             <div className="modal-body">
               <p className="config-description">
-                {t('persistence.detectorConfigDesc') || 'Enable or disable individual detectors. Changes will take effect on next scan.'}
+                {t('persistence.detectorConfigDesc')}
               </p>
               {detectorLoading ? (
                 <div className="loading">{t('common.loading')}</div>
@@ -416,7 +442,7 @@ function Persistence() {
                           handleShowRuleEditor(detector.name)
                         }}
                       >
-                        {t('persistence.editRule') || 'Edit Rule'}
+                        {t('persistence.editRule')}
                       </button>
                     </div>
                   ))}
@@ -424,10 +450,10 @@ function Persistence() {
               )}
               <div className="modal-actions">
                 <button onClick={saveDetectorConfig} className="btn btn-primary">
-                  {t('common.save') || 'Save'}
+                  {t('common.save')}
                 </button>
                 <button onClick={() => setShowDetectorConfig(false)} className="btn btn-secondary">
-                  {t('common.cancel') || 'Cancel'}
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -439,8 +465,8 @@ function Persistence() {
         <>
           <div className="stats-header">
             <span className="stats-info">
-              共发现 <strong>{stats.total_detections}</strong> 个持久化机制
-              {stats.duration_ms > 0 && <span>，检测耗时 <strong>{(stats.duration_ms / 1000).toFixed(1)}</strong> 秒</span>}
+              {t('persistence.detectionsFound').replace('{count}', String(stats.total_detections))}
+              {stats.duration_ms > 0 && <span> {t('persistence.scanDuration').replace('{seconds}', String((stats.duration_ms / 1000).toFixed(1)))}</span>}
             </span>
           </div>
           <div className="stats-grid">
@@ -546,6 +572,7 @@ function Persistence() {
                 <td>{detection.title}</td>
                 <td className="evidence-cell">
                   {detection.evidence?.key && <div className="evidence-key">{detection.evidence.key}</div>}
+                  {detection.evidence?.value && <div className="evidence-value">{detection.evidence.value}</div>}
                 </td>
                 <td>{t(`persistence.${detection.false_positive_risk?.toLowerCase()}Risk`) || detection.false_positive_risk}</td>
               </tr>
@@ -570,7 +597,7 @@ function Persistence() {
               </div>
               {selectedDetection.explanation && (
               <div className="detail-section">
-                <h4>{t('persistence.explanation') || '规则解读'}</h4>
+                <h4>{t('persistence.explanation')}</h4>
                 <p>{selectedDetection.explanation}</p>
               </div>
               )}
@@ -580,13 +607,13 @@ function Persistence() {
               </div>
               {selectedDetection.recommendation && (
               <div className="detail-section">
-                <h4>{t('persistence.recommendation') || '处置建议'}</h4>
+                <h4>{t('persistence.recommendation')}</h4>
                 <p style={{ whiteSpace: 'pre-wrap' }}>{selectedDetection.recommendation}</p>
               </div>
               )}
               {selectedDetection.real_case && selectedDetection.real_case !== '暂无真实案例' && (
               <div className="detail-section">
-                <h4>{t('persistence.realCase') || '真实案例'}</h4>
+                <h4>{t('persistence.realCase')}</h4>
                 <p>{selectedDetection.real_case}</p>
               </div>
               )}
@@ -599,7 +626,7 @@ function Persistence() {
         <div className="modal-overlay" onClick={() => setShowRuleEditor(false)}>
           <div className="modal-content rule-editor-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{t('persistence.ruleEditor') || 'Rule Editor'}</h2>
+              <h2>{t('persistence.ruleEditor')}</h2>
               <button className="close-btn" onClick={() => setShowRuleEditor(false)}>×</button>
             </div>
             <div className="modal-body">
@@ -619,13 +646,13 @@ function Persistence() {
                         checked={editingRule.enabled}
                         onChange={(e) => setEditingRule({ ...editingRule, enabled: e.target.checked })}
                       />
-                      <span>{editingRule.enabled ? t('persistence.enabled') || 'Enabled' : t('persistence.disabled') || 'Disabled'}</span>
+                      <span>{editingRule.enabled ? t('persistence.enabled') : t('persistence.disabled')}</span>
                     </label>
                   </div>
 
                   {editingRule.registry_paths && editingRule.registry_paths.length > 0 && (
                     <div className="rule-section">
-                      <h4>{t('persistence.registryPaths') || 'Registry Paths'}</h4>
+                      <h4>{t('persistence.registryPaths')}</h4>
                       <div className="paths-list">
                         {editingRule.registry_paths.map((path, idx) => (
                           <div key={idx} className="path-item">{path}</div>
@@ -635,9 +662,9 @@ function Persistence() {
                   )}
 
                   <div className="rule-section">
-                    <h4>{t('persistence.suspiciousIndicators') || 'Suspicious Indicators'}</h4>
+                    <h4>{t('persistence.suspiciousIndicators')}</h4>
                     <p className="section-desc">
-                      {t('persistence.indicatorDesc') || 'Keywords that trigger detection when found in the target'}
+                      {t('persistence.indicatorDesc')}
                     </p>
                     <div className="indicators-list">
                       {editingRule.suspicious_indicators.map((indicator, idx) => (
@@ -646,7 +673,7 @@ function Persistence() {
                             type="text"
                             value={indicator}
                             onChange={(e) => handleIndicatorChange(idx, e.target.value)}
-                            placeholder="Enter indicator..."
+                            placeholder={t('persistence.indicatorPlaceholder')}
                           />
                           <button
                             className="remove-btn"
@@ -657,15 +684,15 @@ function Persistence() {
                         </div>
                       ))}
                       <button className="add-btn" onClick={handleAddIndicator}>
-                        + {t('persistence.addIndicator') || 'Add Indicator'}
+                        + {t('persistence.addIndicator')}
                       </button>
                     </div>
                   </div>
 
                   <div className="rule-section">
-                    <h4>{t('persistence.whitelistEntries') || 'Whitelist Entries'}</h4>
+                    <h4>{t('persistence.whitelistEntries')}</h4>
                     <p className="section-desc">
-                      {t('persistence.whitelistDesc') || 'Entries that will not trigger detection'}
+                      {t('persistence.whitelistDesc')}
                     </p>
                     <div className="whitelist-list">
                       {editingRule.whitelist.map((entry, idx) => (
@@ -674,7 +701,7 @@ function Persistence() {
                             type="text"
                             value={entry}
                             onChange={(e) => handleWhitelistChange(idx, e.target.value)}
-                            placeholder="Enter whitelist entry..."
+                            placeholder={t('persistence.whitelistPlaceholder')}
                           />
                           <button
                             className="remove-btn"
@@ -685,7 +712,7 @@ function Persistence() {
                         </div>
                       ))}
                       <button className="add-btn" onClick={handleAddWhitelist}>
-                        + {t('persistence.addWhitelist') || 'Add Whitelist Entry'}
+                        + {t('persistence.addWhitelist')}
                       </button>
                     </div>
                   </div>
@@ -693,10 +720,10 @@ function Persistence() {
               )}
               <div className="modal-actions">
                 <button onClick={() => setShowRuleEditor(false)} className="btn btn-secondary">
-                  {t('common.cancel') || 'Cancel'}
+                  {t('common.cancel')}
                 </button>
                 <button onClick={handleSaveRule} className="btn btn-primary">
-                  {t('common.save') || 'Save'}
+                  {t('common.save')}
                 </button>
               </div>
             </div>

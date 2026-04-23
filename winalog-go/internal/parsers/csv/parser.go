@@ -48,13 +48,16 @@ func (p *CsvParser) Parse(path string) <-chan *types.Event {
 }
 
 func (p *CsvParser) ParseWithError(path string) parsers.ParseResult {
-	events := make(chan *types.Event, 1000)
+	events := make(chan *types.Event, 100)
+	errChan := make(chan error, 1)
 
 	go func() {
 		defer close(events)
+		defer close(errChan)
 
 		csvEvents, err := p.parseCSV(path)
 		if err != nil {
+			errChan <- err
 			return
 		}
 
@@ -63,7 +66,7 @@ func (p *CsvParser) ParseWithError(path string) parsers.ParseResult {
 		}
 	}()
 
-	return parsers.ParseResult{Events: events}
+	return parsers.ParseResult{Events: events, ErrCh: errChan}
 }
 
 func (p *CsvParser) ParseBatch(path string) ([]*types.Event, error) {
@@ -77,14 +80,26 @@ func (p *CsvParser) parseCSV(path string) ([]*types.Event, error) {
 	}
 	defer file.Close()
 
+	if p.HasHeader && len(p.Columns) == 0 {
+		bom := make([]byte, 3)
+		n, _ := file.Read(bom)
+		if n < 3 || bom[0] != 0xEF || bom[1] != 0xBB || bom[2] != 0xBF {
+			file.Seek(0, 0)
+		}
+	}
+
 	reader := csv.NewReader(file)
 	if p.Delimiter != "," {
 		reader.Comma = rune(p.Delimiter[0])
 	}
 
 	if p.HasHeader {
-		if _, err := reader.Read(); err != nil {
+		header, err := reader.Read()
+		if err != nil {
 			return nil, err
+		}
+		if len(p.Columns) == 0 {
+			p.Columns = GuessColumns(header)
 		}
 	}
 
@@ -119,39 +134,41 @@ func (p *CsvParser) recordToEvent(record []string, lineNum int) *types.Event {
 		ImportTime: time.Now(),
 	}
 
-	for i, col := range record {
-		if i >= len(p.Columns) {
-			break
-		}
-		switch strings.ToLower(p.Columns[i]) {
-		case "timestamp", "time", "date":
-			if t, err := time.Parse(time.RFC3339, col); err == nil {
-				event.Timestamp = t
-			} else if t, err := time.Parse("2006-01-02 15:04:05", col); err == nil {
-				event.Timestamp = t
+	if len(p.Columns) > 0 {
+		for i, col := range record {
+			if i >= len(p.Columns) {
+				break
 			}
-		case "eventid", "event_id", "id":
-			if id, err := strconv.ParseInt(col, 10, 32); err == nil {
-				event.EventID = int32(id)
+			switch strings.ToLower(p.Columns[i]) {
+			case "timestamp", "time", "date":
+				if t, err := time.Parse(time.RFC3339, col); err == nil {
+					event.Timestamp = t
+				} else if t, err := time.Parse("2006-01-02 15:04:05", col); err == nil {
+					event.Timestamp = t
+				}
+			case "eventid", "event_id", "id":
+				if id, err := strconv.ParseInt(col, 10, 32); err == nil {
+					event.EventID = int32(id)
+				}
+			case "level":
+				if lvl, err := strconv.Atoi(col); err == nil {
+					event.Level = types.EventLevelFromInt(lvl)
+				} else if strings.Contains(strings.ToLower(col), "error") {
+					event.Level = types.EventLevelError
+				} else if strings.Contains(strings.ToLower(col), "warn") {
+					event.Level = types.EventLevelWarning
+				}
+			case "source":
+				event.Source = col
+			case "logname", "log_name", "log":
+				event.LogName = col
+			case "computer", "hostname":
+				event.Computer = col
+			case "user":
+				event.User = &col
+			case "message", "msg":
+				event.Message = col
 			}
-		case "level":
-			if lvl, err := strconv.Atoi(col); err == nil {
-				event.Level = types.EventLevelFromInt(lvl)
-			} else if strings.Contains(strings.ToLower(col), "error") {
-				event.Level = types.EventLevelError
-			} else if strings.Contains(strings.ToLower(col), "warn") {
-				event.Level = types.EventLevelWarning
-			}
-		case "source":
-			event.Source = col
-		case "logname", "log_name", "log":
-			event.LogName = col
-		case "computer", "hostname":
-			event.Computer = col
-		case "user":
-			event.User = &col
-		case "message", "msg":
-			event.Message = col
 		}
 	}
 

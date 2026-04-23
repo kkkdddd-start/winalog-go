@@ -9,7 +9,6 @@ type EventType string
 const (
 	EventTypeProcess EventType = "process"
 	EventTypeNetwork EventType = "network"
-	EventTypeDNS     EventType = "dns"
 )
 
 type Severity string
@@ -50,13 +49,6 @@ type NetworkEventData struct {
 	PID         uint32 `json:"pid"`
 }
 
-type DNSEventData struct {
-	QueryName string   `json:"query_name"`
-	QueryType uint16   `json:"query_type"`
-	Results   []string `json:"results"`
-	TTL       uint32   `json:"ttl"`
-}
-
 type ConnectionInfo struct {
 	Protocol   string
 	LocalAddr  string
@@ -81,19 +73,12 @@ var SuspiciousIPs = []string{
 	"192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24",
 }
 
-var SuspiciousDNSIndicators = []string{
-	"mimikatz", "cobaltstrike", "metasploit",
-	".tk", ".ml", ".ga", ".cf", ".gq",
-}
-
 type MonitorStats struct {
 	IsRunning      bool      `json:"is_running"`
 	ProcessEnabled bool      `json:"process_enabled"`
 	NetworkEnabled bool      `json:"network_enabled"`
-	DNSEnabled     bool      `json:"dns_enabled"`
 	ProcessCount   uint64    `json:"process_count"`
 	NetworkCount   uint64    `json:"network_count"`
-	DNSCount       uint64    `json:"dns_count"`
 	AlertCount     uint64    `json:"alert_count"`
 	StartTime      time.Time `json:"start_time,omitempty"`
 }
@@ -101,7 +86,6 @@ type MonitorStats struct {
 type MonitorConfig struct {
 	ProcessEnabled bool          `json:"process_enabled"`
 	NetworkEnabled bool          `json:"network_enabled"`
-	DNSEnabled     bool          `json:"dns_enabled"`
 	PollInterval   time.Duration `json:"poll_interval"`
 }
 
@@ -117,6 +101,5 @@ type EventFilter struct {
 type MonitorConfigRequest struct {
 	ProcessEnabled *bool          `json:"process_enabled,omitempty"`
 	NetworkEnabled *bool          `json:"network_enabled,omitempty"`
-	DNSEnabled     *bool          `json:"dns_enabled,omitempty"`
 	PollInterval   *time.Duration `json:"poll_interval,omitempty"`
 }

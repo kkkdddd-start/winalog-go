@@ -154,6 +154,14 @@ function Query() {
     }
   }
 
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    const highlight = document.querySelector('.sql-highlight') as HTMLElement
+    if (highlight) {
+      highlight.scrollTop = e.currentTarget.scrollTop
+      highlight.scrollLeft = e.currentTarget.scrollLeft
+    }
+  }
+
   const exportResults = (format: 'json' | 'csv') => {
     if (!result) return
     
@@ -299,6 +307,7 @@ function Query() {
             value={sql}
             onChange={(e) => setSql(e.target.value)}
             onKeyDown={handleKeyDown}
+            onScroll={handleScroll}
             placeholder={t('query.enterSQL')}
             rows={8}
             spellCheck={false}

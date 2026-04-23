@@ -29,11 +29,6 @@ type MonitorEngine struct {
 		Stop() error
 		Subscribe(ch chan *types.MonitorEvent) func()
 	}
-	dnsPoll interface {
-		Start() error
-		Stop() error
-		Subscribe(ch chan *types.MonitorEvent) func()
-	}
 	isRunning bool
 	startTime time.Time
 	stats     *types.MonitorStats
@@ -51,7 +46,6 @@ func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
 		stats: &types.MonitorStats{
 			ProcessCount: 0,
 			NetworkCount: 0,
-			DNSCount:     0,
 			AlertCount:   0,
 		},
 		eventCh: make(chan *types.MonitorEvent, 1000),
@@ -80,7 +74,11 @@ func (e *MonitorEngine) Start(ctx context.Context) error {
 		e.processWatch, err = e.createProcessWatcher()
 		if err == nil && e.processWatch != nil {
 			e.processWatch.Subscribe(e.eventCh)
-			e.processWatch.Start()
+			if err := e.processWatch.Start(); err != nil {
+				log.Printf("[MONITOR] Process watcher start failed: %v", err)
+			}
+		} else if err != nil {
+			log.Printf("[MONITOR] Process watcher creation failed: %v", err)
 		}
 	}
 
@@ -88,15 +86,9 @@ func (e *MonitorEngine) Start(ctx context.Context) error {
 		e.networkPoll = e.createNetworkPoller(config.PollInterval)
 		if e.networkPoll != nil {
 			e.networkPoll.Subscribe(e.eventCh)
-			e.networkPoll.Start()
-		}
-	}
-
-	if config.DNSEnabled {
-		e.dnsPoll = e.createDNSPoller(config.PollInterval)
-		if e.dnsPoll != nil {
-			e.dnsPoll.Subscribe(e.eventCh)
-			e.dnsPoll.Start()
+			if err := e.networkPoll.Start(); err != nil {
+				log.Printf("[MONITOR] Network poller start failed: %v", err)
+			}
 		}
 	}
 
@@ -118,6 +110,9 @@ func (e *MonitorEngine) Stop() error {
 		return nil
 	}
 	e.isRunning = false
+	e.subscribers = nil
+	e.ctx = nil
+	e.cancel = nil
 	e.mu.Unlock()
 
 	if e.cancel != nil {
@@ -133,17 +128,6 @@ func (e *MonitorEngine) Stop() error {
 		e.networkPoll.Stop()
 		e.networkPoll = nil
 	}
-
-	if e.dnsPoll != nil {
-		e.dnsPoll.Stop()
-		e.dnsPoll = nil
-	}
-
-	e.mu.Lock()
-	e.subscribers = nil
-	e.ctx = nil
-	e.cancel = nil
-	e.mu.Unlock()
 
 	return nil
 }
@@ -188,7 +172,6 @@ func (e *MonitorEngine) logMonitorEvent(event *types.MonitorEvent) {
 		CommandLine: event.Data["command"],
 		SrcAddress:  event.Data["src_address"],
 		DstAddress:  event.Data["dst_address"],
-		DNSQuery:    event.Data["dns_query"],
 		Details:     event.Data,
 	}
 
@@ -204,8 +187,6 @@ func (e *MonitorEngine) updateStats(event *types.MonitorEvent) {
 		e.stats.ProcessCount++
 	case types.EventTypeNetwork:
 		e.stats.NetworkCount++
-	case types.EventTypeDNS:
-		e.stats.DNSCount++
 	}
 
 	if event.Severity == types.SeverityHigh || event.Severity == types.SeverityCritical {
@@ -217,7 +198,6 @@ func (e *MonitorEngine) updateConfigStats() {
 	config := e.config.Get()
 	e.stats.ProcessEnabled = config.ProcessEnabled
 	e.stats.NetworkEnabled = config.NetworkEnabled
-	e.stats.DNSEnabled = config.DNSEnabled
 }
 
 func (e *MonitorEngine) UpdateConfig(req *MonitorConfigRequest) error {
@@ -231,7 +211,6 @@ func (e *MonitorEngine) UpdateConfig(req *MonitorConfigRequest) error {
 	e.mu.Lock()
 	e.stats.ProcessEnabled = config.ProcessEnabled
 	e.stats.NetworkEnabled = config.NetworkEnabled
-	e.stats.DNSEnabled = config.DNSEnabled
 
 	if config.ProcessEnabled && e.processWatch == nil {
 		e.processWatch, _ = e.createProcessWatcher()
@@ -257,19 +236,6 @@ func (e *MonitorEngine) UpdateConfig(req *MonitorConfigRequest) error {
 	} else if !config.NetworkEnabled && e.networkPoll != nil {
 		e.networkPoll.Stop()
 		e.networkPoll = nil
-	}
-
-	if config.DNSEnabled && e.dnsPoll == nil {
-		e.dnsPoll = e.createDNSPoller(config.PollInterval)
-		if e.dnsPoll != nil {
-			e.dnsPoll.Subscribe(e.eventCh)
-			if err := e.dnsPoll.Start(); err != nil {
-				log.Printf("[MONITOR] DNS poller start failed: %v", err)
-			}
-		}
-	} else if !config.DNSEnabled && e.dnsPoll != nil {
-		e.dnsPoll.Stop()
-		e.dnsPoll = nil
 	}
 
 	e.mu.Unlock()

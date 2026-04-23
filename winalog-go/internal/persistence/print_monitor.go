@@ -15,7 +15,7 @@ type PrintMonitorDetector struct {
 func NewPrintMonitorDetector() *PrintMonitorDetector {
 	return &PrintMonitorDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4697},
 		},
 	}

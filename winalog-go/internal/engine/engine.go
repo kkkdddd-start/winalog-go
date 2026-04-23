@@ -142,7 +142,8 @@ func (e *Engine) Import(ctx context.Context, req *ImportRequest, progressFn func
 			defer wg.Done()
 			defer func() { <-workerPool }()
 
-			fileResult, err := e.importFile(ctx, path)
+			fileResult, err := e.importFile(ctx, path, req.LogName)
+			var progress *ImportProgress
 			mu.Lock()
 			if err != nil {
 				result.FilesFailed++
@@ -164,30 +165,29 @@ func (e *Engine) Import(ctx context.Context, req *ImportRequest, progressFn func
 					remainingEvents := int64(avgEventsPerFile * float64(remainingFiles))
 					eta = time.Duration(float64(remainingEvents) / eventsPerSec * float64(time.Second))
 				}
-				progressFn(&ImportProgress{
+				progress = &ImportProgress{
 					TotalFiles:      result.TotalFiles,
 					CurrentFile:     idx + 1,
 					CurrentFileName: filepath.Base(path),
 					EventsImported:  result.EventsImported,
 					EventsPerSec:    eventsPerSec,
 					EstimatedLeft:   eta,
-				})
+				}
 			}
 			mu.Unlock()
+			if progress != nil {
+				progressFn(progress)
+			}
 		}(i, file)
 	}
 
 	wg.Wait()
 
-	if err := e.eventRepo.FlushFTS(); err != nil {
-		fmt.Printf("[IMPORT] Warning: FlushFTS failed: %v\n", err)
-	}
-
 	result.Duration = time.Since(result.StartTime)
 	return result, nil
 }
 
-func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, error) {
+func (e *Engine) importFile(ctx context.Context, path string, logName string) (*ImportResult, error) {
 	parser := e.parsers.Get(path)
 	if parser == nil {
 		return nil, fmt.Errorf("no parser found for %s", path)
@@ -201,9 +201,25 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 	}
 
 	parseResult := parser.ParseWithError(path)
-	if parseResult.Error != nil {
-		e.db.UpdateImportLog(importID, 0, 0, "failed", parseResult.Error.Error())
-		return &ImportResult{FilesFailed: 1}, parseResult.Error
+
+	var parseErr error
+	if parseResult.ErrCh != nil {
+		select {
+		case err, ok := <-parseResult.ErrCh:
+			if !ok {
+				parseErr = nil
+			} else {
+				parseErr = err
+			}
+		case <-ctx.Done():
+			e.db.UpdateImportLog(importID, 0, 0, "cancelled", ctx.Err().Error())
+			return &ImportResult{}, ctx.Err()
+		}
+	}
+
+	if parseErr != nil {
+		e.db.UpdateImportLog(importID, 0, 0, "failed", parseErr.Error())
+		return &ImportResult{FilesFailed: 1}, parseErr
 	}
 
 	events := parseResult.Events
@@ -214,38 +230,45 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 	var batchNum int
 	skipProcessing := false
 
-	for event := range events {
-		if skipProcessing {
-			continue
-		}
-
+	for {
 		select {
+		case event, ok := <-events:
+			if !ok {
+				goto DONE
+			}
+			if skipProcessing {
+				continue
+			}
+			event.ImportID = importID
+			if logName != "" {
+				event.LogName = logName
+			}
+			batch = append(batch, event)
+			if len(batch) >= e.importCfg.BatchSize {
+				batchNum++
+				if err := e.eventRepo.InsertBatch(batch); err != nil {
+					importErr = fmt.Errorf("batch %d failed: %w", batchNum, err)
+					skipProcessing = true
+					continue
+				}
+				totalEvents += int64(len(batch))
+				batch = batch[:0]
+			}
 		case <-ctx.Done():
 			e.db.UpdateImportLog(importID, int(totalEvents), int(time.Since(startTime).Milliseconds()), "cancelled", ctx.Err().Error())
 			return &ImportResult{EventsImported: totalEvents}, ctx.Err()
-		default:
-		}
-
-		event.ImportID = importID
-		batch = append(batch, event)
-		if len(batch) >= e.importCfg.BatchSize {
-			batchNum++
-			if err := e.eventRepo.InsertBatch(batch); err != nil {
-				importErr = fmt.Errorf("batch %d failed: %w", batchNum, err)
-				skipProcessing = true
-				continue
-			}
-			totalEvents += int64(len(batch))
-			batch = batch[:0]
 		}
 	}
 
-	if importErr == nil && len(batch) > 0 {
-		batchNum++
-		if err := e.eventRepo.InsertBatch(batch); err != nil {
-			importErr = fmt.Errorf("batch %d (final) failed: %w", batchNum, err)
-		} else {
-			totalEvents += int64(len(batch))
+DONE:
+	if len(batch) > 0 {
+		if importErr == nil {
+			batchNum++
+			if err := e.eventRepo.InsertBatch(batch); err != nil {
+				importErr = fmt.Errorf("batch %d (final) failed: %w", batchNum, err)
+			} else {
+				totalEvents += int64(len(batch))
+			}
 		}
 		batch = batch[:0]
 	}
@@ -260,6 +283,10 @@ func (e *Engine) importFile(ctx context.Context, path string) (*ImportResult, er
 	}
 
 	e.db.UpdateImportLog(importID, int(totalEvents), int(duration.Milliseconds()), "success", "")
+
+	if err := e.eventRepo.FlushFTS(); err != nil {
+		fmt.Printf("[IMPORT] Warning: FlushFTS failed for import %d: %v\n", importID, err)
+	}
 
 	return &ImportResult{
 		EventsImported: totalEvents,
@@ -302,7 +329,7 @@ func collectFiles(paths []string, skipPatterns []string) []string {
 		}
 
 		if fi.IsDir() {
-			dirFiles := scanDirectory(path, skipPatterns)
+			dirFiles := scanDirectory(path, skipPatterns, 0)
 			files = append(files, dirFiles...)
 		} else {
 			ext := strings.ToLower(filepath.Ext(path))
@@ -316,7 +343,12 @@ func collectFiles(paths []string, skipPatterns []string) []string {
 	return files
 }
 
-func scanDirectory(dir string, skipPatterns []string) []string {
+func scanDirectory(dir string, skipPatterns []string, depth int) []string {
+	const maxDepth = 20
+	if depth > maxDepth {
+		return nil
+	}
+
 	var files []string
 
 	entries, err := os.ReadDir(dir)
@@ -325,17 +357,25 @@ func scanDirectory(dir string, skipPatterns []string) []string {
 	}
 
 	for _, entry := range entries {
+		fullPath := filepath.Join(dir, entry.Name())
+
 		if entry.IsDir() {
-			subFiles := scanDirectory(filepath.Join(dir, entry.Name()), skipPatterns)
+			info, err := os.Lstat(fullPath)
+			if err != nil {
+				continue
+			}
+			if info.Mode()&os.ModeSymlink != 0 {
+				continue
+			}
+			subFiles := scanDirectory(fullPath, skipPatterns, depth+1)
 			files = append(files, subFiles...)
 			continue
 		}
 
-		path := filepath.Join(dir, entry.Name())
-		ext := strings.ToLower(filepath.Ext(path))
+		ext := strings.ToLower(filepath.Ext(fullPath))
 		if ext == ".evtx" || ext == ".etl" || ext == ".csv" || ext == ".log" || ext == ".txt" {
-			if !shouldSkip(path, skipPatterns) {
-				files = append(files, path)
+			if !shouldSkip(fullPath, skipPatterns) {
+				files = append(files, fullPath)
 			}
 		}
 	}
@@ -365,8 +405,10 @@ func fileExists(path string) bool {
 }
 
 func shouldSkip(path string, patterns []string) bool {
+	base := filepath.Base(path)
 	for _, pattern := range patterns {
-		if strings.Contains(path, pattern) {
+		matched, _ := filepath.Match(pattern, base)
+		if matched {
 			return true
 		}
 	}

@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -96,6 +95,7 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 		pids[i] = p.pid
 	}
 	commandLines := batchGetCommandLines(pids)
+	memMap, cpuMap := batchGetProcessMemoryAndCPU(pids)
 
 	for _, p := range procList {
 		exePath := getProcessPath(p.pid)
@@ -109,8 +109,8 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 			User:        getProcessUser(p.pid),
 			StartTime:   getProcessStartTime(p.pid),
 			IsElevated:  isProcessElevated(p.pid),
-			MemoryMB:    getProcessMemoryMB(p.pid),
-			CPUPercent:  getProcessCPUPercent(p.pid),
+			MemoryMB:    memMap[p.pid],
+			CPUPercent:  cpuMap[p.pid],
 		}
 
 		if exePath != "" && !strings.HasSuffix(strings.ToLower(exePath), ".tmp") {
@@ -143,16 +143,9 @@ func batchGetCommandLines(pids []uint32) map[uint32]string {
 		return result
 	}
 
-	script := `(Get-CimInstance Win32_Process | Where-Object {`
-	for i, pid := range pids {
-		if i > 0 {
-			script += ` -or `
-		}
-		script += fmt.Sprintf(`$_.ProcessId -eq %d`, pid)
-	}
-	script += ` }) | Select-Object ProcessId, CommandLine | ConvertTo-Json -Compress`
+	script := `(Get-CimInstance Win32_Process | Select-Object ProcessId, CommandLine | ConvertTo-Json -Compress)`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	cmdResult := utils.RunPowerShellWithContext(ctx, script)
@@ -176,8 +169,15 @@ func batchGetCommandLines(pids []uint32) map[uint32]string {
 		return result
 	}
 
+	pidSet := make(map[uint32]bool)
+	for _, pid := range pids {
+		pidSet[pid] = true
+	}
+
 	for _, e := range entries {
-		result[e.ProcessID] = e.CommandLine
+		if pidSet[e.ProcessID] {
+			result[e.ProcessID] = e.CommandLine
+		}
 	}
 
 	return result
@@ -222,24 +222,7 @@ func getCommandLine(pid uint32) string {
 		}
 	}()
 
-	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
-	if err != nil {
-		return ""
-	}
-	defer windows.CloseHandle(hProcess)
-
-	var buf [32768]uint16
-	size := uint32(len(buf))
-	if err := windows.QueryFullProcessImageName(hProcess, 0, &buf[0], &size); err != nil {
-		return ""
-	}
-
-	path := windows.UTF16ToString(buf[:size])
-	if path == "" {
-		return ""
-	}
-
-	script := fmt.Sprintf(`(Get-CimInstance Win32_Process -Filter "ProcessId=%d").CommandLine`, pid)
+	script := fmt.Sprintf(`(Get-CimInstance Win32_Process -Filter "ProcessId=%d" -ErrorAction SilentlyContinue).CommandLine`, pid)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -248,7 +231,7 @@ func getCommandLine(pid uint32) string {
 		return strings.TrimSpace(result.Output)
 	}
 
-	return path
+	return ""
 }
 
 func getProcessUser(pid uint32) string {
@@ -313,46 +296,58 @@ func isProcessElevated(pid uint32) bool {
 	return elevation != 0
 }
 
-func getProcessMemoryMB(pid uint32) float64 {
-	defer func() {
-		if r := recover(); r != nil {
-			return
-		}
-	}()
+func batchGetProcessMemoryAndCPU(pids []uint32) (map[uint32]float64, map[uint32]float64) {
+	memMap := make(map[uint32]float64)
+	cpuMap := make(map[uint32]float64)
 
-	script := fmt.Sprintf(`(Get-CimInstance Win32_Process -Filter "ProcessId=%d" | Select-Object WorkingSetSize).WorkingSetSize`, pid)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	if len(pids) == 0 {
+		return memMap, cpuMap
+	}
+
+	memScript := `(Get-CimInstance Win32_Process | Select-Object ProcessId, WorkingSetSize | ConvertTo-Json -Compress)`
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	result := utils.RunPowerShellWithContext(ctx, script)
-	if result.Success() && result.Output != "" {
-		if memKB, err := strconv.ParseFloat(strings.TrimSpace(result.Output), 64); err == nil {
-			return memKB / 1024 / 1024
+	memResult := utils.RunPowerShellWithContext(ctx, memScript)
+	if memResult.Success() && memResult.Output != "" {
+		var entries []struct {
+			ProcessID    uint32 `json:"ProcessId"`
+			WorkingSetSize int64 `json:"WorkingSetSize"`
+		}
+		if err := json.Unmarshal([]byte(memResult.Output), &entries); err == nil {
+			pidSet := make(map[uint32]bool)
+			for _, pid := range pids {
+				pidSet[pid] = true
+			}
+			for _, e := range entries {
+				if pidSet[e.ProcessID] {
+					memMap[e.ProcessID] = float64(e.WorkingSetSize) / 1024 / 1024
+				}
+			}
 		}
 	}
 
-	return 0
-}
-
-func getProcessCPUPercent(pid uint32) float64 {
-	defer func() {
-		if r := recover(); r != nil {
-			return
+	cpuScript := `(Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Select-Object IDProcess, PercentProcessorTime | ConvertTo-Json -Compress)`
+	cpuResult := utils.RunPowerShellWithContext(ctx, cpuScript)
+	if cpuResult.Success() && cpuResult.Output != "" {
+		var entries []struct {
+			IDProcess             uint32 `json:"IDProcess"`
+			PercentProcessorTime float64 `json:"PercentProcessorTime"`
 		}
-	}()
-
-	script := fmt.Sprintf(`(Get-CimInstance Win32_PerfFormattedData_PerfProc_Process -Filter "IDProcess=%d" | Select-Object PercentProcessorTime).PercentProcessorTime`, pid)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	result := utils.RunPowerShellWithContext(ctx, script)
-	if result.Success() && result.Output != "" {
-		if cpu, err := strconv.ParseFloat(strings.TrimSpace(result.Output), 64); err == nil {
-			return cpu
+		if err := json.Unmarshal([]byte(cpuResult.Output), &entries); err == nil {
+			pidSet := make(map[uint32]bool)
+			for _, pid := range pids {
+				pidSet[pid] = true
+			}
+			for _, e := range entries {
+				if pidSet[e.IDProcess] {
+					cpuMap[e.IDProcess] = e.PercentProcessorTime
+				}
+			}
 		}
 	}
 
-	return 0
+	return memMap, cpuMap
 }
 
 func getProcessStartTime(pid uint32) time.Time {
@@ -413,24 +408,43 @@ func ListProcesses() ([]Process, error) {
 		return nil, err
 	}
 
+	var procList []struct {
+		pid  uint32
+		ppid uint32
+		name string
+	}
 	for {
-		pid := int(entry.ProcessID)
-		ppid := int(entry.ParentProcessID)
-		exePath := getProcessPath(uint32(pid))
-
-		processes = append(processes, Process{
-			PID:     pid,
-			PPID:    ppid,
-			Name:    windows.UTF16ToString(entry.ExeFile[:]),
-			Path:    exePath,
-			Command: getCommandLine(uint32(pid)),
-			User:    getProcessUser(uint32(pid)),
+		procList = append(procList, struct {
+			pid  uint32
+			ppid uint32
+			name string
+		}{
+			pid:  entry.ProcessID,
+			ppid: entry.ParentProcessID,
+			name: windows.UTF16ToString(entry.ExeFile[:]),
 		})
-
 		err = windows.Process32Next(snapshot, &entry)
 		if err != nil {
 			break
 		}
+	}
+
+	pids := make([]uint32, len(procList))
+	for i, p := range procList {
+		pids[i] = p.pid
+	}
+	commandLines := batchGetCommandLines(pids)
+
+	for _, p := range procList {
+		exePath := getProcessPath(p.pid)
+		processes = append(processes, Process{
+			PID:     int(p.pid),
+			PPID:    int(p.ppid),
+			Name:    p.name,
+			Path:    exePath,
+			Command: commandLines[p.pid],
+			User:    getProcessUser(p.pid),
+		})
 	}
 
 	return processes, nil
@@ -450,7 +464,13 @@ func IsProcessRunning(pid int) bool {
 		return false
 	}
 	defer windows.CloseHandle(hProcess)
-	return true
+
+	var exitCode uint32
+	if err := windows.GetExitCodeProcess(hProcess, &exitCode); err != nil {
+		return false
+	}
+
+	return exitCode == 259
 }
 
 func GetProcessStartTime(pid int) time.Time {

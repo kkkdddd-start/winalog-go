@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -33,8 +32,21 @@ func (p *IISParser) Priority() int {
 }
 
 func (p *IISParser) CanParse(path string) bool {
-	name := strings.ToLower(filepath.Base(path))
-	return strings.Contains(name, "iis") || strings.Contains(name, "u_ex")
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for i := 0; i < 10 && scanner.Scan(); i++ {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#Software: Microsoft IIS") ||
+			strings.HasPrefix(line, "#Fields:") {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *IISParser) GetType() string {
@@ -46,13 +58,16 @@ func (p *IISParser) Parse(path string) <-chan *types.Event {
 }
 
 func (p *IISParser) ParseWithError(path string) parsers.ParseResult {
-	events := make(chan *types.Event, 1000)
+	events := make(chan *types.Event, 100)
+	errChan := make(chan error, 1)
 
 	go func() {
 		defer close(events)
+		defer close(errChan)
 
 		iisEvents, err := p.parseIIS(path)
 		if err != nil {
+			errChan <- err
 			return
 		}
 
@@ -61,7 +76,7 @@ func (p *IISParser) ParseWithError(path string) parsers.ParseResult {
 		}
 	}()
 
-	return parsers.ParseResult{Events: events}
+	return parsers.ParseResult{Events: events, ErrCh: errChan}
 }
 
 func (p *IISParser) ParseBatch(path string) ([]*types.Event, error) {

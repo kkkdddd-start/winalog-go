@@ -42,13 +42,16 @@ func (p *EtlParser) Parse(path string) <-chan *types.Event {
 }
 
 func (p *EtlParser) ParseWithError(path string) parsers.ParseResult {
-	events := make(chan *types.Event, 1000)
+	events := make(chan *types.Event, 100)
+	errChan := make(chan error, 1)
 
 	go func() {
 		defer close(events)
+		defer close(errChan)
 
 		etlEvents, err := p.ParseBatch(path)
 		if err != nil {
+			errChan <- err
 			return
 		}
 
@@ -57,7 +60,7 @@ func (p *EtlParser) ParseWithError(path string) parsers.ParseResult {
 		}
 	}()
 
-	return parsers.ParseResult{Events: events}
+	return parsers.ParseResult{Events: events, ErrCh: errChan}
 }
 
 func (p *EtlParser) ParseBatch(path string) ([]*types.Event, error) {
@@ -154,9 +157,26 @@ func (p *EtlParser) parseEtlEventData(header *etlEventHeader, data []byte) *type
 	event.LogName = "ETW"
 	event.EventID = 0
 
-	event.Message = string(data)
+	if isPrintableASCII(data) {
+		event.Message = strings.TrimSpace(string(data))
+	} else {
+		event.Message = "[BINARY DATA - ETL BINARY FORMAT NOT FULLY PARSED]"
+	}
 
 	return event
+}
+
+func isPrintableASCII(data []byte) bool {
+	if len(data) == 0 {
+		return false
+	}
+	printable := 0
+	for _, b := range data {
+		if (b >= 32 && b <= 126) || b == 9 || b == 10 || b == 13 {
+			printable++
+		}
+	}
+	return float64(printable)/float64(len(data)) > 0.8
 }
 
 func (p *EtlParser) mapLevel(level uint8) types.EventLevel {

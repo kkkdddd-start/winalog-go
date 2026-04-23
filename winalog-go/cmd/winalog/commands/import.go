@@ -101,7 +101,8 @@ func runImport(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 	req := &engine.ImportRequest{
-		Paths: allFiles,
+		Paths:   allFiles,
+		LogName: importFlags.logName,
 	}
 
 	fmt.Printf("Importing %d file(s)...\n", len(allFiles))

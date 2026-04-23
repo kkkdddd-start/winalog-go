@@ -25,6 +25,7 @@ type ProcessWatcher struct {
 	running     bool
 	mu          sync.RWMutex
 	lastPIDs    map[uint32]bool
+	pidToName   map[uint32]string
 }
 
 type Win32_Process struct {
@@ -44,6 +45,7 @@ func NewProcessWatcher() (*ProcessWatcher, error) {
 		subscribers: make([]chan *types.MonitorEvent, 0),
 		running:     false,
 		lastPIDs:    make(map[uint32]bool),
+		pidToName:   make(map[uint32]string),
 	}, nil
 }
 
@@ -139,6 +141,7 @@ func (pw *ProcessWatcher) checkProcesses(isFirstRun bool) {
 
 	pw.mu.Lock()
 	for pid, p := range currentProcs {
+		pw.pidToName[pid] = p.Name
 		_, existed := pw.lastPIDs[pid]
 		if !existed {
 			event := pw.createProcessEvent(p, true)
@@ -150,10 +153,15 @@ func (pw *ProcessWatcher) checkProcesses(isFirstRun bool) {
 
 	for pid := range pw.lastPIDs {
 		if !currentPIDs[pid] {
-			event := pw.createProcessExitEvent(pid)
+			procName := pw.pidToName[pid]
+			if procName == "" {
+				procName = "Unknown"
+			}
+			event := pw.createProcessExitEvent(pid, procName)
 			if event != nil {
 				pw.publishEvent(event)
 			}
+			delete(pw.pidToName, pid)
 		}
 	}
 	pw.lastPIDs = currentPIDs
@@ -193,10 +201,10 @@ func (pw *ProcessWatcher) createProcessEvent(p *Win32_Process, isNew bool) *type
 	}
 }
 
-func (pw *ProcessWatcher) createProcessExitEvent(pid uint32) *types.MonitorEvent {
+func (pw *ProcessWatcher) createProcessExitEvent(pid uint32, processName string) *types.MonitorEvent {
 	data := make(map[string]interface{})
 	data["pid"] = pid
-	data["process_name"] = "Unknown"
+	data["process_name"] = processName
 	data["is_new"] = false
 
 	return &types.MonitorEvent{

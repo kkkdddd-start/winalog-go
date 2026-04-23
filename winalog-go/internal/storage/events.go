@@ -25,6 +25,9 @@ var allowedSortFields = map[string]bool{
 	"import_time": true,
 }
 
+var ftsChecked sync.Once
+var ftsReadyGlobal bool
+
 type EventRepo struct {
 	db              *DB
 	ftsReady        bool
@@ -34,7 +37,11 @@ type EventRepo struct {
 
 func NewEventRepo(db *DB) *EventRepo {
 	repo := &EventRepo{db: db}
-	repo.checkFTS()
+	ftsChecked.Do(func() {
+		repo.checkFTS()
+		ftsReadyGlobal = repo.ftsReady
+	})
+	repo.ftsReady = ftsReadyGlobal
 	return repo
 }
 
@@ -944,13 +951,28 @@ func (r *EventRepo) deduplicate(events []*types.Event) []*types.Event {
 }
 
 func (r *EventRepo) generateEventKey(e *types.Event) string {
-	return fmt.Sprintf("%d|%s|%s|%s|%s|%s",
+	msgHash := ""
+	if e.Message != "" {
+		h := fnvHash(e.Message)
+		msgHash = fmt.Sprintf("%x", h)
+	}
+	return fmt.Sprintf("%d|%s|%s|%s|%s|%s|%s",
 		e.EventID,
 		e.Timestamp.Format(time.RFC3339Nano),
 		e.Computer,
 		e.LogName,
 		e.Source,
-		getUserKey(e))
+		getUserKey(e),
+		msgHash)
+}
+
+func fnvHash(s string) uint64 {
+	h := uint64(14695981039346656037)
+	for _, c := range s {
+		h ^= uint64(c)
+		h *= 1099511628211
+	}
+	return h
 }
 
 func getUserKey(e *types.Event) string {

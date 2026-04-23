@@ -26,16 +26,21 @@ func NewLoader(paths []string) *Loader {
 func (l *Loader) Load() ([]*AlertRule, []*CorrelationRule, error) {
 	alertRules := make([]*AlertRule, 0)
 	correlationRules := make([]*CorrelationRule, 0)
+	var errs []string
 
 	for _, path := range l.rulePaths {
 		rules, corrRules, err := l.loadFromPath(path)
 		if err != nil {
+			errs = append(errs, fmt.Sprintf("path %s: %v", path, err))
 			continue
 		}
 		alertRules = append(alertRules, rules...)
 		correlationRules = append(correlationRules, corrRules...)
 	}
 
+	if len(errs) > 0 {
+		return alertRules, correlationRules, fmt.Errorf("loading errors: %s", strings.Join(errs, "; "))
+	}
 	return alertRules, correlationRules, nil
 }
 
@@ -97,9 +102,11 @@ func (l *Loader) loadFromFile(filePath string) ([]*AlertRule, []*CorrelationRule
 
 	alertRules := make([]*AlertRule, 0)
 	correlationRules := make([]*CorrelationRule, 0)
+	var errs []string
 
 	for _, rule := range doc.AlertRules {
 		if err := l.validator.ValidateAlertRule(rule); err != nil {
+			errs = append(errs, fmt.Sprintf("alert rule %s: %v", rule.Name, err))
 			continue
 		}
 		alertRules = append(alertRules, rule)
@@ -107,11 +114,15 @@ func (l *Loader) loadFromFile(filePath string) ([]*AlertRule, []*CorrelationRule
 
 	for _, rule := range doc.CorrelationRules {
 		if err := l.validator.ValidateCorrelationRule(rule); err != nil {
+			errs = append(errs, fmt.Sprintf("correlation rule %s: %v", rule.Name, err))
 			continue
 		}
 		correlationRules = append(correlationRules, rule)
 	}
 
+	if len(errs) > 0 {
+		return alertRules, correlationRules, fmt.Errorf("validation errors in %s: %s", filePath, strings.Join(errs, "; "))
+	}
 	return alertRules, correlationRules, nil
 }
 
@@ -149,20 +160,7 @@ func (v *Validator) ValidateCorrelationRule(rule *CorrelationRule) error {
 }
 
 func (v *Validator) ValidateMITREID(id string) bool {
-	if len(id) < 5 {
-		return false
-	}
-
-	parts := strings.Split(id, ".")
-	if len(parts) != 2 {
-		return false
-	}
-
-	if parts[0] != "T" {
-		return false
-	}
-
-	return true
+	return validateMitreIDFormat(id) == nil
 }
 
 func (v *Validator) ValidateThreshold(threshold int) error {

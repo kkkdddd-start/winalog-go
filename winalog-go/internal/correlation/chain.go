@@ -2,9 +2,9 @@ package correlation
 
 import (
 	"fmt"
-	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kkkdddd-start/winalog-go/internal/rules"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -13,6 +13,7 @@ import (
 type ChainConfig struct {
 	StartEventIDs map[int32]bool
 	Transitions   map[int32][]int32
+	TimeWindow    time.Duration
 }
 
 var DefaultChainConfig = &ChainConfig{
@@ -32,6 +33,7 @@ var DefaultChainConfig = &ChainConfig{
 		4648: {4624, 4672},
 		4688: {4698, 4697},
 	},
+	TimeWindow: 1 * time.Hour,
 }
 
 type ChainBuilder struct {
@@ -149,9 +151,11 @@ func (cb *ChainBuilder) findNextEvents(events []*types.Event) ([]*types.Event, e
 		ids = append(ids, id)
 	}
 
+	endTime := maxTime.Add(cb.config.TimeWindow)
 	req := &types.SearchRequest{
 		EventIDs:  ids,
 		StartTime: &maxTime,
+		EndTime:   &endTime,
 		PageSize:  1000,
 	}
 	results, _, err := cb.eventRepo.Search(req)
@@ -162,23 +166,7 @@ func (cb *ChainBuilder) findNextEvents(events []*types.Event) ([]*types.Event, e
 }
 
 func (cb *ChainBuilder) findNextEventsFallback(events []*types.Event) ([]*types.Event, error) {
-	nextEvents := make([]*types.Event, 0)
-
-	for _, event := range events {
-		if nextIDs, ok := cb.config.Transitions[event.EventID]; ok {
-			for _, nextID := range nextIDs {
-				nextEvents = append(nextEvents, &types.Event{
-					ID:        event.ID + 1,
-					EventID:   nextID,
-					Timestamp: event.Timestamp.Add(1 * time.Second),
-					User:      event.User,
-					Computer:  event.Computer,
-				})
-			}
-		}
-	}
-
-	return nextEvents, nil
+	return []*types.Event{}, nil
 }
 
 func (cb *ChainBuilder) BuildFromRule(rule *rules.CorrelationRule, events []*types.Event) *types.CorrelationResult {
@@ -205,13 +193,6 @@ func (cb *ChainBuilder) BuildFromRule(rule *rules.CorrelationRule, events []*typ
 	return result
 }
 
-var resultCounter uint64
-
 func generateResultID() string {
-	now := time.Now()
-	counter := atomic.AddUint64(&resultCounter, 1)
-	return fmt.Sprintf("%s.%06d.%d",
-		now.Format("20060102150405"),
-		now.Nanosecond()/1000,
-		counter)
+	return uuid.New().String()
 }

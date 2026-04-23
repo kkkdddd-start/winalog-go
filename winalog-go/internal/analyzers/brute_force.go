@@ -170,7 +170,20 @@ func (a *BruteForceAnalyzer) filterSuccessLogins(events []*types.Event) []*types
 func (a *BruteForceAnalyzer) analyzeByUser(failed, success []*types.Event) map[string]*UserBruteForceInfo {
 	userInfo := make(map[string]*UserBruteForceInfo)
 
+	timeWindowMinutes := 30
+	if a.config.Thresholds != nil {
+		if v, ok := a.config.Thresholds["time_window_minutes"]; ok && v > 0 {
+			timeWindowMinutes = v
+		}
+	}
+	window := time.Duration(timeWindowMinutes) * time.Minute
+	now := time.Now()
+	windowStart := now.Add(-window)
+
 	for _, e := range failed {
+		if e.Timestamp.Before(windowStart) {
+			continue
+		}
 		user := getUserIdentifier(e)
 		info, ok := userInfo[user]
 		if !ok {
@@ -189,6 +202,9 @@ func (a *BruteForceAnalyzer) analyzeByUser(failed, success []*types.Event) map[s
 	}
 
 	for _, e := range success {
+		if e.Timestamp.Before(windowStart) {
+			continue
+		}
 		user := getUserIdentifier(e)
 		info, ok := userInfo[user]
 		if !ok {
@@ -222,8 +238,21 @@ func (a *BruteForceAnalyzer) analyzeByUser(failed, success []*types.Event) map[s
 func (a *BruteForceAnalyzer) analyzeByIP(failed, success []*types.Event) map[string]*IPBruteForceInfo {
 	ipInfo := make(map[string]*IPBruteForceInfo)
 
+	timeWindowMinutes := 30
+	if a.config.Thresholds != nil {
+		if v, ok := a.config.Thresholds["time_window_minutes"]; ok && v > 0 {
+			timeWindowMinutes = v
+		}
+	}
+	window := time.Duration(timeWindowMinutes) * time.Minute
+	now := time.Now()
+	windowStart := now.Add(-window)
+
 	for _, e := range failed {
 		if e.IPAddress == nil {
+			continue
+		}
+		if e.Timestamp.Before(windowStart) {
 			continue
 		}
 		ip := *e.IPAddress
@@ -246,6 +275,9 @@ func (a *BruteForceAnalyzer) analyzeByIP(failed, success []*types.Event) map[str
 
 	for _, e := range success {
 		if e.IPAddress == nil {
+			continue
+		}
+		if e.Timestamp.Before(windowStart) {
 			continue
 		}
 		ip := *e.IPAddress

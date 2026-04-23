@@ -19,7 +19,7 @@ type ETWDetector struct {
 func NewETWDetector() *ETWDetector {
 	return &ETWDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4670},
 		},
 	}

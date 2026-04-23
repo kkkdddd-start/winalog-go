@@ -327,20 +327,35 @@ func (c *RegistryInfoCollector) collectIFEO() []*types.RegistryInfo {
 			}
 
 			debugger, _ := utils.GetRegistryValue(fullPath, "Debugger")
-
-			info := &types.RegistryInfo{
-				Path:     fullPath,
-				Name:     subkey,
-				Debugger: debugger,
-				Source:   "IFEO",
-			}
+			globalFlag, _ := utils.GetRegistryValue(fullPath, "GlobalFlag")
+			verifierDlls, _ := utils.GetRegistryValue(fullPath, "VerifierDlls")
+			filterFullPath, _ := utils.GetRegistryValue(fullPath, "FilterFullPath")
 
 			if debugger != "" {
-				info.Type = "IFEO"
-				info.Value = debugger
+				ifeo = append(ifeo, &types.RegistryInfo{
+					Path:           fullPath,
+					Name:           subkey,
+					Debugger:       debugger,
+					GlobalFlag:     globalFlag,
+					VerifierDlls:    verifierDlls,
+					FilterFullPath: filterFullPath,
+					Type:           "IFEO",
+					Value:          debugger,
+					Source:         "IFEO",
+				})
+			} else if globalFlag != "" || verifierDlls != "" || filterFullPath != "" {
+				ifeo = append(ifeo, &types.RegistryInfo{
+					Path:           fullPath,
+					Name:           subkey,
+					Debugger:       debugger,
+					GlobalFlag:     globalFlag,
+					VerifierDlls:    verifierDlls,
+					FilterFullPath: filterFullPath,
+					Type:           "IFEO",
+					Value:          globalFlag,
+					Source:         "IFEO",
+				})
 			}
-
-			ifeo = append(ifeo, info)
 		}
 	}
 
@@ -705,11 +720,6 @@ func (c *RegistryInfoCollector) collectStartupFolders() []*types.RegistryInfo {
 				continue
 			}
 
-			info, err := file.Info()
-			if err != nil {
-				continue
-			}
-
 			fileNameLower := strings.ToLower(file.Name())
 			description := "File"
 			for ext, desc := range executableExtensions {
@@ -727,10 +737,6 @@ func (c *RegistryInfoCollector) collectStartupFolders() []*types.RegistryInfo {
 				Source:      "StartupFolders",
 				Description: description,
 				Enabled:     true,
-			}
-
-			if info.Mode()&0111 != 0 {
-				item.Enabled = true
 			}
 
 			items = append(items, item)

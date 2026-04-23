@@ -48,7 +48,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(configCmd)
 	root.AddCommand(metricsCmd)
 	root.AddCommand(queryCmd)
-	root.AddCommand(tuiCmd)
 	root.AddCommand(serveCmd)
 	root.AddCommand(analyzeCmd)
 	root.AddCommand(forensicsCmd)

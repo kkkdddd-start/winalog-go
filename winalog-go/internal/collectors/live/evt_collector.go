@@ -5,6 +5,7 @@ package live
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -193,7 +194,10 @@ func (c *EvtLiveCollector) runLoop() {
 			return
 		}
 
-		waitResult, _, _ := windows.WaitForSingleObject(signalEvent, INFINITE)
+		waitResult, err := windows.WaitForSingleObject(signalEvent, INFINITE)
+		if err != nil {
+			return
+		}
 
 		select {
 		case <-ctx.Done():
@@ -211,6 +215,7 @@ func (c *EvtLiveCollector) runLoop() {
 				case <-ctx.Done():
 					return
 				default:
+					log.Printf("[WARN] evt_live_collector: event channel full, dropping event: %s/%d", e.LogName, e.ID)
 				}
 			}
 

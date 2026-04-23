@@ -1,9 +1,12 @@
 package timeline
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -205,6 +208,7 @@ const DefaultVisualizerConfig = `
 
     <script>
         const timelineData = {{.JSON}};
+        //# sourceURL=timeline.js
 
         function initTimeline() {
             const canvas = document.getElementById('timeline-canvas');
@@ -253,11 +257,13 @@ const DefaultVisualizerConfig = `
             const levelDiv = document.getElementById('level-stats');
             const categoryDiv = document.getElementById('category-stats');
 
-            Object.entries({{.Summary.ByLevel}}).forEach(([level, count]) => {
+            const byLevel = JSON.parse({{.ByLevel}});
+            Object.entries(byLevel).forEach(([level, count]) => {
                 levelDiv.innerHTML += '<p>' + level + ': ' + count + '</p>';
             });
 
-            Object.entries({{.Summary.ByCategory}}).forEach(([category, count]) => {
+            const byCategory = JSON.parse({{.ByCategory}});
+            Object.entries(byCategory).forEach(([category, count]) => {
                 categoryDiv.innerHTML += '<p>' + category + ': ' + count + '</p>';
             });
         }
@@ -296,12 +302,22 @@ func (v *TimelineVisualizer) RenderHTML(w io.Writer) error {
 
 	output := v.GenerateOutput()
 
+	byLevelJSON, _ := json.Marshal(output.Summary.ByLevel)
+	byCategoryJSON, _ := json.Marshal(output.Summary.ByCategory)
+
+	escapedJSON := strings.ReplaceAll(output.JSON, "</", "\\u003c/")
+	escapedJSON = strings.ReplaceAll(escapedJSON, "<", "\\u003c")
+
 	data := struct {
-		JSON    string
-		Summary VisualizerSummary
+		JSON          template.HTML
+		ByLevel       template.HTML
+		ByCategory    template.HTML
+		Summary       VisualizerSummary
 	}{
-		JSON:    output.JSON,
-		Summary: output.Summary,
+		JSON:          template.HTML(escapedJSON),
+		ByLevel:       template.HTML(byLevelJSON),
+		ByCategory:    template.HTML(byCategoryJSON),
+		Summary:       output.Summary,
 	}
 
 	return tmpl.Execute(w, data)
@@ -318,7 +334,7 @@ func (v *TimelineVisualizer) GenerateOutput() *VisualizerOutput {
 			TotalEntries:   v.timeline.TotalCount,
 			ByCategory:     make(map[string]int),
 			ByLevel:        make(map[string]int),
-			AttackChains:   len(v.timeline.Entries),
+			AttackChains:   0,
 			TimeRangeHours: v.timeline.Duration.Hours(),
 			ZoomLevel:      v.config.ZoomLevel,
 		},
@@ -327,7 +343,13 @@ func (v *TimelineVisualizer) GenerateOutput() *VisualizerOutput {
 	for _, entry := range v.timeline.Entries {
 		output.Summary.ByCategory[entry.Category]++
 		output.Summary.ByLevel[entry.Level]++
+		if entry.AttackChain != "" {
+			output.Summary.AttackChains++
+		}
 	}
+
+	jsonData, _ := json.Marshal(v.timeline)
+	output.JSON = string(jsonData)
 
 	return output
 }
@@ -442,16 +464,19 @@ func (v *TimelineVisualizer) Export(format TimelineExportFormat, w io.Writer) er
 }
 
 func (v *TimelineVisualizer) exportCSV(w io.Writer) error {
-	header := "ID,Timestamp,EventID,Level,Category,Source,LogName,Computer,User,Message\n"
-	if _, err := w.Write([]byte(header)); err != nil {
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	header := []string{"ID", "Timestamp", "EventID", "Level", "Category", "Source", "LogName", "Computer", "User", "Message"}
+	if err := writer.Write(header); err != nil {
 		return err
 	}
 
 	for _, entry := range v.timeline.Entries {
-		line := fmt.Sprintf("%d,%s,%d,%s,%s,%s,%s,%s,%s,%s\n",
-			entry.ID,
+		record := []string{
+			fmt.Sprintf("%d", entry.ID),
 			entry.Timestamp.Format(time.RFC3339),
-			entry.EventID,
+			fmt.Sprintf("%d", entry.EventID),
 			entry.Level,
 			entry.Category,
 			entry.Source,
@@ -459,8 +484,8 @@ func (v *TimelineVisualizer) exportCSV(w io.Writer) error {
 			entry.Computer,
 			entry.User,
 			entry.Message,
-		)
-		if _, err := w.Write([]byte(line)); err != nil {
+		}
+		if err := writer.Write(record); err != nil {
 			return err
 		}
 	}

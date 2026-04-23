@@ -38,15 +38,15 @@ func (t *AlertTrend) Record(alert *types.Alert) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	now := time.Now()
-	hour := now.Hour()
-	dayStr := now.Format("2006-01-02")
+	eventTime := alert.FirstSeen
+	hour := eventTime.Hour()
+	dayStr := eventTime.Format("2006-01-02")
 
 	t.hourly[hour]++
 	t.daily[dayStr]++
 	t.byHour[hour]++
 
-	dayIndex := int(now.Weekday())
+	dayIndex := int(eventTime.Weekday())
 	if t.weekly[dayIndex] == nil {
 		t.weekly[dayIndex] = make(map[int]int64)
 	}

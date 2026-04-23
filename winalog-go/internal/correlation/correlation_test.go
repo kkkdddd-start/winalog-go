@@ -15,9 +15,6 @@ func TestNewEngine(t *testing.T) {
 		t.Fatal("NewEngine returned nil")
 	}
 
-	if engine.events == nil {
-		t.Error("Engine.events is nil")
-	}
 	if engine.index == nil {
 		t.Error("Engine.index is nil")
 	}
@@ -148,8 +145,9 @@ func TestEngineLoadEvents(t *testing.T) {
 
 	engine.LoadEvents(events)
 
-	if len(engine.events) != 2 {
-		t.Errorf("len(events) = %d, want 2", len(engine.events))
+	retrieved := engine.GetEvents()
+	if len(retrieved) != 2 {
+		t.Errorf("len(GetEvents()) = %d, want 2", len(retrieved))
 	}
 }
 
@@ -256,7 +254,7 @@ func TestEngineFindChains(t *testing.T) {
 	ctx := context.Background()
 	chains, err := engine.FindChains(ctx, 1, 5)
 	if err != nil {
-		t.Fatalf("FindChains failed: %v", err)
+		t.Fatalf("FindChains returned unexpected error: %v", err)
 	}
 
 	if chains == nil {
@@ -303,8 +301,9 @@ func TestEngineClear(t *testing.T) {
 
 	engine.Clear()
 
-	if len(engine.events) != 0 {
-		t.Errorf("len(events) after Clear = %d, want 0", len(engine.events))
+	retrieved := engine.GetEvents()
+	if len(retrieved) != 0 {
+		t.Errorf("len(GetEvents()) after Clear = %d, want 0", len(retrieved))
 	}
 }
 

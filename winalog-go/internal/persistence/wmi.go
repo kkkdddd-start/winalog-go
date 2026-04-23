@@ -18,7 +18,7 @@ type WMIPersistenceDetector struct {
 func NewWMIPersistenceDetector() *WMIPersistenceDetector {
 	return &WMIPersistenceDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4688, 5861},
 		},
 	}

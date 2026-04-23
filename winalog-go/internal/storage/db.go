@@ -34,7 +34,7 @@ func NewDB(path string) (*DB, error) {
 		}
 	}
 
-	dsn := absPath + "?_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL&_cache_size=-64000"
+	dsn := absPath + "?_journal_mode=WAL&_busy_timeout=120000&_synchronous=NORMAL&_cache_size=-64000"
 	conn, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -102,15 +102,12 @@ func (d *DB) QueryRowWithContext(ctx context.Context, query string, args ...inte
 }
 
 func (d *DB) Begin() (*sql.Tx, func(), error) {
-	d.writeMu.Lock()
 	tx, err := d.conn.Begin()
 	if err != nil {
-		d.writeMu.Unlock()
 		return nil, nil, err
 	}
 	return tx, func() {
 		tx.Rollback()
-		d.writeMu.Unlock()
 	}, nil
 }
 

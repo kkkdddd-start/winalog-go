@@ -55,6 +55,8 @@ func (c *SystemInfoCollector) collectSystemInfo() *types.SystemInfo {
 }
 
 func (c *SystemInfoCollector) collectWindowsInfo(info *types.SystemInfo) {
+	result := collectAllSystemInfo()
+
 	if winVersion, err := utils.GetWindowsVersion(); err == nil {
 		info.OSVersion = fmt.Sprintf("Windows %d.%d (Build %d)",
 			winVersion.Major, winVersion.Minor, winVersion.Build)
@@ -63,26 +65,118 @@ func (c *SystemInfoCollector) collectWindowsInfo(info *types.SystemInfo) {
 		}
 	}
 
-	if domain, err := getComputerDomain(); err == nil {
-		info.Domain = domain
-	}
-
-	if uptime, err := getSystemUptime(); err == nil {
-		info.Uptime = uptime
-		info.BootTime = time.Now().Add(-uptime)
-	}
-
-	info.TimeZone = getTimeZone()
-
-	cpuCount, cpuModel := getCPUInfo()
-	info.CPUCores = cpuCount
-	info.CPUModel = cpuModel
-
-	memTotal, memFree := getMemoryInfo()
-	info.MemoryTotal = memTotal
-	info.MemoryFree = memFree
+	info.Domain = result.Domain
+	info.Uptime = result.Uptime
+	info.BootTime = time.Now().Add(-result.Uptime)
+	info.TimeZone = result.TimeZone
+	info.CPUCores = result.CPUCores
+	info.CPUModel = result.CPUModel
+	info.MemoryTotal = result.MemoryTotal
+	info.MemoryFree = result.MemoryFree
 
 	info.Admin = utils.IsAdmin()
+}
+
+type windowsSystemInfo struct {
+	Domain      string
+	Uptime      time.Duration
+	TimeZone    string
+	CPUCores    int
+	CPUModel    string
+	MemoryTotal uint64
+	MemoryFree  uint64
+}
+
+func collectAllSystemInfo() windowsSystemInfo {
+	cmd := `(Get-CimInstance Win32_OperatingSystem | Select-Object Domain, LastBootUpTime, TotalVisibleMemorySize, FreePhysicalMemory | ConvertTo-Json -Compress) + "|||" + (Get-CimInstance Win32_Processor | Select-Object NumberOfCores, Name | ConvertTo-Json -Compress) + "|||" + (Get-TimeZone | Select-Object Id, DisplayName, BaseUtcOffset | ConvertTo-Json -Compress)`
+
+	result := utils.RunPowerShell(cmd)
+	info := windowsSystemInfo{
+		CPUCores: runtime.NumCPU(),
+	}
+
+	if result.Success() && result.Output != "" {
+		parts := strings.Split(result.Output, "|||")
+		if len(parts) >= 1 {
+			var osRaw struct {
+				Domain                string `json:"Domain"`
+				LastBootUpTime        string `json:"LastBootUpTime"`
+				TotalVisibleMemorySize int64 `json:"TotalVisibleMemorySize"`
+				FreePhysicalMemory    int64 `json:"FreePhysicalMemory"`
+			}
+			if err := json.Unmarshal([]byte(parts[0]), &osRaw); err == nil {
+				info.Domain = osRaw.Domain
+				info.MemoryTotal = uint64(osRaw.TotalVisibleMemorySize) * 1024
+				info.MemoryFree = uint64(osRaw.FreePhysicalMemory) * 1024
+
+				info.Uptime = parseUptimeWithTimezone(osRaw.LastBootUpTime)
+			}
+		}
+		if len(parts) >= 2 {
+			var cpuRaw struct {
+				NumberOfCores int    `json:"NumberOfCores"`
+				Name         string `json:"Name"`
+			}
+			if err := json.Unmarshal([]byte(parts[1]), &cpuRaw); err == nil {
+				if cpuRaw.NumberOfCores > 0 {
+					info.CPUCores = cpuRaw.NumberOfCores
+				}
+				info.CPUModel = cpuRaw.Name
+			}
+		}
+		if len(parts) >= 3 {
+			var tzRaw struct {
+				Id          string `json:"Id"`
+				DisplayName string `json:"DisplayName"`
+				BaseUtcOffset string `json:"BaseUtcOffset"`
+			}
+			if err := json.Unmarshal([]byte(parts[2]), &tzRaw); err == nil {
+				info.TimeZone = fmt.Sprintf("%s (%s, %s)", tzRaw.Id, tzRaw.DisplayName, tzRaw.BaseUtcOffset)
+			}
+		}
+	}
+
+	if info.MemoryTotal == 0 {
+		info.TimeZone = getTimeZoneFallback()
+		info.Uptime = getUptimeFallback()
+	}
+
+	return info
+}
+
+func parseUptimeWithTimezone(lastBootStr string) time.Duration {
+	formats := []string{
+		"20060102150405.000000-000",
+		"20060102150405.000000+000",
+		"20060102150405.000000+480",
+		"20060102150405.000000-480",
+		"2006-01-02 15:04:05",
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, lastBootStr); err == nil {
+			return time.Since(t)
+		}
+	}
+	return 0
+}
+
+func getTimeZoneFallback() string {
+	cmd := `Get-TimeZone | Select-Object -ExpandProperty Id`
+	result := utils.RunPowerShell(cmd)
+	if result.Success() {
+		return strings.TrimSpace(result.Output)
+	}
+	return "Unknown"
+}
+
+func getUptimeFallback() time.Duration {
+	cmd := `(Get-CimInstance Win32_OperatingSystem).LastBootUpTime`
+	result := utils.RunPowerShell(cmd)
+	if !result.Success() {
+		return 0
+	}
+	return parseUptimeWithTimezone(strings.TrimSpace(result.Output))
 }
 
 func (c *SystemInfoCollector) collectLinuxInfo(info *types.SystemInfo) {
@@ -150,25 +244,21 @@ func getSystemUptime() (time.Duration, error) {
 	}
 
 	lastBootStr := strings.TrimSpace(result.Output)
-	formats := []string{
-		"20060102150405.000000-000",
-		"2006-01-02 15:04:05",
-	}
-
-	for _, format := range formats {
-		if t, err := time.Parse(format, lastBootStr); err == nil {
-			return time.Since(t), nil
-		}
-	}
-
-	return 0, fmt.Errorf("failed to parse uptime")
+	return parseUptimeWithTimezone(lastBootStr), nil
 }
 
 func getTimeZone() string {
-	cmd := `Get-TimeZone | Select-Object -ExpandProperty Id`
+	cmd := `Get-TimeZone | Select-Object Id, DisplayName, BaseUtcOffset | ConvertTo-Json -Compress`
 	result := utils.RunPowerShell(cmd)
-	if result.Success() {
-		return strings.TrimSpace(result.Output)
+	if result.Success() && result.Output != "" {
+		var tzRaw struct {
+			Id          string `json:"Id"`
+			DisplayName string `json:"DisplayName"`
+			BaseUtcOffset string `json:"BaseUtcOffset"`
+		}
+		if err := json.Unmarshal([]byte(result.Output), &tzRaw); err == nil {
+			return fmt.Sprintf("%s (%s, %s)", tzRaw.Id, tzRaw.DisplayName, tzRaw.BaseUtcOffset)
+		}
 	}
 	return "Unknown"
 }
@@ -196,9 +286,7 @@ func getMemoryInfo() (uint64, uint64) {
 	cmd := `Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory | ConvertTo-Json -Compress`
 	result := utils.RunPowerShell(cmd)
 	if !result.Success() {
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
-		return m.Sys, m.Sys - m.Alloc
+		return 0, 0
 	}
 
 	var memRaw struct {
@@ -207,9 +295,7 @@ func getMemoryInfo() (uint64, uint64) {
 	}
 
 	if err := json.Unmarshal([]byte(result.Output), &memRaw); err != nil {
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
-		return m.Sys, m.Sys - m.Alloc
+		return 0, 0
 	}
 
 	total := uint64(memRaw.TotalVisibleMemorySize) * 1024

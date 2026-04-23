@@ -25,7 +25,6 @@ func NewConfigManager(configPath string) *ConfigManager {
 		cfg.config = &MonitorConfig{
 			ProcessEnabled: false,
 			NetworkEnabled: false,
-			DNSEnabled:     false,
 			PollInterval:   DefaultPollInterval,
 		}
 	}
@@ -74,13 +73,14 @@ func (cm *ConfigManager) Update(newConfig *MonitorConfig) error {
 	}
 
 	if newConfig.ProcessEnabled {
-		cm.config.ProcessEnabled = newConfig.ProcessEnabled
+		cm.config.ProcessEnabled = true
+	} else {
+		cm.config.ProcessEnabled = false
 	}
 	if newConfig.NetworkEnabled {
-		cm.config.NetworkEnabled = newConfig.NetworkEnabled
-	}
-	if newConfig.DNSEnabled {
-		cm.config.DNSEnabled = newConfig.DNSEnabled
+		cm.config.NetworkEnabled = true
+	} else {
+		cm.config.NetworkEnabled = false
 	}
 
 	if err := cm.save(); err != nil {
@@ -103,9 +103,6 @@ func (cm *ConfigManager) UpdateFromRequest(req *MonitorConfigRequest) error {
 	}
 	if req.NetworkEnabled != nil {
 		cm.config.NetworkEnabled = *req.NetworkEnabled
-	}
-	if req.DNSEnabled != nil {
-		cm.config.DNSEnabled = *req.DNSEnabled
 	}
 	if req.PollInterval != nil {
 		interval := time.Duration(*req.PollInterval) * time.Second
@@ -134,6 +131,5 @@ func (cm *ConfigManager) OnConfigChange(callback func(*MonitorConfig)) {
 type MonitorConfigRequest struct {
 	ProcessEnabled *bool `json:"process_enabled,omitempty"`
 	NetworkEnabled *bool `json:"network_enabled,omitempty"`
-	DNSEnabled     *bool `json:"dns_enabled,omitempty"`
 	PollInterval   *int  `json:"poll_interval,omitempty"`
 }

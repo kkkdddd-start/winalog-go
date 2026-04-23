@@ -11,32 +11,60 @@ import (
 )
 
 type LiveCollector struct {
-	mu         sync.RWMutex
-	bookmark   *Bookmark
-	filters    []EventFilter
-	stats      *CollectStats
-	ctx        context.Context
-	cancel     context.CancelFunc
-	isRunning  bool
-	collectors []Collector
+	mu          sync.RWMutex
+	bookmark    *Bookmark
+	filters     []EventFilter
+	stats       *CollectStats
+	ctx         context.Context
+	cancel      context.CancelFunc
+	isRunning   bool
+	collectors  []Collector
+	subscribers []chan *types.Event
+	eventCh     chan *types.Event
 }
 
 type Collector interface {
 	Name() string
 	Collect(ctx context.Context) ([]interface{}, error)
+	RequiresAdmin() bool
 }
 
 func NewLiveCollector() *LiveCollector {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &LiveCollector{
-		bookmark:   NewBookmark(),
-		filters:    make([]EventFilter, 0),
-		stats:      NewCollectStats(),
-		ctx:        ctx,
-		cancel:     cancel,
-		isRunning:  false,
+		bookmark:    NewBookmark(),
+		filters:     make([]EventFilter, 0),
+		stats:       NewCollectStats(),
+		ctx:         ctx,
+		cancel:      cancel,
+		isRunning:   false,
 		collectors: make([]Collector, 0),
+		subscribers: make([]chan *types.Event, 0),
+		eventCh:    make(chan *types.Event, 1000),
 	}
+}
+
+func (lc *LiveCollector) Subscribe(ch chan *types.Event) func() {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+	lc.subscribers = append(lc.subscribers, ch)
+	return func() {
+		lc.mu.Lock()
+		defer lc.mu.Unlock()
+		for i, c := range lc.subscribers {
+			if c == ch {
+				lc.subscribers = append(lc.subscribers[:i], lc.subscribers[i+1:]...)
+				break
+			}
+		}
+		close(ch)
+	}
+}
+
+func (lc *LiveCollector) GetEvents(filter *EventFilter) ([]*types.Event, int64) {
+	lc.mu.RLock()
+	defer lc.mu.RUnlock()
+	return nil, 0
 }
 
 func (lc *LiveCollector) AddCollector(c Collector) {
@@ -60,11 +88,18 @@ func (lc *LiveCollector) Start(interval time.Duration) error {
 
 func (lc *LiveCollector) Stop() {
 	lc.mu.Lock()
-	defer lc.mu.Unlock()
-	if lc.isRunning {
-		lc.cancel()
-		lc.isRunning = false
+	if !lc.isRunning {
+		lc.mu.Unlock()
+		return
 	}
+	lc.isRunning = false
+	lc.mu.Unlock()
+
+	lc.cancel()
+
+	lc.mu.Lock()
+	lc.subscribers = nil
+	lc.mu.Unlock()
 }
 
 func (lc *LiveCollector) run(interval time.Duration) {
@@ -122,8 +157,12 @@ func (lc *LiveCollector) shouldProcess(event *types.Event) bool {
 		}
 	}
 
-	if lc.bookmark != nil && lc.bookmark.IsAfterLastBookmark(event) {
-		return false
+	if lc.bookmark != nil {
+		lastTime := lc.bookmark.GetLastTime()
+		lastID := lc.bookmark.GetLastID()
+		if !event.Timestamp.After(lastTime) && !(event.Timestamp.Equal(lastTime) && event.ID > lastID) {
+			return false
+		}
 	}
 
 	return true
@@ -131,6 +170,15 @@ func (lc *LiveCollector) shouldProcess(event *types.Event) bool {
 
 func (lc *LiveCollector) processEvent(event *types.Event) {
 	lc.bookmark.Update(event)
+
+	lc.mu.RLock()
+	defer lc.mu.RUnlock()
+	for _, ch := range lc.subscribers {
+		select {
+		case ch <- event:
+		default:
+		}
+	}
 }
 
 func (lc *LiveCollector) AddFilter(filter EventFilter) {

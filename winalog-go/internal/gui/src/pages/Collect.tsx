@@ -754,14 +754,14 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
                 <th style={{ width: '180px' }}>最后修改</th>
               </tr>
             </thead>
-            <tbody>
+              <tbody>
               {channels.map(ch => (
                 <tr key={ch.id} className={ch.enabled ? 'selected' : ''}>
                   <td>
                     <Checkbox checked={ch.enabled} onChange={() => toggleChannel(ch.id)} />
                   </td>
                   <td>
-                    <span className="channel-name" title={ch.log_path}>{ch.name}</span>
+                    <span className="channel-name" title={ch.log_path} onClick={() => toggleChannel(ch.id)} style={{cursor: 'pointer'}}>{ch.name}</span>
                   </td>
                   <td>{formatFileSize(ch.file_size)}</td>
                   <td>{formatLastWriteTime(ch.last_write_time)}</td>
@@ -1026,22 +1026,39 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
             <div className="section-header">
               <h4>日志源</h4>
               <Space>
+                <Button type="link" size="small" onClick={() => selectAllChannels()}>全选</Button>
+                <Button type="link" size="small" onClick={() => deselectAllChannels()}>取消全选</Button>
                 <Button type="link" size="small" icon={<ReloadOutlined />} onClick={fetchChannels}>刷新</Button>
                 <Button type="primary" size="small" icon={<UploadOutlined />} onClick={handleImportChannels} loading={loading} disabled={channels.filter(c => c.enabled).length === 0}>
                   导入选中日志源
                 </Button>
               </Space>
             </div>
-            <div className="channels-list">
-              {channels.map(ch => (
-                <div
-                  key={ch.id}
-                  className={`channel-item ${ch.enabled ? 'selected' : ''}`}
-                >
-                  <Checkbox checked={ch.enabled} onChange={() => toggleChannel(ch.id)} />
-                  <span className="channel-name" title={ch.log_path}>{ch.name}</span>
-                </div>
-              ))}
+            <div className="log-files-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ width: '40px' }}></th>
+                    <th>日志文件</th>
+                    <th style={{ width: '120px' }}>大小</th>
+                    <th style={{ width: '180px' }}>最后修改</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {channels.map(ch => (
+                    <tr key={ch.id} className={ch.enabled ? 'selected' : ''}>
+                      <td>
+                        <Checkbox checked={ch.enabled} onChange={() => toggleChannel(ch.id)} />
+                      </td>
+                      <td>
+                        <span className="channel-name" title={ch.log_path} onClick={() => toggleChannel(ch.id)} style={{cursor: 'pointer'}}>{ch.name}</span>
+                      </td>
+                      <td>{formatFileSize(ch.file_size)}</td>
+                      <td>{formatLastWriteTime(ch.last_write_time)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
             <div className="channel-import-hint">
               <InfoCircleOutlined />

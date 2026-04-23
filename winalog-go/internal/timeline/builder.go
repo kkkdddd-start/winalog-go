@@ -182,6 +182,18 @@ func (b *TimelineBuilder) matchesFilter(event *types.Event) bool {
 		}
 	}
 
+	if len(b.filter.Sources) > 0 {
+		if !b.filter.Sources[event.Source] {
+			return false
+		}
+	}
+
+	if len(b.filter.Users) > 0 {
+		if event.User == nil || !b.filter.Users[*event.User] {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -235,7 +247,7 @@ var networkEventsMap = map[int32]bool{
 }
 
 var fileEventsMap = map[int32]bool{
-	4656: true, 4657: true, 4658: true, 4660: true,
+	4656: true, 4658: true,
 	4663: true, 4664: true, 4670: true,
 }
 
@@ -378,21 +390,24 @@ func (b *TimelineBuilder) detectBruteForceWithConfig(events []*types.Event, cfg 
 	}
 
 	var failedLogins []*types.Event
-	var successfulLogins []*types.Event
+	windowStart := time.Now().Add(-cfg.TimeWindow)
 
 	for _, event := range events {
 		if event.EventID == 4625 {
-			failedLogins = append(failedLogins, event)
-		} else if event.EventID == 4624 {
-			successfulLogins = append(successfulLogins, event)
+			if event.Timestamp.After(windowStart) {
+				failedLogins = append(failedLogins, event)
+			}
 		}
 	}
 
 	if len(failedLogins) >= cfg.BruteForceThreshold {
+		sort.Slice(failedLogins, func(i, j int) bool {
+			return failedLogins[i].Timestamp.Before(failedLogins[j].Timestamp)
+		})
 		chains = append(chains, &AttackChain{
 			ID:          "brute-force-detected",
 			Name:        "Brute Force Attack Detected",
-			Description: fmt.Sprintf("Detected %d failed login attempts", len(failedLogins)),
+			Description: fmt.Sprintf("Detected %d failed login attempts within %v", len(failedLogins), cfg.TimeWindow),
 			Technique:   "T1110",
 			Tactic:      "Credential Access",
 			Severity:    "high",
@@ -416,21 +431,28 @@ func (b *TimelineBuilder) detectLateralMovementWithConfig(events []*types.Event,
 		cfg = DefaultAttackChainConfig()
 	}
 
+	windowStart := time.Now().Add(-cfg.TimeWindow)
 	var remoteLogins []*types.Event
 
 	for _, event := range events {
-		if event.EventID == 4624 || event.EventID == 4648 {
+		if (event.EventID == 4624 || event.EventID == 4648) && event.Timestamp.After(windowStart) {
+			logonType := event.GetLogonType()
 			if event.User != nil && *event.User != "" {
-				remoteLogins = append(remoteLogins, event)
+				if logonType == 3 || logonType == 10 {
+					remoteLogins = append(remoteLogins, event)
+				}
 			}
 		}
 	}
 
 	if len(remoteLogins) >= cfg.LateralMovementThreshold {
+		sort.Slice(remoteLogins, func(i, j int) bool {
+			return remoteLogins[i].Timestamp.Before(remoteLogins[j].Timestamp)
+		})
 		chains = append(chains, &AttackChain{
 			ID:          "lateral-movement-detected",
 			Name:        "Lateral Movement Detected",
-			Description: fmt.Sprintf("Detected %d remote login events", len(remoteLogins)),
+			Description: fmt.Sprintf("Detected %d remote login events (LogonType 3/10) within %v", len(remoteLogins), cfg.TimeWindow),
 			Technique:   "T1021",
 			Tactic:      "Lateral Movement",
 			Severity:    "high",

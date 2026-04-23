@@ -64,10 +64,10 @@ function Navigation() {
 function AppContent() {
   useEffect(() => {
     settingsAPI.get().then(res => {
-      const timeout = res.data.request_timeout || 360
+      const timeout = res.data.request_timeout || 600
       setRequestTimeout(timeout)
     }).catch(() => {
-      setRequestTimeout(360)
+      setRequestTimeout(600)
     })
   }, [])
 

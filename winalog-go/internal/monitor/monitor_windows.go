@@ -38,11 +38,3 @@ func (e *MonitorEngine) createNetworkPoller(interval time.Duration) interface {
 	}
 	return poller
 }
-
-func (e *MonitorEngine) createDNSPoller(interval time.Duration) interface {
-	Start() error
-	Stop() error
-	Subscribe(ch chan *types.MonitorEvent) func()
-} {
-	return poll.NewDNSPoller(interval)
-}

@@ -48,6 +48,14 @@ func (b *Bookmark) IsAfterLastBookmark(event *types.Event) bool {
 	return false
 }
 
+func (b *Bookmark) ShouldSkip(event *types.Event) bool {
+	return b.IsAfterLastBookmark(event)
+}
+
+func (b *Bookmark) IsDuplicate(event *types.Event) bool {
+	return b.ShouldSkip(event)
+}
+
 func (b *Bookmark) GetLastTime() time.Time {
 	b.mu.RLock()
 	defer b.mu.RUnlock()

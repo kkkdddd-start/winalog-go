@@ -181,11 +181,23 @@ func AdaptReportToAPI(report *Report) *APIReportContent {
 	}
 
 	if report.PersistenceReport != nil {
+		bySeverity := report.PersistenceReport.BySeverity
+		if bySeverity == nil {
+			bySeverity = make(map[string]int)
+		}
+		byCategory := report.PersistenceReport.ByCategory
+		if byCategory == nil {
+			byCategory = make(map[string]int)
+		}
+		byTechnique := report.PersistenceReport.ByTechnique
+		if byTechnique == nil {
+			byTechnique = make(map[string]int)
+		}
 		content.PersistenceReport = &APIReportPersistence{
 			TotalDetections: report.PersistenceReport.TotalDetections,
-			BySeverity:      report.PersistenceReport.BySeverity,
-			ByCategory:      report.PersistenceReport.ByCategory,
-			ByTechnique:     report.PersistenceReport.ByTechnique,
+			BySeverity:      bySeverity,
+			ByCategory:      byCategory,
+			ByTechnique:     byTechnique,
 			Detections:      make([]APIReportDetection, 0, len(report.PersistenceReport.Detections)),
 		}
 		for _, det := range report.PersistenceReport.Detections {

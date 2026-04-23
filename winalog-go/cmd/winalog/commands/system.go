@@ -16,7 +16,6 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/forensics"
 	"github.com/kkkdddd-start/winalog-go/internal/rules/builtin"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
-	"github.com/kkkdddd-start/winalog-go/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -815,18 +814,6 @@ func runQuery(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\n(%d rows)\n", count)
 
 	return nil
-}
-
-var tuiCmd = &cobra.Command{
-	Use:   "tui",
-	Short: "Start terminal UI",
-	Long:  `Start the Bubble Tea terminal user interface.`,
-	RunE:  runTUI,
-}
-
-func runTUI(cmd *cobra.Command, args []string) error {
-	cfg := getConfig()
-	return tui.StartTUI(cfg)
 }
 
 var serveCmd = &cobra.Command{

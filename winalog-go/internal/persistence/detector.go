@@ -73,11 +73,12 @@ func (e *DetectionEngine) RegisterAll(detectors []Detector) {
 
 func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	log.Printf("[DEBUG] DetectionEngine.Detect started with %d detectors", len(e.detectors))
+	detectorCount := len(e.detectors)
+	log.Printf("[DEBUG] DetectionEngine.Detect started with %d detectors", detectorCount)
 
 	e.result = NewDetectionResult()
+
+	e.mu.Unlock()
 
 	var wg sync.WaitGroup
 	resultChan := make(chan *Detection, 100)
@@ -116,6 +117,7 @@ func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 		close(errorChan)
 	}()
 
+	e.mu.Lock()
 	for det := range resultChan {
 		e.result.Add(det)
 	}
@@ -131,6 +133,7 @@ func (e *DetectionEngine) Detect(ctx context.Context) *DetectionResult {
 	log.Printf("[INFO] DetectionEngine.Detect completed: total=%d, errors=%d, duration=%v",
 		e.result.TotalCount, e.result.ErrorCount, e.result.Duration)
 
+	e.mu.Unlock()
 	return e.result
 }
 

@@ -122,7 +122,7 @@ interface TaskInfo {
 
 function SystemInfo() {
   const { t } = useI18n()
-  const [activeTab, setActiveTab] = useState<'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'startup' | 'tasks'>('system')
+  const [activeTab, setActiveTab] = useState<'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'startup' | 'tasks' | 'services' | 'runkeys' | 'userinit'>('system')
   const [info, setInfo] = useState<SystemInfoData | null>(null)
   const [processes, setProcesses] = useState<ProcessInfo[]>([])
   const [networkConnections, setNetworkConnections] = useState<NetworkConnInfo[]>([])
@@ -133,6 +133,9 @@ function SystemInfo() {
   const [registry, setRegistry] = useState<RegistryKeyInfo[]>([])
   const [startupFolders, setStartupFolders] = useState<RegistryKeyInfo[]>([])
   const [tasks, setTasks] = useState<TaskInfo[]>([])
+  const [services, setServices] = useState<RegistryKeyInfo[]>([])
+  const [runKeys, setRunKeys] = useState<RegistryKeyInfo[]>([])
+  const [userInit, setUserInit] = useState<RegistryKeyInfo[]>([])
   const [selectedDllPid, setSelectedDllPid] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -355,15 +358,63 @@ function SystemInfo() {
         setLoading(false)
       })
       .catch((err: any) => {
-        const msg = err.response?.status === 404 
-          ? '计划任务信息不可用（仅支持 Windows）' 
+        const msg = err.response?.status === 404
+          ? '计划任务信息不可用（仅支持 Windows）'
           : (err.message || '获取计划任务失败')
         setModuleErrors(m => ({ ...m, tasks: msg }))
         setLoading(false)
       })
   }
 
-  const handleTabChange = (tab: 'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'startup' | 'tasks') => {
+  const fetchServices = () => {
+    const enabled = enabledModules.registry
+    if (!enabled) {
+      setServices([])
+      return
+    }
+    if (services.length > 0) return
+    setLoading(true)
+    systemAPI.getRegistry(enabled)
+      .then(res => {
+        setServices(res.data.services || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  const fetchRunKeys = () => {
+    const enabled = enabledModules.registry
+    if (!enabled) {
+      setRunKeys([])
+      return
+    }
+    if (runKeys.length > 0) return
+    setLoading(true)
+    systemAPI.getRegistry(enabled)
+      .then(res => {
+        setRunKeys(res.data.run_keys || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  const fetchUserInit = () => {
+    const enabled = enabledModules.registry
+    if (!enabled) {
+      setUserInit([])
+      return
+    }
+    if (userInit.length > 0) return
+    setLoading(true)
+    systemAPI.getRegistry(enabled)
+      .then(res => {
+        setUserInit(res.data.user_init || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  const handleTabChange = (tab: 'system' | 'processes' | 'network' | 'env' | 'dlls' | 'drivers' | 'users' | 'registry' | 'startup' | 'tasks' | 'services' | 'runkeys' | 'userinit') => {
     setActiveTab(tab)
     if (tab === 'processes' && enabledModules.processes) fetchProcesses()
     if (tab === 'network' && enabledModules.network) fetchNetwork()
@@ -381,6 +432,9 @@ function SystemInfo() {
     if (tab === 'registry' && enabledModules.registry) fetchRegistry()
     if (tab === 'startup' && enabledModules.registry) fetchStartupFolders()
     if (tab === 'tasks' && enabledModules.tasks) fetchTasks()
+    if (tab === 'services' && enabledModules.registry) fetchServices()
+    if (tab === 'runkeys' && enabledModules.registry) fetchRunKeys()
+    if (tab === 'userinit' && enabledModules.registry) fetchUserInit()
   }
 
   const formatUptime = (seconds: number) => {
@@ -623,6 +677,48 @@ function SystemInfo() {
               type="checkbox"
               checked={enabledModules.tasks}
               onChange={() => setEnabledModules(m => ({...m, tasks: !m.tasks}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'services' ? 'active' : ''}`}
+          onClick={() => handleTabChange('services')}
+        >
+          <span className="tab-label">{t('systemInfo.services') || '服务'} ({services.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.registry}
+              onChange={() => setEnabledModules(m => ({...m, registry: !m.registry}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'runkeys' ? 'active' : ''}`}
+          onClick={() => handleTabChange('runkeys')}
+        >
+          <span className="tab-label">{t('systemInfo.runKeys') || '自启动'} ({runKeys.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.registry}
+              onChange={() => setEnabledModules(m => ({...m, registry: !m.registry}))}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'userinit' ? 'active' : ''}`}
+          onClick={() => handleTabChange('userinit')}
+        >
+          <span className="tab-label">{t('systemInfo.userInit') || '登录项'} ({userInit.length || '...'})</span>
+          <label className="module-toggle" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={enabledModules.registry}
+              onChange={() => setEnabledModules(m => ({...m, registry: !m.registry}))}
             />
             <span className="toggle-slider"></span>
           </label>
@@ -1141,9 +1237,107 @@ function SystemInfo() {
               {moduleErrors.tasks ? (
                 <span className="error-message">{moduleErrors.tasks}</span>
               ) : (
-                t('systemInfo.noTasksData') || '暂无计划任务'
+                t('systemInfo.              noTasksData') || '暂无计划任务'
               )}
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'services' && (
+        <div className="data-table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>{t('systemInfo.name') || '名称'}</th>
+                <th>{t('systemInfo.displayName') || '显示名称'}</th>
+                <th>{t('systemInfo.imagePath') || '程序路径'}</th>
+                <th>{t('systemInfo.description') || '描述'}</th>
+                <th>{t('systemInfo.type') || '类型'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {services.map((item, idx) => (
+                <tr key={`${item.path}-${idx}`}>
+                  <td className="highlight">{item.name}</td>
+                  <td className="truncate" title={item.display_name}>{item.display_name || '-'}</td>
+                  <td className="truncate mono" title={item.image_path}>{item.image_path || '-'}</td>
+                  <td className="truncate" title={item.description}>{item.description || '-'}</td>
+                  <td><span className="type-badge">{item.type || '-'}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {services.length === 0 && !loading && (
+            <div className="empty-state">{t('systemInfo.noServicesData') || '暂无服务信息'}</div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'runkeys' && (
+        <div className="data-table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>{t('systemInfo.keyPath') || '注册表路径'}</th>
+                <th>{t('systemInfo.name') || '名称'}</th>
+                <th>{t('systemInfo.value') || '命令'}</th>
+                <th>{t('systemInfo.enabled') || '启用'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {runKeys.map((item, idx) => (
+                <tr key={`${item.path}-${idx}`}>
+                  <td className="truncate mono" title={item.path}>{item.path}</td>
+                  <td className="highlight">{item.name}</td>
+                  <td className="truncate" title={item.value}>{item.value || '-'}</td>
+                  <td>
+                    {item.enabled ? (
+                      <span className="status-badge running">{t('systemInfo.enabled') || '是'}</span>
+                    ) : (
+                      <span className="status-badge stopped">{t('systemInfo.disabled') || '否'}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {runKeys.length === 0 && !loading && (
+            <div className="empty-state">{t('systemInfo.noRunKeysData') || '暂无自启动项'}</div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'userinit' && (
+        <div className="data-table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>{t('systemInfo.keyPath') || '注册表路径'}</th>
+                <th>{t('systemInfo.name') || '名称'}</th>
+                <th>{t('systemInfo.value') || '值'}</th>
+                <th>{t('systemInfo.enabled') || '启用'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {userInit.map((item, idx) => (
+                <tr key={`${item.path}-${idx}`}>
+                  <td className="truncate mono" title={item.path}>{item.path}</td>
+                  <td className="highlight">{item.name || '-'}</td>
+                  <td className="truncate" title={item.value}>{item.value || '-'}</td>
+                  <td>
+                    {item.enabled ? (
+                      <span className="status-badge running">{t('systemInfo.enabled') || '是'}</span>
+                    ) : (
+                      <span className="status-badge stopped">{t('systemInfo.disabled') || '否'}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {userInit.length === 0 && !loading && (
+            <div className="empty-state">{t('systemInfo.noUserInitData') || '暂无登录项'}</div>
           )}
         </div>
       )}

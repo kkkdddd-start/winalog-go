@@ -60,7 +60,7 @@ func (c *TaskInfoCollector) Collect(ctx context.Context) ([]interface{}, error) 
 func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 	tasks := make([]*types.ScheduledTask, 0)
 
-	cmd := `Get-ScheduledTask | Select-Object TaskName,TaskPath,State,Description,Author | ForEach-Object { $_ | ConvertTo-Json -Compress }`
+	cmd := `Get-ScheduledTask | Select-Object TaskName,TaskPath,State,Description,Author | ConvertTo-Json -Compress`
 
 	result := utils.RunPowerShell(cmd)
 	if !result.Success() || result.Output == "" {
@@ -74,27 +74,38 @@ func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 		return c.collectTaskInfoAlternative()
 	}
 
-	lines := strings.Split(output, "\n")
-	parseCount := 0
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
-			continue
-		}
+	var taskRawList []struct {
+		TaskName    string      `json:"TaskName"`
+		TaskPath    string      `json:"TaskPath"`
+		State       interface{} `json:"State"`
+		Description string      `json:"Description"`
+		Author      string      `json:"Author"`
+	}
 
-		var taskRaw struct {
+	if err := json.Unmarshal([]byte(output), &taskRawList); err != nil {
+		var single struct {
 			TaskName    string      `json:"TaskName"`
 			TaskPath    string      `json:"TaskPath"`
 			State       interface{} `json:"State"`
 			Description string      `json:"Description"`
 			Author      string      `json:"Author"`
 		}
-
-		if err := json.Unmarshal([]byte(line), &taskRaw); err != nil {
+		if err2 := json.Unmarshal([]byte(output), &single); err2 == nil && single.TaskName != "" {
+			taskRawList = []struct {
+				TaskName    string      `json:"TaskName"`
+				TaskPath    string      `json:"TaskPath"`
+				State       interface{} `json:"State"`
+				Description string      `json:"Description"`
+				Author      string      `json:"Author"`
+			}{single}
+		} else {
 			log.Printf("[WARN] Failed to parse task JSON: %v", err)
-			continue
+			return c.collectTaskInfoAlternative()
 		}
+	}
 
+	parseCount := 0
+	for _, taskRaw := range taskRawList {
 		if taskRaw.TaskName == "" {
 			continue
 		}
@@ -106,8 +117,6 @@ func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 			State:       stateStr,
 			Description: taskRaw.Description,
 			Author:      taskRaw.Author,
-			LastRun:     c.getTaskLastRunTime(taskRaw.TaskName, taskRaw.TaskPath),
-			NextRun:     c.getTaskNextRunTime(taskRaw.TaskName, taskRaw.TaskPath),
 		}
 
 		tasks = append(tasks, task)
@@ -117,7 +126,6 @@ func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 	log.Printf("[INFO] Get-ScheduledTask parsed %d tasks", parseCount)
 
 	if parseCount == 0 {
-		log.Printf("[WARN] Get-ScheduledTask parsed 0 tasks, trying alternative method")
 		return c.collectTaskInfoAlternative()
 	}
 
@@ -127,7 +135,7 @@ func (c *TaskInfoCollector) collectTaskInfo() ([]*types.ScheduledTask, error) {
 func (c *TaskInfoCollector) collectTaskInfoAlternative() ([]*types.ScheduledTask, error) {
 	tasks := make([]*types.ScheduledTask, 0)
 
-	cmd := `Get-WmiObject -Namespace "root\Microsoft\SqlServer\ComputerManagement11" -Class ScheduledTasks -ErrorAction SilentlyContinue | Select-Object TaskName, TaskPath, Status, Description | ForEach-Object { $_ | ConvertTo-Json -Compress }`
+	cmd := `Get-ScheduledTask | Select-Object TaskName,TaskPath,State | ConvertTo-Json -Compress`
 
 	log.Printf("[INFO] Collecting tasks with alternative command")
 
@@ -142,33 +150,36 @@ func (c *TaskInfoCollector) collectTaskInfoAlternative() ([]*types.ScheduledTask
 		return c.collectTaskInfoSchtasks()
 	}
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
-			continue
-		}
+	var taskRawList []struct {
+		TaskName string `json:"TaskName"`
+		TaskPath string `json:"TaskPath"`
+		State   string `json:"State"`
+	}
 
-		var taskRaw struct {
-			TaskName    string `json:"TaskName"`
-			TaskPath    string `json:"TaskPath"`
-			Status      string `json:"Status"`
-			Description string `json:"Description"`
+	if err := json.Unmarshal([]byte(output), &taskRawList); err != nil {
+		var single struct {
+			TaskName string `json:"TaskName"`
+			TaskPath string `json:"TaskPath"`
+			State   string `json:"State"`
 		}
-
-		if err := json.Unmarshal([]byte(line), &taskRaw); err != nil {
-			continue
+		if err2 := json.Unmarshal([]byte(output), &single); err2 == nil && single.TaskName != "" {
+			taskRawList = []struct {
+				TaskName string `json:"TaskName"`
+				TaskPath string `json:"TaskPath"`
+				State   string `json:"State"`
+			}{single}
 		}
+	}
 
+	for _, taskRaw := range taskRawList {
 		if taskRaw.TaskName == "" {
 			continue
 		}
 
 		tasks = append(tasks, &types.ScheduledTask{
-			Name:        taskRaw.TaskName,
-			Path:        taskRaw.TaskPath,
-			State:       taskRaw.Status,
-			Description: taskRaw.Description,
+			Name: taskRaw.TaskName,
+			Path: taskRaw.TaskPath,
+			State: taskRaw.State,
 		})
 	}
 
@@ -227,9 +238,9 @@ func (c *TaskInfoCollector) collectTaskInfoSchtasks() ([]*types.ScheduledTask, e
 }
 
 func (c *TaskInfoCollector) getTaskActions(taskName, taskPath string) []string {
-	cmd := `Get-ScheduledTask -TaskName '%s' -TaskPath '%s' | Get-ScheduledTaskInfo | Select-Object -ExpandProperty Actions | ConvertTo-Json -Compress`
+	cmd := fmt.Sprintf(`Get-ScheduledTask -TaskName '%s' -TaskPath '%s' | Get-ScheduledTaskInfo | Select-Object -ExpandProperty Actions | ConvertTo-Json -Compress`, taskName, taskPath)
 
-	result := utils.RunPowerShell(strings.Fields(cmd)[0])
+	result := utils.RunPowerShell(cmd)
 	if !result.Success() {
 		return []string{}
 	}

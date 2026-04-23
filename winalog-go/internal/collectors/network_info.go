@@ -72,18 +72,12 @@ func (c *NetworkInfoCollector) collectNetworkInfo() ([]*types.NetworkConnection,
 }
 
 func getTCPConnections() ([]*types.NetworkConnection, error) {
-	cmd := `Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess | ForEach-Object {
-		$proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
-		$_ | Add-Member -NotePropertyName "ProcessName" -NotePropertyValue ($proc.ProcessName -join ",") -PassThru | Add-Member -NotePropertyName "CreationDate" -NotePropertyValue ($proc.CreationDate.ToString("o") -join ",") -PassThru | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess,ProcessName,CreationDate | ConvertTo-Json -Compress
-	}`
+	cmd := `Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess | ConvertTo-Json -Compress`
 	return executeNetworkCommand(cmd, "TCP")
 }
 
 func getUDPEndpoints() ([]*types.NetworkConnection, error) {
-	cmd := `Get-NetUDPEndpoint | Select-Object LocalAddress,LocalPort,OwningProcess | ForEach-Object {
-		$proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
-		$_ | Add-Member -NotePropertyName "ProcessName" -NotePropertyValue ($proc.ProcessName -join ",") -PassThru | Add-Member -NotePropertyName "CreationDate" -NotePropertyValue ($proc.CreationDate.ToString("o") -join ",") -PassThru | Select-Object LocalAddress,LocalPort,OwningProcess,ProcessName,CreationDate | ConvertTo-Json -Compress
-	}`
+	cmd := `Get-NetUDPEndpoint | Select-Object LocalAddress,LocalPort,OwningProcess | ConvertTo-Json -Compress`
 	return executeNetworkCommand(cmd, "UDP")
 }
 

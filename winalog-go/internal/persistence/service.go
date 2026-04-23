@@ -22,7 +22,7 @@ type ServicePersistenceDetector struct {
 func NewServicePersistenceDetector() *ServicePersistenceDetector {
 	return &ServicePersistenceDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4697, 7045},
 		},
 		configSuspicious: nil,

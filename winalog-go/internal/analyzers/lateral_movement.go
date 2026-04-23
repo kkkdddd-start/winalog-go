@@ -110,6 +110,10 @@ func (a *LateralMovementAnalyzer) performAnalysis(events []*types.Event) *Latera
 	}
 
 	for _, e := range events {
+		if !a.shouldProcessEvent(e) {
+			continue
+		}
+
 		switch e.EventID {
 		case 4624:
 			analysis.TotalEvents++
@@ -172,21 +176,6 @@ func (a *LateralMovementAnalyzer) performAnalysis(events []*types.Event) *Latera
 					Description: "Logon with explicit credentials - possible lateral movement",
 					Severity:    "medium",
 					MitreAttack: "T1078.004",
-				})
-			}
-
-		case 3:
-			analysis.TotalEvents++
-			sourceIP := a.getSourceIPFromEvent(e)
-			if sourceIP != "" && types.IsExternalIP(sourceIP) {
-				analysis.Findings = append(analysis.Findings, &LateralMovementFinding{
-					Type:        "External Network Connection",
-					Time:        e.Timestamp,
-					SourceIP:    sourceIP,
-					TargetHost:  e.Computer,
-					Description: "Network connection from external IP",
-					Severity:    "medium",
-					MitreAttack: "T1011",
 				})
 			}
 		}

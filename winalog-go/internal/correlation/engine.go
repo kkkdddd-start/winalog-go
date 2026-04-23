@@ -13,7 +13,6 @@ import (
 
 type Engine struct {
 	mu      sync.RWMutex
-	events  map[int64]*types.Event
 	index   *EventIndex
 	matcher *Matcher
 	chain   *ChainBuilder
@@ -60,7 +59,7 @@ func (idx *EventIndex) Add(event *types.Event) {
 
 	if time.Since(idx.lastCleanup) > idx.cleanupInterval {
 		idx.lastCleanup = time.Now()
-		go idx.cleanupLocked()
+		go idx.cleanupUnlocked()
 	}
 
 	idx.eventsCache[event.ID] = event
@@ -69,7 +68,7 @@ func (idx *EventIndex) Add(event *types.Event) {
 	idx.byEID[event.EventID] = append(idx.byEID[event.EventID], event.ID)
 }
 
-func (idx *EventIndex) cleanupLocked() {
+func (idx *EventIndex) cleanupUnlocked() {
 	idx.mu.Lock()
 	defer idx.mu.Unlock()
 
@@ -95,6 +94,62 @@ func (idx *EventIndex) cleanupLocked() {
 
 	for _, entry := range oldEntries {
 		delete(idx.byID, entry.ID)
+		delete(idx.eventsCache, entry.ID)
+	}
+
+	for eid, ids := range idx.byEID {
+		newIDs := make([]int64, 0)
+		for _, id := range ids {
+			if _, exists := idx.byID[id]; exists {
+				newIDs = append(newIDs, id)
+			}
+		}
+		if len(newIDs) == 0 {
+			delete(idx.byEID, eid)
+		} else {
+			idx.byEID[eid] = newIDs
+		}
+	}
+}
+
+func (idx *EventIndex) cleanupLocked() {
+	if idx.maxAge <= 0 {
+		return
+	}
+	cutoff := time.Now().Add(-idx.maxAge)
+
+	splitIdx := 0
+	for i, entry := range idx.byTime {
+		if entry.Timestamp.After(cutoff) {
+			break
+		}
+		splitIdx = i + 1
+	}
+
+	if splitIdx == 0 {
+		return
+	}
+
+	oldEntries := idx.byTime[:splitIdx]
+	idx.byTime = idx.byTime[splitIdx:]
+
+	for _, entry := range oldEntries {
+		delete(idx.byID, entry.ID)
+		delete(idx.eventsCache, entry.ID)
+	}
+
+	for eid, ids := range idx.byEID {
+		newIDs := make([]int64, 0)
+		for _, id := range ids {
+			if _, exists := idx.byID[id]; exists {
+				newIDs = append(newIDs, id)
+			}
+		}
+		if len(newIDs) == 0 {
+			delete(idx.byEID, eid)
+		} else {
+			idx.byEID[eid] = newIDs
+		}
 	}
 }
 
@@ -124,6 +179,21 @@ func (idx *EventIndex) Cleanup() {
 
 	for _, entry := range oldEntries {
 		delete(idx.byID, entry.ID)
+		delete(idx.eventsCache, entry.ID)
+	}
+
+	for eid, ids := range idx.byEID {
+		newIDs := make([]int64, 0)
+		for _, id := range ids {
+			if _, exists := idx.byID[id]; exists {
+				newIDs = append(newIDs, id)
+			}
+		}
+		if len(newIDs) == 0 {
+			delete(idx.byEID, eid)
+		} else {
+			idx.byEID[eid] = newIDs
+		}
 	}
 }
 
@@ -209,9 +279,19 @@ func (idx *EventIndex) GetByTimeRange(start, end time.Time) []*types.Event {
 	return events
 }
 
+func (idx *EventIndex) GetAllEvents() []*types.Event {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+
+	events := make([]*types.Event, 0, len(idx.eventsCache))
+	for _, event := range idx.eventsCache {
+		events = append(events, event)
+	}
+	return events
+}
+
 func NewEngine(maxAge time.Duration) *Engine {
 	return &Engine{
-		events:  make(map[int64]*types.Event),
 		index:   NewEventIndex(maxAge),
 		matcher: NewMatcher(),
 		chain:   NewChainBuilder(),
@@ -221,7 +301,6 @@ func NewEngine(maxAge time.Duration) *Engine {
 
 func NewEngineWithEventRepo(eventRepo *storage.EventRepo, maxAge time.Duration) *Engine {
 	return &Engine{
-		events:  make(map[int64]*types.Event),
 		index:   NewEventIndex(maxAge),
 		matcher: NewMatcher(),
 		chain:   NewChainBuilderWithEventRepo(eventRepo),
@@ -241,7 +320,6 @@ func (e *Engine) LoadEvents(events []*types.Event) {
 	defer e.mu.Unlock()
 
 	for _, event := range events {
-		e.events[event.ID] = event
 		e.index.Add(event)
 	}
 }
@@ -279,61 +357,100 @@ func (e *Engine) analyzeRule(rule *rules.CorrelationRule) []*types.CorrelationRe
 
 	seenChains := make(map[string]bool)
 
-	for i, pattern := range patterns {
-		if i == len(patterns)-1 {
-			break
-		}
+	initialEvents := e.index.GetByEventID(patterns[0].EventID)
+	if initialEvents == nil {
+		return allResults
+	}
 
-		events := e.index.GetByEventID(pattern.EventID)
-		if events == nil {
-			continue
-		}
+	initialEvents = e.matcher.FilterByPattern(initialEvents, patterns[0])
+	if len(initialEvents) == 0 {
+		return allResults
+	}
 
-		events = e.matcher.FilterByPattern(events, pattern)
+	if patterns[0].TimeWindow > 0 {
+		initialEvents = e.filterByTimeWindow(initialEvents, patterns[0].TimeWindow)
+	}
 
-		if pattern.TimeWindow > 0 {
-			events = e.filterByTimeWindow(events, pattern.TimeWindow)
-		}
-
-		if pattern.MinCount > 0 && len(events) < pattern.MinCount {
-			continue
-		}
-
-		if pattern.MaxCount > 0 && len(events) > pattern.MaxCount {
-			events = events[:pattern.MaxCount]
-		}
-
-		for idx := 0; idx < len(events); idx++ {
-			baseEvent := events[idx]
-			if baseEvent == nil {
-				continue
-			}
-
-			nextPattern := patterns[i+1]
-			nextEvents := e.findRelatedEventsWithRule(baseEvent, nextPattern, rule)
-
-			if len(nextEvents) > 0 {
-				nextEvents = e.matcher.FilterByPattern(nextEvents, nextPattern)
-				for _, nextEvent := range nextEvents {
-					if !e.matcher.CheckOrderedSequence([]*types.Event{baseEvent, nextEvent}, nextPattern) {
-						continue
-					}
-					chainKey := fmt.Sprintf("%d:%d", baseEvent.ID, nextEvent.ID)
-					if seenChains[chainKey] {
-						continue
-					}
-					seenChains[chainKey] = true
-					result := e.chain.Build(baseEvent, []*types.Event{nextEvent}, rule)
-					if result != nil {
-						allResults = append(allResults, result)
-					}
-					break
-				}
-			}
-		}
+	for _, startEvent := range initialEvents {
+		e.findFullChain(startEvent, nil, patterns, 0, rule, seenChains, &allResults)
 	}
 
 	return allResults
+}
+
+func (e *Engine) findFullChain(baseEvent *types.Event, chainEvents []*types.Event, patterns []*rules.Pattern, patternIndex int, rule *rules.CorrelationRule, seenChains map[string]bool, results *[]*types.CorrelationResult) {
+	if chainEvents == nil {
+		chainEvents = []*types.Event{baseEvent}
+	} else {
+		chainEvents = append(chainEvents, baseEvent)
+	}
+
+	if patternIndex == len(patterns)-1 {
+		chainKey := e.chainKey(chainEvents)
+		if seenChains[chainKey] {
+			return
+		}
+		seenChains[chainKey] = true
+
+		chainEventsCopy := make([]*types.Event, len(chainEvents))
+		copy(chainEventsCopy, chainEvents)
+		result := e.chain.Build(baseEvent, chainEventsCopy[1:], rule)
+		if result != nil {
+			*results = append(*results, result)
+		}
+		return
+	}
+
+	nextPattern := patterns[patternIndex+1]
+	nextEvents := e.findRelatedEventsWithRule(baseEvent, nextPattern, rule)
+	if len(nextEvents) == 0 {
+		return
+	}
+
+	nextEvents = e.matcher.FilterByPattern(nextEvents, nextPattern)
+	if len(nextEvents) == 0 {
+		return
+	}
+
+	timeWindow := nextPattern.TimeWindow
+	if timeWindow <= 0 {
+		timeWindow = rule.TimeWindow
+	}
+	if timeWindow > 0 {
+		nextEvents = e.filterByTimeWindowWithBase(baseEvent.Timestamp, nextEvents, timeWindow)
+	}
+
+	for _, nextEvent := range nextEvents {
+		if !e.matcher.CheckOrderedSequence(chainEvents, nextPattern) {
+			continue
+		}
+		e.findFullChain(nextEvent, chainEvents, patterns, patternIndex+1, rule, seenChains, results)
+	}
+}
+
+func (e *Engine) chainKey(events []*types.Event) string {
+	key := ""
+	for _, evt := range events {
+		key += fmt.Sprintf("%d:", evt.ID)
+	}
+	return key
+}
+
+func (e *Engine) filterByTimeWindowWithBase(baseTime time.Time, events []*types.Event, window time.Duration) []*types.Event {
+	if len(events) == 0 || window <= 0 {
+		return events
+	}
+
+	cutoff := baseTime.Add(window)
+	filtered := make([]*types.Event, 0)
+
+	for _, event := range events {
+		if event.Timestamp.After(baseTime) && event.Timestamp.Before(cutoff) {
+			filtered = append(filtered, event)
+		}
+	}
+
+	return filtered
 }
 
 func (e *Engine) filterByTimeWindow(events []*types.Event, window time.Duration) []*types.Event {
@@ -472,10 +589,7 @@ func (e *Engine) findRelatedEventsWithRule(base *types.Event, pattern *rules.Pat
 				filtered = append(filtered, evt)
 			}
 		}
-		if len(filtered) > 0 {
-			return filtered
-		}
-		return events
+		return filtered
 
 	case "ip":
 		filtered := make([]*types.Event, 0)
@@ -487,10 +601,7 @@ func (e *Engine) findRelatedEventsWithRule(base *types.Event, pattern *rules.Pat
 				filtered = append(filtered, evt)
 			}
 		}
-		if len(filtered) > 0 {
-			return filtered
-		}
-		return events
+		return filtered
 
 	default:
 		filtered := make([]*types.Event, 0)
@@ -519,17 +630,12 @@ func (e *Engine) GetEvents() []*types.Event {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	events := make([]*types.Event, 0, len(e.events))
-	for _, event := range e.events {
-		events = append(events, event)
-	}
-	return events
+	return e.index.GetAllEvents()
 }
 
 func (e *Engine) Clear() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	e.events = make(map[int64]*types.Event)
 	e.index = NewEventIndex(e.maxAge)
 }

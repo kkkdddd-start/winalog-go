@@ -47,7 +47,20 @@ type SystemSnapshot struct {
 	MemoryFreeGB  float64
 	DiskTotalGB   float64
 	DiskFreeGB    float64
+	DNSCache      []DNSCacheEntry
 	CollectedAt   time.Time
+}
+
+type DNSCacheEntry struct {
+	ID          int64
+	Name        string
+	Type        string
+	TypeName    string
+	Data        string
+	TTL         uint32
+	Section     string
+	ProcessName string
+	CollectedAt time.Time
 }
 
 type UserInfo struct {

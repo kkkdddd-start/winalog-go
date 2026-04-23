@@ -17,7 +17,7 @@ type LSAPersistenceDetector struct {
 func NewLSAPersistenceDetector() *LSAPersistenceDetector {
 	return &LSAPersistenceDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4670},
 		},
 	}

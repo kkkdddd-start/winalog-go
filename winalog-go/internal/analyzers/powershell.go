@@ -130,6 +130,18 @@ func (a *PowerShellAnalyzer) performAnalysis(events []*types.Event) *PowerShellA
 		Anomalies: make([]*PowerShellAnomaly, 0),
 	}
 
+	patterns := a.config.Patterns
+	if len(patterns) == 0 {
+		patterns = []string{
+			"mimikatz", "pwdump", "hashdump",
+			"invoke-mimikatz", "sekurlsa",
+			"empire", "meterpreter",
+			"net user", "net localgroup",
+			"reg save", "lsass",
+			"extract", "dcsync",
+		}
+	}
+
 	for _, e := range events {
 		if !a.shouldProcessEvent(e) {
 			continue
@@ -163,24 +175,16 @@ func (a *PowerShellAnalyzer) performAnalysis(events []*types.Event) *PowerShellA
 			analysis.InvokeCommands++
 		}
 
-		suspicious := []string{
-			"mimikatz", "pwdump", "hashdump",
-			"invoke-mimikatz", "sekurlsa",
-			"empire", "meterpreter",
-			"net user", "net localgroup",
-			"reg save", "lsass",
-			"extract", "dcsync",
-		}
-
-		for _, s := range suspicious {
-			if strings.Contains(commandLower, s) {
+		for _, pattern := range patterns {
+			patternLower := strings.ToLower(pattern)
+			if strings.Contains(commandLower, patternLower) {
 				analysis.SuspiciousScripts++
 				analysis.Anomalies = append(analysis.Anomalies, &PowerShellAnomaly{
 					Type:        "Suspicious Script",
 					Time:        e.Timestamp,
 					Command:     command,
 					Severity:    "critical",
-					Description: "Suspicious PowerShell script detected: " + s,
+					Description: "Suspicious PowerShell script detected: " + pattern,
 				})
 				break
 			}

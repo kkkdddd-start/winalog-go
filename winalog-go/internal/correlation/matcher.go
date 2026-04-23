@@ -117,22 +117,22 @@ func (m *Matcher) matchCondition(cond *rules.Condition, event *types.Event) bool
 func (m *Matcher) compareString(fieldValue, condValue, op string) bool {
 	switch op {
 	case "==", "=", "equals":
-		return fieldValue == condValue
+		return strings.EqualFold(fieldValue, condValue)
 	case "!=", "not_equals":
-		return fieldValue != condValue
+		return !strings.EqualFold(fieldValue, condValue)
 	case "contains":
-		return contains(fieldValue, condValue)
+		return contains(strings.ToLower(fieldValue), strings.ToLower(condValue))
 	case "not_contains":
-		return !contains(fieldValue, condValue)
+		return !contains(strings.ToLower(fieldValue), strings.ToLower(condValue))
 	case "startswith":
-		return strings.HasPrefix(fieldValue, condValue)
+		return strings.HasPrefix(strings.ToLower(fieldValue), strings.ToLower(condValue))
 	case "endswith":
-		return strings.HasSuffix(fieldValue, condValue)
+		return strings.HasSuffix(strings.ToLower(fieldValue), strings.ToLower(condValue))
 	case "regex":
 		matched, err := regexp.MatchString(condValue, fieldValue)
 		return err == nil && matched
 	default:
-		return fieldValue == condValue
+		return strings.EqualFold(fieldValue, condValue)
 	}
 }
 

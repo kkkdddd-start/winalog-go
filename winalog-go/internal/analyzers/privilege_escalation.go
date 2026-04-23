@@ -2,6 +2,7 @@ package analyzers
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -334,7 +335,7 @@ func (a *PrivilegeEscalationAnalyzer) analyzeSuspiciousCommands(events []*types.
 				}
 			}
 			findings = append(findings, Finding{
-				Description: p.Name + " (detected " + string(rune('0'+count)) + " times)",
+				Description: p.Name + " (detected " + strconv.Itoa(count) + " times)",
 				RuleName:    p.Name,
 				Severity:    severity,
 				Score:       score,

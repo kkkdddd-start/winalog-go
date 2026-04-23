@@ -17,7 +17,7 @@ type BootExecuteDetector struct {
 func NewBootExecuteDetector() *BootExecuteDetector {
 	return &BootExecuteDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4697},
 		},
 	}

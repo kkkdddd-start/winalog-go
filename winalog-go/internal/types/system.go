@@ -74,20 +74,23 @@ type UserAccount struct {
 }
 
 type RegistryInfo struct {
-	Path          string `json:"path"`
-	Name          string `json:"name"`
-	Value         string `json:"value"`
-	Type          string `json:"type"`
-	Source        string `json:"source"`
-	Enabled       bool   `json:"enabled"`
-	Description   string `json:"description,omitempty"`
-	DisplayName   string `json:"display_name,omitempty"`
-	ImagePath     string `json:"image_path,omitempty"`
-	Command       string `json:"command,omitempty"`
-	ServiceType   string `json:"service_type,omitempty"`
-	StartType     string `json:"start_type,omitempty"`
-	Debugger      string `json:"debugger,omitempty"`
-	DllName       string `json:"dll_name,omitempty"`
+	Path           string `json:"path"`
+	Name           string `json:"name"`
+	Value          string `json:"value"`
+	Type           string `json:"type"`
+	Source         string `json:"source"`
+	Enabled        bool   `json:"enabled"`
+	Description    string `json:"description,omitempty"`
+	DisplayName    string `json:"display_name,omitempty"`
+	ImagePath      string `json:"image_path,omitempty"`
+	Command        string `json:"command,omitempty"`
+	ServiceType    string `json:"service_type,omitempty"`
+	StartType      string `json:"start_type,omitempty"`
+	Debugger       string `json:"debugger,omitempty"`
+	DllName        string `json:"dll_name,omitempty"`
+	GlobalFlag     string `json:"global_flag,omitempty"`
+	VerifierDlls   string `json:"verifier_dlls,omitempty"`
+	FilterFullPath string `json:"filter_full_path,omitempty"`
 }
 
 type RegistryPersistence struct {

@@ -2,6 +2,11 @@
 
 package persistence
 
+import (
+	"strings"
+	"sync"
+)
+
 type WhitelistType int
 
 const (
@@ -28,6 +33,8 @@ type WhitelistEntry struct {
 type Whitelist struct {
 	entries map[string]*WhitelistEntry
 	loaded  bool
+	loadMu  sync.Mutex
+	once    sync.Once
 }
 
 var GlobalWhitelist = &Whitelist{
@@ -45,25 +52,42 @@ func (w *Whitelist) Add(key string, wtype WhitelistType, reason, source string) 
 }
 
 func (w *Whitelist) IsAllowed(key string) bool {
-	if !w.loaded {
-		w.LoadDefaults()
+	w.ensureLoaded()
+	keyLower := strings.ToLower(key)
+	for _, entry := range w.entries {
+		if w.keyMatches(keyLower, strings.ToLower(entry.Key)) {
+			return true
+		}
 	}
-	_, exists := w.entries[key]
-	return exists
+	return false
 }
 
 func (w *Whitelist) IsAllowedByType(key string, wtype WhitelistType) bool {
-	if !w.loaded {
-		w.LoadDefaults()
+	w.ensureLoaded()
+	keyLower := strings.ToLower(key)
+	for _, entry := range w.entries {
+		if entry.Type == wtype && w.keyMatches(keyLower, strings.ToLower(entry.Key)) {
+			return true
+		}
 	}
-	entry, exists := w.entries[key]
-	if !exists {
-		return false
+	return false
+}
+
+func (w *Whitelist) keyMatches(input, pattern string) bool {
+	if strings.Contains(pattern, "*") {
+		prefix := strings.TrimSuffix(pattern, "*")
+		return strings.HasPrefix(input, prefix)
 	}
-	return entry.Type == wtype
+	return input == pattern
+}
+
+func (w *Whitelist) ensureLoaded() {
+	w.once.Do(w.LoadDefaults)
 }
 
 func (w *Whitelist) LoadDefaults() {
+	w.loadMu.Lock()
+	defer w.loadMu.Unlock()
 	if w.loaded {
 		return
 	}

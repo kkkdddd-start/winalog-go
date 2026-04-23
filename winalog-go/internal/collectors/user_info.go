@@ -5,7 +5,6 @@ package collectors
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -46,7 +45,7 @@ func (c *UserInfoCollector) Collect(ctx context.Context) ([]interface{}, error) 
 func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 	users := make([]*types.UserAccount, 0)
 
-	cmd := `Get-LocalUser | Select-Object Name, SID, Enabled, LastLogon, PasswordRequired, PasswordAge, PasswordExpires, FullName, Description, HomeDirectory, ProfilePath | ForEach-Object { $_ | ConvertTo-Json -Compress }`
+	cmd := `Get-LocalUser | Select-Object Name, SID, Enabled, LastLogon, PasswordRequired, PasswordAge, PasswordExpires, FullName, Description, HomeDirectory, ProfilePath | ConvertTo-Json -Compress`
 
 	log.Printf("[INFO] Collecting local users with command: Get-LocalUser")
 
@@ -64,16 +63,22 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 
 	log.Printf("[DEBUG] Get-LocalUser raw output length: %d", len(output))
 
-	lines := strings.Split(output, "\n")
-	parseCount := 0
-	errorCount := 0
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
-			continue
-		}
+	var userRawList []struct {
+		Name             string      `json:"Name"`
+		SID              interface{} `json:"SID"`
+		Enabled          bool        `json:"Enabled"`
+		LastLogon        string      `json:"LastLogon"`
+		PasswordRequired bool        `json:"PasswordRequired"`
+		PasswordAge      int64       `json:"PasswordAge"`
+		PasswordExpires  string      `json:"PasswordExpires"`
+		FullName         string      `json:"FullName"`
+		Description      string      `json:"Description"`
+		HomeDirectory    string      `json:"HomeDirectory"`
+		ProfilePath      string      `json:"ProfilePath"`
+	}
 
-		var userRaw struct {
+	if err := json.Unmarshal([]byte(output), &userRawList); err != nil {
+		var single struct {
 			Name             string      `json:"Name"`
 			SID              interface{} `json:"SID"`
 			Enabled          bool        `json:"Enabled"`
@@ -86,13 +91,28 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 			HomeDirectory    string      `json:"HomeDirectory"`
 			ProfilePath      string      `json:"ProfilePath"`
 		}
-
-		if err := json.Unmarshal([]byte(line), &userRaw); err != nil {
-			log.Printf("[WARN] Failed to parse user JSON: %v, line: %s", err, line)
-			errorCount++
-			continue
+		if err2 := json.Unmarshal([]byte(output), &single); err2 == nil && single.Name != "" {
+			userRawList = []struct {
+				Name             string      `json:"Name"`
+				SID              interface{} `json:"SID"`
+				Enabled          bool        `json:"Enabled"`
+				LastLogon        string      `json:"LastLogon"`
+				PasswordRequired bool        `json:"PasswordRequired"`
+				PasswordAge      int64       `json:"PasswordAge"`
+				PasswordExpires  string      `json:"PasswordExpires"`
+				FullName         string      `json:"FullName"`
+				Description      string      `json:"Description"`
+				HomeDirectory    string      `json:"HomeDirectory"`
+				ProfilePath      string      `json:"ProfilePath"`
+			}{single}
+		} else {
+			log.Printf("[WARN] Failed to parse user JSON: %v", err)
+			return c.collectUserInfoAlternative()
 		}
+	}
 
+	parseCount := 0
+	for _, userRaw := range userRawList {
 		if userRaw.Name == "" {
 			continue
 		}
@@ -100,7 +120,6 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 		sidStr := extractSIDValue(userRaw.SID)
 		if sidStr == "" {
 			log.Printf("[WARN] Failed to extract SID value for user: %s", userRaw.Name)
-			errorCount++
 			continue
 		}
 
@@ -122,17 +141,16 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 		}
 
 		if userRaw.PasswordAge > 0 {
-			user.PasswordAge = time.Duration(userRaw.PasswordAge) * time.Hour * 24
+			user.PasswordAge = time.Duration(userRaw.PasswordAge) * 24 * time.Hour
 		}
 
 		users = append(users, user)
 		parseCount++
 	}
 
-	log.Printf("[INFO] Get-LocalUser parsed %d users, %d errors, total lines: %d", parseCount, errorCount, len(lines))
+	log.Printf("[INFO] Get-LocalUser parsed %d users", parseCount)
 
-	if parseCount == 0 && errorCount > 0 {
-		log.Printf("[WARN] Get-LocalUser had errors parsing, trying alternative method")
+	if parseCount == 0 {
 		return c.collectUserInfoAlternative()
 	}
 
@@ -142,7 +160,7 @@ func (c *UserInfoCollector) collectUserInfo() ([]*types.UserAccount, error) {
 func (c *UserInfoCollector) collectUserInfoAlternative() ([]*types.UserAccount, error) {
 	users := make([]*types.UserAccount, 0)
 
-	cmd := `Get-WmiObject Win32_UserAccount -Filter "LocalAccount=True" | Select-Object Name, SID, Disabled, LastLogon, Description | ForEach-Object { $_ | ConvertTo-Json -Compress }`
+	cmd := `Get-WmiObject Win32_UserAccount -Filter "LocalAccount=True" | Select-Object Name, SID, Disabled, LastLogon, Description | ConvertTo-Json -Compress`
 
 	log.Printf("[INFO] Collecting users with alternative command: Get-WmiObject Win32_UserAccount")
 
@@ -158,26 +176,35 @@ func (c *UserInfoCollector) collectUserInfoAlternative() ([]*types.UserAccount, 
 		return users, nil
 	}
 
-	lines := strings.Split(output, "\n")
-	parseCount := 0
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
-			continue
-		}
+	var userRawList []struct {
+		Name        string `json:"Name"`
+		SID         string `json:"SID"`
+		Disabled    bool   `json:"Disabled"`
+		LastLogon   string `json:"LastLogon"`
+		Description string `json:"Description"`
+	}
 
-		var userRaw struct {
+	if err := json.Unmarshal([]byte(output), &userRawList); err != nil {
+		var single struct {
 			Name        string `json:"Name"`
 			SID         string `json:"SID"`
 			Disabled    bool   `json:"Disabled"`
 			LastLogon   string `json:"LastLogon"`
 			Description string `json:"Description"`
 		}
-
-		if err := json.Unmarshal([]byte(line), &userRaw); err != nil {
-			continue
+		if err2 := json.Unmarshal([]byte(output), &single); err2 == nil && single.Name != "" {
+			userRawList = []struct {
+				Name        string `json:"Name"`
+				SID         string `json:"SID"`
+				Disabled    bool   `json:"Disabled"`
+				LastLogon   string `json:"LastLogon"`
+				Description string `json:"Description"`
+			}{single}
 		}
+	}
 
+	parseCount := 0
+	for _, userRaw := range userRawList {
 		if userRaw.Name == "" {
 			continue
 		}
@@ -238,7 +265,7 @@ func extractSIDValue(sid interface{}) string {
 			}
 		}
 	}
-	return fmt.Sprintf("%v", sid)
+	return ""
 }
 
 func ListLocalUsers() ([]*types.UserAccount, error) {

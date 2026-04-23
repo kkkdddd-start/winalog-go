@@ -199,6 +199,16 @@ type SystemSnapshot struct {
 	ProcessCount  int                   `json:"process_count"`
 	NetworkConns  []NetworkConnSnapshot `json:"network_connections,omitempty"`
 	TopProcesses  []ProcessSnapshot     `json:"top_processes,omitempty"`
+	DNSCache      []DNSCacheSnapshot    `json:"dns_cache,omitempty"`
+}
+
+type DNSCacheSnapshot struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	TypeName    string `json:"type_name"`
+	Data        string `json:"data"`
+	TTL         uint32 `json:"ttl"`
+	Section     string `json:"section"`
 }
 
 type NetworkConnSnapshot struct {
@@ -273,6 +283,10 @@ func NewGenerator(db *storage.DB) *Generator {
 }
 
 func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
+	return g.GenerateWithContext(context.Background(), req)
+}
+
+func (g *Generator) GenerateWithContext(ctx context.Context, req *ReportRequest) (*Report, error) {
 	language := req.Language
 	if language != "zh" && language != "en" {
 		language = "en"
@@ -288,7 +302,19 @@ func (g *Generator) Generate(req *ReportRequest) (*Report, error) {
 		},
 	}
 
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
 	report.SystemSnapshot = g.collectSystemSnapshot()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
 
 	var genErr error
 
@@ -395,6 +421,7 @@ func (g *Generator) collectSystemSnapshot() *SystemSnapshot {
 
 	if runtime.GOOS == "windows" {
 		collectWindowsSystemSnapshot(snapshot)
+		collectWindowsDNSCache(snapshot)
 	} else {
 		collectLinuxSystemSnapshot(snapshot)
 	}
@@ -417,22 +444,80 @@ func collectWindowsSystemSnapshot(snapshot *SystemSnapshot) {
 	snapshot.MemoryFreeGB = float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024
 }
 
+func collectWindowsDNSCache(snapshot *SystemSnapshot) {
+	if dnsEntries, err := GetSystemDNSCache(); err == nil && dnsEntries != nil {
+		snapshot.DNSCache = make([]DNSCacheSnapshot, 0, len(dnsEntries))
+		for _, entry := range dnsEntries {
+			snapshot.DNSCache = append(snapshot.DNSCache, DNSCacheSnapshot{
+				Name:     entry.Name,
+				Type:     entry.Type,
+				TypeName: entry.TypeName,
+				Data:     entry.Data,
+				TTL:      entry.TTL,
+				Section:  entry.Section,
+			})
+		}
+	}
+}
+
 func collectLinuxSystemSnapshot(snapshot *SystemSnapshot) {
 	snapshot.OSVersion = "Linux"
 	snapshot.LocalTime = time.Now().Format(time.RFC3339)
 	snapshot.UptimeSeconds = int64(getSystemUptimeSeconds())
 	snapshot.CPUCount = runtime.NumCPU()
 
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	snapshot.MemoryTotalGB = float64(m.Sys) / 1024 / 1024 / 1024
-	snapshot.MemoryFreeGB = float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024
+	if memInfo := getLinuxMemoryInfo(); memInfo.totalGB > 0 {
+		snapshot.MemoryTotalGB = memInfo.totalGB
+		snapshot.MemoryFreeGB = memInfo.freeGB
+	} else {
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		snapshot.MemoryTotalGB = float64(m.Sys) / 1024 / 1024 / 1024
+		snapshot.MemoryFreeGB = float64(m.Sys-m.Alloc) / 1024 / 1024 / 1024
+	}
 
 	if data, err := os.ReadFile("/proc/uptime"); err == nil {
 		var uptimeSeconds float64
 		fmt.Sscanf(string(data), "%f", &uptimeSeconds)
 		snapshot.UptimeSeconds = int64(uptimeSeconds)
 	}
+}
+
+type memInfo struct {
+	totalGB float64
+	freeGB  float64
+}
+
+func getLinuxMemoryInfo() memInfo {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return memInfo{}
+	}
+
+	var memTotal, memFree int64
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		var name string
+		var value int64
+		if _, err := fmt.Sscanf(line, "%s %d", &name, &value); err == nil {
+			if name == "MemTotal:" {
+				memTotal = value
+			} else if name == "MemFree:" {
+				memFree = value
+			}
+		}
+		if memTotal > 0 && memFree > 0 {
+			break
+		}
+	}
+
+	if memTotal > 0 {
+		return memInfo{
+			totalGB: float64(memTotal) / 1024 / 1024 / 1024,
+			freeGB:  float64(memFree) / 1024 / 1024 / 1024,
+		}
+	}
+	return memInfo{}
 }
 
 func getWindowsVersionString() string {
@@ -794,9 +879,13 @@ func (g *Generator) calculateLoginStats(events []*types.Event) *LoginStats {
 	stats := &LoginStats{}
 
 	loginEventIDs := map[int32]bool{
-		4624: true, 4625: true,
-		4634: true, 4647: true,
-		4672: true, 4673: true,
+		4624: true,
+		4625: true,
+	}
+
+	logoffEventIDs := map[int32]bool{
+		4634: true,
+		4647: true,
 	}
 
 	for _, event := range events {
@@ -807,6 +896,8 @@ func (g *Generator) calculateLoginStats(events []*types.Event) *LoginStats {
 			} else if event.EventID == 4625 {
 				stats.Failed++
 			}
+		} else if logoffEventIDs[event.EventID] {
+			stats.Total++
 		}
 	}
 

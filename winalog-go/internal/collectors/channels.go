@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
@@ -421,14 +422,20 @@ func CategorizeChannel(name string) string {
 	}
 }
 
-// matchRegex 简单的正则匹配
 func matchRegex(pattern, s string) bool {
 	pattern = strings.Trim(pattern, "^$")
+	var re *regexp.Regexp
+	var err error
 	if strings.HasPrefix(pattern, "(?i)") {
 		pattern = strings.TrimPrefix(pattern, "(?i)")
-		return strings.Contains(strings.ToLower(s), strings.ToLower(pattern))
+		re, err = regexp.Compile("(?i)" + pattern)
+	} else {
+		re, err = regexp.Compile(pattern)
 	}
-	return strings.Contains(s, pattern)
+	if err != nil {
+		return false
+	}
+	return re.MatchString(s)
 }
 
 // isFormatEnabled 检查格式是否启用

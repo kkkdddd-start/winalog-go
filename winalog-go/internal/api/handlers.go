@@ -136,19 +136,35 @@ func (h *AlertHandler) ListEvents(c *gin.Context) {
 	}
 
 	if req.StartTime != "" {
-		if t, err := time.Parse(time.RFC3339, req.StartTime); err == nil {
-			filter.StartTime = &t
-		} else if t, err := time.Parse("2006-01-02T15:04", req.StartTime); err == nil {
-			filter.StartTime = &t
+		t, err := time.Parse(time.RFC3339, req.StartTime)
+		if err != nil {
+			t, err = time.Parse("2006-01-02T15:04", req.StartTime)
 		}
+		if err != nil {
+			c.JSON(400, ErrorResponse{
+				Error: fmt.Sprintf("invalid start_time format: %s (expected RFC3339 or 2006-01-02T15:04)", req.StartTime),
+				Code:  types.ErrCodeInvalidRequest,
+			})
+			return
+		}
+		filter.StartTime = &t
 	}
 	if req.EndTime != "" {
-		if t, err := time.Parse(time.RFC3339, req.EndTime); err == nil {
-			filter.EndTime = &t
-		} else if t, err := time.Parse("2006-01-02T15:04", req.EndTime); err == nil {
-			endTime := t.Add(24*time.Hour - time.Second)
-			filter.EndTime = &endTime
+		t, err := time.Parse(time.RFC3339, req.EndTime)
+		if err != nil {
+			t, err = time.Parse("2006-01-02T15:04", req.EndTime)
 		}
+		if err != nil {
+			c.JSON(400, ErrorResponse{
+				Error: fmt.Sprintf("invalid end_time format: %s (expected RFC3339 or 2006-01-02T15:04)", req.EndTime),
+				Code:  types.ErrCodeInvalidRequest,
+			})
+			return
+		}
+		if req.StartTime == "" {
+			t = t.Add(24*time.Hour - time.Second)
+		}
+		filter.EndTime = &t
 	}
 
 	events, total, err := h.db.ListEvents(filter)
@@ -261,19 +277,35 @@ func (h *AlertHandler) SearchEvents(c *gin.Context) {
 	}
 
 	if req.StartTime != "" {
-		if t, err := time.Parse(time.RFC3339, req.StartTime); err == nil {
-			filter.StartTime = &t
-		} else if t, err := time.Parse("2006-01-02T15:04", req.StartTime); err == nil {
-			filter.StartTime = &t
+		t, err := time.Parse(time.RFC3339, req.StartTime)
+		if err != nil {
+			t, err = time.Parse("2006-01-02T15:04", req.StartTime)
 		}
+		if err != nil {
+			c.JSON(400, ErrorResponse{
+				Error: fmt.Sprintf("invalid start_time format: %s (expected RFC3339 or 2006-01-02T15:04)", req.StartTime),
+				Code:  types.ErrCodeInvalidRequest,
+			})
+			return
+		}
+		filter.StartTime = &t
 	}
 	if req.EndTime != "" {
-		if t, err := time.Parse(time.RFC3339, req.EndTime); err == nil {
-			filter.EndTime = &t
-		} else if t, err := time.Parse("2006-01-02T15:04", req.EndTime); err == nil {
-			endTime := t.Add(24*time.Hour - time.Second)
-			filter.EndTime = &endTime
+		t, err := time.Parse(time.RFC3339, req.EndTime)
+		if err != nil {
+			t, err = time.Parse("2006-01-02T15:04", req.EndTime)
 		}
+		if err != nil {
+			c.JSON(400, ErrorResponse{
+				Error: fmt.Sprintf("invalid end_time format: %s (expected RFC3339 or 2006-01-02T15:04)", req.EndTime),
+				Code:  types.ErrCodeInvalidRequest,
+			})
+			return
+		}
+		if req.StartTime == "" {
+			t = t.Add(24*time.Hour - time.Second)
+		}
+		filter.EndTime = &t
 	}
 
 	start := time.Now()

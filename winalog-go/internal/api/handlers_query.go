@@ -27,20 +27,8 @@ type QueryResponse struct {
 	Total   int                      `json:"total"`
 }
 
-var sqlForbiddenPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\b(DROP|DELETE|TRUNCATE|ALTER)\s+(TABLE|DATABASE)`),
-	regexp.MustCompile(`(?i)\b(INSERT\s+INTO|REPLACE\s+INTO)\s+\w+\s+\(SELECT`),
-	regexp.MustCompile(`(?i)\b(EXEC|EXECUTE)\s*\(`),
-	regexp.MustCompile(`(?i)\b(PRAGMA|SHELL)\s*\(`),
-	regexp.MustCompile(`(?i)--`),
-	regexp.MustCompile(`(?i)/\*.*\*/`),
-	regexp.MustCompile(`(?i)\b(GRANT|REVOKE|DENY)\s`),
-	regexp.MustCompile(`(?i)\b(CREATE\s+INDEX|DROP\s+INDEX)\s`),
-}
-
 var sqlAllowedPrefixes = map[string]bool{
 	"SELECT":  true,
-	"PRAGMA":  true,
 	"EXPLAIN": true,
 	"WITH":    true,
 }
@@ -56,12 +44,6 @@ func NewQueryHandler(db *storage.DB) *QueryHandler {
 }
 
 func validateSQL(sql string) error {
-	for _, pattern := range sqlForbiddenPatterns {
-		if pattern.MatchString(sql) {
-			return types.NewValidationError("sql", "SQL contains forbidden pattern: potentially dangerous operation detected", nil)
-		}
-	}
-
 	normalizedSQL := regexp.MustCompile(`\s+`).ReplaceAllString(strings.TrimSpace(sql), " ")
 	upperSQL := strings.ToUpper(normalizedSQL)
 
@@ -74,7 +56,7 @@ func validateSQL(sql string) error {
 	}
 
 	if !allowed {
-		return types.NewValidationError("sql", "Only SELECT, PRAGMA, EXPLAIN, and WITH queries are allowed", nil)
+		return types.NewValidationError("sql", "Only SELECT, EXPLAIN, and WITH queries are allowed", nil)
 	}
 
 	return nil
@@ -365,17 +347,22 @@ var quickQueries = []QuickQuery{
 // @Failure 500 {object} ErrorResponse
 // @Router /api/query/tables [get]
 func (h *QueryHandler) ListTables(c *gin.Context) {
-	tables := []string{
-		"events",
-		"alerts",
-		"processes",
-		"network_connections",
-		"system_info",
-		"import_log",
-		"suppress_rules",
-		"persistence_detections",
-		"reports",
-		"rule_states",
+	rows, err := h.db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "failed to query tables: " + err.Error(),
+			Code:  types.ErrCodeInternalError,
+		})
+		return
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err == nil {
+			tables = append(tables, name)
+		}
 	}
 
 	result := make([]TableInfo, 0)
@@ -384,21 +371,21 @@ func (h *QueryHandler) ListTables(c *gin.Context) {
 		h.db.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count)
 
 		var cols []ColumnInfo
-		rows, err := h.db.Query("PRAGMA table_info(" + table + ")")
+		colRows, err := h.db.Query("PRAGMA table_info(" + table + ")")
 		if err == nil {
-			for rows.Next() {
+			for colRows.Next() {
 				var ci ColumnInfo
 				var cid int
 				var ctype, cname string
 				var cnotnull, cpk int
 				var cdefault interface{}
-				rows.Scan(&cid, &cname, &ctype, &cnotnull, &cdefault, &cpk)
+				colRows.Scan(&cid, &cname, &ctype, &cnotnull, &cdefault, &cpk)
 				ci.Name = cname
 				ci.Type = ctype
 				ci.NotNull = cnotnull == 1
 				cols = append(cols, ci)
 			}
-			rows.Close()
+			colRows.Close()
 		}
 
 		result = append(result, TableInfo{

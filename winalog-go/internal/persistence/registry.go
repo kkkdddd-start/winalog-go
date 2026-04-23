@@ -24,7 +24,7 @@ type RunKeyDetector struct {
 func NewRunKeyDetector() *RunKeyDetector {
 	return &RunKeyDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4657},
 		},
 		configPaths:      nil,
@@ -268,7 +268,7 @@ type UserInitDetector struct {
 func NewUserInitDetector() *UserInitDetector {
 	return &UserInitDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4688},
 		},
 	}
@@ -376,7 +376,7 @@ type StartupFolderDetector struct {
 func NewStartupFolderDetector() *StartupFolderDetector {
 	return &StartupFolderDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4657},
 		},
 		configPaths: nil,

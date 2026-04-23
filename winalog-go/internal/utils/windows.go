@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"unsafe"
@@ -138,10 +139,32 @@ func GetWindowsVersion() (*WindowsVersion, error) {
 		return nil, nil
 	}
 
+	mod := windows.NewLazyDLL("ntdll.dll")
+	procRtlGetVersion := mod.NewProc("RtlGetVersion")
+
+	type RTL_OSVERSIONINFOW struct {
+		DwOSVersionInfoSize uint32
+		DwMajorVersion      uint32
+		DwMinorVersion      uint32
+		DwBuildNumber       uint32
+		DwPlatformId        uint32
+		CSDVersion          [128]uint16
+	}
+
+	var osInfo RTL_OSVERSIONINFOW
+	osInfo.DwOSVersionInfoSize = uint32(unsafe.Sizeof(osInfo))
+
+	ret, _, _ := procRtlGetVersion.Call(uintptr(unsafe.Pointer(&osInfo)))
+	if ret != 0 {
+		return nil, fmt.Errorf("RtlGetVersion failed with code: %d", ret)
+	}
+
 	return &WindowsVersion{
-		Major: 10,
-		Minor: 0,
-		Build: 19041,
+		Major:      osInfo.DwMajorVersion,
+		Minor:      osInfo.DwMinorVersion,
+		Build:      osInfo.DwBuildNumber,
+		Platform:   osInfo.DwPlatformId,
+		CSDVersion: windows.UTF16ToString(osInfo.CSDVersion[:]),
 	}, nil
 }
 

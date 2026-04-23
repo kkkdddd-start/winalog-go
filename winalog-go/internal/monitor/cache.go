@@ -6,7 +6,7 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/monitor/types"
 )
 
-const DefaultMaxCacheSize = 1000
+const DefaultMaxCacheSize = 10000
 
 type EventCache struct {
 	mu      sync.RWMutex
@@ -75,7 +75,7 @@ func (c *EventCache) Get(filter *EventFilter) ([]*types.MonitorEvent, int64) {
 	total := int64(len(result))
 
 	offset := 0
-	limit := len(result)
+	limit := 0
 	if filter != nil {
 		if filter.Offset > 0 {
 			offset = filter.Offset
@@ -85,14 +85,19 @@ func (c *EventCache) Get(filter *EventFilter) ([]*types.MonitorEvent, int64) {
 		}
 		if filter.Limit > 0 {
 			limit = filter.Limit
-			if offset+limit > len(result) {
-				limit = len(result) - offset
-			}
 		}
 	}
 
 	if result == nil {
 		result = make([]*types.MonitorEvent, 0)
+	}
+
+	if offset >= len(result) {
+		return result, total
+	}
+
+	if limit <= 0 || offset+limit > len(result) {
+		limit = len(result) - offset
 	}
 
 	return result[offset : offset+limit], total

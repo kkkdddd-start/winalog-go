@@ -24,13 +24,13 @@ function Settings() {
     exportDirectory: './exports',
     parserWorkers: 4,
     memoryLimit: 2048,
-    requestTimeout: 120,
+    requestTimeout: 600,
   })
 
   useEffect(() => {
     settingsAPI.get().then(res => {
       const data = res.data
-      const timeout = data.request_timeout || 120
+      const timeout = data.request_timeout || 600
       setRequestTimeout(timeout)
       setSettings({
         databasePath: data.database_path || './winalog.db',

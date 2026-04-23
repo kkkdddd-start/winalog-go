@@ -15,7 +15,6 @@ type MonitorEngine struct {
 	eventCache   *EventCache
 	processWatch interface{}
 	networkPoll  interface{}
-	dnsPoll      interface{}
 	isRunning    bool
 	startTime    time.Time
 	stats        *types.MonitorStats
@@ -30,7 +29,6 @@ func NewMonitorEngine(configPath string) (*MonitorEngine, error) {
 		stats: &types.MonitorStats{
 			ProcessCount: 0,
 			NetworkCount: 0,
-			DNSCount:     0,
 			AlertCount:   0,
 		},
 		eventCh: make(chan *types.MonitorEvent, 1000),

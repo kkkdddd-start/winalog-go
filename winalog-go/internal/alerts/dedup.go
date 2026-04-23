@@ -147,12 +147,27 @@ func (c *DedupCache) generateKey(ruleName string, event *types.Event) string {
 		ipStr = *event.IPAddress
 	}
 
+	windowShard := c.getWindowShard(event.Timestamp)
+
 	return ruleName + "|" +
 		strconv.FormatInt(int64(event.EventID), 10) + "|" +
 		event.Computer + "|" +
 		event.Source + "|" +
 		userStr + "|" +
-		ipStr
+		ipStr + "|" +
+		windowShard
+}
+
+func (c *DedupCache) getWindowShard(t time.Time) string {
+	if c.window <= 0 {
+		return "0"
+	}
+	windowMinutes := int(c.window.Minutes())
+	if windowMinutes <= 0 {
+		windowMinutes = 1
+	}
+	shard := t.Unix() / int64(windowMinutes*60)
+	return strconv.FormatInt(shard, 10)
 }
 
 func (c *DedupCache) Size() int {

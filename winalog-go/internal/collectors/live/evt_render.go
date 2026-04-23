@@ -3,6 +3,7 @@
 package live
 
 import (
+	"encoding/xml"
 	"strings"
 	"time"
 
@@ -55,8 +56,8 @@ func ParseEventXML(xmlContent string) *types.Event {
 		if strings.HasPrefix(line, "Level>") {
 			val := strings.TrimSuffix(strings.TrimPrefix(line, "Level>"), "</Level")
 			val = strings.TrimSpace(val)
-			if level := parseLevel(val); level != 0 {
-				event.Level = level
+			if val != "" {
+				event.Level = parseLevel(val)
 			}
 		}
 
@@ -153,10 +154,20 @@ func parseLevel(s string) types.EventLevel {
 			level = level*10 + int(c-'0')
 		}
 	}
-	if level > 0 && level <= 5 {
-		return types.EventLevel(level)
+	switch level {
+	case 1:
+		return types.EventLevelCritical
+	case 2:
+		return types.EventLevelError
+	case 3:
+		return types.EventLevelWarning
+	case 4:
+		return types.EventLevelInfo
+	case 5:
+		return types.EventLevelVerbose
+	default:
+		return types.EventLevelInfo
 	}
-	return types.EventLevelInfo
 }
 
 type SystemXML struct {
@@ -193,63 +204,6 @@ type EventDataXML struct {
 type EventDataItemXML struct {
 	Name  string `xml:"Name,attr"`
 	Value string `xml:",chardata"`
-}
-
-
-					event.LogName = val
-				}
-			case "Computer":
-				if val := getElementText(decoder, elem); val != "" {
-					event.Computer = val
-				}
-			case "TimeCreated":
-				for _, attr := range elem.Attr {
-					if attr.Name.Local == "SystemTime" {
-						if t, err := parseEventTime(attr.Value); err == nil {
-							event.Timestamp = t
-						}
-						break
-					}
-				}
-			case "EventRecordID":
-				if val := getElementText(decoder, elem); val != "" {
-					var recID uint64
-					if _, err := parseUint(val, &recID); err == nil {
-						event.RecordID = &recID
-					}
-				}
-			case "ProcessID":
-				if val := getElementText(decoder, elem); val != "" {
-					var pid uint32
-					if _, err := parseUint(val, &pid); err == nil {
-						event.ProcessID = &pid
-					}
-				}
-			case "ThreadID":
-				if val := getElementText(decoder, elem); val != "" {
-					var tid uint32
-					if _, err := parseUint(val, &tid); err == nil {
-						event.ThreadID = &tid
-					}
-				}
-			case "UserID":
-				if val := getElementText(decoder, elem); val != "" {
-					event.User = val
-				}
-			case "Data":
-				var dataItem EventDataItemXML
-				if err := decoder.DecodeElement(&dataItem, &elem); err == nil {
-					event.Message = buildMessage(event.Message, dataItem.Name, dataItem.Value)
-				}
-			}
-		}
-	}
-
-	if event.Timestamp.IsZero() {
-		event.Timestamp = time.Now()
-	}
-
-	return event
 }
 
 func getElementText(decoder *xml.Decoder, start xml.StartElement) string {

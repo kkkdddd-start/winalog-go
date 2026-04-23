@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -61,6 +62,13 @@ func (s *ReportService) ExportPDF(req *ReportRequest, w io.Writer) error {
 func (s *ReportService) GenerateAsync(req *ReportRequest, callback func(*Report, error)) {
 	go func() {
 		report, err := s.Generate(req)
+		callback(report, err)
+	}()
+}
+
+func (s *ReportService) GenerateAsyncWithContext(ctx context.Context, req *ReportRequest, callback func(*Report, error)) {
+	go func() {
+		report, err := s.generator.GenerateWithContext(ctx, req)
 		callback(report, err)
 	}()
 }

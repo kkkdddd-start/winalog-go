@@ -248,10 +248,6 @@ func (a *LoginAnalyzer) isSuspiciousLogin(e *types.Event, logonType int) bool {
 		}
 	}
 
-	if a.isKnownSuspiciousIP(sourceIP) {
-		return true
-	}
-
 	return false
 }
 
@@ -263,22 +259,6 @@ func (a *LoginAnalyzer) isSuspiciousFailedLogin(e *types.Event, logonType int) b
 	}
 
 	return types.IsExternalIP(sourceIP)
-}
-
-func (a *LoginAnalyzer) isKnownSuspiciousIP(ip string) bool {
-	suspiciousIPs := []string{
-		"192.0.2.0/24",
-		"198.51.100.0/24",
-		"203.0.113.0/24",
-	}
-
-	for _, suspicious := range suspiciousIPs {
-		if strings.HasPrefix(ip, strings.TrimSuffix(suspicious, "/24")) {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (a *LoginAnalyzer) detectSuspiciousLogins(analysis *LoginAnalysis) []Finding {

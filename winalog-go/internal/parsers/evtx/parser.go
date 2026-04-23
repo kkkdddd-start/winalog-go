@@ -1,7 +1,6 @@
 package evtx
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,11 +40,12 @@ func (p *EvtxParser) Parse(path string) <-chan *types.Event {
 }
 
 func (p *EvtxParser) ParseWithError(path string) parsers.ParseResult {
-	events := make(chan *types.Event, 1000)
+	events := make(chan *types.Event, 100)
 	errChan := make(chan error, 1)
 
 	go func() {
 		defer close(events)
+		defer close(errChan)
 
 		evtxEvents, err := p.parseEvtxFile(path)
 		if err != nil {
@@ -60,7 +60,7 @@ func (p *EvtxParser) ParseWithError(path string) parsers.ParseResult {
 
 	return parsers.ParseResult{
 		Events: events,
-		Error:  nil,
+		ErrCh:  errChan,
 	}
 }
 
@@ -159,11 +159,6 @@ func (p *EvtxParser) convertMapToEvent(m *evtxlib.GoEvtxMap) *types.Event {
 
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
-	}
-
-	if rawJSON, err := json.Marshal(m); err == nil {
-		rawStr := string(rawJSON)
-		event.RawXML = &rawStr
 	}
 
 	return event

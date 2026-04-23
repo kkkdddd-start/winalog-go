@@ -18,7 +18,7 @@ type AccessibilityDetector struct {
 func NewAccessibilityDetector() *AccessibilityDetector {
 	return &AccessibilityDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4697},
 		},
 	}

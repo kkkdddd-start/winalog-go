@@ -18,7 +18,7 @@ type COMHijackDetector struct {
 func NewCOMHijackDetector() *COMHijackDetector {
 	return &COMHijackDetector{
 		config: &DetectorConfig{
-			Enabled:  false,
+			Enabled:  true,
 			EventIDs: []int32{4670},
 		},
 	}
