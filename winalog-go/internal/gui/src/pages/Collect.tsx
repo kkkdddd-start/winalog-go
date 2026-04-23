@@ -756,7 +756,7 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
             </thead>
             <tbody>
               {channels.map(ch => (
-                <tr key={ch.id} className={ch.enabled ? 'selected' : ''} onClick={() => toggleChannel(ch.id)}>
+                <tr key={ch.id} className={ch.enabled ? 'selected' : ''}>
                   <td>
                     <Checkbox checked={ch.enabled} onChange={() => toggleChannel(ch.id)} />
                   </td>
@@ -1037,7 +1037,6 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
                 <div
                   key={ch.id}
                   className={`channel-item ${ch.enabled ? 'selected' : ''}`}
-                  onClick={() => toggleChannel(ch.id)}
                 >
                   <Checkbox checked={ch.enabled} onChange={() => toggleChannel(ch.id)} />
                   <span className="channel-name" title={ch.log_path}>{ch.name}</span>
