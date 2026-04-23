@@ -15,6 +15,7 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
 	"github.com/kkkdddd-start/winalog-go/internal/config"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 )
 
@@ -70,6 +71,10 @@ type ProcessInfo struct {
 	Path        string         `json:"path"`
 	CommandLine string         `json:"command_line"`
 	IsSigned    bool           `json:"is_signed"`
+	IsElevated  bool           `json:"is_elevated"`
+	CPUPercent  float64        `json:"cpu_percent"`
+	MemoryMB    float64        `json:"memory_mb"`
+	StartTime   string         `json:"start_time"`
 	Signature   *SignatureInfo `json:"signature,omitempty"`
 }
 
@@ -142,6 +147,7 @@ type DriverInfo struct {
 	Description string `json:"description"`
 	Path        string `json:"path"`
 	Status      string `json:"status"`
+	Signer      string `json:"signer"`
 }
 
 type UserResponse struct {
@@ -150,24 +156,47 @@ type UserResponse struct {
 }
 
 type UserInfo struct {
-	Name     string `json:"name"`
-	SID      string `json:"sid"`
-	Enabled  bool   `json:"enabled"`
-	FullName string `json:"full_name"`
-	Type     string `json:"type"`
-	HomeDir  string `json:"home_dir"`
+	Name           string `json:"name"`
+	SID            string `json:"sid"`
+	Domain         string `json:"domain"`
+	Enabled        bool   `json:"enabled"`
+	FullName       string `json:"full_name"`
+	Type           string `json:"type"`
+	HomeDir        string `json:"home_dir"`
+	ProfilePath    string `json:"profile_path"`
+	LastLogin      string `json:"last_login"`
+	PasswordExpires bool  `json:"password_expires"`
 }
 
 type RegistryPersistenceResponse struct {
-	RunKeys []*RegistryKeyInfo `json:"run_keys"`
-	Total   int                `json:"total"`
+	RunKeys         []*RegistryKeyInfo `json:"run_keys"`
+	UserInit        []*RegistryKeyInfo `json:"user_init"`
+	TaskScheduler   []*RegistryKeyInfo `json:"task_scheduler"`
+	Services        []*RegistryKeyInfo `json:"services"`
+	IFEO            []*RegistryKeyInfo `json:"ifeo"`
+	AppInitDLLs     []*RegistryKeyInfo `json:"app_init_dlls"`
+	KnownDLLs       []*RegistryKeyInfo `json:"known_dlls"`
+	BootExecute     []*RegistryKeyInfo `json:"boot_execute"`
+	AppCertDlls     []*RegistryKeyInfo `json:"appcert_dlls"`
+	LSASSettings    []*RegistryKeyInfo `json:"lsa_settings"`
+	ShellExts       []*RegistryKeyInfo `json:"shell_extensions"`
+	BrowserHelper   []*RegistryKeyInfo `json:"browser_helpers"`
+	StartupFolders  []*RegistryKeyInfo `json:"startup_folders"`
+	Total           int                `json:"total"`
 }
 
 type RegistryKeyInfo struct {
-	Path  string `json:"path"`
-	Name  string `json:"name"`
-	Value string `json:"value"`
-	Type  string `json:"type"`
+	Path        string `json:"path"`
+	Name        string `json:"name"`
+	Value       string `json:"value"`
+	Type        string `json:"type"`
+	Source      string `json:"source,omitempty"`
+	Enabled     bool   `json:"enabled,omitempty"`
+	Description string `json:"description,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
+	ImagePath   string `json:"image_path,omitempty"`
+	Debugger    string `json:"debugger,omitempty"`
+	DllName     string `json:"dll_name,omitempty"`
 }
 
 type TaskResponse struct {
@@ -176,9 +205,17 @@ type TaskResponse struct {
 }
 
 type TaskInfo struct {
-	Name  string `json:"name"`
-	Path  string `json:"path"`
-	State string `json:"state"`
+	Name        string `json:"name"`
+	Path       string `json:"path"`
+	State      string `json:"state"`
+	Author     string `json:"author,omitempty"`
+	Description string `json:"description,omitempty"`
+	NextRunTime string `json:"next_run_time,omitempty"`
+	LastRunTime string `json:"last_run_time,omitempty"`
+	LastResult  int    `json:"last_result,omitempty"`
+	RunAsUser  string `json:"run_as_user,omitempty"`
+	Action     string `json:"action,omitempty"`
+	TriggerType string `json:"trigger_type,omitempty"`
 }
 
 var startTime = time.Now()
@@ -633,7 +670,7 @@ func (h *SystemHandler) GetDrivers(c *gin.Context) {
 		return
 	}
 
-	drivers, err := collectors.ListDrivers()
+	drivers, err := collectors.CollectDriverInfo(context.Background())
 	if err != nil {
 		log.Printf("[ERROR] GetDrivers failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -644,11 +681,36 @@ func (h *SystemHandler) GetDrivers(c *gin.Context) {
 	for _, d := range drivers {
 		result = append(result, &DriverInfo{
 			Name:        d.Name,
-			DisplayName: d.DisplayName,
+			DisplayName: d.Description,
 			Description: d.Description,
-			Path:        d.Path,
+			Path:        d.FilePath,
 			Status:      d.Status,
+			Signer:      d.Signer,
 		})
+	}
+
+	if h.db != nil {
+		systemRepo := storage.NewSystemRepo(h.db)
+		storageDrivers := make([]*storage.DriverInfo, 0, len(drivers))
+		for _, d := range drivers {
+			storageDrivers = append(storageDrivers, &storage.DriverInfo{
+				Name:        d.Name,
+				DisplayName: d.Description,
+				Description: d.Description,
+				Type:        "Kernel",
+				Status:      d.Status,
+				Started:     d.Started,
+				FilePath:    d.FilePath,
+				HashSHA256:  d.HashSHA256,
+				Signature:   d.Signature,
+				Signer:      d.Signer,
+			})
+		}
+		if err := systemRepo.SaveDrivers(storageDrivers); err != nil {
+			log.Printf("[ERROR] Failed to save drivers to database: %v", err)
+		} else {
+			log.Printf("[INFO] Saved %d drivers to database", len(storageDrivers))
+		}
 	}
 
 	c.JSON(http.StatusOK, DriverResponse{
@@ -674,8 +736,20 @@ func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 
 	if runtime.GOOS != "windows" {
 		c.JSON(http.StatusOK, RegistryPersistenceResponse{
-			RunKeys: []*RegistryKeyInfo{},
-			Total:   0,
+			RunKeys:        []*RegistryKeyInfo{},
+			UserInit:       []*RegistryKeyInfo{},
+			TaskScheduler:   []*RegistryKeyInfo{},
+			Services:       []*RegistryKeyInfo{},
+			IFEO:           []*RegistryKeyInfo{},
+			AppInitDLLs:    []*RegistryKeyInfo{},
+			KnownDLLs:      []*RegistryKeyInfo{},
+			BootExecute:    []*RegistryKeyInfo{},
+			AppCertDlls:    []*RegistryKeyInfo{},
+			LSASSettings:   []*RegistryKeyInfo{},
+			ShellExts:      []*RegistryKeyInfo{},
+			BrowserHelper:  []*RegistryKeyInfo{},
+			StartupFolders: []*RegistryKeyInfo{},
+			Total:          0,
 		})
 		return
 	}
@@ -683,8 +757,20 @@ func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 	if !enabled {
 		log.Printf("[INFO] GetRegistryPersistence skipped - module disabled")
 		c.JSON(http.StatusOK, RegistryPersistenceResponse{
-			RunKeys: []*RegistryKeyInfo{},
-			Total:   0,
+			RunKeys:        []*RegistryKeyInfo{},
+			UserInit:       []*RegistryKeyInfo{},
+			TaskScheduler:   []*RegistryKeyInfo{},
+			Services:       []*RegistryKeyInfo{},
+			IFEO:           []*RegistryKeyInfo{},
+			AppInitDLLs:    []*RegistryKeyInfo{},
+			KnownDLLs:      []*RegistryKeyInfo{},
+			BootExecute:    []*RegistryKeyInfo{},
+			AppCertDlls:    []*RegistryKeyInfo{},
+			LSASSettings:   []*RegistryKeyInfo{},
+			ShellExts:      []*RegistryKeyInfo{},
+			BrowserHelper:  []*RegistryKeyInfo{},
+			StartupFolders: []*RegistryKeyInfo{},
+			Total:          0,
 		})
 		return
 	}
@@ -698,35 +784,112 @@ func (h *SystemHandler) GetRegistryPersistence(c *gin.Context) {
 
 	if len(persistence) == 0 {
 		c.JSON(http.StatusOK, RegistryPersistenceResponse{
-			RunKeys: []*RegistryKeyInfo{},
-			Total:   0,
+			RunKeys:        []*RegistryKeyInfo{},
+			UserInit:       []*RegistryKeyInfo{},
+			TaskScheduler:   []*RegistryKeyInfo{},
+			Services:       []*RegistryKeyInfo{},
+			IFEO:           []*RegistryKeyInfo{},
+			AppInitDLLs:    []*RegistryKeyInfo{},
+			KnownDLLs:      []*RegistryKeyInfo{},
+			BootExecute:    []*RegistryKeyInfo{},
+			AppCertDlls:    []*RegistryKeyInfo{},
+			LSASSettings:   []*RegistryKeyInfo{},
+			ShellExts:      []*RegistryKeyInfo{},
+			BrowserHelper:  []*RegistryKeyInfo{},
+			StartupFolders: []*RegistryKeyInfo{},
+			Total:          0,
 		})
 		return
 	}
 
-	p := persistence[0]
-	keys := make([]*RegistryKeyInfo, 0)
-
-	for _, k := range p.RunKeys {
-		keys = append(keys, &RegistryKeyInfo{
-			Path:  k.Path,
-			Name:  k.Name,
-			Value: k.Value,
-			Type:  k.Type,
-		})
+	convertKeys := func(keys []*types.RegistryInfo) []*RegistryKeyInfo {
+		result := make([]*RegistryKeyInfo, 0, len(keys))
+		for _, k := range keys {
+			result = append(result, &RegistryKeyInfo{
+				Path:        k.Path,
+				Name:        k.Name,
+				Value:       k.Value,
+				Type:        k.Type,
+				Source:      k.Source,
+				Enabled:     k.Enabled,
+				Description: k.Description,
+				DisplayName: k.DisplayName,
+				ImagePath:   k.ImagePath,
+				Debugger:    k.Debugger,
+				DllName:     k.DllName,
+			})
+		}
+		return result
 	}
-	for _, k := range p.UserInit {
-		keys = append(keys, &RegistryKeyInfo{
-			Path:  k.Path,
-			Name:  k.Name,
-			Value: k.Value,
-			Type:  k.Type,
-		})
+
+	p := persistence[0]
+	total := len(p.RunKeys) + len(p.UserInit) + len(p.TaskScheduler) +
+		len(p.Services) + len(p.IFEO) + len(p.AppInitDLLs) +
+		len(p.KnownDLLs) + len(p.BootExecute) + len(p.AppCertDlls) +
+		len(p.LSASSettings) + len(p.ShellExtensions) + len(p.BrowserHelpers) +
+		len(p.StartupFolders)
+
+	if h.db != nil {
+		systemRepo := storage.NewSystemRepo(h.db)
+		storageRegistry := make([]*storage.RegistryPersistence, 0)
+		now := time.Now()
+		for _, k := range p.RunKeys {
+			storageRegistry = append(storageRegistry, &storage.RegistryPersistence{
+				Path:        k.Path,
+				Name:        k.Name,
+				Value:       k.Value,
+				Type:        k.Type,
+				Source:      k.Source,
+				Enabled:     k.Enabled,
+				CollectedAt: now,
+			})
+		}
+		for _, k := range p.Services {
+			storageRegistry = append(storageRegistry, &storage.RegistryPersistence{
+				Path:        k.Path,
+				Name:        k.Name,
+				Value:       k.ImagePath,
+				Type:        k.ServiceType,
+				Source:      k.Source,
+				Enabled:     k.Enabled,
+				CollectedAt: now,
+			})
+		}
+		for _, k := range p.IFEO {
+			if k.Debugger != "" {
+				storageRegistry = append(storageRegistry, &storage.RegistryPersistence{
+					Path:        k.Path,
+					Name:        k.Name,
+					Value:       k.Debugger,
+					Type:        "IFEO",
+					Source:      k.Source,
+					Enabled:     k.Enabled,
+					CollectedAt: now,
+				})
+			}
+		}
+		if err := systemRepo.SaveRegistryPersistence(storageRegistry); err != nil {
+			log.Printf("[ERROR] Failed to save registry persistence to database: %v", err)
+		} else {
+			log.Printf("[INFO] Saved %d registry persistence entries to database", len(storageRegistry))
+		}
 	}
 
 	c.JSON(http.StatusOK, RegistryPersistenceResponse{
-		RunKeys: keys,
-		Total:   len(keys),
+		RunKeys:        convertKeys(p.RunKeys),
+		UserInit:       convertKeys(p.UserInit),
+		TaskScheduler:  convertKeys(p.TaskScheduler),
+		Services:       convertKeys(p.Services),
+		IFEO:           convertKeys(p.IFEO),
+		AppInitDLLs:    convertKeys(p.AppInitDLLs),
+		KnownDLLs:      convertKeys(p.KnownDLLs),
+		BootExecute:    convertKeys(p.BootExecute),
+		AppCertDlls:    convertKeys(p.AppCertDlls),
+		LSASSettings:   convertKeys(p.LSASSettings),
+		ShellExts:      convertKeys(p.ShellExtensions),
+		BrowserHelper:  convertKeys(p.BrowserHelpers),
+		StartupFolders: convertKeys(p.StartupFolders),
+		Total:          total,
 	})
 }
 

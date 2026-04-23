@@ -55,21 +55,36 @@ func NewPersistenceHandler() *PersistenceHandler {
 	engine.RegisterAll(persistence.AllDetectors())
 
 	defaultRuleConfigs := map[string]PersistenceRuleInfo{
-		"run_key_detector":             {Name: "run_key_detector", Description: "Run Key Persistence", Technique: "T1547.001", Category: "Registry", Enabled: true, EventIDs: []int32{4657}, Patterns: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
-		"user_init_detector":           {Name: "user_init_detector", Description: "UserInit MPR Logon", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4688}, Patterns: []string{"UserInitMprLogonScript"}, Whitelist: []string{}},
-		"startup_folder_detector":      {Name: "startup_folder_detector", Description: "Startup Folder Persistence", Technique: "T1547.016", Category: "Registry", Enabled: true, EventIDs: []int32{4657}, Patterns: []string{"Startup"}, Whitelist: []string{}},
-		"accessibility_detector":       {Name: "accessibility_detector", Description: "Accessibility Features Backdoor", Technique: "T1546.001", Category: "Accessibility", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"sethc.exe", "utilman.exe", "magnify.exe", "narrator.exe", "osk.exe", "displayswitch.exe"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
-		"com_hijack_detector":          {Name: "com_hijack_detector", Description: "COM Hijacking", Technique: "T1546.015", Category: "COM", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"HKEY_CURRENT_USER\\Software\\Classes\\"}, Whitelist: []string{}},
-		"ifeo_detector":                {Name: "ifeo_detector", Description: "IFEO Injection", Technique: "T1546.012", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"Debugger"}, Whitelist: []string{}},
-		"appinit_detector":             {Name: "appinit_detector", Description: "AppInit DLLs", Technique: "T1546.010", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"AppInit_DLLs"}, Whitelist: []string{}},
-		"wmi_persistence_detector":     {Name: "wmi_persistence_detector", Description: "WMI Event Subscription", Technique: "T1546.003", Category: "WMI", Enabled: true, EventIDs: []int32{4688, 5861}, Patterns: []string{"ActiveScriptEventConsumer"}, Whitelist: []string{}},
-		"service_persistence_detector": {Name: "service_persistence_detector", Description: "Service Persistence", Technique: "T1543.003", Category: "Service", Enabled: true, EventIDs: []int32{4697, 7045}, Patterns: []string{"sc.exe create"}, Whitelist: []string{}},
-		"lsa_persistence_detector":     {Name: "lsa_persistence_detector", Description: "LSA Authentication Package", Technique: "T1546.008", Category: "Registry", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"Security Packages"}, Whitelist: []string{}},
-		"winsock_detector":             {Name: "winsock_detector", Description: "Winsock Helper DLL", Technique: "T1546.007", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"NetworkProvider"}, Whitelist: []string{}},
-		"bho_detector":                 {Name: "bho_detector", Description: "Browser Helper Object", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"InprocServer32"}, Whitelist: []string{}},
-		"print_monitor_detector":       {Name: "print_monitor_detector", Description: "Print Monitor", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"Print\\Monitors"}, Whitelist: []string{}},
-		"boot_execute_detector":        {Name: "boot_execute_detector", Description: "Boot Execute", Technique: "T1053", Category: "ScheduledTask", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"boot execute"}, Whitelist: []string{}},
-		"etw_persistence_detector":     {Name: "etw_persistence_detector", Description: "ETW Manipulation", Technique: "T1546.006", Category: "Registry", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"ETW Providers"}, Whitelist: []string{}},
+		"run_key_detector":              {Name: "run_key_detector", Description: "Run Key Persistence", Technique: "T1547.001", Category: "Registry", Enabled: true, EventIDs: []int32{4657}, Patterns: []string{"CurrentVersion\\Run", "CurrentVersion\\RunOnce"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		"user_init_detector":            {Name: "user_init_detector", Description: "UserInit MPR Logon", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4688}, Patterns: []string{"UserInitMprLogonScript"}, Whitelist: []string{}},
+		"startup_folder_detector":       {Name: "startup_folder_detector", Description: "Startup Folder Persistence", Technique: "T1547.016", Category: "Registry", Enabled: true, EventIDs: []int32{4657}, Patterns: []string{"Startup"}, Whitelist: []string{}},
+		"accessibility_detector":        {Name: "accessibility_detector", Description: "Accessibility Features Backdoor", Technique: "T1546.001", Category: "Accessibility", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"sethc.exe", "utilman.exe", "magnify.exe", "narrator.exe", "osk.exe", "displayswitch.exe"}, Whitelist: []string{"C:\\Windows\\System32\\*"}},
+		"com_hijack_detector":           {Name: "com_hijack_detector", Description: "COM Hijacking", Technique: "T1546.015", Category: "COM", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"HKEY_CURRENT_USER\\Software\\Classes\\"}, Whitelist: []string{}},
+		"ifeo_detector":                 {Name: "ifeo_detector", Description: "IFEO Injection", Technique: "T1546.012", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"Debugger"}, Whitelist: []string{}},
+		"appinit_detector":              {Name: "appinit_detector", Description: "AppInit DLLs", Technique: "T1546.010", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"AppInit_DLLs"}, Whitelist: []string{}},
+		"wmi_persistence_detector":      {Name: "wmi_persistence_detector", Description: "WMI Event Subscription", Technique: "T1546.003", Category: "WMI", Enabled: true, EventIDs: []int32{4688, 5861}, Patterns: []string{"ActiveScriptEventConsumer"}, Whitelist: []string{}},
+		"service_persistence_detector":  {Name: "service_persistence_detector", Description: "Service Persistence", Technique: "T1543.003", Category: "Service", Enabled: true, EventIDs: []int32{4697, 7045}, Patterns: []string{"sc.exe create"}, Whitelist: []string{}},
+		"lsa_persistence_detector":      {Name: "lsa_persistence_detector", Description: "LSA Authentication Package", Technique: "T1546.008", Category: "Registry", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"Security Packages"}, Whitelist: []string{}},
+		"winsock_detector":              {Name: "winsock_detector", Description: "Winsock Helper DLL", Technique: "T1546.007", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"NetworkProvider"}, Whitelist: []string{}},
+		"bho_detector":                  {Name: "bho_detector", Description: "Browser Helper Object", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"InprocServer32"}, Whitelist: []string{}},
+		"print_monitor_detector":        {Name: "print_monitor_detector", Description: "Print Monitor", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"Print\\Monitors"}, Whitelist: []string{}},
+		"boot_execute_detector":         {Name: "boot_execute_detector", Description: "Boot Execute", Technique: "T1053", Category: "ScheduledTask", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"boot execute"}, Whitelist: []string{}},
+		"etw_persistence_detector":      {Name: "etw_persistence_detector", Description: "ETW Manipulation", Technique: "T1546.006", Category: "Registry", Enabled: true, EventIDs: []int32{4670}, Patterns: []string{"ETW Providers"}, Whitelist: []string{}},
+		"scheduled_task_detector":       {Name: "scheduled_task_detector", Description: "Scheduled Task Persistence", Technique: "T1053", Category: "ScheduledTask", Enabled: true, EventIDs: []int32{4698, 4699, 4700, 4701, 4702}, Patterns: []string{"powershell", "cmd.exe", "rundll32"}, Whitelist: []string{}},
+		"appcert_detector":              {Name: "appcert_detector", Description: "AppCertDlls Persistence", Technique: "T1546.001", Category: "Registry", Enabled: true, EventIDs: []int32{4697}, Patterns: []string{"AppCertDlls"}, Whitelist: []string{}},
+	}
+
+	for _, d := range engine.ListDetectors() {
+		detectorName := d.Name
+		if config, exists := defaultRuleConfigs[detectorName]; exists {
+			engine.SetDetectorConfig(detectorName, &persistence.DetectorConfig{
+				Enabled:   config.Enabled,
+				EventIDs:  config.EventIDs,
+				Patterns:  config.Patterns,
+				Whitelist: config.Whitelist,
+			})
+			log.Printf("[INFO] [PERSISTENCE] Enabled detector: %s (enabled=%v)", detectorName, config.Enabled)
+		}
 	}
 
 	return &PersistenceHandler{
@@ -77,21 +92,23 @@ func NewPersistenceHandler() *PersistenceHandler {
 			ttl: defaultCacheTTL,
 		},
 		detectorConfig: map[string]bool{
-			"run_key_detector":             true,
-			"user_init_detector":           true,
-			"startup_folder_detector":      true,
-			"accessibility_detector":       true,
-			"com_hijack_detector":          true,
-			"ifeo_detector":                true,
-			"appinit_detector":             true,
-			"wmi_persistence_detector":     true,
-			"service_persistence_detector": true,
-			"lsa_persistence_detector":     true,
-			"winsock_detector":             true,
-			"bho_detector":                 true,
-			"print_monitor_detector":       true,
-			"boot_execute_detector":        true,
-			"etw_persistence_detector":     true,
+			"run_key_detector":              true,
+			"user_init_detector":            true,
+			"startup_folder_detector":       true,
+			"accessibility_detector":        true,
+			"com_hijack_detector":           true,
+			"ifeo_detector":                 true,
+			"appinit_detector":              true,
+			"wmi_persistence_detector":      true,
+			"service_persistence_detector":  true,
+			"lsa_persistence_detector":      true,
+			"winsock_detector":              true,
+			"bho_detector":                  true,
+			"print_monitor_detector":        true,
+			"boot_execute_detector":         true,
+			"etw_persistence_detector":      true,
+			"scheduled_task_detector":       true,
+			"appcert_detector":             true,
 		},
 		detectionEngine: engine,
 		ruleConfigs:     defaultRuleConfigs,
@@ -621,10 +638,9 @@ func (h *PersistenceHandler) UpdateRule(c *gin.Context) {
 
 // SetupPersistenceRoutes godoc
 // @Summary 设置持久化检测路由
-// @Description 配置持久化检测相关的API路由
+// @Description 配置持久化检测相关的API路由（不含 /detect/stream，由平台特定文件处理）
 // @Tags persistence
 // @Router /api/persistence/detect [get]
-// @Router /api/persistence/detect/stream [get]
 // @Router /api/persistence/categories [get]
 // @Router /api/persistence/techniques [get]
 // @Router /api/persistence/detectors [get]
@@ -636,7 +652,6 @@ func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandle
 	persistenceGroup := r.Group("/api/persistence")
 	{
 		persistenceGroup.GET("/detect", persistenceHandler.Detect)
-		persistenceGroup.GET("/detect/stream", persistenceHandler.StreamDetect)
 		persistenceGroup.GET("/categories", persistenceHandler.ListCategories)
 		persistenceGroup.GET("/techniques", persistenceHandler.ListTechniques)
 		persistenceGroup.GET("/detectors", persistenceHandler.ListDetectors)
@@ -644,52 +659,5 @@ func SetupPersistenceRoutes(r *gin.Engine, persistenceHandler *PersistenceHandle
 		persistenceGroup.GET("/rules", persistenceHandler.ListRules)
 		persistenceGroup.GET("/rules/:name", persistenceHandler.GetRule)
 		persistenceGroup.PUT("/rules", persistenceHandler.UpdateRule)
-	}
-}
-
-// StreamDetect godoc
-// @Summary 建立持久化检测流
-// @Description 通过Server-Sent Events推送检测结果
-// @Tags persistence
-// @Produce text/event-stream
-// @Success 200 {object} map[string]interface{}
-// @Router /api/persistence/detect/stream [get]
-func (h *PersistenceHandler) StreamDetect(c *gin.Context) {
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("X-Accel-Buffering", "no")
-
-	clientIP := c.ClientIP()
-	clientGone := c.Request.Context().Done()
-
-	log.Printf("[INFO] [SSE] Persistence stream connected from %s", clientIP)
-
-	c.SSEvent("connected", map[string]interface{}{
-		"type":    "connected",
-		"message": "Connected to persistence detection stream. Use /api/persistence/detect for detection results.",
-		"time":    time.Now().Format(time.RFC3339),
-	})
-	c.Writer.Flush()
-
-	heartbeatInterval := 30 * time.Second
-	heartbeatTicker := time.NewTicker(heartbeatInterval)
-	defer heartbeatTicker.Stop()
-
-	tickCount := 0
-
-	for {
-		select {
-		case <-clientGone:
-			log.Printf("[INFO] [SSE] Persistence stream disconnected from %s (ticks=%d)", clientIP, tickCount)
-			return
-		case <-heartbeatTicker.C:
-			tickCount++
-			if _, err := fmt.Fprintf(c.Writer, ": heartbeat %d\n\n", time.Now().Unix()); err != nil {
-				log.Printf("[WARN] [SSE] Persistence heartbeat write failed: %v", err)
-				return
-			}
-			c.Writer.Flush()
-		}
 	}
 }

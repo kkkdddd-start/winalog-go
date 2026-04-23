@@ -33,7 +33,7 @@ func (r *PowerShellResult) String() string {
 	return r.Output
 }
 
-const DefaultPowerShellTimeout = 30 * time.Second
+const DefaultPowerShellTimeout = 120 * time.Second
 
 func RunPowerShell(command string) *PowerShellResult {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultPowerShellTimeout)

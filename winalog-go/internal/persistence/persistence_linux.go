@@ -29,6 +29,13 @@ type ConfigurableDetector interface {
 	GetConfig() *DetectorConfig
 }
 
+type DetectorInfo struct {
+	Name          string
+	Description   string
+	Technique     Technique
+	RequiresAdmin bool
+}
+
 type DetectionEngine struct {
 	mu sync.RWMutex
 }
@@ -52,6 +59,10 @@ func (e *DetectionEngine) DetectTechnique(ctx context.Context, technique Techniq
 func (e *DetectionEngine) Register(d Detector) {}
 
 func (e *DetectionEngine) RegisterAll(detectors []Detector) {}
+
+func (e *DetectionEngine) ListDetectors() []DetectorInfo {
+	return nil
+}
 
 func (e *DetectionEngine) SetDetectorConfig(name string, config *DetectorConfig) error {
 	return fmt.Errorf("not supported on this platform")

@@ -13,10 +13,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/forensics"
-	"github.com/kkkdddd-start/winalog-go/internal/utils"
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 type OneClickCollector struct {
@@ -28,6 +29,7 @@ type CollectConfig struct {
 	Workers            int
 	IncludePrefetch    bool
 	IncludeRegistry    bool
+	IncludeStartup     bool
 	IncludeSystemInfo  bool
 	IncludeProcessSig  bool
 	IncludeProcessDLLs bool
@@ -120,6 +122,7 @@ func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, 
 			c.cfg.Workers = collectOpts.Workers
 			c.cfg.IncludePrefetch = collectOpts.IncludePrefetch
 			c.cfg.IncludeRegistry = collectOpts.IncludeRegistry
+			c.cfg.IncludeStartup = collectOpts.IncludeStartup
 			c.cfg.IncludeSystemInfo = collectOpts.IncludeSystemInfo
 			c.cfg.IncludeProcessSig = collectOpts.IncludeProcessSig
 			c.cfg.IncludeProcessDLLs = collectOpts.IncludeProcessDLLs
@@ -209,6 +212,7 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	}{
 		{"systemInfo", "系统信息", "收集系统基本信息", c.cfg.IncludeSystemInfo, func() ([]CollectionItem, error) { return nil, c.collectSystemInfoTo(tempDir) }},
 		{"registry", "注册表", "收集注册表数据", c.cfg.IncludeRegistry, func() ([]CollectionItem, error) { return nil, c.CollectRegistry(ctx, tempDir) }},
+		{"startupFolders", "启动文件夹", "收集启动文件夹", c.cfg.IncludeStartup, func() ([]CollectionItem, error) { return nil, c.CollectStartupFolders(ctx, tempDir) }},
 		{"scheduledTasks", "计划任务", "收集计划任务", c.cfg.IncludeTasks, func() ([]CollectionItem, error) { return nil, c.CollectScheduledTasks(ctx, tempDir) }},
 		{"localUsers", "本地用户", "收集本地用户", c.cfg.IncludeUsers, func() ([]CollectionItem, error) { return nil, c.CollectLocalUsers(ctx, tempDir) }},
 		{"prefetch", "Prefetch", "收集 Prefetch", c.cfg.IncludePrefetch, func() ([]CollectionItem, error) { return nil, c.CollectPrefetch(ctx, tempDir) }},
@@ -222,6 +226,31 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		{"drivers", "驱动", "收集驱动信息", c.cfg.IncludeDrivers, func() ([]CollectionItem, error) { return nil, c.CollectDrivers(ctx, tempDir) }},
 	}
 
+	workers := c.cfg.Workers
+	if workers < 1 {
+		workers = 1
+	}
+	if workers > 8 {
+		workers = 8
+	}
+
+	log.Printf("[INFO] Running parallel collection with %d workers", workers)
+
+	sem := make(chan struct{}, workers)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	type itemResult struct {
+		name        string
+		displayName string
+		description string
+		success     bool
+		err        error
+		subErrors  []CollectionItem
+	}
+
+	results := make(chan itemResult, len(itemDefinitions))
+
 	for _, item := range itemDefinitions {
 		if !item.requested {
 			continue
@@ -234,37 +263,62 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 			Success:     false,
 		})
 
-		log.Printf("[INFO] Collecting %s...", item.displayName)
-		subErrors, err := item.collectFn()
-		if err != nil {
-			log.Printf("[ERROR] %s collection failed: %v", item.displayName, err)
-			allErrors = append(allErrors, fmt.Sprintf("%s: %v", item.name, err))
-			result.Summary.FailedItems = append(result.Summary.FailedItems, CollectionItem{
-				Name:        item.name,
-				DisplayName: item.displayName,
-				Description: item.description,
-				Success:     false,
-				Error:       err.Error(),
-			})
-		} else {
-			for _, failed := range subErrors {
-				result.Summary.FailedItems = append(result.Summary.FailedItems, failed)
-			}
-			if len(subErrors) > 0 {
-				log.Printf("[WARN] %s had %d individual item failures", item.displayName, len(subErrors))
-			}
+		wg.Add(1)
+		go func(itm struct {
+			name        string
+			displayName string
+			description string
+			requested   bool
+			collectFn   func() ([]CollectionItem, error)
+		}) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
-			log.Printf("[INFO] %s collected successfully", item.displayName)
-			collectedItems[item.name] = 1
-			result.Summary.CollectedItems = append(result.Summary.CollectedItems, CollectionItem{
-				Name:        item.name,
-				DisplayName: item.displayName,
-				Description: item.description,
-				Success:     true,
-				Path:        filepath.Join(tempDir, item.name),
-			})
-		}
+			log.Printf("[INFO] Collecting %s...", itm.displayName)
+			subErrors, err := itm.collectFn()
+
+			mu.Lock()
+			if err != nil {
+				log.Printf("[ERROR] %s collection failed: %v", itm.displayName, err)
+				allErrors = append(allErrors, fmt.Sprintf("%s: %v", itm.name, err))
+				result.Summary.FailedItems = append(result.Summary.FailedItems, CollectionItem{
+					Name:        itm.name,
+					DisplayName: itm.displayName,
+					Description: itm.description,
+					Success:     false,
+					Error:       err.Error(),
+				})
+			} else {
+				for _, failed := range subErrors {
+					result.Summary.FailedItems = append(result.Summary.FailedItems, failed)
+				}
+				if len(subErrors) > 0 {
+					log.Printf("[WARN] %s had %d individual item failures", itm.displayName, len(subErrors))
+				}
+
+				log.Printf("[INFO] %s collected successfully", itm.displayName)
+				collectedItems[itm.name] = 1
+				result.Summary.CollectedItems = append(result.Summary.CollectedItems, CollectionItem{
+					Name:        itm.name,
+					DisplayName: itm.displayName,
+					Description: itm.description,
+					Success:     true,
+					Path:        filepath.Join(tempDir, itm.name),
+				})
+			}
+			mu.Unlock()
+
+			results <- itemResult{
+				name:        itm.name,
+				displayName: itm.displayName,
+				success:     err == nil,
+			}
+		}(item)
 	}
+
+	wg.Wait()
+	close(results)
 
 	if c.cfg.CalculateHash {
 		log.Printf("[INFO] Calculating file hashes...")
@@ -539,22 +593,74 @@ func (c *OneClickCollector) CollectRegistry(ctx context.Context, outputDir strin
 		return err
 	}
 
-	runKeys := []string{
-		`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
-		`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`,
-		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
-		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`,
+	persistence, err := CollectRegistryPersistence(ctx)
+	if err != nil {
+		log.Printf("[WARN] [OneClick] CollectRegistryPersistence failed: %v", err)
+		return err
 	}
 
-	for _, keyPath := range runKeys {
-		keyName := strings.ReplaceAll(keyPath, "\\", "_")
-		keyName = strings.ReplaceAll(keyName, ":", "")
-		outputPath := filepath.Join(regDir, keyName+".txt")
+	if len(persistence) > 0 {
+		p := persistence[0]
 
-		cmd := fmt.Sprintf(`Get-ItemProperty -Path '%s' -ErrorAction SilentlyContinue | ConvertTo-Json -Compress`, keyPath)
-		result := utils.RunPowerShell(cmd)
-		if result.Success() && result.Output != "" {
-			os.WriteFile(outputPath, []byte(result.Output), 0600)
+		categories := map[string][]*types.RegistryInfo{
+			"run_keys":          p.RunKeys,
+			"user_init":         p.UserInit,
+			"task_scheduler":    p.TaskScheduler,
+			"services":          p.Services,
+			"ifeo":              p.IFEO,
+			"app_init_dlls":    p.AppInitDLLs,
+			"known_dlls":        p.KnownDLLs,
+			"boot_execute":      p.BootExecute,
+			"appcert_dlls":     p.AppCertDlls,
+			"lsa_settings":      p.LSASSettings,
+			"shell_extensions":  p.ShellExtensions,
+			"browser_helpers":   p.BrowserHelpers,
+		}
+
+		for category, entries := range categories {
+			if len(entries) == 0 {
+				continue
+			}
+			categoryDir := filepath.Join(regDir, category)
+			if err := os.MkdirAll(categoryDir, 0755); err != nil {
+				log.Printf("[WARN] [OneClick] Failed to create directory %s: %v", categoryDir, err)
+				continue
+			}
+			data, err := json.MarshalIndent(entries, "", "  ")
+			if err != nil {
+				log.Printf("[WARN] [OneClick] Failed to marshal %s: %v", category, err)
+				continue
+			}
+			if err := os.WriteFile(filepath.Join(categoryDir, category+".json"), data, 0600); err != nil {
+				log.Printf("[WARN] [OneClick] Failed to write %s: %v", category, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *OneClickCollector) CollectStartupFolders(ctx context.Context, outputDir string) error {
+	startupDir := filepath.Join(outputDir, "startup_folders")
+	if err := os.MkdirAll(startupDir, 0755); err != nil {
+		return err
+	}
+
+	persistence, err := CollectRegistryPersistence(ctx)
+	if err != nil {
+		log.Printf("[WARN] [OneClick] CollectStartupFolders failed: %v", err)
+		return err
+	}
+
+	if len(persistence) > 0 && len(persistence[0].StartupFolders) > 0 {
+		data, err := json.MarshalIndent(persistence[0].StartupFolders, "", "  ")
+		if err != nil {
+			log.Printf("[WARN] [OneClick] Failed to marshal startup folders: %v", err)
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(startupDir, "startup_folders.json"), data, 0600); err != nil {
+			log.Printf("[WARN] [OneClick] Failed to write startup_folders.json: %v", err)
+			return err
 		}
 	}
 
@@ -572,7 +678,10 @@ func (c *OneClickCollector) CollectAmcache(ctx context.Context, outputDir string
 		return err
 	}
 
-	data, _ := json.MarshalIndent(entries, "", "  ")
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal amcache: %w", err)
+	}
 	return os.WriteFile(filepath.Join(amcacheDir, "amcache.json"), data, 0600)
 }
 
@@ -587,7 +696,10 @@ func (c *OneClickCollector) CollectUserAssist(ctx context.Context, outputDir str
 		return err
 	}
 
-	data, _ := json.MarshalIndent(entries, "", "  ")
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal userassist: %w", err)
+	}
 	return os.WriteFile(filepath.Join(uaDir, "userassist.json"), data, 0600)
 }
 
@@ -602,9 +714,15 @@ func (c *OneClickCollector) CollectUSNJournal(ctx context.Context, outputDir str
 		if err != nil {
 			continue
 		}
-		data, _ := json.MarshalIndent(entries, "", "  ")
+		data, err := json.MarshalIndent(entries, "", "  ")
+		if err != nil {
+			log.Printf("[WARN] [OneClick] Failed to marshal USN journal for %s: %v", drive, err)
+			continue
+		}
 		fileName := fmt.Sprintf("usnjournal_%s.json", strings.TrimSuffix(drive, ":"))
-		os.WriteFile(filepath.Join(usnDir, fileName), data, 0600)
+		if err := os.WriteFile(filepath.Join(usnDir, fileName), data, 0600); err != nil {
+			log.Printf("[WARN] [OneClick] Failed to write USN journal for %s: %v", drive, err)
+		}
 	}
 
 	return nil
@@ -621,7 +739,10 @@ func (c *OneClickCollector) CollectShimCache(ctx context.Context, outputDir stri
 		return err
 	}
 
-	data, _ := json.MarshalIndent(entries, "", "  ")
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal shimcache: %w", err)
+	}
 	return os.WriteFile(filepath.Join(shimDir, "shimcache.json"), data, 0600)
 }
 

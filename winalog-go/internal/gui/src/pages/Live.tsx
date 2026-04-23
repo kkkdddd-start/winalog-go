@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useI18n } from '../locales/I18n'
 import { monitorAPI, MonitorEvent } from '../api'
 
@@ -25,6 +25,7 @@ interface LiveStats {
 }
 
 const LIVE_STORAGE_KEY = 'winalog_live_monitoring_enabled'
+const POLL_INTERVAL_MS = 2000
 
 function Live() {
   const { t } = useI18n()
@@ -40,84 +41,8 @@ function Live() {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
   const eventsContainerRef = useRef<HTMLDivElement>(null)
-  const eventSourceRef = useRef<EventSource | null>(null)
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const eventIdCounter = useRef(0)
-
-  useEffect(() => {
-    if (eventsContainerRef.current) {
-      eventsContainerRef.current.scrollTop = 0
-    }
-  }, [events])
-
-  useEffect(() => {
-    if (isEnabled) {
-      startRealTimeMonitoring()
-    } else {
-      stopRealTimeMonitoring()
-    }
-    return () => {
-      stopRealTimeMonitoring()
-    }
-  }, [isEnabled])
-
-  const startRealTimeMonitoring = async () => {
-    try {
-      await monitorAPI.startStop('start')
-    } catch (err) {
-      console.error('Failed to start monitor:', err)
-    }
-
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-    }
-
-    const eventSource = monitorAPI.streamEvents(
-      (data: MonitorEvent) => {
-        const event: LiveEvent = {
-          id: eventIdCounter.current++,
-          timestamp: data.timestamp || new Date().toISOString(),
-          event_id: 0,
-          level: mapMonitorLevel(data.type),
-          source: data.type || 'monitor',
-          log_name: data.type || 'monitor',
-          computer: 'local',
-          user: '',
-          message: formatMonitorMessage(data),
-          ip_address: '',
-        }
-        setEvents(prev => [event, ...prev].slice(0, 100))
-      },
-      (err: any) => {
-        console.error('Monitor stream error:', err)
-        setError('Connection lost. Retrying...')
-      }
-    )
-
-    eventSourceRef.current = eventSource as unknown as EventSource
-
-    try {
-      const statsRes = await monitorAPI.getStats()
-      if (statsRes.data?.stats) {
-        const s = statsRes.data.stats
-        setStats({
-          total_events: (s.ProcessCount || 0) + (s.NetworkCount || 0) + (s.DNSCount || 0),
-          events_per_sec: 0,
-          uptime: s.Uptime || '0s',
-          process_count: s.ProcessCount || 0,
-          network_count: s.NetworkCount || 0,
-          dns_count: s.DNSCount || 0,
-        })
-      }
-    } catch {}
-  }
-
-  const stopRealTimeMonitoring = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-      eventSourceRef.current = null
-    }
-    monitorAPI.startStop('stop').catch(console.error)
-  }
 
   const mapMonitorLevel = (type: string): string => {
     switch (type?.toLowerCase()) {
@@ -150,6 +75,101 @@ function Live() {
     return parts.length > 0 ? parts.join(' | ') : `${data.type || 'event'} detected`
   }
 
+  useEffect(() => {
+    if (eventsContainerRef.current) {
+      eventsContainerRef.current.scrollTop = 0
+    }
+  }, [events])
+
+  const startRealTimeMonitoring = useCallback(async () => {
+    try {
+      await monitorAPI.startStop('start')
+    } catch (err) {
+      console.error('Failed to start monitor:', err)
+      setError('Failed to start monitoring')
+      return
+    }
+
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+    }
+
+    const pollData = async () => {
+      try {
+        const [statsRes, eventsRes] = await Promise.all([
+          monitorAPI.getStats(),
+          monitorAPI.getEvents({ limit: 10 })
+        ])
+
+        if (statsRes.data?.stats) {
+          const s = statsRes.data.stats
+          setStats({
+            total_events: (s.process_count || 0) + (s.network_count || 0) + (s.dns_count || 0),
+            events_per_sec: 0,
+            uptime: s.uptime || '0s',
+            process_count: s.process_count || 0,
+            network_count: s.network_count || 0,
+            dns_count: s.dns_count || 0,
+          })
+        } else if (statsRes.data) {
+          const s = statsRes.data
+          setStats({
+            total_events: (s.total_events || 0),
+            events_per_sec: s.events_per_sec || 0,
+            uptime: s.uptime || '0s',
+            process_count: 0,
+            network_count: 0,
+            dns_count: 0,
+          })
+        }
+
+        if (eventsRes.data?.events && Array.isArray(eventsRes.data.events)) {
+          const newEvents: LiveEvent[] = eventsRes.data.events.slice(0, 10).map((data: MonitorEvent) => ({
+            id: eventIdCounter.current++,
+            timestamp: data.timestamp || new Date().toISOString(),
+            event_id: 0,
+            level: mapMonitorLevel(data.type),
+            source: data.type || 'monitor',
+            log_name: data.type || 'monitor',
+            computer: 'local',
+            user: '',
+            message: formatMonitorMessage(data),
+            ip_address: '',
+          }))
+          setEvents(prev => [...newEvents, ...prev].slice(0, 100))
+        }
+
+        setError(null)
+      } catch (err: any) {
+        console.error('Poll error:', err)
+        setError('Connection lost. Retrying...')
+      }
+    }
+
+    pollData()
+
+    pollIntervalRef.current = setInterval(pollData, POLL_INTERVAL_MS)
+  }, [])
+
+  const stopRealTimeMonitoring = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+    monitorAPI.startStop('stop').catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    if (isEnabled) {
+      startRealTimeMonitoring()
+    } else {
+      stopRealTimeMonitoring()
+    }
+    return () => {
+      stopRealTimeMonitoring()
+    }
+  }, [isEnabled, startRealTimeMonitoring, stopRealTimeMonitoring])
+
   const toggleMonitoring = () => {
     setIsEnabled(prev => {
       const newValue = !prev
@@ -159,14 +179,6 @@ function Live() {
       return newValue
     })
   }
-
-  useEffect(() => {
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-      }
-    }
-  }, [])
 
   const getLevelColor = (level: string) => {
     switch (level?.toLowerCase()) {
@@ -178,6 +190,23 @@ function Live() {
       default: return '#888'
     }
   }
+
+  const filteredEvents = events.filter(event => {
+    if (filter === 'all') return true
+    return event.level?.toLowerCase() === filter
+  })
+
+  const getLogSourceStats = () => {
+    const stats: Record<string, number> = {}
+    filteredEvents.forEach(event => {
+      const source = event.log_name || 'Unknown'
+      stats[source] = (stats[source] || 0) + 1
+    })
+    return stats
+  }
+
+  const logSourceStats = getLogSourceStats()
+  const logSourceEntries = Object.entries(logSourceStats).sort((a, b) => b[1] - a[1])
 
   const exportToCSV = () => {
     if (events.length === 0) return
@@ -204,23 +233,6 @@ function Live() {
     link.click()
     URL.revokeObjectURL(url)
   }
-
-  const getLogSourceStats = () => {
-    const stats: Record<string, number> = {}
-    filteredEvents.forEach(event => {
-      const source = event.log_name || 'Unknown'
-      stats[source] = (stats[source] || 0) + 1
-    })
-    return stats
-  }
-
-  const logSourceStats = getLogSourceStats()
-  const logSourceEntries = Object.entries(logSourceStats).sort((a, b) => b[1] - a[1])
-
-  const filteredEvents = events.filter(event => {
-    if (filter === 'all') return true
-    return event.level?.toLowerCase() === filter
-  })
 
   const formatTime = (timestamp: string) => {
     try {

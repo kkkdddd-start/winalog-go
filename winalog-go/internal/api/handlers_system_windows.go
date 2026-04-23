@@ -74,6 +74,10 @@ func (h *SystemHandler) GetProcesses(c *gin.Context) {
 				Thumbprint: p.Signature.Thumbprint,
 			}
 		}
+		startTimeStr := ""
+		if !p.StartTime.IsZero() {
+			startTimeStr = p.StartTime.Format(time.RFC3339)
+		}
 		result = append(result, &ProcessInfo{
 			PID:         p.PID,
 			PPID:        p.PPID,
@@ -85,6 +89,10 @@ func (h *SystemHandler) GetProcesses(c *gin.Context) {
 			Path:        p.Path,
 			CommandLine: p.CommandLine,
 			IsSigned:    p.IsSigned,
+			IsElevated:  p.IsElevated,
+			CPUPercent:  p.CPUPercent,
+			MemoryMB:    p.MemoryMB,
+			StartTime:   startTimeStr,
 			Signature:   sigInfo,
 		})
 		if len(result) >= limit {
@@ -161,13 +169,51 @@ func (h *SystemHandler) GetUsers(c *gin.Context) {
 
 	result := make([]*UserInfo, 0, len(users))
 	for _, u := range users {
+		lastLoginStr := ""
+		if !u.LastLogin.IsZero() {
+			lastLoginStr = u.LastLogin.Format(time.RFC3339)
+		}
 		result = append(result, &UserInfo{
-			Name:     u.Name,
-			SID:      u.SID,
-			Enabled:  u.Enabled,
-			FullName: u.FullName,
-			Type:     u.Type,
+			Name:            u.Name,
+			SID:             u.SID,
+			Domain:          u.Domain,
+			Enabled:         u.Enabled,
+			FullName:        u.FullName,
+			Type:            u.Type,
+			HomeDir:         u.HomeDir,
+			ProfilePath:     u.ProfilePath,
+			LastLogin:       lastLoginStr,
+			PasswordExpires: u.PasswordExp,
 		})
+	}
+
+	if h.db != nil {
+		systemRepo := storage.NewSystemRepo(h.db)
+		storageUsers := make([]*storage.UserInfo, 0, len(users))
+		for _, u := range users {
+			var lastLogin *time.Time
+			if !u.LastLogin.IsZero() {
+				t := u.LastLogin
+				lastLogin = &t
+			}
+			storageUsers = append(storageUsers, &storage.UserInfo{
+				SID:              u.SID,
+				Name:             u.Name,
+				Domain:           u.Domain,
+				FullName:         u.FullName,
+				Type:             u.Type,
+				Enabled:          u.Enabled,
+				LastLogin:        lastLogin,
+				PasswordExpires:  u.PasswordExp,
+				HomeDir:          u.HomeDir,
+				ProfilePath:      u.ProfilePath,
+			})
+		}
+		if err := systemRepo.SaveUsers(storageUsers); err != nil {
+			log.Printf("[ERROR] Failed to save users to database: %v", err)
+		} else {
+			log.Printf("[INFO] Saved %d users to database", len(storageUsers))
+		}
 	}
 
 	c.JSON(http.StatusOK, UserResponse{
@@ -212,10 +258,43 @@ func (h *SystemHandler) GetScheduledTasks(c *gin.Context) {
 	result := make([]*TaskInfo, 0, len(tasks))
 	for _, t := range tasks {
 		result = append(result, &TaskInfo{
-			Name:  t.TaskName,
-			Path:  t.TaskPath,
-			State: t.State,
+			Name:         t.TaskName,
+			Path:         t.TaskPath,
+			State:        t.State,
+			Description:  t.Description,
+			Author:       t.Author,
+			NextRunTime:  t.NextRunTime,
+			LastRunTime:  t.LastRunTime,
+			LastResult:   t.LastResult,
+			RunAsUser:    t.RunAsUser,
+			Action:      t.Action,
+			TriggerType:  t.TriggerType,
 		})
+	}
+
+	if h.db != nil {
+		systemRepo := storage.NewSystemRepo(h.db)
+		storageTasks := make([]*storage.ScheduledTaskInfo, 0, len(tasks))
+		for _, t := range tasks {
+			storageTasks = append(storageTasks, &storage.ScheduledTaskInfo{
+				TaskName:    t.TaskName,
+				TaskPath:    t.TaskPath,
+				State:      t.State,
+				Description: t.Description,
+				Author:     t.Author,
+				NextRunTime: t.NextRunTime,
+				LastRunTime: t.LastRunTime,
+				LastResult:  t.LastResult,
+				RunAsUser:  t.RunAsUser,
+				Action:     t.Action,
+				TriggerType: t.TriggerType,
+			})
+		}
+		if err := systemRepo.SaveScheduledTasks(storageTasks); err != nil {
+			log.Printf("[ERROR] Failed to save scheduled tasks to database: %v", err)
+		} else {
+			log.Printf("[INFO] Saved %d scheduled tasks to database", len(storageTasks))
+		}
 	}
 
 	c.JSON(http.StatusOK, TaskResponse{

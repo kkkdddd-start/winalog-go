@@ -4,6 +4,8 @@ package collectors
 
 import (
 	"context"
+
+	"github.com/kkkdddd-start/winalog-go/internal/types"
 )
 
 func ListProcesses() ([]Process, error) {
@@ -30,7 +32,7 @@ func ListLocalUsers() ([]*UserAccount, error) {
 	return nil, ErrNotSupported
 }
 
-func CollectRegistryPersistence(ctx context.Context) ([]*RegistryPersistence, error) {
+func CollectRegistryPersistence(ctx context.Context) ([]*types.RegistryPersistence, error) {
 	return nil, ErrNotSupported
 }
 

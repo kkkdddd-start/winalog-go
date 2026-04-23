@@ -45,35 +45,30 @@ type LogChannel struct {
 	LogPath  string `json:"log_path,omitempty"`
 }
 
-// CollectChannels godoc
-// @Summary 获取可用的日志通道列表
-// @Description 返回所有注册的Windows事件日志通道，包括分类和文件路径
-// @Tags collect
-// @Produce json
-// @Success 200 {object} map[string]interface{} "channels": []LogChannel, "total": int
-// @Router /api/collect/channels [get]
+type LogFileResponse struct {
+	Name         string `json:"name"`
+	LogPath      string `json:"log_path"`
+	FileSize     int64  `json:"file_size"`
+	LastWriteTime string `json:"last_write_time"`
+}
+
 func (h *CollectHandler) CollectChannels(c *gin.Context) {
-	channels, err := collectors.GetRegisteredChannels()
-	if err != nil {
-		channels = getDefaultChannels()
+	logFiles, err := collectors.GetLogFilesDetailed()
+	if err != nil || len(logFiles) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"channels": []LogFileResponse{},
+			"total":    0,
+		})
+		return
 	}
 
-	channelFilePaths, _ := collectors.GetChannelFilePaths()
-	filePathMap := make(map[string]string)
-	for _, ch := range channelFilePaths {
-		filePathMap[ch.Name] = ch.LogPath
-	}
-
-	response := make([]LogChannel, 0, len(channels))
-	for _, ch := range channels {
-		logPath := filePathMap[ch]
-		if logPath == "" {
-			logPath = filepath.Join(os.Getenv("SystemRoot"), "System32", "winevt", "Logs", ch+".evtx")
-		}
-		response = append(response, LogChannel{
-			Name:     ch,
-			Category: collectors.CategorizeChannel(ch),
-			LogPath:  logPath,
+	response := make([]LogFileResponse, 0, len(logFiles))
+	for _, f := range logFiles {
+		response = append(response, LogFileResponse{
+			Name:         f.Name,
+			LogPath:      f.LogPath,
+			FileSize:     f.FileSize,
+			LastWriteTime: f.LastWriteTime,
 		})
 	}
 
@@ -120,6 +115,7 @@ type LogCollectOptions struct {
 	Workers           int    `json:"workers"`
 	IncludePrefetch   bool   `json:"include_prefetch"`
 	IncludeRegistry   bool   `json:"include_registry"`
+	IncludeStartup    bool   `json:"include_startup"`
 	IncludeSystemInfo bool   `json:"include_system_info"`
 	IncludeShimCache  bool   `json:"include_shimcache"`
 	IncludeAmcache    bool   `json:"include_amcache"`
@@ -199,6 +195,7 @@ func (h *CollectHandler) StartCollect(c *gin.Context) {
 	}
 	opts.IncludePrefetch = req.Options.IncludePrefetch
 	opts.IncludeRegistry = req.Options.IncludeRegistry
+	opts.IncludeStartup = req.Options.IncludeStartup
 	opts.IncludeSystemInfo = req.Options.IncludeSystemInfo
 	opts.IncludeShimCache = req.Options.IncludeShimCache
 	opts.IncludeAmcache = req.Options.IncludeAmcache

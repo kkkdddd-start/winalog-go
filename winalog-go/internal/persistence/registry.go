@@ -154,25 +154,24 @@ type RunKeyEntry struct {
 func (d *RunKeyDetector) enumerateRunKey(keyPath string) ([]RunKeyEntry, error) {
 	entries := make([]RunKeyEntry, 0)
 
-	subkeys, err := utils.ListRegistrySubkeys(keyPath)
+	values, err := utils.ListRegistryValues(keyPath)
 	if err != nil {
-		log.Printf("[DEBUG] [RunKeyDetector] ListRegistrySubkeys(%s) failed: %v", keyPath, err)
+		log.Printf("[DEBUG] [RunKeyDetector] ListRegistryValues(%s) failed: %v", keyPath, err)
 		return entries, nil
 	}
 
-	log.Printf("[DEBUG] [RunKeyDetector] Found %d subkeys under %s: %v", len(subkeys), keyPath, subkeys)
+	log.Printf("[DEBUG] [RunKeyDetector] Found %d values under %s", len(values), keyPath)
 
-	for _, subkey := range subkeys {
-		fullPath := keyPath + `\` + subkey
-		value, err := utils.GetRegistryValue(fullPath, "")
+	for _, valueName := range values {
+		value, err := utils.GetRegistryValue(keyPath, valueName)
 		if err != nil {
-			log.Printf("[DEBUG] [RunKeyDetector] GetRegistryValue(%s) failed: %v", fullPath, err)
+			log.Printf("[DEBUG] [RunKeyDetector] GetRegistryValue(%s, %s) failed: %v", keyPath, valueName, err)
 			continue
 		}
 		if value != "" {
-			log.Printf("[DEBUG] [RunKeyDetector] Found entry: %s = %s", subkey, value)
+			log.Printf("[DEBUG] [RunKeyDetector] Found entry: %s = %s", valueName, value)
 			entries = append(entries, RunKeyEntry{
-				Name:  subkey,
+				Name:  valueName,
 				Value: value,
 				Type:  "REG_SZ",
 			})

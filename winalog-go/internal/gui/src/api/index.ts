@@ -109,6 +109,7 @@ export interface CollectParams {
     workers?: number
     include_prefetch?: boolean
     include_registry?: boolean
+    include_startup?: boolean
     include_system_info?: boolean
     include_shimcache?: boolean
     include_amcache?: boolean
@@ -164,47 +165,6 @@ export const importAPI = {
 export const liveAPI = {
   getStats: () =>
     api.get('/live/stats'),
-  streamEvents: (onEvent: (data: any) => void, onStats: (data: any) => void, onError?: (err: any) => void) => {
-    const eventSource = new EventSource('/api/live/events')
-    
-    eventSource.onopen = () => {
-      console.log('[SSE] Connected to stream')
-    }
-    
-    eventSource.onerror = (err) => {
-      console.error('[SSE] Error:', err)
-      onError?.(err)
-    }
-    
-    eventSource.onmessage = (event) => {
-      console.log('[SSE] Raw message received:', event)
-      console.log('[SSE] Event data type:', typeof event.data, 'Event data:', event.data)
-      
-      try {
-        let data = event.data
-        if (typeof data === 'string') {
-          data = JSON.parse(data)
-          console.log('[SSE] Parsed data:', data)
-        }
-        
-        if (data.type === 'event') {
-          console.log('[SSE] Processing event:', data.data)
-          onEvent(data.data)
-        } else if (data.type === 'stats' || (data.total_events !== undefined && data.alerts !== undefined)) {
-          console.log('[SSE] Processing stats:', data)
-          onStats(data)
-        } else if (data.type === 'connected' || data.message) {
-          console.log('[SSE] Connection confirmed:', data.message)
-        } else {
-          console.warn('[SSE] Unknown data type or structure:', data)
-        }
-      } catch (e) {
-        console.error('[SSE] Failed to parse SSE data:', e, 'Raw data:', event.data)
-      }
-    }
-    
-    return eventSource
-  },
 }
 
 export const systemAPI = {
@@ -442,25 +402,6 @@ export const persistenceAPI = {
     if (params?.force) queryParts.push('force=true')
     const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : ''
     return api.get(`/persistence/detect${query}`)
-  },
-  detectStream: (onDetection: (data: any) => void, onError?: (err: any) => void) => {
-    const eventSource = new EventSource('/api/persistence/detect/stream')
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        onDetection(data)
-      } catch (e) {
-        console.error('Failed to parse SSE data:', e)
-      }
-    }
-    
-    eventSource.onerror = (err) => {
-      console.error('SSE error:', err)
-      onError?.(err)
-    }
-    
-    return eventSource
   },
   listCategories: () =>
     api.get('/persistence/categories'),
@@ -723,23 +664,72 @@ export const monitorAPI = {
     api.post('/monitor/config', config),
   startStop: (action: 'start' | 'stop') =>
     api.post('/monitor/action', { action }),
-  streamEvents: (onEvent: (data: MonitorEvent) => void, onError?: (err: any) => void) => {
-    const eventSource = new EventSource('/api/monitor/events/stream')
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        onEvent(data)
-      } catch (e) {
-        console.error('Failed to parse SSE data:', e)
-      }
-    }
-    
-    eventSource.onerror = (err) => {
-      console.error('SSE error:', err)
-      onError?.(err)
-    }
-    
-    return eventSource
+}
+
+export interface LogEntry {
+  timestamp: string
+  level: string
+  message: string
+  caller?: string
+  module?: string
+  status?: number
+  latency?: string
+  client_ip?: string
+  method?: string
+  path?: string
+  error?: string
+  reason?: string
+  mem_alloc_mb?: number
+  mem_total_mb?: number
+  mem_sys_mb?: number
+  num_goroutine?: number
+  num_cpu?: number
+  mem_pause_us?: number
+  heap_objects?: number
+  category?: string
+}
+
+export interface LogFileInfo {
+  name: string
+  path: string
+  size: number
+  mod_time: string
+  is_main: boolean
+}
+
+export interface LogsResponse {
+  entries: LogEntry[]
+  total: number
+  offset: number
+  limit: number
+  keyword?: string
+  level?: string
+  category?: string
+}
+
+export interface LogFilesResponse {
+  files: LogFileInfo[]
+  count: number
+}
+
+export const logsAPI = {
+  getLogs: (params: {
+    offset?: number
+    limit?: number
+    keyword?: string
+    level?: string
+    category?: string
+  }) => {
+    const searchParams = new URLSearchParams()
+    if (params.offset !== undefined) searchParams.append('offset', String(params.offset))
+    if (params.limit !== undefined) searchParams.append('limit', String(params.limit))
+    if (params.keyword) searchParams.append('keyword', params.keyword)
+    if (params.level && params.level !== 'all') searchParams.append('level', params.level)
+    if (params.category && params.category !== 'all') searchParams.append('category', params.category)
+    return api.get(`/logs?${searchParams.toString()}`)
   },
+  getLogFiles: () =>
+    api.get('/logs/files'),
+  getLogFileContent: (filename: string) =>
+    api.get(`/logs/files/${filename}`),
 }

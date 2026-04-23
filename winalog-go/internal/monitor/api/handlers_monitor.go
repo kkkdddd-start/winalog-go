@@ -4,7 +4,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -140,63 +139,6 @@ func (h *MonitorHandler) StartStop(c *gin.Context) {
 	})
 }
 
-func (h *MonitorHandler) StreamEvents(c *gin.Context) {
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("X-Accel-Buffering", "no")
-
-	clientIP := c.ClientIP()
-	log.Printf("[INFO] [SSE] Monitor stream connected from %s", clientIP)
-
-	eventChan := make(chan *types.MonitorEvent, 100)
-	unsubscribe := h.engine.Subscribe(eventChan)
-	defer unsubscribe()
-
-	clientGone := c.Request.Context().Done()
-
-	heartbeatInterval := 15 * time.Second
-	heartbeatTicker := time.NewTicker(heartbeatInterval)
-	defer heartbeatTicker.Stop()
-
-	eventCount := 0
-
-	for {
-		select {
-		case <-clientGone:
-			log.Printf("[INFO] [SSE] Monitor stream disconnected from %s, sent=%d events", clientIP, eventCount)
-			return
-		case <-heartbeatTicker.C:
-			if _, err := fmt.Fprintf(c.Writer, ": heartbeat %d\n\n", time.Now().Unix()); err != nil {
-				log.Printf("[WARN] [SSE] Monitor heartbeat write failed: %v", err)
-				return
-			}
-			c.Writer.Flush()
-			if eventCount == 0 {
-				log.Printf("[DEBUG] [SSE] Monitor heartbeat (idle for %v)", heartbeatInterval)
-			} else {
-				log.Printf("[DEBUG] [SSE] Monitor heartbeat, events_total=%d", eventCount)
-			}
-		case event := <-eventChan:
-			data, err := json.Marshal(event)
-			if err != nil {
-				log.Printf("[WARN] [SSE] Failed to marshal monitor event: %v", err)
-				continue
-			}
-			if _, err := fmt.Fprintf(c.Writer, "data: %s\n\n", data); err != nil {
-				log.Printf("[WARN] [SSE] Monitor event write failed: %v", err)
-				return
-			}
-			c.Writer.Flush()
-			eventCount++
-			if eventCount%100 == 0 {
-				log.Printf("[DEBUG] [SSE] Monitor sent %d events to %s", eventCount, clientIP)
-			}
-		}
-	}
-}
-
 func SetupMonitorRoutes(r *gin.Engine, h *MonitorHandler) {
 	monitorGroup := r.Group("/api/monitor")
 	{
@@ -204,6 +146,5 @@ func SetupMonitorRoutes(r *gin.Engine, h *MonitorHandler) {
 		monitorGroup.GET("/events", h.ListEvents)
 		monitorGroup.POST("/config", h.UpdateConfig)
 		monitorGroup.POST("/action", h.StartStop)
-		monitorGroup.GET("/events/stream", h.StreamEvents)
 	}
 }

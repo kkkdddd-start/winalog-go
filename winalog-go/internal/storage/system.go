@@ -50,6 +50,63 @@ type SystemSnapshot struct {
 	CollectedAt   time.Time
 }
 
+type UserInfo struct {
+	ID              int64
+	SID             string
+	Name            string
+	Domain          string
+	FullName        string
+	Type            string
+	Enabled         bool
+	LastLogin       *time.Time
+	PasswordExpires bool
+	HomeDir         string
+	ProfilePath     string
+	CollectedAt     time.Time
+}
+
+type DriverInfo struct {
+	ID          int64
+	Name        string
+	DisplayName string
+	Description string
+	Type        string
+	Status      string
+	Started     bool
+	FilePath    string
+	HashSHA256  string
+	Signature   string
+	Signer      string
+	CollectedAt time.Time
+}
+
+type RegistryPersistence struct {
+	ID          int64
+	Path        string
+	Name        string
+	Value       string
+	Type        string
+	Source      string
+	Enabled     bool
+	CollectedAt time.Time
+}
+
+type ScheduledTaskInfo struct {
+	ID           int64
+	TaskName     string
+	TaskPath     string
+	State       string
+	Description string
+	Author      string
+	NextRunTime string
+	LastRunTime string
+	LastResult  int
+	RunAsUser   string
+	Action      string
+	TriggerType string
+	CollectedAt time.Time
+}
+
 type SystemRepo struct {
 	db *DB
 }
@@ -358,4 +415,408 @@ func scanNetworkConnection(row interface{ Scan(...interface{}) error }) (*Networ
 	}
 
 	return &c, nil
+}
+
+func (r *SystemRepo) SaveUsers(users []*UserInfo) error {
+	if len(users) == 0 {
+		return nil
+	}
+
+	tx, unlock, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO users (sid, name, domain, full_name, type, enabled, last_login, password_expires, home_dir, profile_path, collected_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, u := range users {
+		lastLoginStr := ""
+		if u.LastLogin != nil {
+			lastLoginStr = u.LastLogin.Format(time.RFC3339)
+		}
+		_, err := stmt.Exec(u.SID, u.Name, u.Domain, u.FullName, u.Type, u.Enabled, lastLoginStr, u.PasswordExpires, u.HomeDir, u.ProfilePath, u.CollectedAt.Format(time.RFC3339))
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *SystemRepo) SaveDrivers(drivers []*DriverInfo) error {
+	if len(drivers) == 0 {
+		return nil
+	}
+
+	tx, unlock, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO drivers (name, display_name, description, type, status, started, file_path, hash_sha256, signature, signer, collected_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, d := range drivers {
+		_, err := stmt.Exec(d.Name, d.DisplayName, d.Description, d.Type, d.Status, d.Started, d.FilePath, d.HashSHA256, d.Signature, d.Signer, d.CollectedAt.Format(time.RFC3339))
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *SystemRepo) SaveRegistryPersistence(registry []*RegistryPersistence) error {
+	if len(registry) == 0 {
+		return nil
+	}
+
+	tx, unlock, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO registry_persistence (path, name, value, type, source, enabled, collected_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, reg := range registry {
+		_, err := stmt.Exec(reg.Path, reg.Name, reg.Value, reg.Type, reg.Source, reg.Enabled, reg.CollectedAt.Format(time.RFC3339))
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *SystemRepo) SaveScheduledTasks(tasks []*ScheduledTaskInfo) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	tx, unlock, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO scheduled_tasks (task_name, task_path, state, description, author, next_run_time, last_run_time, last_result, run_as_user, action, trigger_type, collected_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, t := range tasks {
+		_, err := stmt.Exec(t.TaskName, t.TaskPath, t.State, t.Description, t.Author, t.NextRunTime, t.LastRunTime, t.LastResult, t.RunAsUser, t.Action, t.TriggerType, t.CollectedAt.Format(time.RFC3339))
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *SystemRepo) GetUsers(limit int) ([]*UserInfo, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	query := `SELECT id, sid, name, domain, full_name, type, enabled, last_login, password_expires, home_dir, profile_path, collected_at FROM users ORDER BY name LIMIT ?`
+
+	rows, err := r.db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*UserInfo
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	return users, nil
+}
+
+func (r *SystemRepo) GetDrivers(limit int) ([]*DriverInfo, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	query := `SELECT id, name, display_name, description, type, status, started, file_path, hash_sha256, signature, signer, collected_at FROM drivers ORDER BY name LIMIT ?`
+
+	rows, err := r.db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var drivers []*DriverInfo
+	for rows.Next() {
+		d, err := scanDriver(rows)
+		if err != nil {
+			return nil, err
+		}
+		drivers = append(drivers, d)
+	}
+
+	return drivers, nil
+}
+
+func (r *SystemRepo) GetRegistryPersistence(limit int) ([]*RegistryPersistence, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	query := `SELECT id, path, name, value, type, source, enabled, collected_at FROM registry_persistence ORDER BY path LIMIT ?`
+
+	rows, err := r.db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var registry []*RegistryPersistence
+	for rows.Next() {
+		reg, err := scanRegistryPersistence(rows)
+		if err != nil {
+			return nil, err
+		}
+		registry = append(registry, reg)
+	}
+
+	return registry, nil
+}
+
+func (r *SystemRepo) GetScheduledTasks(limit int) ([]*ScheduledTaskInfo, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	query := `SELECT id, task_name, task_path, state, description, author, next_run_time, last_run_time, last_result, run_as_user, action, trigger_type, collected_at FROM scheduled_tasks ORDER BY task_name LIMIT ?`
+
+	rows, err := r.db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []*ScheduledTaskInfo
+	for rows.Next() {
+		t, err := scanScheduledTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+
+	return tasks, nil
+}
+
+func scanUser(row interface{ Scan(...interface{}) error }) (*UserInfo, error) {
+	var u UserInfo
+	var sid, name, domain, fullName, userType, homeDir, profilePath, lastLoginStr sql.NullString
+	var enabled, passwordExpires sql.NullBool
+	var collectedAt string
+
+	err := row.Scan(&u.ID, &sid, &name, &domain, &fullName, &userType, &enabled, &lastLoginStr, &passwordExpires, &homeDir, &profilePath, &collectedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	if sid.Valid {
+		u.SID = sid.String
+	}
+	if name.Valid {
+		u.Name = name.String
+	}
+	if domain.Valid {
+		u.Domain = domain.String
+	}
+	if fullName.Valid {
+		u.FullName = fullName.String
+	}
+	if userType.Valid {
+		u.Type = userType.String
+	}
+	if enabled.Valid {
+		u.Enabled = enabled.Bool
+	}
+	if lastLoginStr.Valid && lastLoginStr.String != "" {
+		t, _ := time.Parse(time.RFC3339, lastLoginStr.String)
+		u.LastLogin = &t
+	}
+	if passwordExpires.Valid {
+		u.PasswordExpires = passwordExpires.Bool
+	}
+	if homeDir.Valid {
+		u.HomeDir = homeDir.String
+	}
+	if profilePath.Valid {
+		u.ProfilePath = profilePath.String
+	}
+	if collectedAt != "" {
+		u.CollectedAt, _ = time.Parse(time.RFC3339, collectedAt)
+	}
+
+	return &u, nil
+}
+
+func scanDriver(row interface{ Scan(...interface{}) error }) (*DriverInfo, error) {
+	var d DriverInfo
+	var name, displayName, description, drvType, status, filePath, hashSHA256, signature, signer sql.NullString
+	var started sql.NullBool
+	var collectedAt string
+
+	err := row.Scan(&d.ID, &name, &displayName, &description, &drvType, &status, &started, &filePath, &hashSHA256, &signature, &signer, &collectedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	if name.Valid {
+		d.Name = name.String
+	}
+	if displayName.Valid {
+		d.DisplayName = displayName.String
+	}
+	if description.Valid {
+		d.Description = description.String
+	}
+	if drvType.Valid {
+		d.Type = drvType.String
+	}
+	if status.Valid {
+		d.Status = status.String
+	}
+	if started.Valid {
+		d.Started = started.Bool
+	}
+	if filePath.Valid {
+		d.FilePath = filePath.String
+	}
+	if hashSHA256.Valid {
+		d.HashSHA256 = hashSHA256.String
+	}
+	if signature.Valid {
+		d.Signature = signature.String
+	}
+	if signer.Valid {
+		d.Signer = signer.String
+	}
+	if collectedAt != "" {
+		d.CollectedAt, _ = time.Parse(time.RFC3339, collectedAt)
+	}
+
+	return &d, nil
+}
+
+func scanRegistryPersistence(row interface{ Scan(...interface{}) error }) (*RegistryPersistence, error) {
+	var reg RegistryPersistence
+	var path, name, value, regType, source sql.NullString
+	var enabled sql.NullBool
+	var collectedAt string
+
+	err := row.Scan(&reg.ID, &path, &name, &value, &regType, &source, &enabled, &collectedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	if path.Valid {
+		reg.Path = path.String
+	}
+	if name.Valid {
+		reg.Name = name.String
+	}
+	if value.Valid {
+		reg.Value = value.String
+	}
+	if regType.Valid {
+		reg.Type = regType.String
+	}
+	if source.Valid {
+		reg.Source = source.String
+	}
+	if enabled.Valid {
+		reg.Enabled = enabled.Bool
+	}
+	if collectedAt != "" {
+		reg.CollectedAt, _ = time.Parse(time.RFC3339, collectedAt)
+	}
+
+	return &reg, nil
+}
+
+func scanScheduledTask(row interface{ Scan(...interface{}) error }) (*ScheduledTaskInfo, error) {
+	var t ScheduledTaskInfo
+	var taskName, taskPath, state, description, author, nextRunTime, lastRunTime, runAsUser, action, triggerType sql.NullString
+	var lastResult sql.NullInt64
+	var collectedAt string
+
+	err := row.Scan(&t.ID, &taskName, &taskPath, &state, &description, &author, &nextRunTime, &lastRunTime, &lastResult, &runAsUser, &action, &triggerType, &collectedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	if taskName.Valid {
+		t.TaskName = taskName.String
+	}
+	if taskPath.Valid {
+		t.TaskPath = taskPath.String
+	}
+	if state.Valid {
+		t.State = state.String
+	}
+	if description.Valid {
+		t.Description = description.String
+	}
+	if author.Valid {
+		t.Author = author.String
+	}
+	if nextRunTime.Valid {
+		t.NextRunTime = nextRunTime.String
+	}
+	if lastRunTime.Valid {
+		t.LastRunTime = lastRunTime.String
+	}
+	if lastResult.Valid {
+		t.LastResult = int(lastResult.Int64)
+	}
+	if runAsUser.Valid {
+		t.RunAsUser = runAsUser.String
+	}
+	if action.Valid {
+		t.Action = action.String
+	}
+	if triggerType.Valid {
+		t.TriggerType = triggerType.String
+	}
+	if collectedAt != "" {
+		t.CollectedAt, _ = time.Parse(time.RFC3339, collectedAt)
+	}
+
+	return &t, nil
 }

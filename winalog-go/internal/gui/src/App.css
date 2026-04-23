@@ -158,6 +158,23 @@ button:disabled {
   color: #00d9ff;
 }
 
+.persistence-page .stats-header {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #16213e;
+  border-radius: 8px;
+  border-left: 4px solid #00d9ff;
+}
+
+.persistence-page .stats-header .stats-info {
+  color: #aaa;
+  font-size: 0.95rem;
+}
+
+.persistence-page .stats-header .stats-info strong {
+  color: #00d9ff;
+}
+
 .persistence-page .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

@@ -233,6 +233,28 @@ function Persistence() {
     setEditingRule({ ...editingRule, whitelist: newWhitelist })
   }
 
+  const calculateStats = (dets: Detection[]): DetectionStats => {
+    const stats: DetectionStats = {
+      total_detections: dets.length,
+      duration_ms: 0,
+      error_count: 0,
+      by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      by_category: {},
+      by_technique: {},
+    }
+
+    dets.forEach(d => {
+      const sev = d.severity?.toLowerCase() || 'info'
+      if (sev in stats.by_severity) {
+        (stats.by_severity as any)[sev]++
+      }
+      stats.by_category[d.category] = (stats.by_category[d.category] || 0) + 1
+      stats.by_technique[d.technique] = (stats.by_technique[d.technique] || 0) + 1
+    })
+
+    return stats
+  }
+
   const fetchDetections = async (force = false) => {
     try {
       setLoading(true)
@@ -279,28 +301,6 @@ function Persistence() {
     }
   }
 
-  const calculateStats = (dets: Detection[]): DetectionStats => {
-    const stats: DetectionStats = {
-      total_detections: dets.length,
-      duration_ms: 0,
-      error_count: 0,
-      by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
-      by_category: {},
-      by_technique: {},
-    }
-
-    dets.forEach(d => {
-      const sev = d.severity?.toLowerCase() || 'info'
-      if (sev in stats.by_severity) {
-        (stats.by_severity as any)[sev]++
-      }
-      stats.by_category[d.category] = (stats.by_category[d.category] || 0) + 1
-      stats.by_technique[d.technique] = (stats.by_technique[d.technique] || 0) + 1
-    })
-
-    return stats
-  }
-
   const filteredDetections = detections.filter(d => {
     if (filter.severity && d.severity?.toLowerCase() !== filter.severity) return false
     if (filter.category && d.category !== filter.category) return false
@@ -333,7 +333,14 @@ function Persistence() {
   if (loading) {
     return (
       <div className="persistence-page">
-        <div className="loading">{t('common.loading')}</div>
+        <div className="page-header">
+          <h1>{t('persistence.title')}</h1>
+        </div>
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>正在检测系统持久化机制...</p>
+          <p className="hint">这可能需要几分钟时间，请耐心等待</p>
+        </div>
       </div>
     )
   }
@@ -429,28 +436,36 @@ function Persistence() {
       )}
 
       {stats && (
-        <div className="stats-grid">
-          <div className="stat-card stat-total">
-            <div className="stat-value">{stats.total_detections}</div>
-            <div className="stat-label">{t('persistence.total')}</div>
+        <>
+          <div className="stats-header">
+            <span className="stats-info">
+              共发现 <strong>{stats.total_detections}</strong> 个持久化机制
+              {stats.duration_ms > 0 && <span>，检测耗时 <strong>{(stats.duration_ms / 1000).toFixed(1)}</strong> 秒</span>}
+            </span>
           </div>
-          <div className="stat-card stat-critical">
-            <div className="stat-value">{stats.by_severity.critical}</div>
-            <div className="stat-label">{t('persistence.critical')}</div>
+          <div className="stats-grid">
+            <div className="stat-card stat-total">
+              <div className="stat-value">{stats.total_detections}</div>
+              <div className="stat-label">{t('persistence.total')}</div>
+            </div>
+            <div className="stat-card stat-critical">
+              <div className="stat-value">{stats.by_severity.critical}</div>
+              <div className="stat-label">{t('persistence.critical')}</div>
+            </div>
+            <div className="stat-card stat-high">
+              <div className="stat-value">{stats.by_severity.high}</div>
+              <div className="stat-label">{t('persistence.high')}</div>
+            </div>
+            <div className="stat-card stat-medium">
+              <div className="stat-value">{stats.by_severity.medium}</div>
+              <div className="stat-label">{t('persistence.medium')}</div>
+            </div>
+            <div className="stat-card stat-low">
+              <div className="stat-value">{stats.by_severity.low}</div>
+              <div className="stat-label">{t('persistence.low')}</div>
+            </div>
           </div>
-          <div className="stat-card stat-high">
-            <div className="stat-value">{stats.by_severity.high}</div>
-            <div className="stat-label">{t('persistence.high')}</div>
-          </div>
-          <div className="stat-card stat-medium">
-            <div className="stat-value">{stats.by_severity.medium}</div>
-            <div className="stat-label">{t('persistence.medium')}</div>
-          </div>
-          <div className="stat-card stat-low">
-            <div className="stat-value">{stats.by_severity.low}</div>
-            <div className="stat-label">{t('persistence.low')}</div>
-          </div>
-        </div>
+        </>
       )}
 
       <div className="charts-grid">
@@ -498,9 +513,6 @@ function Persistence() {
           <option value="BITS">{t('persistence.categoryBITS')}</option>
           <option value="Accessibility">{t('persistence.categoryAccessibility')}</option>
         </select>
-        <button onClick={() => fetchDetections(true)} className="btn btn-secondary">
-          {t('persistence.rescan')}
-        </button>
       </div>
 
       <div className="detections-table-container">

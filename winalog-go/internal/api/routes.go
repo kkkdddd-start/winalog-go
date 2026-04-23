@@ -50,7 +50,6 @@ func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *Impor
 
 		live := api.Group("/live")
 		{
-			live.GET("/events", liveHandler.StreamEventsSSE)
 			live.GET("/stats", liveHandler.GetLiveStats)
 		}
 

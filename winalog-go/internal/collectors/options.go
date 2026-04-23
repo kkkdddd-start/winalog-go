@@ -4,6 +4,7 @@ type CollectOptions struct {
 	Workers            int
 	IncludePrefetch    bool
 	IncludeRegistry    bool
+	IncludeStartup     bool
 	IncludeSystemInfo  bool
 	IncludeProcessSig  bool
 	IncludeProcessDLLs bool

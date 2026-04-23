@@ -1,36 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../locales/I18n'
-
-interface LogEntry {
-  timestamp: string
-  level: string
-  message: string
-  caller?: string
-  module?: string
-  status?: number
-  latency?: string
-  client_ip?: string
-  method?: string
-  path?: string
-  error?: string
-  reason?: string
-  mem_alloc_mb?: number
-  mem_total_mb?: number
-  mem_sys_mb?: number
-  num_goroutine?: number
-  num_cpu?: number
-  mem_pause_us?: number
-  heap_objects?: number
-  category?: string
-}
-
-interface LogFileInfo {
-  name: string
-  path: string
-  size: number
-  mod_time: string
-  is_main: boolean
-}
+import { logsAPI, LogEntry, LogFileInfo } from '../api'
 
 function Logs() {
   const { t } = useI18n()
@@ -41,8 +11,7 @@ function Logs() {
   const [limit] = useState(100)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [levelFilter, setLevelFilter] = useState<string>('all')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [filterType, setFilterType] = useState<string>('all')
   const [keyword, setKeyword] = useState<string>('')
 
   useEffect(() => {
@@ -51,8 +20,8 @@ function Logs() {
   }, [])
 
   const fetchLogFiles = () => {
-    fetch('/api/logs/files')
-      .then(res => res.json())
+    logsAPI.getLogFiles()
+      .then(res => res.data)
       .then(data => {
         setFiles(data.files || [])
       })
@@ -62,16 +31,17 @@ function Logs() {
   const fetchLogs = (newOffset = 0) => {
     setLoading(true)
     setError(null)
-    
-    const params = new URLSearchParams()
-    params.append('offset', String(newOffset))
-    params.append('limit', String(limit))
-    if (keyword) params.append('keyword', keyword)
-    if (levelFilter && levelFilter !== 'all') params.append('level', levelFilter)
-    if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter)
-    
-    fetch(`/api/logs?${params.toString()}`)
-      .then(res => res.json())
+
+    const { level, category } = getFilterParams(filterType)
+
+    logsAPI.getLogs({
+      offset: newOffset,
+      limit: limit,
+      keyword: keyword,
+      level,
+      category,
+    })
+      .then(res => res.data)
       .then(data => {
         setLogs(data.entries || [])
         setTotal(data.total || 0)
@@ -88,14 +58,24 @@ function Logs() {
     fetchLogs(offset)
   }
 
-  const handleLevelFilter = (level: string) => {
-    setLevelFilter(level)
-    setOffset(0)
-    fetchLogs(0)
+  const getFilterParams = (filter: string): { level: string; category: string } => {
+    switch (filter) {
+      case 'all': return { level: 'all', category: 'all' }
+      case 'debug': return { level: 'debug', category: 'all' }
+      case 'info': return { level: 'info', category: 'all' }
+      case 'warn': return { level: 'warn', category: 'all' }
+      case 'error': return { level: 'error', category: 'all' }
+      case 'metrics': return { level: 'all', category: 'metrics' }
+      case 'api': return { level: 'all', category: 'api' }
+      case 'startup': return { level: 'all', category: 'startup' }
+      case 'panic': return { level: 'all', category: 'panic' }
+      case 'general': return { level: 'all', category: 'general' }
+      default: return { level: 'all', category: 'all' }
+    }
   }
 
-  const handleCategoryFilter = (cat: string) => {
-    setCategoryFilter(cat)
+  const handleFilter = (filter: string) => {
+    setFilterType(filter)
     setOffset(0)
     fetchLogs(0)
   }
@@ -124,14 +104,15 @@ function Logs() {
   }
 
   const filteredLogs = logs.filter(log => {
-    const levelMatch = levelFilter === 'all' || log.level.toLowerCase() === levelFilter.toLowerCase()
-    const categoryMatch = categoryFilter === 'all' || log.category === categoryFilter || 
-      (categoryFilter === 'metrics' && (log.message === '[METRICS]' || log.category === 'metrics')) ||
-      (categoryFilter === 'startup' && (log.message === '[STARTUP]' || log.category === 'startup')) ||
-      (categoryFilter === 'api' && (log.message === '[API]' || log.category === 'api')) ||
-      (categoryFilter === 'error' && (log.message === '[ERROR]' || log.category === 'error')) ||
-      (categoryFilter === 'panic' && (log.message === '[PANIC]' || log.message === '[FATAL]' || log.category === 'panic')) ||
-      (categoryFilter === 'general' && (log.category === 'general' || !log.category || log.category === 'undefined'))
+    const { level, category } = getFilterParams(filterType)
+    const levelMatch = level === 'all' || log.level.toLowerCase() === level.toLowerCase()
+    const categoryMatch = category === 'all' || log.category === category ||
+      (category === 'metrics' && (log.message === '[METRICS]' || log.category === 'metrics')) ||
+      (category === 'startup' && (log.message === '[STARTUP]' || log.category === 'startup')) ||
+      (category === 'api' && (log.message === '[API]' || log.category === 'api')) ||
+      (category === 'error' && (log.message === '[ERROR]' || log.category === 'error')) ||
+      (category === 'panic' && (log.message === '[PANIC]' || log.message === '[FATAL]' || log.category === 'panic')) ||
+      (category === 'general' && (log.category === 'general' || !log.category || log.category === 'undefined'))
     return levelMatch && categoryMatch
   })
 
@@ -187,78 +168,63 @@ function Logs() {
       <div className="logs-filters">
         <div className="filter-group">
           <span className="filter-label">{t('logs.filterByLevel')}:</span>
-          <button 
-            className={`filter-btn ${levelFilter === 'all' ? 'active' : ''}`}
-            onClick={() => { handleLevelFilter('all'); handleCategoryFilter('all'); }}
+          <button
+            className={`filter-btn ${filterType === 'all' ? 'active' : ''}`}
+            onClick={() => handleFilter('all')}
           >
             {t('logs.all')}
           </button>
-          <button 
-            className={`filter-btn ${levelFilter === 'debug' ? 'active' : ''}`}
-            onClick={() => handleLevelFilter('debug')}
+          <button
+            className={`filter-btn ${filterType === 'debug' ? 'active' : ''}`}
+            onClick={() => handleFilter('debug')}
           >
             {t('settings.debug')}
           </button>
-          <button 
-            className={`filter-btn ${levelFilter === 'info' ? 'active' : ''}`}
-            onClick={() => handleLevelFilter('info')}
+          <button
+            className={`filter-btn ${filterType === 'info' ? 'active' : ''}`}
+            onClick={() => handleFilter('info')}
           >
             {t('settings.info')}
           </button>
-          <button 
-            className={`filter-btn ${levelFilter === 'warn' ? 'active' : ''}`}
-            onClick={() => handleLevelFilter('warn')}
+          <button
+            className={`filter-btn ${filterType === 'warn' ? 'active' : ''}`}
+            onClick={() => handleFilter('warn')}
           >
             {t('settings.warn')}
           </button>
-          <button 
-            className={`filter-btn ${levelFilter === 'error' ? 'active' : ''}`}
-            onClick={() => handleLevelFilter('error')}
+          <button
+            className={`filter-btn ${filterType === 'error' ? 'active' : ''}`}
+            onClick={() => handleFilter('error')}
           >
             {t('settings.error')}
           </button>
-        </div>
-        <div className="filter-group">
-          <span className="filter-label">{t('logs.filterByCategory')}:</span>
-          <button 
-            className={`filter-btn ${categoryFilter === 'all' ? 'active' : ''}`}
-            onClick={() => handleCategoryFilter('all')}
-          >
-            {t('logs.all')}
-          </button>
-          <button 
-            className={`filter-btn ${categoryFilter === 'metrics' ? 'active' : ''}`}
-            onClick={() => { handleCategoryFilter('metrics'); handleLevelFilter('all'); }}
+          <button
+            className={`filter-btn ${filterType === 'metrics' ? 'active' : ''}`}
+            onClick={() => handleFilter('metrics')}
           >
             {t('logs.metrics')}
           </button>
-          <button 
-            className={`filter-btn ${categoryFilter === 'api' ? 'active' : ''}`}
-            onClick={() => { handleCategoryFilter('api'); handleLevelFilter('all'); }}
+          <button
+            className={`filter-btn ${filterType === 'api' ? 'active' : ''}`}
+            onClick={() => handleFilter('api')}
           >
-            API
+            {t('logs.api')}
           </button>
-          <button 
-            className={`filter-btn ${categoryFilter === 'startup' ? 'active' : ''}`}
-            onClick={() => { handleCategoryFilter('startup'); handleLevelFilter('all'); }}
+          <button
+            className={`filter-btn ${filterType === 'startup' ? 'active' : ''}`}
+            onClick={() => handleFilter('startup')}
           >
             {t('logs.startup')}
           </button>
-          <button 
-            className={`filter-btn ${categoryFilter === 'error' ? 'active' : ''}`}
-            onClick={() => { handleCategoryFilter('error'); handleLevelFilter('all'); }}
-          >
-            {t('settings.error')}
-          </button>
-          <button 
-            className={`filter-btn ${categoryFilter === 'panic' ? 'active' : ''}`}
-            onClick={() => { handleCategoryFilter('panic'); handleLevelFilter('all'); }}
+          <button
+            className={`filter-btn ${filterType === 'panic' ? 'active' : ''}`}
+            onClick={() => handleFilter('panic')}
           >
             {t('logs.panic')}
           </button>
-          <button 
-            className={`filter-btn ${categoryFilter === 'general' ? 'active' : ''}`}
-            onClick={() => { handleCategoryFilter('general'); handleLevelFilter('all'); }}
+          <button
+            className={`filter-btn ${filterType === 'general' ? 'active' : ''}`}
+            onClick={() => handleFilter('general')}
           >
             {t('logs.general')}
           </button>

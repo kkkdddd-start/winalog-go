@@ -314,6 +314,8 @@ func AllDetectors() []Detector {
 		NewPrintMonitorDetector(),
 		NewBootExecuteDetector(),
 		NewETWDetector(),
+		NewScheduledTaskDetector(),
+		NewAppCertDllsDetector(),
 	}
 }
 

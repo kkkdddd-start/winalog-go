@@ -59,6 +59,20 @@ func (c *DriverInfoCollector) collectDriverInfo() ([]*types.DriverInfo, error) {
 	}
 
 	for _, driver := range driverList {
+		signer := ""
+		sigStatus := ""
+		if driver.Path != "" {
+			isSigned, signerName, _ := IsDriverSigned(driver.Path)
+			if isSigned {
+				sigStatus = "Signed"
+			} else if signerName != "" {
+				signerName = signerName
+			} else {
+				sigStatus = "Unsigned"
+			}
+			signer = signerName
+		}
+
 		drivers = append(drivers, &types.DriverInfo{
 			Name:        driver.Name,
 			Description: driver.Description,
@@ -66,6 +80,8 @@ func (c *DriverInfoCollector) collectDriverInfo() ([]*types.DriverInfo, error) {
 			Status:      driver.Status,
 			Started:     driver.Status == "Running",
 			FilePath:    driver.Path,
+			Signature:   sigStatus,
+			Signer:      signer,
 		})
 	}
 

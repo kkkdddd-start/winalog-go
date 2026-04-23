@@ -11,23 +11,29 @@ import (
 var collectCmd = &cobra.Command{
 	Use:   "collect [flags]",
 	Short: "One-click collection of all log sources",
-	Long: `Automatically discover and collect all Windows log sources.
+	Long: `Automatically discover and collect all Windows log sources and forensic artifacts.
 
 Collected data includes:
   - Windows Event Logs (Security, System, Application)
-  - IIS logs
+  - Registry persistence points (Run keys, Services, IFEO, etc.)
+  - Startup folders
+  - Scheduled tasks
+  - System information
   - Prefetch files
   - ShimCache
   - Amcache
   - UserAssist
-  - Registry persistence points
-  - Scheduled tasks
-  - System information
+  - USN Journal
+  - Network connections
+  - Drivers
+  - Local users
+  - Process information
 
 Examples:
   winalog collect
   winalog collect --output ./evidence.zip --compress
-  winalog collect --include-prefetch --include-registry`,
+  winalog collect --include-prefetch --include-registry --include-startup
+  winalog collect --include-amcache --include-userassist --include-usn-journal`,
 	RunE: runCollect,
 }
 
@@ -39,8 +45,15 @@ var collectFlags struct {
 	includeAmcache    bool
 	includeUserassist bool
 	includeRegistry   bool
+	includeStartup    bool
 	includeTasks      bool
 	includeSystemInfo bool
+	includeNetwork    bool
+	includeProcesses  bool
+	includeDlls       bool
+	includeDrivers    bool
+	includeUsers      bool
+	includeUSNJournal bool
 	compress          bool
 	compressLevel     int
 	calculateHash     bool
@@ -57,8 +70,15 @@ func init() {
 	collectCmd.Flags().BoolVar(&collectFlags.includeAmcache, "include-amcache", false, "Include Amcache")
 	collectCmd.Flags().BoolVar(&collectFlags.includeUserassist, "include-userassist", false, "Include UserAssist")
 	collectCmd.Flags().BoolVar(&collectFlags.includeRegistry, "include-registry", false, "Include Registry persistence")
+	collectCmd.Flags().BoolVar(&collectFlags.includeStartup, "include-startup", false, "Include Startup Folders")
 	collectCmd.Flags().BoolVar(&collectFlags.includeTasks, "include-tasks", false, "Include Scheduled Tasks")
 	collectCmd.Flags().BoolVar(&collectFlags.includeSystemInfo, "include-system-info", true, "Include System Info")
+	collectCmd.Flags().BoolVar(&collectFlags.includeNetwork, "include-network", false, "Include Network Connections")
+	collectCmd.Flags().BoolVar(&collectFlags.includeProcesses, "include-processes", false, "Include Process Info")
+	collectCmd.Flags().BoolVar(&collectFlags.includeDlls, "include-dlls", false, "Include Process DLLs")
+	collectCmd.Flags().BoolVar(&collectFlags.includeDrivers, "include-drivers", false, "Include Drivers")
+	collectCmd.Flags().BoolVar(&collectFlags.includeUsers, "include-users", false, "Include Local Users")
+	collectCmd.Flags().BoolVar(&collectFlags.includeUSNJournal, "include-usn-journal", false, "Include USN Journal")
 	collectCmd.Flags().BoolVar(&collectFlags.compress, "compress", true, "Compress output")
 	collectCmd.Flags().IntVar(&collectFlags.compressLevel, "compress-level", 6, "Compression level (0-9)")
 	collectCmd.Flags().BoolVar(&collectFlags.calculateHash, "calculate-hash", true, "Calculate SHA256 hash")
@@ -77,13 +97,25 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	opts := collectors.CollectOptions{
-		Workers:           collectFlags.workers,
-		IncludePrefetch:   collectFlags.includePrefetch,
-		IncludeRegistry:   collectFlags.includeRegistry,
-		IncludeSystemInfo: collectFlags.includeSystemInfo,
-		OutputPath:        collectFlags.outputPath,
-		Compress:          collectFlags.compress,
-		CalculateHash:     collectFlags.calculateHash,
+		Workers:            collectFlags.workers,
+		IncludePrefetch:     collectFlags.includePrefetch,
+		IncludeRegistry:     collectFlags.includeRegistry,
+		IncludeStartup:      collectFlags.includeStartup,
+		IncludeSystemInfo:   collectFlags.includeSystemInfo,
+		IncludeShimCache:   collectFlags.includeShimcache,
+		IncludeAmcache:      collectFlags.includeAmcache,
+		IncludeUserassist:   collectFlags.includeUserassist,
+		IncludeUSNJournal:   collectFlags.includeUSNJournal,
+		IncludeTasks:        collectFlags.includeTasks,
+		IncludeLogs:         collectFlags.includeLogs,
+		IncludeNetwork:      collectFlags.includeNetwork,
+		IncludeProcessSig:   collectFlags.includeProcesses,
+		IncludeProcessDLLs:  collectFlags.includeDlls,
+		IncludeDrivers:      collectFlags.includeDrivers,
+		IncludeUsers:        collectFlags.includeUsers,
+		OutputPath:         collectFlags.outputPath,
+		Compress:           collectFlags.compress,
+		CalculateHash:      collectFlags.calculateHash,
 	}
 
 	result, err := collectors.RunOneClickCollection(ctx, opts)

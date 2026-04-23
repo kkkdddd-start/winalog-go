@@ -34,14 +34,14 @@ func NewDB(path string) (*DB, error) {
 		}
 	}
 
-	dsn := absPath + "?_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL"
+	dsn := absPath + "?_journal_mode=WAL&_busy_timeout=30000&_synchronous=NORMAL&_cache_size=-64000"
 	conn, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	conn.SetMaxOpenConns(1)
-	conn.SetMaxIdleConns(1)
+	conn.SetMaxOpenConns(4)
+	conn.SetMaxIdleConns(2)
 	conn.SetConnMaxLifetime(time.Hour)
 
 	db := &DB{

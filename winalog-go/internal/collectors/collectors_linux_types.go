@@ -67,16 +67,34 @@ type UserAccount struct {
 }
 
 type RegistryPersistence struct {
-	RunKeys       []*RegistryInfo
-	UserInit      []*RegistryInfo
-	TaskScheduler []*RegistryInfo
+	RunKeys          []*RegistryInfo
+	UserInit         []*RegistryInfo
+	TaskScheduler    []*RegistryInfo
+	Services         []*RegistryInfo
+	IFEO             []*RegistryInfo
+	AppInitDLLs      []*RegistryInfo
+	KnownDLLs        []*RegistryInfo
+	BootExecute      []*RegistryInfo
+	AppCertDlls      []*RegistryInfo
+	LSASSettings     []*RegistryInfo
+	ShellExtensions  []*RegistryInfo
+	BrowserHelpers   []*RegistryInfo
+	StartupFolders   []*RegistryInfo
 }
 
 type RegistryInfo struct {
-	Path    string
-	Name    string
-	Value   string
-	Type    string
-	Source  string
-	Enabled bool
+	Path          string
+	Name          string
+	Value         string
+	Type          string
+	Source        string
+	Enabled       bool
+	Description   string
+	DisplayName   string
+	ImagePath     string
+	Command       string
+	ServiceType   string
+	StartType     string
+	Debugger      string
+	DllName       string
 }

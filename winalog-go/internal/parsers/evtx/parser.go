@@ -3,6 +3,7 @@ package evtx
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -77,7 +78,18 @@ func (p *EvtxParser) parseEvtxFile(path string) ([]*types.Event, error) {
 	}
 	defer evtxFile.Close()
 
-	events := make([]*types.Event, 0)
+	fileInfo, err := os.Stat(path)
+	estCount := 1000
+	if err == nil && fileInfo.Size() > 0 {
+		estCount = int(fileInfo.Size() / 512)
+		if estCount < 1000 {
+			estCount = 1000
+		}
+		if estCount > 100000 {
+			estCount = 100000
+		}
+	}
+	events := make([]*types.Event, 0, estCount)
 
 	for eventMap := range evtxFile.FastEvents() {
 		if eventMap == nil {

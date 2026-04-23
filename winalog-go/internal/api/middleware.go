@@ -126,7 +126,9 @@ func corsMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 
 		if allowedOrigin != "" {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+			if allowedOrigin != "*" {
+				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
 		}
 		c.Writer.Header().Set("Access-Control-Allow-Headers", stringsJoin(cfg.AllowedHeaders, ", "))
 		c.Writer.Header().Set("Access-Control-Allow-Methods", stringsJoin(cfg.AllowedMethods, ", "))

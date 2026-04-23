@@ -167,6 +167,67 @@ CREATE TABLE IF NOT EXISTS network_connections (
 	collected_at TEXT NOT NULL
 );
 
+-- Users table (snapshot of local users)
+CREATE TABLE IF NOT EXISTS users (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	sid TEXT,
+	name TEXT,
+	domain TEXT,
+	full_name TEXT,
+	type TEXT,
+	enabled INTEGER,
+	last_login TEXT,
+	password_expires INTEGER,
+	home_dir TEXT,
+	profile_path TEXT,
+	collected_at TEXT NOT NULL
+);
+
+-- Drivers table (snapshot of system drivers)
+CREATE TABLE IF NOT EXISTS drivers (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT,
+	display_name TEXT,
+	description TEXT,
+	type TEXT,
+	status TEXT,
+	started INTEGER,
+	file_path TEXT,
+	hash_sha256 TEXT,
+	signature TEXT,
+	signer TEXT,
+	collected_at TEXT NOT NULL
+);
+
+-- Registry persistence table (snapshot of registry persistence points)
+CREATE TABLE IF NOT EXISTS registry_persistence (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	path TEXT,
+	name TEXT,
+	value TEXT,
+	type TEXT,
+	source TEXT,
+	enabled INTEGER,
+	collected_at TEXT NOT NULL
+);
+
+-- Scheduled tasks table (snapshot of scheduled tasks)
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	task_name TEXT,
+	task_path TEXT,
+	state TEXT,
+	description TEXT,
+	author TEXT,
+	next_run_time TEXT,
+	last_run_time TEXT,
+	last_result INTEGER,
+	run_as_user TEXT,
+	action TEXT,
+	trigger_type TEXT,
+	collected_at TEXT NOT NULL
+);
+
 -- System info table (persistent system snapshots)
 CREATE TABLE IF NOT EXISTS system_info (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -254,6 +315,23 @@ CREATE INDEX IF NOT EXISTS idx_network_connections_collected_at ON network_conne
 -- Indexes for system_info table
 CREATE INDEX IF NOT EXISTS idx_system_info_hostname ON system_info(hostname);
 CREATE INDEX IF NOT EXISTS idx_system_info_collected_at ON system_info(collected_at);
+
+-- Indexes for users table
+CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
+CREATE INDEX IF NOT EXISTS idx_users_sid ON users(sid);
+CREATE INDEX IF NOT EXISTS idx_users_collected_at ON users(collected_at);
+
+-- Indexes for drivers table
+CREATE INDEX IF NOT EXISTS idx_drivers_name ON drivers(name);
+CREATE INDEX IF NOT EXISTS idx_drivers_collected_at ON drivers(collected_at);
+
+-- Indexes for registry_persistence table
+CREATE INDEX IF NOT EXISTS idx_registry_persistence_path ON registry_persistence(path);
+CREATE INDEX IF NOT EXISTS idx_registry_persistence_collected_at ON registry_persistence(collected_at);
+
+-- Indexes for scheduled_tasks table
+CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_name ON scheduled_tasks(task_name);
+CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_collected_at ON scheduled_tasks(collected_at);
 
 -- Indexes for reports table
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);

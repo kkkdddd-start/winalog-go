@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -107,6 +108,9 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 			CommandLine: commandLines[p.pid],
 			User:        getProcessUser(p.pid),
 			StartTime:   getProcessStartTime(p.pid),
+			IsElevated:  isProcessElevated(p.pid),
+			MemoryMB:    getProcessMemoryMB(p.pid),
+			CPUPercent:  getProcessCPUPercent(p.pid),
 		}
 
 		if exePath != "" && !strings.HasSuffix(strings.ToLower(exePath), ".tmp") {
@@ -278,6 +282,77 @@ func getProcessUser(pid uint32) string {
 	}
 
 	return domain + "\\" + user
+}
+
+func isProcessElevated(pid uint32) bool {
+	defer func() {
+		if r := recover(); r != nil {
+			return
+		}
+	}()
+
+	hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION, false, pid)
+	if err != nil {
+		return false
+	}
+	defer windows.CloseHandle(hProcess)
+
+	var token windows.Token
+	err = windows.OpenProcessToken(hProcess, windows.TOKEN_QUERY, &token)
+	if err != nil {
+		return false
+	}
+	defer token.Close()
+
+	var elevation uint32
+	err = windows.GetTokenInformation(token, windows.TokenElevation, (*byte)(unsafe.Pointer(&elevation)), 4, nil)
+	if err != nil {
+		return false
+	}
+
+	return elevation != 0
+}
+
+func getProcessMemoryMB(pid uint32) float64 {
+	defer func() {
+		if r := recover(); r != nil {
+			return
+		}
+	}()
+
+	script := fmt.Sprintf(`(Get-CimInstance Win32_Process -Filter "ProcessId=%d" | Select-Object WorkingSetSize).WorkingSetSize`, pid)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result := utils.RunPowerShellWithContext(ctx, script)
+	if result.Success() && result.Output != "" {
+		if memKB, err := strconv.ParseFloat(strings.TrimSpace(result.Output), 64); err == nil {
+			return memKB / 1024 / 1024
+		}
+	}
+
+	return 0
+}
+
+func getProcessCPUPercent(pid uint32) float64 {
+	defer func() {
+		if r := recover(); r != nil {
+			return
+		}
+	}()
+
+	script := fmt.Sprintf(`(Get-CimInstance Win32_PerfFormattedData_PerfProc_Process -Filter "IDProcess=%d" | Select-Object PercentProcessorTime).PercentProcessorTime`, pid)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result := utils.RunPowerShellWithContext(ctx, script)
+	if result.Success() && result.Output != "" {
+		if cpu, err := strconv.ParseFloat(strings.TrimSpace(result.Output), 64); err == nil {
+			return cpu
+		}
+	}
+
+	return 0
 }
 
 func getProcessStartTime(pid uint32) time.Time {

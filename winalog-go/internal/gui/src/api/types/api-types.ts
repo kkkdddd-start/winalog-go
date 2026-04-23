@@ -272,6 +272,7 @@ export interface LogCollectOptions {
   workers: number /* int */;
   include_prefetch: boolean;
   include_registry: boolean;
+  include_startup: boolean;
   include_system_info: boolean;
   include_shimcache: boolean;
   include_amcache: boolean;
@@ -989,6 +990,16 @@ export interface UserInfo {
 }
 export interface RegistryPersistenceResponse {
   run_keys: (RegistryKeyInfo | undefined)[];
+  services: (RegistryKeyInfo | undefined)[];
+  ifeo: (RegistryKeyInfo | undefined)[];
+  app_init_dlls: (RegistryKeyInfo | undefined)[];
+  known_dlls: (RegistryKeyInfo | undefined)[];
+  boot_execute: (RegistryKeyInfo | undefined)[];
+  appcert_dlls: (RegistryKeyInfo | undefined)[];
+  lsa_settings: (RegistryKeyInfo | undefined)[];
+  shell_extensions: (RegistryKeyInfo | undefined)[];
+  browser_helpers: (RegistryKeyInfo | undefined)[];
+  startup_folders: (RegistryKeyInfo | undefined)[];
   total: number /* int */;
 }
 export interface RegistryKeyInfo {
@@ -1005,6 +1016,8 @@ export interface TaskInfo {
   name: string;
   path: string;
   state: string;
+  description?: string;
+  author?: string;
 }
 
 //////////

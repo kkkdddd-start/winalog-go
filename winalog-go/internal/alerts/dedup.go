@@ -105,7 +105,12 @@ func (c *DedupCache) cleanupLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			c.cleanup()
+			select {
+			case <-c.done:
+				return
+			default:
+				c.cleanup()
+			}
 		case <-c.done:
 			return
 		}

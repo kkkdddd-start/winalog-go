@@ -5,7 +5,9 @@ package collectors
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -70,23 +72,31 @@ func (c *NetworkInfoCollector) collectNetworkInfo() ([]*types.NetworkConnection,
 }
 
 func getTCPConnections() ([]*types.NetworkConnection, error) {
-	cmd := `Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess | ForEach-Object { $_ | ConvertTo-Json -Compress }`
+	cmd := `Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess | ForEach-Object {
+		$proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
+		$_ | Add-Member -NotePropertyName "ProcessName" -NotePropertyValue ($proc.ProcessName -join ",") -PassThru | Add-Member -NotePropertyName "CreationDate" -NotePropertyValue ($proc.CreationDate.ToString("o") -join ",") -PassThru | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess,ProcessName,CreationDate | ConvertTo-Json -Compress
+	}`
 	return executeNetworkCommand(cmd, "TCP")
 }
 
 func getUDPEndpoints() ([]*types.NetworkConnection, error) {
-	cmd := `Get-NetUDPEndpoint | Select-Object LocalAddress,LocalPort,OwningProcess | ForEach-Object { $_ | ConvertTo-Json -Compress }`
+	cmd := `Get-NetUDPEndpoint | Select-Object LocalAddress,LocalPort,OwningProcess | ForEach-Object {
+		$proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
+		$_ | Add-Member -NotePropertyName "ProcessName" -NotePropertyValue ($proc.ProcessName -join ",") -PassThru | Add-Member -NotePropertyName "CreationDate" -NotePropertyValue ($proc.CreationDate.ToString("o") -join ",") -PassThru | Select-Object LocalAddress,LocalPort,OwningProcess,ProcessName,CreationDate | ConvertTo-Json -Compress
+	}`
 	return executeNetworkCommand(cmd, "UDP")
 }
 
 func executeNetworkCommand(cmd string, protocol string) ([]*types.NetworkConnection, error) {
 	result := utils.RunPowerShell(cmd)
 	if !result.Success() {
+		log.Printf("[WARN] [NETWORK] PowerShell command failed for %s: %v, output: %s", protocol, result.Error, result.Output)
 		return []*types.NetworkConnection{}, nil
 	}
 
 	output := strings.TrimSpace(result.Output)
 	if output == "" || output == "null" {
+		log.Printf("[WARN] [NETWORK] Empty output for %s connections", protocol)
 		return []*types.NetworkConnection{}, nil
 	}
 
@@ -107,6 +117,8 @@ func executeNetworkCommand(cmd string, protocol string) ([]*types.NetworkConnect
 			RemotePort    int    `json:"RemotePort,omitempty"`
 			State         string `json:"State,omitempty"`
 			OwningProcess int    `json:"OwningProcess"`
+			ProcessName   string `json:"ProcessName,omitempty"`
+			CreationDate  string `json:"CreationDate,omitempty"`
 		}
 
 		if err := json.Unmarshal([]byte(line), &connRaw); err != nil {
@@ -114,7 +126,10 @@ func executeNetworkCommand(cmd string, protocol string) ([]*types.NetworkConnect
 		}
 
 		pid := connRaw.OwningProcess
-		processName := processNames[pid]
+		processName := connRaw.ProcessName
+		if processName == "" {
+			processName = processNames[pid]
+		}
 		if processName == "" {
 			processName = "Unknown"
 		}
@@ -122,6 +137,13 @@ func executeNetworkCommand(cmd string, protocol string) ([]*types.NetworkConnect
 		state := connRaw.State
 		if state == "" {
 			state = "Listen"
+		}
+
+		created := time.Time{}
+		if connRaw.CreationDate != "" {
+			if t, err := time.Parse(time.RFC3339, connRaw.CreationDate); err == nil {
+				created = t
+			}
 		}
 
 		conn := &types.NetworkConnection{
@@ -133,6 +155,7 @@ func executeNetworkCommand(cmd string, protocol string) ([]*types.NetworkConnect
 			State:       state,
 			PID:         int32(pid),
 			ProcessName: processName,
+			Created:     created,
 		}
 		connections = append(connections, conn)
 	}

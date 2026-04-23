@@ -140,6 +140,10 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 		log.Printf("[WARN] [DLL] No modules collected - possible permission or architecture issue (32-bit vs 64-bit)")
 	}
 
+	if processCount == 0 {
+		log.Printf("[WARN] [DLL] No processes found at all - CreateToolhelp32Snapshot may have failed silently")
+	}
+
 	return dlls, nil
 }
 

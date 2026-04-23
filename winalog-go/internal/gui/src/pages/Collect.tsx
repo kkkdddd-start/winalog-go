@@ -32,12 +32,13 @@ const { Panel } = Collapse
 
 type CollectMode = 'oneclick' | 'import' | 'evtx2csv'
 
-interface LogChannel {
+interface LogFile {
   id: string
   name: string
-  category: string
   enabled: boolean
-  log_path?: string
+  log_path: string
+  file_size: number
+  last_write_time: string
 }
 
 interface ExclusionPattern {
@@ -67,6 +68,7 @@ interface CollectOptions {
   includeUsers: boolean
 
   includeRegistry: boolean
+  includeStartup: boolean
   includeTasks: boolean
   includePrefetch: boolean
   includeShimcache: boolean
@@ -86,18 +88,7 @@ interface UploadedFile {
 
 // ============ 常量 ============
 
-const DEFAULT_CHANNELS: LogChannel[] = [
-  { id: 'security', name: 'Security', category: 'Windows Event Logs', enabled: true },
-  { id: 'system', name: 'System', category: 'Windows Event Logs', enabled: true },
-  { id: 'application', name: 'Application', category: 'Windows Event Logs', enabled: true },
-  { id: 'setup', name: 'Setup', category: 'Windows Event Logs', enabled: false },
-  { id: 'sysmon', name: 'Microsoft-Windows-Sysmon/Operational', category: 'Sysmon', enabled: true },
-  { id: 'powershell', name: 'Microsoft-Windows-PowerShell/Operational', category: 'PowerShell', enabled: false },
-  { id: 'wmi', name: 'Microsoft-Windows-WMI-Activity/Operational', category: 'WMI', enabled: false },
-  { id: 'taskscheduler', name: 'Microsoft-Windows-TaskScheduler/Operational', category: 'Task Scheduler', enabled: false },
-  { id: 'sysmon-drivers', name: 'System', category: 'Drivers & Services', enabled: false },
-  { id: 'services', name: 'Services', category: 'Drivers & Services', enabled: false },
-]
+const DEFAULT_LOG_FILES: LogFile[] = []
 
 const DEFAULT_EXCLUSIONS: ExclusionPattern[] = [
   { id: 'diag-perf', pattern: 'Microsoft-Windows-Diagnostics-Performance/*', type: 'channel', enabled: true },
@@ -119,31 +110,38 @@ const LOG_FORMATS: LogFormatOption[] = [
   { id: 'txt', name: '.txt', extension: '.txt', description: '文本日志', defaultEnabled: false, warning: '默认禁用', forImport: true },
 ]
 
+const HIGH_VALUE_LOG_PATTERNS = [
+  'Security',
+  'Microsoft-Windows-Security',
+  'Microsoft-Windows-Sysmon',
+  'Microsoft-Windows-PowerShell',
+  'Microsoft-Windows-Windows Defender',
+  'Microsoft-Windows-TaskScheduler',
+  'Microsoft-Windows-WMI-Activity',
+  'Microsoft-Windows-DNS-Server',
+  'Microsoft-Windows-Eventlog',
+  'Microsoft-Windows-Audit',
+  'Microsoft-Windows-RemoteDesktopServices',
+]
+
 // ============ 工具函数 ============
 
-const categorizeChannel = (name: string): string => {
-  if (/^Security$|^System$|^Application$|^Setup$/i.test(name)) return 'Windows Event Logs'
-  if (/Sysmon/i.test(name)) return 'Sysmon'
-  if (/PowerShell/i.test(name)) return 'PowerShell'
-  if (/WMI-Activity/i.test(name)) return 'WMI'
-  if (/TaskScheduler/i.test(name)) return 'Task Scheduler'
-  if (/^Microsoft-Windows-/.test(name)) return 'Microsoft Windows'
-  if (/^(Security|System|Application)$/.test(name)) return 'Windows Event Logs'
-  return 'Other'
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
-const groupByCategory = (items: LogChannel[]): Record<string, LogChannel[]> => {
-  return items.reduce((acc, item) => {
-    const category = item.category || 'Other'
-    if (!acc[category]) acc[category] = []
-    acc[category].push(item)
-    return acc
-  }, {} as Record<string, LogChannel[]>)
-}
-
-const isDefaultChannel = (name: string): boolean => {
-  const defaults = ['Security', 'System', 'Application', 'Microsoft-Windows-Sysmon/Operational']
-  return defaults.includes(name)
+const formatLastWriteTime = (timeStr: string): string => {
+  if (!timeStr) return 'N/A'
+  try {
+    const date = new Date(timeStr)
+    return date.toLocaleString()
+  } catch {
+    return 'N/A'
+  }
 }
 
 // ============ 组件 ============
@@ -168,6 +166,7 @@ function Collect() {
     includeDrivers: false,
     includeUsers: false,
     includeRegistry: false,
+    includeStartup: false,
     includeTasks: false,
     includePrefetch: false,
     includeShimcache: false,
@@ -180,7 +179,7 @@ function Collect() {
   })
 
   // 日志源通道
-  const [channels, setChannels] = useState<LogChannel[]>(DEFAULT_CHANNELS)
+  const [channels, setChannels] = useState<LogFile[]>(DEFAULT_LOG_FILES)
   const [isLoadingChannels, setIsLoadingChannels] = useState(false)
   const [lastFetched, setLastFetched] = useState<Date | null>(null)
 
@@ -202,7 +201,7 @@ function Collect() {
   })
 
   // 自定义路径
-  const [customPaths, setCustomPaths] = useState('')
+  const [customPaths, setCustomPaths] = useState('C:\\Windows\\System32\\winevt\\Logs\\')
   const [selectedFiles, setSelectedFiles] = useState<UploadedFile[]>([])
 
   // 状态
@@ -216,24 +215,27 @@ function Collect() {
     setIsLoadingChannels(true)
     try {
       const res = await collectAPI.getChannels()
-      const serverChannels = res.data.channels || []
+      const serverFiles = res.data.channels || []
 
-      const merged = serverChannels.map((ch: any) => {
-        const existing = channels.find(c => c.name === ch.name)
+      const merged = serverFiles.map((f: any) => {
+        const isHighValue = HIGH_VALUE_LOG_PATTERNS.some(pattern =>
+          f.name.includes(pattern)
+        )
         return {
-          id: ch.name,
-          name: ch.name,
-          category: ch.category || categorizeChannel(ch.name),
-          enabled: existing?.enabled ?? isDefaultChannel(ch.name),
-          log_path: ch.log_path || channelToFilePath(ch.name),
+          id: f.name,
+          name: f.name,
+          enabled: isHighValue,
+          log_path: f.log_path,
+          file_size: f.file_size || 0,
+          last_write_time: f.last_write_time || '',
         }
       })
 
       setChannels(merged)
       setLastFetched(new Date())
-      message.success(`已获取 ${merged.length} 个日志通道`)
+      message.success(`已获取 ${merged.length} 个日志文件`)
     } catch (err) {
-      message.error('获取通道列表失败，使用默认列表')
+      message.error('获取日志文件列表失败')
     } finally {
       setIsLoadingChannels(false)
     }
@@ -245,19 +247,17 @@ function Collect() {
   }
 
   // 全选/取消全选
-  const selectAllChannels = (category?: string) => {
-    setChannels(prev => prev.map(ch =>
-      category
-        ? (ch.category === category ? { ...ch, enabled: true } : ch)
-        : { ...ch, enabled: true }
-    ))
+  const selectAllChannels = () => {
+    setChannels(prev => prev.map(ch => ({ ...ch, enabled: true })))
   }
 
-  const deselectAllChannels = (category?: string) => {
+  const deselectAllChannels = () => {
+    setChannels(prev => prev.map(ch => ({ ...ch, enabled: false })))
+  }
+
+  const toggleChannel = (id: string) => {
     setChannels(prev => prev.map(ch =>
-      category
-        ? (ch.category === category ? { ...ch, enabled: false } : ch)
-        : { ...ch, enabled: false }
+      ch.id === id ? { ...ch, enabled: !ch.enabled } : ch
     ))
   }
 
@@ -340,21 +340,19 @@ function Collect() {
     setCustomPaths('')
   }
 
-  // 将通道名称转换为文件路径
-  const channelToFilePath = (channelName: string): string => {
-    const basePath = 'C:\\Windows\\System32\\winevt\\Logs\\'
-    const normalizedName = channelName.replace(/\//g, '%2F')
-    return `${basePath}${normalizedName}.evtx`
-  }
-
   // 获取选中通道对应的文件路径（使用后端返回的真实路径）
   const getSelectedChannelPaths = (): string[] => {
     return channels
       .filter(ch => ch.enabled && ch.log_path)
       .map(ch => ch.log_path!)
+      .filter(path => {
+        // 过滤掉目录路径，只保留文件路径
+        const ext = path.toLowerCase()
+        return ext.endsWith('.evtx') || ext.endsWith('.etl') || ext.endsWith('.csv') || ext.endsWith('.log') || ext.endsWith('.txt')
+      })
   }
 
-  // 导入选中通道的日志
+  // 导入选中的日志源
   const handleImportChannels = async () => {
     const paths = getSelectedChannelPaths()
     if (paths.length === 0) {
@@ -431,6 +429,7 @@ ${response.data.errors?.length > 0 ? `- 错误: ${response.data.errors.length} �
           include_drivers: collectOptions.includeDrivers,
           include_users: collectOptions.includeUsers,
           include_registry: collectOptions.includeRegistry,
+          include_startup: collectOptions.includeStartup,
           include_tasks: collectOptions.includeTasks,
           include_prefetch: collectOptions.includePrefetch,
           include_shimcache: collectOptions.includeShimcache,
@@ -699,6 +698,16 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
       </div>
 
       <div className="artifact-item">
+        <Checkbox checked={collectOptions.includeStartup} onChange={() => toggleOption('includeStartup')}>
+          <span className="artifact-icon">📁</span>
+          <span className="artifact-name">启动文件夹</span>
+        </Checkbox>
+        <Tooltip title="启动文件夹持久化">
+          <InfoCircleOutlined style={{ marginLeft: 4, color: '#999' }} />
+        </Tooltip>
+      </div>
+
+      <div className="artifact-item">
         <Checkbox checked={collectOptions.includeTasks} onChange={() => toggleOption('includeTasks')}>
           <span className="artifact-icon">📅</span>
           <span className="artifact-name">计划任务</span>
@@ -734,42 +743,36 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
         </Space>
       </div>
 
-      <Spin spinning={isLoadingChannels} tip="正在获取日志通道...">
-        <Collapse defaultActiveKey={['Windows Event Logs']}>
-          {Object.entries(groupByCategory(channels)).map(([category, chs]) => (
-            <Panel
-              key={category}
-              header={
-                <Space>
-                  <span>{category}</span>
-                  <span className="channel-count">({chs.filter(c => c.enabled).length}/{chs.length})</span>
-                </Space>
-              }
-              extra={
-                <Space size="small" onClick={e => e.stopPropagation()}>
-                  <Button type="link" size="small" onClick={() => selectAllChannels(category)}>全选</Button>
-                  <Button type="link" size="small" onClick={() => deselectAllChannels(category)}>取消</Button>
-                </Space>
-              }
-            >
-              <Checkbox.Group value={chs.filter(c => c.enabled).map(c => c.id)} onChange={(values) => {
-                setChannels(prev => prev.map(ch =>
-                  ch.category === category ? { ...ch, enabled: values.includes(ch.id) } : ch
-                ))
-              }}>
-                <Row gutter={[16, 8]}>
-                  {chs.map(ch => (
-                    <Col span={8} key={ch.id}>
-                      <Checkbox value={ch.id}>
-                        <span className="channel-name" title={ch.name}>{ch.name}</span>
-                      </Checkbox>
-                    </Col>
-                  ))}
-                </Row>
-              </Checkbox.Group>
-            </Panel>
-          ))}
-        </Collapse>
+      <Spin spinning={isLoadingChannels} tip="正在获取日志文件...">
+        <div className="log-files-table">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: '40px' }}></th>
+                <th>日志文件</th>
+                <th style={{ width: '120px' }}>大小</th>
+                <th style={{ width: '180px' }}>最后修改</th>
+              </tr>
+            </thead>
+            <tbody>
+              {channels.map(ch => (
+                <tr key={ch.id} className={ch.enabled ? 'selected' : ''} onClick={() => toggleChannel(ch.id)}>
+                  <td>
+                    <Checkbox checked={ch.enabled} onChange={() => toggleChannel(ch.id)} />
+                  </td>
+                  <td>
+                    <span className="channel-name" title={ch.log_path}>{ch.name}</span>
+                  </td>
+                  <td>{formatFileSize(ch.file_size)}</td>
+                  <td>{formatLastWriteTime(ch.last_write_time)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {channels.length === 0 && !isLoadingChannels && (
+            <div className="empty-state">未找到日志文件，请点击"获取"按钮扫描</div>
+          )}
+        </div>
       </Spin>
     </div>
   )
@@ -1025,24 +1028,25 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
               <Space>
                 <Button type="link" size="small" icon={<ReloadOutlined />} onClick={fetchChannels}>刷新</Button>
                 <Button type="primary" size="small" icon={<UploadOutlined />} onClick={handleImportChannels} loading={loading} disabled={channels.filter(c => c.enabled).length === 0}>
-                  导入选中通道
+                  导入选中日志源
                 </Button>
               </Space>
             </div>
-            <Checkbox.Group value={channels.filter(c => c.enabled).map(c => c.id)} onChange={(values) => {
-              setChannels(prev => prev.map(ch => ({ ...ch, enabled: values.includes(ch.id) })))
-            }}>
-              <Row gutter={[16, 8]}>
-                {channels.map(ch => (
-                  <Col span={8} key={ch.id}>
-                    <Checkbox value={ch.id}>{ch.name}</Checkbox>
-                  </Col>
-                ))}
-              </Row>
-            </Checkbox.Group>
+            <div className="channels-list">
+              {channels.map(ch => (
+                <div
+                  key={ch.id}
+                  className={`channel-item ${ch.enabled ? 'selected' : ''}`}
+                  onClick={() => toggleChannel(ch.id)}
+                >
+                  <Checkbox checked={ch.enabled} onChange={() => toggleChannel(ch.id)} />
+                  <span className="channel-name" title={ch.log_path}>{ch.name}</span>
+                </div>
+              ))}
+            </div>
             <div className="channel-import-hint">
               <InfoCircleOutlined />
-              <span>选择日志源后点击"导入选中通道"直接导入，或在下方输入自定义路径</span>
+              <span>选择日志源后点击"导入选中日志源"直接导入，或在下方输入自定义路径</span>
             </div>
           </div>
 
@@ -1258,6 +1262,13 @@ winalog convert /path/to/logs --output-dir ./csv_output`}</pre>
         .channel-count { font-size: 12px; color: #00d9ff; font-weight: normal; }
         .channel-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; display: inline-block; color: #eee; }
         .channel-import-hint { font-size: 12px; color: #888; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+
+        /* Channels List (Import Mode) */
+        .channels-list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 300px; overflow-y: auto; padding: 8px; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; }
+        .channel-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #16213e; border: 1px solid #333; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+        .channel-item:hover { border-color: #00d9ff; background: rgba(0, 217, 255, 0.1); }
+        .channel-item.selected { border-color: #00d9ff; background: rgba(0, 217, 255, 0.15); }
+        .channel-item .channel-name { font-size: 12px; color: #eee; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         
         /* Collapse Override */
         .channels-section .ant-collapse { background: transparent !important; border: none !important; }
@@ -1277,7 +1288,19 @@ winalog convert /path/to/logs --output-dir ./csv_output`}</pre>
         .channels-section .ant-collapse .ant-collapse-content { background: #1a1a2e; }
         .channels-section .channel-count { color: #00d9ff !important; font-size: 12px; font-weight: normal; }
         .channels-section .ant-space { color: #eee; }
-        
+
+        /* Log Files Table */
+        .log-files-table { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
+        .log-files-table table { width: 100%; border-collapse: collapse; }
+        .log-files-table thead { background: #16213e; }
+        .log-files-table th { padding: 12px 16px; text-align: left; font-weight: 600; color: #00d9ff; border-bottom: 1px solid #333; }
+        .log-files-table td { padding: 10px 16px; color: #eee; border-bottom: 1px solid #2a2a3e; }
+        .log-files-table tbody tr:last-child td { border-bottom: none; }
+        .log-files-table tbody tr:hover { background: rgba(0, 217, 255, 0.05); cursor: pointer; }
+        .log-files-table tbody tr.selected { background: rgba(0, 217, 255, 0.1); }
+        .log-files-table .channel-name { color: #eee; }
+        .log-files-table .empty-state { padding: 40px; text-align: center; color: #888; }
+
         /* Performance Settings */
         .performance-settings { display: flex; flex-direction: column; gap: 8px; }
         .setting-item { display: flex; align-items: center; gap: 12px; }

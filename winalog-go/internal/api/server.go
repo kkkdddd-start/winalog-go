@@ -31,9 +31,6 @@ func getStaticDir() string {
 }
 
 func safePath(root, userPath string) (string, error) {
-	if strings.Contains(userPath, "..") {
-		return "", errors.New("path traversal attempt detected")
-	}
 	clean := filepath.Clean(filepath.Join(root, userPath))
 	if !strings.HasPrefix(clean, root) {
 		return "", errors.New("path traversal attempt blocked")
@@ -213,14 +210,25 @@ func (s *Server) setupRoutes() {
 func (s *Server) Start() error {
 	log.Printf("Starting HTTP API server on %s", s.addr)
 
+	requestTimeout := s.cfg.API.RequestTimeout
+	if requestTimeout == 0 {
+		requestTimeout = 30 * time.Second
+	}
+	writeTimeout := requestTimeout * 2
+	if writeTimeout < 10*time.Minute {
+		writeTimeout = 10 * time.Minute
+	}
+
 	s.httpServer = &http.Server{
 		Addr:           s.addr,
 		Handler:        s.engine,
-		ReadTimeout:    30 * time.Second,
-		WriteTimeout:   10 * time.Minute,
+		ReadTimeout:    requestTimeout,
+		WriteTimeout:   writeTimeout,
 		IdleTimeout:    120 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
+
+	log.Printf("HTTP server timeouts - Read: %v, Write: %v", requestTimeout, writeTimeout)
 
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("failed to start server: %w", err)

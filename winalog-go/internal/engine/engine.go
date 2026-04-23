@@ -178,6 +178,11 @@ func (e *Engine) Import(ctx context.Context, req *ImportRequest, progressFn func
 	}
 
 	wg.Wait()
+
+	if err := e.eventRepo.FlushFTS(); err != nil {
+		fmt.Printf("[IMPORT] Warning: FlushFTS failed: %v\n", err)
+	}
+
 	result.Duration = time.Since(result.StartTime)
 	return result, nil
 }
@@ -600,6 +605,9 @@ func (c *searchCache) set(key string, result *types.SearchResponse) {
 }
 
 func (c *searchCache) evictOldest() {
+	if len(c.entries) == 0 {
+		return
+	}
 	var oldestKey string
 	var oldestTime time.Time
 	for key, entry := range c.entries {

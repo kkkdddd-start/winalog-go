@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kkkdddd-start/winalog-go/internal/types"
@@ -25,8 +26,10 @@ var allowedSortFields = map[string]bool{
 }
 
 type EventRepo struct {
-	db       *DB
-	ftsReady bool
+	db              *DB
+	ftsReady        bool
+	pendingImportIDs []int64
+	pendingMu       sync.Mutex
 }
 
 func NewEventRepo(db *DB) *EventRepo {
@@ -103,16 +106,45 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 	}
 	defer unlock()
 
-	stmt, err := tx.Prepare(`
-		INSERT INTO events (timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	const batchSize = 500
+	for i := 0; i < len(uniqueEvents); i += batchSize {
+		end := i + batchSize
+		if end > len(uniqueEvents) {
+			end = len(uniqueEvents)
+		}
+		batch := uniqueEvents[i:end]
+
+		if err := r.insertBatchChunk(tx, batch); err != nil {
+			return err
+		}
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
 
-	for _, event := range uniqueEvents {
-		_, err := stmt.Exec(
+	if r.supportsFTS() && len(uniqueEvents) > 0 {
+		importID := uniqueEvents[0].ImportID
+		r.pendingMu.Lock()
+		r.pendingImportIDs = append(r.pendingImportIDs, importID)
+		r.pendingMu.Unlock()
+	}
+
+	return nil
+}
+
+func (r *EventRepo) insertBatchChunk(tx *sql.Tx, events []*types.Event) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	valueStrings := make([]string, 0, len(events))
+	valueArgs := make([]interface{}, 0, len(events)*14)
+
+	for _, event := range events {
+		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		valueArgs = append(valueArgs,
 			event.Timestamp.Format(time.RFC3339Nano),
 			event.EventID,
 			event.Level,
@@ -128,31 +160,14 @@ func (r *EventRepo) InsertBatch(events []*types.Event) error {
 			event.ImportTime.Format(time.RFC3339Nano),
 			event.ImportID,
 		)
-		if err != nil {
-			return err
-		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
+	query := fmt.Sprintf(`
+		INSERT INTO events (timestamp, event_id, level, source, log_name, computer, user, user_sid, message, raw_xml, session_id, ip_address, import_time, import_id)
+		VALUES %s`, strings.Join(valueStrings, ", "))
 
-	if r.supportsFTS() && len(uniqueEvents) > 0 {
-		importID := uniqueEvents[0].ImportID
-		var firstID, lastID int64
-		err := r.db.QueryRow(`
-			SELECT MIN(id), MAX(id) FROM events 
-			WHERE import_id = ?`, importID).Scan(&firstID, &lastID)
-		if err == nil && firstID > 0 && lastID >= firstID {
-			_, _ = r.db.Exec(`
-				INSERT INTO events_fts(rowid, event_id, message, source)
-				SELECT id, event_id, message, source FROM events
-				WHERE id >= ? AND id <= ?`, firstID, lastID)
-		}
-	}
-
-	return nil
+	_, err := tx.Exec(query, valueArgs...)
+	return err
 }
 
 func (r *EventRepo) GetByID(id int64) (*types.Event, error) {
@@ -960,6 +975,37 @@ func escapeFTSQuery(s string) string {
 		}
 	}
 	return result.String()
+}
+
+func (r *EventRepo) FlushFTS() error {
+	if !r.supportsFTS() {
+		return nil
+	}
+
+	r.pendingMu.Lock()
+	pendingIDs := make([]int64, len(r.pendingImportIDs))
+	copy(pendingIDs, r.pendingImportIDs)
+	r.pendingImportIDs = r.pendingImportIDs[:0]
+	r.pendingMu.Unlock()
+
+	if len(pendingIDs) == 0 {
+		return nil
+	}
+
+	for _, importID := range pendingIDs {
+		var firstID, lastID int64
+		err := r.db.QueryRow(`
+			SELECT MIN(id), MAX(id) FROM events
+			WHERE import_id = ?`, importID).Scan(&firstID, &lastID)
+		if err == nil && firstID > 0 && lastID >= firstID {
+			_, _ = r.db.Exec(`
+				INSERT INTO events_fts(rowid, event_id, message, source)
+				SELECT id, event_id, message, source FROM events
+				WHERE id >= ? AND id <= ?`, firstID, lastID)
+		}
+	}
+
+	return nil
 }
 
 func (r *EventRepo) RebuildFTS() error {

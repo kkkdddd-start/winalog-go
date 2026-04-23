@@ -74,18 +74,36 @@ type UserAccount struct {
 }
 
 type RegistryInfo struct {
-	Path    string `json:"path"`
-	Name    string `json:"name"`
-	Value   string `json:"value"`
-	Type    string `json:"type"`
-	Source  string `json:"source"`
-	Enabled bool   `json:"enabled"`
+	Path          string `json:"path"`
+	Name          string `json:"name"`
+	Value         string `json:"value"`
+	Type          string `json:"type"`
+	Source        string `json:"source"`
+	Enabled       bool   `json:"enabled"`
+	Description   string `json:"description,omitempty"`
+	DisplayName   string `json:"display_name,omitempty"`
+	ImagePath     string `json:"image_path,omitempty"`
+	Command       string `json:"command,omitempty"`
+	ServiceType   string `json:"service_type,omitempty"`
+	StartType     string `json:"start_type,omitempty"`
+	Debugger      string `json:"debugger,omitempty"`
+	DllName       string `json:"dll_name,omitempty"`
 }
 
 type RegistryPersistence struct {
-	RunKeys       []*RegistryInfo `json:"run_keys"`
-	UserInit      []*RegistryInfo `json:"user_init"`
-	TaskScheduler []*RegistryInfo `json:"task_scheduler"`
+	RunKeys          []*RegistryInfo `json:"run_keys"`
+	UserInit         []*RegistryInfo `json:"user_init"`
+	TaskScheduler    []*RegistryInfo `json:"task_scheduler"`
+	Services         []*RegistryInfo `json:"services"`
+	IFEO             []*RegistryInfo `json:"ifeo"`
+	AppInitDLLs      []*RegistryInfo `json:"app_init_dlls"`
+	KnownDLLs        []*RegistryInfo `json:"known_dlls"`
+	BootExecute      []*RegistryInfo `json:"boot_execute"`
+	AppCertDlls      []*RegistryInfo `json:"appcert_dlls"`
+	LSASSettings     []*RegistryInfo `json:"lsa_settings"`
+	ShellExtensions  []*RegistryInfo `json:"shell_extensions"`
+	BrowserHelpers   []*RegistryInfo `json:"browser_helpers"`
+	StartupFolders   []*RegistryInfo `json:"startup_folders"`
 }
 
 type ScheduledTask struct {

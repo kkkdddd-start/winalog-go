@@ -172,3 +172,61 @@ func NormalizeRegistryPath(path string) string {
 
 	return strings.ToUpper(path)
 }
+
+func ListRegistryValues(path string) ([]string, error) {
+	hive, subkey, _ := ParseRegistryPath(path)
+	if hive == "" || subkey == "" {
+		return []string{}, nil
+	}
+
+	key, ok := registryHiveMap[hive]
+	if !ok {
+		key = registry.LOCAL_MACHINE
+	}
+
+	regKey, err := registry.OpenKey(key, subkey, registry.READ)
+	if err != nil {
+		return []string{}, nil
+	}
+	defer regKey.Close()
+
+	values, err := regKey.ReadValueNames(0)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return values, nil
+}
+
+func GetRegistryStringValueFull(keyPath string) (map[string]string, error) {
+	result := make(map[string]string)
+
+	hive, subkey, _ := ParseRegistryPath(keyPath)
+	if hive == "" || subkey == "" {
+		return result, nil
+	}
+
+	key, ok := registryHiveMap[hive]
+	if !ok {
+		key = registry.LOCAL_MACHINE
+	}
+
+	regKey, err := registry.OpenKey(key, subkey, registry.READ)
+	if err != nil {
+		return result, err
+	}
+	defer regKey.Close()
+
+	valueNames, err := regKey.ReadValueNames(0)
+	if err != nil {
+		return result, err
+	}
+
+	for _, name := range valueNames {
+		if val, _, err := regKey.GetStringValue(name); err == nil {
+			result[name] = val
+		}
+	}
+
+	return result, nil
+}

@@ -395,7 +395,7 @@ func getCompiledRegex(pattern string) (*regexp.Regexp, error) {
 		return nil, err
 	}
 
-	if time.Since(start) > 200*time.Millisecond {
+	if time.Since(start) > 50*time.Millisecond {
 		return nil, fmt.Errorf("regex pattern too complex: %s", pattern)
 	}
 
