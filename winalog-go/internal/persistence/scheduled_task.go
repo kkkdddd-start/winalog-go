@@ -194,7 +194,6 @@ func (d *ScheduledTaskDetector) isSuspiciousTask(task ScheduledTaskInfo) bool {
 	for _, action := range task.Actions {
 		actionLower := strings.ToLower(action)
 		actionExpanded := os.ExpandEnv(action)
-		actionExpandedLower := strings.ToLower(actionExpanded)
 
 		for _, indicator := range SuspiciousScheduledTaskIndicators {
 			if strings.Contains(actionLower, strings.ToLower(indicator)) {

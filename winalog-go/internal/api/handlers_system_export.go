@@ -4,7 +4,6 @@ package api
 
 import (
 	"encoding/csv"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
