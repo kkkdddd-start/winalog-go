@@ -354,7 +354,9 @@ func runUEBABaseline(cmd *cobra.Command, args []string) error {
 			MinEventsForBaseline: 10,
 		})
 
-		engine.Learn(events)
+		if err := engine.Learn(events); err != nil {
+			return fmt.Errorf("failed to learn baseline: %w", err)
+		}
 		profiles := engine.GetUserActivity()
 
 		fmt.Printf("Total users with baseline: %d\n", len(profiles))

@@ -379,7 +379,7 @@ func (h *RulesHandler) ToggleRule(c *gin.Context) {
 		if rule.Name == name {
 			rule.Enabled = enabled
 			if h.db != nil {
-				h.db.SetRuleEnabled(name, "alert", enabled)
+				_ = h.db.SetRuleEnabled(name, "alert", enabled)
 			}
 			c.JSON(http.StatusOK, SuccessResponse{
 				Message: "Rule " + name + " " + map[bool]string{true: "enabled", false: "disabled"}[enabled],
@@ -390,9 +390,9 @@ func (h *RulesHandler) ToggleRule(c *gin.Context) {
 
 	if rule, ok := h.customManager.Get(name); ok {
 		rule.Enabled = enabled
-		h.customManager.Update(rule)
+		_ = h.customManager.Update(rule)
 		if h.db != nil {
-			h.db.SetRuleEnabled(name, "custom", enabled)
+			_ = h.db.SetRuleEnabled(name, "custom", enabled)
 		}
 		c.JSON(http.StatusOK, SuccessResponse{
 			Message: "Rule " + name + " " + map[bool]string{true: "enabled", false: "disabled"}[enabled],
@@ -913,7 +913,7 @@ func (h *RulesHandler) ExportRules(c *gin.Context) {
 			yamlContent += fmt.Sprintf("- name: %s\n  description: %s\n  severity: %s\n  enabled: %v\n  score: %.1f\n",
 				rule.Name, rule.Description, rule.Severity, rule.Enabled, rule.Score)
 			if len(rule.MitreAttack) > 0 {
-				yamlContent += fmt.Sprintf("  mitre_attack:\n")
+				yamlContent += "  mitre_attack:\n"
 				for _, m := range rule.MitreAttack {
 					yamlContent += fmt.Sprintf("    - %s\n", m)
 				}

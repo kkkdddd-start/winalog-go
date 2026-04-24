@@ -4,8 +4,11 @@ package collectors
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -69,13 +72,32 @@ func (c *DLLInfoCollector) collectDLLInfo() ([]*types.DLLModule, error) {
 		return dlls, err
 	}
 
+	if len(dllModules) == 0 {
+		return dlls, nil
+	}
+
+	uniquePaths := make([]string, 0, len(dllModules))
+	pathIndex := make(map[string]int)
+	for i, dll := range dllModules {
+		if dll.Path != "" && pathIndex[dll.Path] == 0 {
+			uniquePaths = append(uniquePaths, dll.Path)
+			pathIndex[dll.Path] = i + 1
+		}
+	}
+
+	versions, _ := GetDLLVersionsBatch(uniquePaths)
+
 	for _, dll := range dllModules {
-		dlls = append(dlls, &types.DLLModule{
+		module := &types.DLLModule{
 			ProcessID:   dll.ProcessID,
 			ProcessName: dll.ProcessName,
 			Path:        dll.Path,
 			Size:        dll.Size,
-		})
+		}
+		if v, ok := versions[dll.Path]; ok {
+			module.Version = v
+		}
+		dlls = append(dlls, module)
 	}
 
 	return dlls, nil
@@ -207,8 +229,6 @@ func enumProcessModules(pid int, processName string) ([]DLLModuleInfo, error) {
 			Path: windows.UTF16ToString(pathBuffer[:]),
 		}
 
-		dll.Version = GetDLLVersion(dll.Path)
-
 		modules = append(modules, dll)
 	}
 
@@ -217,6 +237,28 @@ func enumProcessModules(pid int, processName string) ([]DLLModuleInfo, error) {
 
 func GetProcessDLLs(pid int) ([]DLLModuleInfo, error) {
 	return enumProcessModules(pid, fmt.Sprintf("PID_%d", pid))
+}
+
+func GetProcessDLLsWithVersion(pid int) ([]DLLModuleInfo, error) {
+	dlls, err := GetProcessDLLs(pid)
+	if err != nil || len(dlls) == 0 {
+		return dlls, err
+	}
+
+	paths := make([]string, len(dlls))
+	for i, d := range dlls {
+		paths[i] = d.Path
+	}
+
+	versions, _ := GetDLLVersionsBatch(paths)
+
+	for i, d := range dlls {
+		if v, ok := versions[d.Path]; ok {
+			dlls[i].Version = v
+		}
+	}
+
+	return dlls, nil
 }
 
 func GetDLLVersion(dllPath string) string {
@@ -284,6 +326,100 @@ func CollectDLLInfo(ctx context.Context) ([]*types.DLLModule, error) {
 		}
 	}
 	return dlls, nil
+}
+
+func GetDLLVersionsBatch(paths []string) (map[string]string, error) {
+	results := make(map[string]string)
+	if len(paths) == 0 {
+		return results, nil
+	}
+
+	batchSize := 200
+	for i := 0; i < len(paths); i += batchSize {
+		end := i + batchSize
+		if end > len(paths) {
+			end = len(paths)
+		}
+		batch := paths[i:end]
+
+		batchResults, err := fetchDLLVersionsFromFile(batch)
+		if err != nil {
+			log.Printf("[WARN] GetDLLVersionsBatch: batch fetch failed: %v", err)
+			continue
+		}
+		for k, v := range batchResults {
+			results[k] = v
+		}
+	}
+
+	return results, nil
+}
+
+func fetchDLLVersionsFromFile(paths []string) (map[string]string, error) {
+	if len(paths) == 0 {
+		return make(map[string]string), nil
+	}
+
+	tmpFile := filepath.Join(os.TempDir(), "winalog_dll_paths.txt")
+	tmpFile = strings.ReplaceAll(tmpFile, "\\", "\\\\")
+
+	content := strings.Join(paths, "\r\n")
+	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write temp file: %w", err)
+	}
+	defer os.Remove(tmpFile)
+
+	psScript := fmt.Sprintf(`Get-Content '%s' | ForEach-Object { 
+		$v = (Get-Item "$_" -ErrorAction SilentlyContinue).VersionInfo.FileVersion
+		if (-not $v) { $v = '' }
+		[PSCustomObject]@{p="$_";v=$v}
+	} | ConvertTo-Json -Compress`, tmpFile)
+
+	result := utils.RunPowerShell(psScript)
+	if !result.Success() {
+		return nil, fmt.Errorf("PowerShell failed: %v", result.Error)
+	}
+
+	return parseDLLVersionResults(result.Output)
+}
+
+func parseDLLVersionResults(jsonOutput string) (map[string]string, error) {
+	results := make(map[string]string)
+	if jsonOutput == "" || jsonOutput == "null" {
+		return results, nil
+	}
+
+	jsonOutput = strings.TrimSpace(jsonOutput)
+
+	var items []struct {
+		P string `json:"p"`
+		V string `json:"v"`
+	}
+
+	if strings.HasPrefix(jsonOutput, "[") {
+		if err := json.Unmarshal([]byte(jsonOutput), &items); err != nil {
+			log.Printf("[WARN] parseDLLVersionResults: failed to parse JSON array: %v", err)
+			return results, nil
+		}
+	} else {
+		var single struct {
+			P string `json:"p"`
+			V string `json:"v"`
+		}
+		if err := json.Unmarshal([]byte(jsonOutput), &single); err != nil {
+			log.Printf("[WARN] parseDLLVersionResults: failed to parse single item: %v", err)
+			return results, nil
+		}
+		if single.P != "" {
+			items = append(items, single)
+		}
+	}
+
+	for _, item := range items {
+		results[item.P] = item.V
+	}
+
+	return results, nil
 }
 
 func ClearDLLVersionCache() {

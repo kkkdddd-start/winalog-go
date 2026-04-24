@@ -1,7 +1,10 @@
 package collectors
 
+import "time"
+
 type CollectOptions struct {
 	Workers            int
+	Timeout            time.Duration
 	IncludePrefetch    bool
 	IncludeRegistry    bool
 	IncludeStartup     bool

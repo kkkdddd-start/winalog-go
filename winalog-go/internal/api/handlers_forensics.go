@@ -414,7 +414,9 @@ func (h *ForensicsHandler) ListEvidence(c *gin.Context) {
 	}
 
 	var total int
-	h.db.QueryRow("SELECT COUNT(DISTINCT evidence_id) FROM evidence_chain").Scan(&total)
+	if err := h.db.QueryRow("SELECT COUNT(DISTINCT evidence_id) FROM evidence_chain").Scan(&total); err != nil {
+		total = 0
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"evidence": evidenceList,
@@ -692,7 +694,10 @@ func (h *ForensicsHandler) MemoryDump(c *gin.Context) {
 
 	if outputPath == "" {
 		outputPath = filepath.Join(os.TempDir(), "winalog_memory")
-		os.MkdirAll(outputPath, 0755)
+		if err := os.MkdirAll(outputPath, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create output directory"})
+			return
+		}
 	}
 
 	collector := forensics.NewMemoryCollector(outputPath)

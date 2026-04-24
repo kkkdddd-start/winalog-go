@@ -31,12 +31,3 @@ func getConfig() *config.Config {
 	}
 	return cfg
 }
-
-func getConfigPath() string {
-	return globalConfigPath
-}
-
-func getConfigWithPath(path string) (*config.Config, error) {
-	globalConfigPath = path
-	return globalConfigLoader.Load(path)
-}

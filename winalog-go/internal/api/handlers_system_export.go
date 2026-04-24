@@ -4,8 +4,10 @@ package api
 
 import (
 	"encoding/csv"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/collectors"
@@ -13,7 +15,8 @@ import (
 )
 
 func (h *SystemHandler) ExportProcesses(c *gin.Context) {
-	processes, err := collectors.ListProcesses()
+	collector := collectors.NewProcessInfoCollector()
+	processes, err := collector.CollectProcessInfoWithSignature()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -23,15 +26,40 @@ func (h *SystemHandler) ExportProcesses(c *gin.Context) {
 	c.Header("Content-Type", "text/csv")
 
 	w := csv.NewWriter(c.Writer)
-	w.Write([]string{"PID", "PPID", "Name", "Path", "Command", "User"})
+	w.Write([]string{"PID", "PPID", "Name", "Path", "CommandLine", "User",
+		"CPUPercent", "MemoryMB", "IsSigned", "IsElevated", "StartTime",
+		"SignatureStatus", "SignatureIssuer", "SignatureValidFrom", "SignatureValidTo"})
 	for _, p := range processes {
+		startTime := ""
+		if !p.StartTime.IsZero() {
+			startTime = p.StartTime.Format(time.RFC3339)
+		}
+		sigStatus := ""
+		sigIssuer := ""
+		sigValidFrom := ""
+		sigValidTo := ""
+		if p.Signature != nil {
+			sigStatus = p.Signature.Status
+			sigIssuer = p.Signature.Issuer
+			sigValidFrom = p.Signature.ValidFrom
+			sigValidTo = p.Signature.ValidTo
+		}
 		w.Write([]string{
-			strconv.Itoa(p.PID),
-			strconv.Itoa(p.PPID),
+			strconv.Itoa(int(p.PID)),
+			strconv.Itoa(int(p.PPID)),
 			p.Name,
 			p.Path,
-			p.Command,
+			p.CommandLine,
 			p.User,
+			strconv.FormatFloat(p.CPUPercent, 'f', 2, 64),
+			strconv.FormatFloat(p.MemoryMB, 'f', 2, 64),
+			strconv.FormatBool(p.IsSigned),
+			strconv.FormatBool(p.IsElevated),
+			startTime,
+			sigStatus,
+			sigIssuer,
+			sigValidFrom,
+			sigValidTo,
 		})
 	}
 	w.Flush()
@@ -59,6 +87,31 @@ func (h *SystemHandler) ExportNetworkConnections(c *gin.Context) {
 			strconv.Itoa(conn.RemotePort),
 			conn.State,
 			conn.ProcessName,
+		})
+	}
+	w.Flush()
+}
+
+func (h *SystemHandler) ExportLoadedDLLs(c *gin.Context) {
+	dlls, err := collectors.ListLoadedDLLs()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Header("Content-Disposition", "attachment; filename=loaded_dlls.csv")
+	c.Header("Content-Type", "text/csv")
+
+	w := csv.NewWriter(c.Writer)
+	w.Write([]string{"ProcessID", "ProcessName", "Name", "Path", "Size", "Version"})
+	for _, d := range dlls {
+		w.Write([]string{
+			strconv.Itoa(int(d.ProcessID)),
+			d.ProcessName,
+			d.Name,
+			d.Path,
+			strconv.FormatUint(uint64(d.Size), 10),
+			d.Version,
 		})
 	}
 	w.Flush()

@@ -89,11 +89,22 @@ func (e *Engine) SetImportConfig(cfg ImportConfig) {
 }
 
 func (e *Engine) Import(ctx context.Context, req *ImportRequest, progressFn func(*ImportProgress)) (*ImportResult, error) {
+	if req.Workers <= 0 {
+		req.Workers = e.importCfg.Workers
+	}
+	if req.BatchSize <= 0 {
+		req.BatchSize = e.importCfg.BatchSize
+	}
+
+	return e.importWithProgress(ctx, req, progressFn)
+}
+
+func (e *Engine) importWithProgress(ctx context.Context, req *ImportRequest, progressFn func(*ImportProgress)) (*ImportResult, error) {
 	result := &ImportResult{
 		StartTime: time.Now(),
 	}
 
-	files := collectFiles(req.Paths, e.importCfg.SkipPatterns)
+	files := collectFiles(req.Paths, e.importCfg.SkipPatterns, req.EnabledFormats)
 	fmt.Printf("[IMPORT] collectFiles returned %d files from %d input paths\n", len(files), len(req.Paths))
 
 	availableFiles, missingFiles := checkAvailableFiles(files)
@@ -123,7 +134,7 @@ func (e *Engine) Import(ctx context.Context, req *ImportRequest, progressFn func
 	files = availableFiles
 	result.TotalFiles = len(files)
 
-	workerPool := make(chan struct{}, e.importCfg.Workers)
+	workerPool := make(chan struct{}, req.Workers)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	startTime := time.Now()
@@ -212,13 +223,13 @@ func (e *Engine) importFile(ctx context.Context, path string, logName string) (*
 				parseErr = err
 			}
 		case <-ctx.Done():
-			e.db.UpdateImportLog(importID, 0, 0, "cancelled", ctx.Err().Error())
+			_ = e.db.UpdateImportLog(importID, 0, 0, "cancelled", ctx.Err().Error())
 			return &ImportResult{}, ctx.Err()
 		}
 	}
 
 	if parseErr != nil {
-		e.db.UpdateImportLog(importID, 0, 0, "failed", parseErr.Error())
+		_ = e.db.UpdateImportLog(importID, 0, 0, "failed", parseErr.Error())
 		return &ImportResult{FilesFailed: 1}, parseErr
 	}
 
@@ -255,7 +266,7 @@ func (e *Engine) importFile(ctx context.Context, path string, logName string) (*
 				batch = batch[:0]
 			}
 		case <-ctx.Done():
-			e.db.UpdateImportLog(importID, int(totalEvents), int(time.Since(startTime).Milliseconds()), "cancelled", ctx.Err().Error())
+			_ = e.db.UpdateImportLog(importID, int(totalEvents), int(time.Since(startTime).Milliseconds()), "cancelled", ctx.Err().Error())
 			return &ImportResult{EventsImported: totalEvents}, ctx.Err()
 		}
 	}
@@ -275,14 +286,14 @@ DONE:
 
 	duration := time.Since(startTime)
 	if importErr != nil {
-		e.db.UpdateImportLog(importID, int(totalEvents), int(duration.Milliseconds()), "failed", importErr.Error())
+		_ = e.db.UpdateImportLog(importID, int(totalEvents), int(duration.Milliseconds()), "failed", importErr.Error())
 		return &ImportResult{
 			EventsImported: totalEvents,
 			Duration:       duration,
 		}, importErr
 	}
 
-	e.db.UpdateImportLog(importID, int(totalEvents), int(duration.Milliseconds()), "success", "")
+	_ = e.db.UpdateImportLog(importID, int(totalEvents), int(duration.Milliseconds()), "success", "")
 
 	if err := e.eventRepo.FlushFTS(); err != nil {
 		fmt.Printf("[IMPORT] Warning: FlushFTS failed for import %d: %v\n", importID, err)
@@ -309,14 +320,25 @@ type ImportRequest struct {
 	LogName          string
 	Incremental      bool
 	SkipPatterns     []string
+	EnabledFormats   []string
 	Workers          int
 	BatchSize        int
 	CalculateHash    bool
 	ProgressCallback func(*ImportProgress)
+	TaskID           string
 }
 
-func collectFiles(paths []string, skipPatterns []string) []string {
+func collectFiles(paths []string, skipPatterns []string, enabledFormats []string) []string {
 	var files []string
+	formatSet := make(map[string]bool)
+	for _, f := range enabledFormats {
+		ext := strings.ToLower(f)
+		if !strings.HasPrefix(ext, ".") {
+			ext = "." + ext
+		}
+		formatSet[ext] = true
+	}
+
 	for _, path := range paths {
 		path = strings.TrimSpace(path)
 		if path == "" {
@@ -329,13 +351,15 @@ func collectFiles(paths []string, skipPatterns []string) []string {
 		}
 
 		if fi.IsDir() {
-			dirFiles := scanDirectory(path, skipPatterns, 0)
+			dirFiles := scanDirectory(path, skipPatterns, enabledFormats, 0)
 			files = append(files, dirFiles...)
 		} else {
 			ext := strings.ToLower(filepath.Ext(path))
 			if ext == ".evtx" || ext == ".etl" || ext == ".csv" || ext == ".log" || ext == ".txt" {
 				if !shouldSkip(path, skipPatterns) {
-					files = append(files, path)
+					if len(enabledFormats) == 0 || formatSet[ext] {
+						files = append(files, path)
+					}
 				}
 			}
 		}
@@ -343,13 +367,21 @@ func collectFiles(paths []string, skipPatterns []string) []string {
 	return files
 }
 
-func scanDirectory(dir string, skipPatterns []string, depth int) []string {
+func scanDirectory(dir string, skipPatterns []string, enabledFormats []string, depth int) []string {
 	const maxDepth = 20
 	if depth > maxDepth {
 		return nil
 	}
 
 	var files []string
+	formatSet := make(map[string]bool)
+	for _, f := range enabledFormats {
+		ext := strings.ToLower(f)
+		if !strings.HasPrefix(ext, ".") {
+			ext = "." + ext
+		}
+		formatSet[ext] = true
+	}
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -367,7 +399,7 @@ func scanDirectory(dir string, skipPatterns []string, depth int) []string {
 			if info.Mode()&os.ModeSymlink != 0 {
 				continue
 			}
-			subFiles := scanDirectory(fullPath, skipPatterns, depth+1)
+			subFiles := scanDirectory(fullPath, skipPatterns, enabledFormats, depth+1)
 			files = append(files, subFiles...)
 			continue
 		}
@@ -375,7 +407,9 @@ func scanDirectory(dir string, skipPatterns []string, depth int) []string {
 		ext := strings.ToLower(filepath.Ext(fullPath))
 		if ext == ".evtx" || ext == ".etl" || ext == ".csv" || ext == ".log" || ext == ".txt" {
 			if !shouldSkip(fullPath, skipPatterns) {
-				files = append(files, fullPath)
+				if len(enabledFormats) == 0 || formatSet[ext] {
+					files = append(files, fullPath)
+				}
 			}
 		}
 	}

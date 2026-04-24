@@ -396,7 +396,9 @@ func (m *Manager) SaveCustomTemplate(name string, dir string) error {
 		return nil
 	}
 
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
 
 	filename := filepath.Join(dir, name+".html")
 	return os.WriteFile(filename, []byte(content), 0644)

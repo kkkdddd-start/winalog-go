@@ -5,6 +5,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -81,6 +82,63 @@ var TrustedCOMPaths = []string{
 	"C:\\Program Files",
 	"C:\\Program Files (x86)",
 	"C:\\ProgramData",
+	"%SystemRoot%\\System32",
+	"%SystemRoot%\\SysWOW64",
+	"%SystemRoot%",
+	"%ProgramFiles%",
+	"%ProgramFiles(x86)%",
+	"%ProgramData%",
+}
+
+func expandEnvPaths(paths []string) []string {
+	expanded := make([]string, 0, len(paths))
+	for _, p := range paths {
+		expanded = append(expanded, os.ExpandEnv(p))
+	}
+	return expanded
+}
+
+func init() {
+	TrustedCOMPaths = expandEnvPaths(TrustedCOMPaths)
+}
+
+var KnownSafeCOMCLSIDs = map[string]string{
+	"{00000300-0000-0000-0000-000000000000}": "COM Structured Storage",
+	"{00000303-0000-0000-0000-000000000000}": "Moniker Proxy",
+	"{00000304-0000-0000-0000-000000000000}": "OLE1-Presentation",
+	"{00000305-0000-0000-0000-000000000000}": "OLE2-Presentation",
+	"{00000306-0000-0000-0000-000000000000}": "OLE2-Link",
+	"{00000308-0000-0000-0000-000000000000}": "ActiveDoc",
+	"{00000309-0000-0000-0000-000000000000}": "Overlays",
+	"{0000030B-0000-0000-0000-000000000000}": "COM IIDs",
+	"{00000315-0000-0000-0000-000000000000}": "BindCtx",
+	"{00000316-0000-0000-0000-000000000000}": "GenericObject",
+	"{00000319-0000-0000-0000-000000000000}": "PropertySet",
+	"{0000031A-0000-0000-0000-000000000000}": "Layout Luid",
+	"{0000031D-0000-0000-0000-000000000000}": "ROT",
+	"{00000320-0000-0000-0000-000000000000}": "Memory",
+	"{00000327-0000-0000-0000-000000000000}": "ContextMarshaler",
+	"{0000032E-0000-0000-0000-000000000000}": "Thumbnail",
+	"{0002DF02-0000-0000-0000-000000000000}": "Explorer Browser",
+	"{0002E005-0000-0000-0000-000000000000}": "Data Folder",
+	"{0002E006-0000-0000-0000-000000000000}": "Channel Manager",
+	"{001DC1E0-0F8C-4720-98DB-39D32A661422}": "Enterprise DCS",
+	"{006E61DF-1A43-4F2C-B26F-780BAEA3A92D}": "Holographic Speech",
+	"{009F3B45-8A6B-4360-B997-B2A009A16402}": "Shell File Operation",
+	"{00A77FF7-A514-493e-B721-CDF8CB0F5B59}": "HelpPane",
+	"{00B8308C-09F2-4c18-A7B0-4594D6B22EFE}": "wbem Remote",
+	"{00BB2763-6A77-11D0-A535-00C04FD7D062}": "MSHTML Zones",
+	"{00BB2764-6A77-11D0-A535-00C04FD7D062}": "MSHTML Zones",
+	"{00BB2765-6A77-11D0-A535-00C04FD7D062}": "MSHTML Zones",
+	"{00C69F81-0524-48C0-A353-4DD9D54F9A6E}": "Intel GPU",
+	"{00CA399E-4CC0-43D2-902B-CEA3D36DC9E4}": "Remote Audio Endpoint",
+	"{FFE2A43C-56B9-4bf5-9A79-CC6D4285608A}": "Photo Viewer",
+	"{FFF0A69B-BE97-4023-BBB6-7914DB95E300}": "Wireless Network Manager",
+	"{0010890e-8789-413c-adbc-48f5b511b3af}": "Shell Folder",
+	"{003e0278-eca8-4bb8-a256-3689ca1c2600}": "Shell Folder",
+	"{00722F5F-CB8F-44D3-AC27-CC37F76CFE92}": "Shell UI",
+	"{0070746C-9A38-4236-822A-72CC4E5C8087}": "Shell Folder",
+	"{A77FF7-A514-493e-B721-CDF8CB0F5B59}": "System Config",
 }
 
 func (d *COMHijackDetector) Detect(ctx context.Context) ([]*Detection, error) {
@@ -197,6 +255,10 @@ func (d *COMHijackDetector) analyzeCLSID(clsid CLSIDEntry) *Detection {
 		return nil
 	}
 
+	if _, isSafe := KnownSafeCOMCLSIDs[clsid.CLSID]; isSafe {
+		return nil
+	}
+
 	if malDescription, isKnown := KnownMaliciousCLSID[clsid.CLSID]; isKnown {
 		return &Detection{
 			Technique:   TechniqueT1546015,
@@ -217,7 +279,8 @@ func (d *COMHijackDetector) analyzeCLSID(clsid CLSIDEntry) *Detection {
 	}
 
 	for _, suspiciousPath := range SuspiciousCOMPaths {
-		if strings.Contains(strings.ToLower(clsid.ServerPath), strings.ToLower(suspiciousPath)) {
+		suspiciousPathExpanded := os.ExpandEnv(suspiciousPath)
+		if strings.Contains(strings.ToLower(clsid.ServerPath), strings.ToLower(suspiciousPathExpanded)) {
 			return &Detection{
 				Technique:   TechniqueT1546015,
 				Category:    "COM",
@@ -260,7 +323,8 @@ func (d *COMHijackDetector) analyzeCLSID(clsid CLSIDEntry) *Detection {
 }
 
 func (d *COMHijackDetector) isTrustedPath(path string) bool {
-	pathLower := strings.ToLower(path)
+	pathExpanded := os.ExpandEnv(path)
+	pathLower := strings.ToLower(pathExpanded)
 	for _, trusted := range TrustedCOMPaths {
 		if strings.HasPrefix(pathLower, strings.ToLower(trusted)) {
 			return true

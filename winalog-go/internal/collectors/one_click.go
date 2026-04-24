@@ -27,6 +27,7 @@ type OneClickCollector struct {
 
 type CollectConfig struct {
 	Workers            int
+	Timeout            time.Duration
 	IncludePrefetch    bool
 	IncludeRegistry    bool
 	IncludeStartup     bool
@@ -99,6 +100,7 @@ func NewOneClickCollector() *OneClickCollector {
 		},
 		cfg: CollectConfig{
 			Workers:            4,
+			Timeout:            30 * time.Minute,
 			IncludeProcessSig:  true,
 			IncludeProcessDLLs: false,
 			DLLCollectionMode:  "none",
@@ -120,6 +122,9 @@ func RunOneClickCollection(ctx context.Context, opts interface{}) (interface{}, 
 	if opts != nil {
 		if collectOpts, ok := opts.(CollectOptions); ok {
 			c.cfg.Workers = collectOpts.Workers
+			if collectOpts.Timeout > 0 {
+				c.cfg.Timeout = collectOpts.Timeout
+			}
 			c.cfg.IncludePrefetch = collectOpts.IncludePrefetch
 			c.cfg.IncludeRegistry = collectOpts.IncludeRegistry
 			c.cfg.IncludeStartup = collectOpts.IncludeStartup
@@ -200,8 +205,16 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	}
 	defer os.RemoveAll(tempDir)
 
+	var cancel context.CancelFunc
+	if c.cfg.Timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, c.cfg.Timeout)
+		defer cancel()
+		log.Printf("[INFO] Collection timeout set to %v", c.cfg.Timeout)
+	}
+
 	var allErrors []string
 	var collectedItems = make(map[string]int)
+	var collectionDone = make(chan struct{})
 
 	itemDefinitions := []struct {
 		name        string
@@ -210,14 +223,14 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		requested   bool
 		collectFn   func() ([]CollectionItem, error)
 	}{
-		{"systemInfo", "系统信息", "收集系统基本信息", c.cfg.IncludeSystemInfo, func() ([]CollectionItem, error) { return nil, c.collectSystemInfoTo(tempDir) }},
+		{"systemInfo", "系统信息", "收集系统基本信息", c.cfg.IncludeSystemInfo, func() ([]CollectionItem, error) { return nil, c.collectSystemInfoTo(ctx, tempDir) }},
 		{"registry", "注册表", "收集注册表数据", c.cfg.IncludeRegistry, func() ([]CollectionItem, error) { return nil, c.CollectRegistry(ctx, tempDir) }},
 		{"startupFolders", "启动文件夹", "收集启动文件夹", c.cfg.IncludeStartup, func() ([]CollectionItem, error) { return nil, c.CollectStartupFolders(ctx, tempDir) }},
 		{"scheduledTasks", "计划任务", "收集计划任务", c.cfg.IncludeTasks, func() ([]CollectionItem, error) { return nil, c.CollectScheduledTasks(ctx, tempDir) }},
 		{"localUsers", "本地用户", "收集本地用户", c.cfg.IncludeUsers, func() ([]CollectionItem, error) { return nil, c.CollectLocalUsers(ctx, tempDir) }},
 		{"prefetch", "Prefetch", "收集 Prefetch", c.cfg.IncludePrefetch, func() ([]CollectionItem, error) { return nil, c.CollectPrefetch(ctx, tempDir) }},
 		{"eventLogs", "事件日志", "收集 Windows 事件日志", true, func() ([]CollectionItem, error) { return c.CollectEventLogs(ctx, tempDir) }},
-		{"processInfo", "进程信息", "收集进程和签名", c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs, func() ([]CollectionItem, error) { return nil, c.collectProcessInfoWithSignaturesAndDLLs(tempDir) }},
+		{"processInfo", "进程信息", "收集进程和签名", c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs, func() ([]CollectionItem, error) { return nil, c.collectProcessInfoWithSignaturesAndDLLs(ctx, tempDir) }},
 		{"amcache", "Amcache", "收集 Amcache", c.cfg.IncludeAmcache, func() ([]CollectionItem, error) { return nil, c.CollectAmcache(ctx, tempDir) }},
 		{"userassist", "UserAssist", "收集 UserAssist", c.cfg.IncludeUserassist, func() ([]CollectionItem, error) { return nil, c.CollectUserAssist(ctx, tempDir) }},
 		{"usnJournal", "USN 日志", "收集 USN Journal", c.cfg.IncludeUSNJournal, func() ([]CollectionItem, error) { return nil, c.CollectUSNJournal(ctx, tempDir) }},
@@ -279,9 +292,7 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 					Error:       err.Error(),
 				})
 			} else {
-				for _, failed := range subErrors {
-					result.Summary.FailedItems = append(result.Summary.FailedItems, failed)
-				}
+				result.Summary.FailedItems = append(result.Summary.FailedItems, subErrors...)
 				if len(subErrors) > 0 {
 					log.Printf("[WARN] %s had %d individual item failures", itm.displayName, len(subErrors))
 				}
@@ -300,7 +311,20 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 		}(item)
 	}
 
+	go func() {
+		<-ctx.Done()
+		log.Printf("[WARN] Collection context cancelled/timeout, forcing completion...")
+		cancel()
+	}()
+
 	wg.Wait()
+	close(collectionDone)
+
+	if ctx.Err() == context.DeadlineExceeded || ctx.Err() == context.Canceled {
+		log.Printf("[WARN] Collection ended due to timeout/cancellation, proceeding with partial results")
+		result.Success = false
+		result.Errors = append(result.Errors, fmt.Sprintf("collection ended early: %v", ctx.Err()))
+	}
 
 	if c.cfg.CalculateHash {
 		log.Printf("[INFO] Calculating file hashes...")
@@ -363,7 +387,7 @@ func (c *OneClickCollector) FullCollect(ctx context.Context) (*OneClickResult, e
 	return result, nil
 }
 
-func (c *OneClickCollector) collectProcessInfoWithSignaturesAndDLLs(tempDir string) error {
+func (c *OneClickCollector) collectProcessInfoWithSignaturesAndDLLs(ctx context.Context, tempDir string) error {
 	processDir := filepath.Join(tempDir, "processes")
 	if err := os.MkdirAll(processDir, 0755); err != nil {
 		return err
@@ -379,6 +403,12 @@ func (c *OneClickCollector) collectProcessInfoWithSignaturesAndDLLs(tempDir stri
 	dllList := make([]map[string]interface{}, 0)
 
 	for _, proc := range processes {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		procData := map[string]interface{}{
 			"pid":       proc.PID,
 			"name":      proc.Name,
@@ -395,7 +425,7 @@ func (c *OneClickCollector) collectProcessInfoWithSignaturesAndDLLs(tempDir stri
 		if c.cfg.IncludeProcessDLLs {
 			switch c.cfg.DLLCollectionMode {
 			case "all":
-				dlls, _ := GetProcessDLLs(int(proc.PID))
+				dlls, _ := GetProcessDLLsWithVersion(int(proc.PID))
 				for _, dll := range dlls {
 					dllData := map[string]interface{}{
 						"pid":     dll.ProcessID,
@@ -410,7 +440,7 @@ func (c *OneClickCollector) collectProcessInfoWithSignaturesAndDLLs(tempDir stri
 			case "selected":
 				for _, selectedPID := range c.cfg.SelectedPIDs {
 					if int(proc.PID) == selectedPID {
-						dlls, _ := GetProcessDLLs(int(proc.PID))
+						dlls, _ := GetProcessDLLsWithVersion(int(proc.PID))
 						for _, dll := range dlls {
 							dllData := map[string]interface{}{
 								"pid":     dll.ProcessID,
@@ -444,13 +474,13 @@ func (c *OneClickCollector) collectProcessInfoWithSignaturesAndDLLs(tempDir stri
 	return nil
 }
 
-func (c *OneClickCollector) collectSystemInfoTo(tempDir string) error {
+func (c *OneClickCollector) collectSystemInfoTo(ctx context.Context, tempDir string) error {
 	infoDir := filepath.Join(tempDir, "system_info")
 	if err := os.MkdirAll(infoDir, 0755); err != nil {
 		return err
 	}
 
-	info, err := CollectSystemInfo(context.Background())
+	info, err := CollectSystemInfo(ctx)
 	if err != nil {
 		return err
 	}
@@ -471,34 +501,88 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 		logChannels = c.getEventLogFilesFallback()
 	}
 
-	var failedItems []CollectionItem
-	copiedCount := 0
-	for _, ch := range logChannels {
+	var (
+		failedItems  []CollectionItem
+		failedMu     sync.Mutex
+		copiedCount  int
+		countMu      sync.Mutex
+		dirMu        sync.Mutex
+		usedNames    = make(map[string]bool)
+		usedNamesMu  sync.Mutex
+		workerCount  = 3
+		sem          = make(chan struct{}, workerCount)
+		wg           sync.WaitGroup
+	)
+
+	sanitizeFileName := func(name string) string {
+		name = strings.ReplaceAll(name, "/", "_")
+		name = strings.ReplaceAll(name, "\\", "_")
+		name = strings.ReplaceAll(name, ":", "_")
+		name = strings.ReplaceAll(name, "*", "_")
+		name = strings.ReplaceAll(name, "?", "_")
+		name = strings.ReplaceAll(name, "\"", "_")
+		name = strings.ReplaceAll(name, "<", "_")
+		name = strings.ReplaceAll(name, ">", "_")
+		name = strings.ReplaceAll(name, "|", "_")
+		return name
+	}
+
+	genUniqueName := func(baseName string) string {
+		usedNamesMu.Lock()
+		defer usedNamesMu.Unlock()
+
+		sanitized := sanitizeFileName(baseName)
+		if !usedNames[sanitized] {
+			usedNames[sanitized] = true
+			return sanitized
+		}
+
+		for i := 1; i <= 1000; i++ {
+			newName := fmt.Sprintf("%s_%d", sanitized, i)
+			if !usedNames[newName] {
+				usedNames[newName] = true
+				return newName
+			}
+		}
+		return fmt.Sprintf("%s_%d", sanitized, time.Now().UnixNano())
+	}
+
+	copyLog := func(ch LogChannelInfo) {
+		defer wg.Done()
+		defer func() { <-sem }()
+
 		select {
 		case <-ctx.Done():
-			return failedItems, ctx.Err()
+			return
 		default:
 		}
 
 		if !strings.HasSuffix(strings.ToLower(ch.LogPath), ".evtx") {
-			continue
+			return
 		}
 
 		if _, err := os.Stat(ch.LogPath); os.IsNotExist(err) {
 			log.Printf("[DEBUG] [OneClick] Event log file does not exist: %s", ch.LogPath)
-			continue
+			return
 		}
 
 		fileName := filepath.Base(ch.LogPath)
 		if decoded, err := url.QueryUnescape(fileName); err == nil {
 			fileName = decoded
 		}
-		dstPath := filepath.Join(eventLogDir, fileName)
-		if err := c.CopyFileWithRetry(ch.LogPath, dstPath, 3); err == nil {
-			copiedCount++
-			log.Printf("[DEBUG] [OneClick] Copied event log: %s -> %s", ch.Name, fileName)
-		} else {
+
+		uniqueName := genUniqueName(fileName)
+		if !strings.HasSuffix(strings.ToLower(uniqueName), ".evtx") {
+			uniqueName += ".evtx"
+		}
+
+		dirMu.Lock()
+		dstPath := filepath.Join(eventLogDir, uniqueName)
+		dirMu.Unlock()
+
+		if err := c.CopyFileWithRetry(ch.LogPath, dstPath, 3); err != nil {
 			log.Printf("[WARN] [OneClick] Failed to copy log %s: %v", ch.Name, err)
+			failedMu.Lock()
 			failedItems = append(failedItems, CollectionItem{
 				Name:        ch.Name,
 				DisplayName: ch.Name,
@@ -507,8 +591,26 @@ func (c *OneClickCollector) CollectEventLogs(ctx context.Context, outputDir stri
 				Error:       err.Error(),
 				Path:        ch.LogPath,
 			})
+			failedMu.Unlock()
+		} else {
+			countMu.Lock()
+			copiedCount++
+			countMu.Unlock()
+			log.Printf("[DEBUG] [OneClick] Copied event log: %s -> %s", ch.Name, uniqueName)
 		}
 	}
+
+	for _, ch := range logChannels {
+		select {
+		case <-ctx.Done():
+			break
+		case sem <- struct{}{}:
+			wg.Add(1)
+			go copyLog(ch)
+		}
+	}
+
+	wg.Wait()
 
 	log.Printf("[DEBUG] [OneClick] Event log collection completed: %d files copied, %d failed", copiedCount, len(failedItems))
 	return failedItems, nil
@@ -558,14 +660,45 @@ func (c *OneClickCollector) CollectPrefetch(ctx context.Context, outputDir strin
 		return nil
 	}
 
-	for _, entry := range entries {
+	var (
+		dirMu       sync.Mutex
+		workerCount = 3
+		sem         = make(chan struct{}, workerCount)
+		wg          sync.WaitGroup
+	)
+
+	copyPrefetch := func(entry os.DirEntry) {
+		defer wg.Done()
+		defer func() { <-sem }()
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		if strings.HasSuffix(entry.Name(), ".pf") {
 			src := filepath.Join(prefetchPath, entry.Name())
+			dirMu.Lock()
 			dst := filepath.Join(prefetchDir, entry.Name())
-			c.CopyFileWithRetry(src, dst, 3)
+			dirMu.Unlock()
+			if err := c.CopyFileWithRetry(src, dst, 3); err != nil {
+				log.Printf("[WARN] [OneClick] Failed to copy prefetch %s: %v", entry.Name(), err)
+			}
 		}
 	}
 
+	for _, entry := range entries {
+		select {
+		case <-ctx.Done():
+			break
+		case sem <- struct{}{}:
+			wg.Add(1)
+			go copyPrefetch(entry)
+		}
+	}
+
+	wg.Wait()
 	return nil
 }
 
@@ -655,8 +788,9 @@ func (c *OneClickCollector) CollectAmcache(ctx context.Context, outputDir string
 		return err
 	}
 
-	entries, err := GetAmcache()
+	entries, err := GetAmcacheEntries(ctx)
 	if err != nil {
+		log.Printf("[WARN] [OneClick] CollectAmcache failed: %v", err)
 		return err
 	}
 
@@ -673,8 +807,9 @@ func (c *OneClickCollector) CollectUserAssist(ctx context.Context, outputDir str
 		return err
 	}
 
-	entries, err := GetUserAssist()
+	entries, err := GetUserAssistEntries(ctx)
 	if err != nil {
+		log.Printf("[WARN] [OneClick] CollectUserAssist failed: %v", err)
 		return err
 	}
 
@@ -692,8 +827,9 @@ func (c *OneClickCollector) CollectUSNJournal(ctx context.Context, outputDir str
 	}
 
 	for _, drive := range []string{"C:", "D:", "E:"} {
-		entries, err := GetUSNJournal(drive)
+		entries, err := GetUSNJournalEntries(ctx, drive)
 		if err != nil {
+			log.Printf("[WARN] [OneClick] CollectUSNJournalEntries failed for %s: %v", drive, err)
 			continue
 		}
 		data, err := json.MarshalIndent(entries, "", "  ")
@@ -716,8 +852,9 @@ func (c *OneClickCollector) CollectShimCache(ctx context.Context, outputDir stri
 		return err
 	}
 
-	entries, err := GetShimCache()
+	entries, err := GetShimCacheEntries(ctx)
 	if err != nil {
+		log.Printf("[WARN] [OneClick] CollectShimCache failed: %v", err)
 		return err
 	}
 
@@ -765,7 +902,7 @@ func (c *OneClickCollector) CreateZipFromDir(sourceDir, zipPath string) error {
 func (c *OneClickCollector) CalculateFileHashes(dir string) (map[string]string, error) {
 	hashes := make(map[string]string)
 
-	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
 		}
@@ -775,6 +912,9 @@ func (c *OneClickCollector) CalculateFileHashes(dir string) (map[string]string, 
 		}
 		return nil
 	})
+	if err != nil {
+		log.Printf("[WARN] CalculateFileHashes: walk failed: %v", err)
+	}
 
 	return hashes, nil
 }
@@ -854,7 +994,9 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	os.Chtimes(dst, sourceInfo.ModTime(), sourceInfo.ModTime())
+	if err := os.Chtimes(dst, sourceInfo.ModTime(), sourceInfo.ModTime()); err != nil {
+		log.Printf("[WARN] copyFile: failed to set file times: %v", err)
+	}
 
 	return nil
 }
@@ -872,74 +1014,26 @@ func (c *OneClickCollector) GenerateCollectReport(success bool, outputDir string
 	reportPath := filepath.Join(outputDir, "collection_report.txt")
 
 	var report strings.Builder
-	report.WriteString(fmt.Sprintf("WinLog One-Click Collection Report\n"))
-	report.WriteString(fmt.Sprintf("===================================\n"))
+	report.WriteString("WinLog One-Click Collection Report\n")
+	report.WriteString("===================================\n")
 	report.WriteString(fmt.Sprintf("Timestamp: %s\n", time.Now().Format(time.RFC3339)))
 	report.WriteString(fmt.Sprintf("Success: %v\n", success))
 	report.WriteString(fmt.Sprintf("Output Directory: %s\n", outputDir))
 
 	if c.cfg.IncludePrefetch {
-		report.WriteString(fmt.Sprintf("  - Prefetch: Enabled\n"))
+		report.WriteString("  - Prefetch: Enabled\n")
 	}
 	if c.cfg.IncludeRegistry {
-		report.WriteString(fmt.Sprintf("  - Registry: Enabled\n"))
+		report.WriteString("  - Registry: Enabled\n")
 	}
 	if c.cfg.IncludeSystemInfo {
-		report.WriteString(fmt.Sprintf("  - System Info: Enabled\n"))
+		report.WriteString("  - System Info: Enabled\n")
 	}
 	if c.cfg.IncludeProcessSig || c.cfg.IncludeProcessDLLs {
-		report.WriteString(fmt.Sprintf("  - Process Info: Enabled\n"))
+		report.WriteString("  - Process Info: Enabled\n")
 	}
 
 	return os.WriteFile(reportPath, []byte(report.String()), 0600)
-}
-
-type AmcacheEntry struct {
-	Path   string `json:"path"`
-	SHA1   string `json:"sha1"`
-	Date   string `json:"date"`
-	Volume string `json:"volume"`
-}
-
-type UserAssistEntry struct {
-	Name       string `json:"name"`
-	LastUpdate string `json:"last_update"`
-	Count      int    `json:"count"`
-}
-
-type USNJournalEntry struct {
-	SequenceNumber uint64 `json:"sequence_number"`
-	Timestamp      string `json:"timestamp"`
-	MajorFunc      uint32 `json:"major_func"`
-	MinorFunc      uint32 `json:"minor_func"`
-	Flags          uint32 `json:"flags"`
-	FileName       string `json:"file_name"`
-}
-
-type ShimCacheEntry struct {
-	Path         string `json:"path"`
-	LastModified string `json:"last_modified"`
-	Size         uint64 `json:"size"`
-}
-
-func GetAmcache() ([]AmcacheEntry, error) {
-	log.Printf("[WARN] Amcache collection not implemented - returning empty result")
-	return []AmcacheEntry{}, nil
-}
-
-func GetUserAssist() ([]UserAssistEntry, error) {
-	log.Printf("[WARN] UserAssist collection not implemented - returning empty result")
-	return []UserAssistEntry{}, nil
-}
-
-func GetUSNJournal(drive string) ([]USNJournalEntry, error) {
-	log.Printf("[WARN] USN Journal collection not implemented - returning empty result")
-	return []USNJournalEntry{}, nil
-}
-
-func GetShimCache() ([]ShimCacheEntry, error) {
-	log.Printf("[WARN] ShimCache collection not implemented - returning empty result")
-	return []ShimCacheEntry{}, nil
 }
 
 func (c *OneClickCollector) CollectScheduledTasks(ctx context.Context, outputDir string) error {

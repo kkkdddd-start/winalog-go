@@ -49,7 +49,7 @@ func requestLogger() gin.HandlerFunc {
 		os.Stdout.Write(jsonBytes)
 
 		if lf := getLogFile(); lf != nil {
-			lf.Write(jsonBytes)
+			_, _ = lf.Write(jsonBytes)
 		}
 
 		observability.LogAPIRequest(logEntry)
@@ -174,7 +174,7 @@ func recoveryMiddleware() gin.HandlerFunc {
 				os.Stdout.Write(jsonBytes)
 
 				if lf := getLogFile(); lf != nil {
-					lf.Write(jsonBytes)
+					_, _ = lf.Write(jsonBytes)
 				}
 
 				c.AbortWithStatusJSON(500, gin.H{

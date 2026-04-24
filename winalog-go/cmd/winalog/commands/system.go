@@ -20,7 +20,6 @@ import (
 )
 
 var currentServer *api.Server
-var currentConfig *config.Config
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
@@ -673,11 +672,11 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 	case "api.host":
 		cfg.API.Host = value
 	case "api.port":
-		fmt.Sscanf(value, "%d", &cfg.API.Port)
+		_, _ = fmt.Sscanf(value, "%d", &cfg.API.Port)
 	case "log.level":
 		cfg.Log.Level = value
 	case "import.workers":
-		fmt.Sscanf(value, "%d", &cfg.Import.Workers)
+		_, _ = fmt.Sscanf(value, "%d", &cfg.Import.Workers)
 	case "alerts.enabled":
 		cfg.Alerts.Enabled = value == "true"
 	default:
@@ -853,13 +852,11 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	addr := fmt.Sprintf("%s:%d", serveFlags.host, serveFlags.port)
 	currentServer = api.NewServer(db, cfg, globalConfigPath, addr)
-	currentConfig = cfg
 
 	if serveFlags.configPath != "" {
 		if err := globalConfigLoader.Watch(func(newCfg *config.Config) {
 			if currentServer != nil {
 				currentServer.ReloadConfig(newCfg)
-				currentConfig = newCfg
 			}
 		}); err != nil {
 			fmt.Printf("Warning: failed to enable config watch: %v\n", err)

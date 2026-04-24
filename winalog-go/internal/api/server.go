@@ -2,12 +2,9 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,23 +17,6 @@ import (
 	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
-
-func getStaticDir() string {
-	exePath, err := os.Executable()
-	if err != nil {
-		return filepath.Join("internal", "gui", "dist")
-	}
-	exeDir := filepath.Dir(exePath)
-	return filepath.Join(exeDir, "internal", "gui", "dist")
-}
-
-func safePath(root, userPath string) (string, error) {
-	clean := filepath.Clean(filepath.Join(root, userPath))
-	if !strings.HasPrefix(clean, root) {
-		return "", errors.New("path traversal attempt blocked")
-	}
-	return clean, nil
-}
 
 type Server struct {
 	engine         *gin.Engine
@@ -74,7 +54,7 @@ func NewServer(db *storage.DB, cfg *config.Config, configPath, addr string) *Ser
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 
-	initLogFile()
+	_ = initLogFile()
 	observability.InitMetricsLogger()
 
 	engine.Use(recoveryMiddleware())
@@ -109,7 +89,7 @@ func (s *Server) setupHandlers() {
 		alertEngine: s.alertEngine,
 	}
 	s.liveEng = NewLiveHandler(s.db)
-	s.persistenceEng = NewPersistenceHandler()
+	s.persistenceEng = NewPersistenceHandler(s.db)
 	s.timelineEng = &TimelineHandler{
 		db: s.db,
 	}

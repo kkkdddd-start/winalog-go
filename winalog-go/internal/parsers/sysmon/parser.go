@@ -279,7 +279,7 @@ func (p *SysmonParser) buildMessage(eventID int, data map[string]string) string 
 	case 15:
 		return fmt.Sprintf("File Stream Created: %s in %s", data["TargetFilename"], data["RuleName"])
 	case 16:
-		return fmt.Sprintf("Sysmon Service Configuration Changed")
+		return "Sysmon Service Configuration Changed"
 	case 17:
 		return fmt.Sprintf("Pipe Created: %s", data["PipeName"])
 	case 18:

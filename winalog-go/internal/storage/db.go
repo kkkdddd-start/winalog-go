@@ -107,7 +107,7 @@ func (d *DB) Begin() (*sql.Tx, func(), error) {
 		return nil, nil, err
 	}
 	return tx, func() {
-		tx.Rollback()
+		_ = tx.Rollback()
 	}, nil
 }
 
@@ -267,7 +267,7 @@ func (d *DB) BeginTx() (*sql.Tx, func(), error) {
 		return nil, nil, err
 	}
 	return tx, func() {
-		tx.Rollback()
+		_ = tx.Rollback()
 		unlock()
 	}, nil
 }
@@ -508,4 +508,206 @@ func (d *DB) AlertRepo() *AlertRepo {
 
 func (d *DB) EventRepo() *EventRepo {
 	return NewEventRepo(d)
+}
+
+type ImportTask struct {
+	ID             int64
+	TaskID         string
+	Status         string
+	TotalFiles     int
+	ProcessedFiles int
+	TotalEvents    int64
+	FilesImported  int
+	FilesFailed    int
+	CurrentFile    string
+	ErrorMessage   string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	CompletedAt    *time.Time
+}
+
+type ImportTaskFile struct {
+	ID           int64
+	TaskID       string
+	FilePath     string
+	Status       string
+	EventsCount  int
+	ErrorMessage string
+}
+
+func (d *DB) CreateImportTask(taskID string, totalFiles int) (int64, error) {
+	now := time.Now()
+	result, err := d.Exec(`
+		INSERT INTO import_task (task_id, status, total_files, processed_files, total_events, files_imported, files_failed, created_at, updated_at)
+		VALUES (?, 'pending', ?, 0, 0, 0, 0, ?, ?)`,
+		taskID, totalFiles, now, now)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func (d *DB) CreateImportTaskFile(taskID, filePath string) (int64, error) {
+	result, err := d.Exec(`
+		INSERT INTO import_task_file (task_id, file_path, status)
+		VALUES (?, ?, 'pending')`,
+		taskID, filePath)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func (d *DB) CreateImportTaskFiles(taskID string, filePaths []string) error {
+	d.writeMu.Lock()
+	defer d.writeMu.Unlock()
+
+	stmt, err := d.conn.Prepare(`INSERT INTO import_task_file (task_id, file_path, status) VALUES (?, ?, 'pending')`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, path := range filePaths {
+		if _, err := stmt.Exec(taskID, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *DB) UpdateImportTask(taskID string, status string, processedFiles, filesImported, filesFailed int, totalEvents int64, currentFile, errorMessage string) error {
+	now := time.Now()
+	var completedAt interface{}
+	if status == "completed" || status == "failed" || status == "cancelled" {
+		completedAt = now
+	}
+
+	_, err := d.Exec(`
+		UPDATE import_task SET status = ?, processed_files = ?, files_imported = ?, files_failed = ?,
+		total_events = ?, current_file = ?, error_message = ?, updated_at = ?, completed_at = ?
+		WHERE task_id = ?`,
+		status, processedFiles, filesImported, filesFailed, totalEvents, currentFile, errorMessage, now, completedAt, taskID)
+	return err
+}
+
+func (d *DB) UpdateImportTaskFile(taskID, filePath, status string, eventsCount int, errorMessage string) error {
+	_, err := d.Exec(`
+		UPDATE import_task_file SET status = ?, events_count = ?, error_message = ?
+		WHERE task_id = ? AND file_path = ?`,
+		status, eventsCount, errorMessage, taskID, filePath)
+	return err
+}
+
+func (d *DB) GetImportTask(taskID string) (*ImportTask, error) {
+	row := d.QueryRow(`
+		SELECT id, task_id, status, total_files, processed_files, total_events, files_imported, files_failed,
+		current_file, error_message, created_at, updated_at, completed_at
+		FROM import_task WHERE task_id = ?`, taskID)
+
+	var task ImportTask
+	var completedAt sql.NullTime
+	err := row.Scan(&task.ID, &task.TaskID, &task.Status, &task.TotalFiles, &task.ProcessedFiles,
+		&task.TotalEvents, &task.FilesImported, &task.FilesFailed, &task.CurrentFile, &task.ErrorMessage,
+		&task.CreatedAt, &task.UpdatedAt, &completedAt)
+	if err != nil {
+		return nil, err
+	}
+	if completedAt.Valid {
+		task.CompletedAt = &completedAt.Time
+	}
+	return &task, nil
+}
+
+func (d *DB) GetImportTasks(limit, offset int, status string) ([]*ImportTask, int64, error) {
+	var total int64
+	var countQuery string
+	var countArgs []interface{}
+
+	if status != "" {
+		countQuery = "SELECT COUNT(*) FROM import_task WHERE status = ?"
+		countArgs = []interface{}{status}
+	} else {
+		countQuery = "SELECT COUNT(*) FROM import_task"
+	}
+
+	if err := d.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	var query string
+	var args []interface{}
+
+	if status != "" {
+		query = `SELECT id, task_id, status, total_files, processed_files, total_events, files_imported, files_failed,
+		current_file, error_message, created_at, updated_at, completed_at
+		FROM import_task WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
+		args = []interface{}{status, limit, offset}
+	} else {
+		query = `SELECT id, task_id, status, total_files, processed_files, total_events, files_imported, files_failed,
+		current_file, error_message, created_at, updated_at, completed_at
+		FROM import_task ORDER BY created_at DESC LIMIT ? OFFSET ?`
+		args = []interface{}{limit, offset}
+	}
+
+	rows, err := d.Query(query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var tasks []*ImportTask
+	for rows.Next() {
+		var task ImportTask
+		var completedAt sql.NullTime
+		if err := rows.Scan(&task.ID, &task.TaskID, &task.Status, &task.TotalFiles, &task.ProcessedFiles,
+			&task.TotalEvents, &task.FilesImported, &task.FilesFailed, &task.CurrentFile, &task.ErrorMessage,
+			&task.CreatedAt, &task.UpdatedAt, &completedAt); err != nil {
+			return nil, 0, err
+		}
+		if completedAt.Valid {
+			task.CompletedAt = &completedAt.Time
+		}
+		tasks = append(tasks, &task)
+	}
+
+	return tasks, total, nil
+}
+
+func (d *DB) GetImportTaskFiles(taskID string) ([]*ImportTaskFile, error) {
+	rows, err := d.Query(`SELECT id, task_id, file_path, status, events_count, error_message FROM import_task_file WHERE task_id = ?`, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []*ImportTaskFile
+	for rows.Next() {
+		var file ImportTaskFile
+		if err := rows.Scan(&file.ID, &file.TaskID, &file.FilePath, &file.Status, &file.EventsCount, &file.ErrorMessage); err != nil {
+			return nil, err
+		}
+		files = append(files, &file)
+	}
+
+	return files, nil
+}
+
+func (d *DB) GetImportTaskErrors(taskID string) ([]*ImportTaskFile, error) {
+	rows, err := d.Query(`SELECT id, task_id, file_path, status, events_count, error_message FROM import_task_file WHERE task_id = ? AND status = 'failed'`, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []*ImportTaskFile
+	for rows.Next() {
+		var file ImportTaskFile
+		if err := rows.Scan(&file.ID, &file.TaskID, &file.FilePath, &file.Status, &file.EventsCount, &file.ErrorMessage); err != nil {
+			return nil, err
+		}
+		files = append(files, &file)
+	}
+
+	return files, nil
 }

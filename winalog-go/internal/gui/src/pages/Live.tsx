@@ -83,7 +83,7 @@ function Live() {
       await monitorAPI.startStop('start')
     } catch (err) {
       console.error('Failed to start monitor:', err)
-      setError('Failed to start monitoring')
+      setError('Failed to start monitoring. Monitor may not be available on this platform.')
       return
     }
 
@@ -144,27 +144,23 @@ function Live() {
     pollData()
 
     pollIntervalRef.current = setInterval(pollData, POLL_INTERVAL_MS)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const stopRealTimeMonitoring = useCallback(() => {
+  useEffect(() => {
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current)
       pollIntervalRef.current = null
     }
-    monitorAPI.startStop('stop').catch(console.error)
-  }, [])
-
-  useEffect(() => {
     if (isEnabled) {
       startRealTimeMonitoring()
-    } else {
-      stopRealTimeMonitoring()
     }
     return () => {
-      stopRealTimeMonitoring()
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
     }
-  }, [isEnabled, startRealTimeMonitoring, stopRealTimeMonitoring])
+  }, [isEnabled, startRealTimeMonitoring])
 
   const toggleMonitoring = () => {
     setIsEnabled(prev => {

@@ -241,8 +241,7 @@ func (r *AlertRule) validateFilter(f *Filter) error {
 }
 
 func (r *AlertRule) validateConditions(c *Conditions) error {
-	var validateCondition func(cond *Condition) error
-	validateCondition = func(cond *Condition) error {
+	validateCondition := func(cond *Condition) error {
 		if cond.Field == "" {
 			return fmt.Errorf("condition field is required")
 		}

@@ -364,7 +364,9 @@ func (e *Engine) applyUpgradeInstance(template *PolicyTemplate, instance *Policy
 
 			threshold := 5
 			if t, ok := instance.Parameters["threshold"]; ok {
-				fmt.Sscanf(t, "%d", &threshold)
+				if _, err := fmt.Sscanf(t, "%d", &threshold); err != nil {
+					threshold = 5
+				}
 			}
 
 			upgradeRule := &types.AlertUpgradeRule{
@@ -387,7 +389,7 @@ func (e *Engine) applySuppressInstance(template *PolicyTemplate, instance *Polic
 			duration := 24 * time.Hour
 			if d, ok := instance.Parameters["duration"]; ok {
 				var hours int
-				fmt.Sscanf(d, "%d", &hours)
+				_, _ = fmt.Sscanf(d, "%d", &hours)
 				duration = time.Duration(hours) * time.Hour
 			}
 

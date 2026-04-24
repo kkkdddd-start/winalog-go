@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../locales/I18n'
 import { systemAPI } from '../api'
+import { message } from 'antd'
 
 interface SystemInfoData {
   hostname: string
@@ -170,6 +171,30 @@ function SystemInfo() {
     fetchSystemInfo()
   }, [])
 
+  useEffect(() => {
+    if (enabledModules.processes && processes.length === 0) {
+      fetchProcesses()
+    }
+    if (enabledModules.network && networkConnections.length === 0) {
+      fetchNetwork()
+    }
+    if (enabledModules.dlls && dlls.length === 0) {
+      fetchDlls()
+    }
+    if (enabledModules.drivers && drivers.length === 0) {
+      fetchDrivers()
+    }
+    if (enabledModules.users && users.length === 0) {
+      fetchUsers()
+    }
+    if (enabledModules.registry && registry.length === 0) {
+      fetchRegistry()
+    }
+    if (enabledModules.tasks && tasks.length === 0) {
+      fetchTasks()
+    }
+  }, [enabledModules])
+
   const fetchSystemInfo = () => {
     setLoading(true)
     systemAPI.getInfo()
@@ -191,7 +216,7 @@ function SystemInfo() {
     }
     if (processes.length > 0) return
     setLoading(true)
-    systemAPI.getProcesses(50, enabled)
+    systemAPI.getProcesses(10000, enabled)
       .then(res => {
         setProcesses(res.data.processes || [])
         setModuleErrors(m => ({ ...m, processes: '' }))
@@ -214,7 +239,7 @@ function SystemInfo() {
     }
     if (networkConnections.length > 0) return
     setLoading(true)
-    systemAPI.getNetwork(50, enabled)
+    systemAPI.getNetwork(10000, enabled)
       .then(res => {
         setNetworkConnections(res.data.connections || [])
         setLoading(false)
@@ -249,7 +274,7 @@ function SystemInfo() {
         })
         .catch(() => setLoading(false))
     } else {
-      systemAPI.getLoadedDLLs(100, enabled)
+      systemAPI.getLoadedDLLs(10000, enabled)
         .then(res => {
           setDlls(res.data.modules || [])
           setLoading(false)
@@ -456,7 +481,10 @@ function SystemInfo() {
   }
 
   const exportToCSV = (data: any[], filename: string, headers: string[]) => {
-    if (data.length === 0) return
+    if (data.length === 0) {
+      message.warning('请先启用并加载数据后再导出')
+      return
+    }
     const csvContent = [
       headers.join(','),
       ...data.map(row => headers.map(h => {
@@ -500,7 +528,16 @@ function SystemInfo() {
       case 'tasks':
         exportToCSV(tasks, 'tasks', ['name', 'path', 'state'])
         break
+      case 'env':
+        exportToCSV(envVars, 'env_variables', ['name', 'value', 'type'])
+        break
     }
+  }
+
+  const handleExportFromBackend = (type: string) => {
+    const url = `/api/system/${type}/export`
+    window.open(url, '_blank')
+    setShowExportMenu(false)
   }
 
   if (loading && !info) return (
@@ -526,20 +563,61 @@ function SystemInfo() {
           <button className="btn-refresh" onClick={fetchSystemInfo}>
             {t('common.refresh') || '刷新'}
           </button>
-          {['processes', 'network', 'dlls', 'drivers', 'users', 'registry', 'tasks'].includes(activeTab) && (
+          {['processes', 'network', 'dlls', 'drivers', 'users', 'registry', 'tasks', 'env'].includes(activeTab) && (
             <div className="export-dropdown">
               <button className="btn-export" onClick={() => setShowExportMenu(!showExportMenu)}>
                 {t('common.export') || '导出'} CSV
               </button>
               {showExportMenu && (
                 <div className="export-menu">
-                  {activeTab === 'processes' && <button onClick={() => handleExport('processes')}>导出进程</button>}
-                  {activeTab === 'network' && <button onClick={() => handleExport('network')}>导出网络</button>}
-                  {activeTab === 'dlls' && <button onClick={() => handleExport('dlls')}>导出 DLL</button>}
-                  {activeTab === 'drivers' && <button onClick={() => handleExport('drivers')}>导出驱动</button>}
-                  {activeTab === 'users' && <button onClick={() => handleExport('users')}>导出用户</button>}
-                  {activeTab === 'registry' && <button onClick={() => handleExport('registry')}>导出注册表</button>}
-                  {activeTab === 'tasks' && <button onClick={() => handleExport('tasks')}>导出任务</button>}
+                  {activeTab === 'processes' && (
+                    <>
+                      <button onClick={() => handleExport('processes')}>前端导出（已加载数据）</button>
+                      <button onClick={() => handleExportFromBackend('processes')}>后端导出（完整数据）</button>
+                    </>
+                  )}
+                  {activeTab === 'network' && (
+                    <>
+                      <button onClick={() => handleExport('network')}>前端导出（已加载数据）</button>
+                      <button onClick={() => handleExportFromBackend('network')}>后端导出（完整数据）</button>
+                    </>
+                  )}
+                  {activeTab === 'dlls' && (
+                    <>
+                      <button onClick={() => handleExport('dlls')}>前端导出（已加载数据）</button>
+                      <button onClick={() => handleExportFromBackend('dlls')}>后端导出（完整数据）</button>
+                    </>
+                  )}
+                  {activeTab === 'drivers' && (
+                    <>
+                      <button onClick={() => handleExport('drivers')}>前端导出（已加载数据）</button>
+                      <button onClick={() => handleExportFromBackend('drivers')}>后端导出（完整数据）</button>
+                    </>
+                  )}
+                  {activeTab === 'users' && (
+                    <>
+                      <button onClick={() => handleExport('users')}>前端导出（已加载数据）</button>
+                      <button onClick={() => handleExportFromBackend('users')}>后端导出（完整数据）</button>
+                    </>
+                  )}
+                  {activeTab === 'registry' && (
+                    <>
+                      <button onClick={() => handleExport('registry')}>前端导出（已加载数据）</button>
+                      <button onClick={() => handleExportFromBackend('registry')}>后端导出（完整数据）</button>
+                    </>
+                  )}
+                  {activeTab === 'tasks' && (
+                    <>
+                      <button onClick={() => handleExport('tasks')}>前端导出（已加载数据）</button>
+                      <button onClick={() => handleExportFromBackend('tasks')}>后端导出（完整数据）</button>
+                    </>
+                  )}
+                  {activeTab === 'env' && (
+                    <>
+                      <button onClick={() => handleExport('env')}>前端导出（已加载数据）</button>
+                      <button onClick={() => handleExportFromBackend('env')}>后端导出（完整数据）</button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

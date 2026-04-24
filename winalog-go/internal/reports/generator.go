@@ -478,8 +478,9 @@ func collectLinuxSystemSnapshot(snapshot *SystemSnapshot) {
 
 	if data, err := os.ReadFile("/proc/uptime"); err == nil {
 		var uptimeSeconds float64
-		fmt.Sscanf(string(data), "%f", &uptimeSeconds)
-		snapshot.UptimeSeconds = int64(uptimeSeconds)
+		if _, err := fmt.Sscanf(string(data), "%f", &uptimeSeconds); err == nil {
+			snapshot.UptimeSeconds = int64(uptimeSeconds)
+		}
 	}
 }
 
@@ -542,8 +543,9 @@ func getSystemUptimeSeconds() float64 {
 	}
 	if data, err := os.ReadFile("/proc/uptime"); err == nil {
 		var uptime float64
-		fmt.Sscanf(string(data), "%f", &uptime)
-		return uptime
+		if _, err := fmt.Sscanf(string(data), "%f", &uptime); err == nil {
+			return uptime
+		}
 	}
 	return 0
 }

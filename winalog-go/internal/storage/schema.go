@@ -340,6 +340,43 @@ CREATE INDEX IF NOT EXISTS idx_reports_generated_at ON reports(generated_at);
 -- Indexes for suppress_rules table
 CREATE INDEX IF NOT EXISTS idx_suppress_rules_name ON suppress_rules(name);
 CREATE INDEX IF NOT EXISTS idx_suppress_rules_enabled ON suppress_rules(enabled);
+
+-- Import task table for tracking async import operations
+CREATE TABLE IF NOT EXISTS import_task (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL UNIQUE,
+    status TEXT DEFAULT 'pending',
+    total_files INTEGER DEFAULT 0,
+    processed_files INTEGER DEFAULT 0,
+    total_events INTEGER DEFAULT 0,
+    files_imported INTEGER DEFAULT 0,
+    files_failed INTEGER DEFAULT 0,
+    current_file TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT
+);
+
+-- Import task file table for tracking individual files in an import task
+CREATE TABLE IF NOT EXISTS import_task_file (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    events_count INTEGER DEFAULT 0,
+    error_message TEXT,
+    FOREIGN KEY (task_id) REFERENCES import_task(task_id) ON DELETE CASCADE
+);
+
+-- Indexes for import_task table
+CREATE INDEX IF NOT EXISTS idx_import_task_task_id ON import_task(task_id);
+CREATE INDEX IF NOT EXISTS idx_import_task_status ON import_task(status);
+CREATE INDEX IF NOT EXISTS idx_import_task_created_at ON import_task(created_at);
+
+-- Indexes for import_task_file table
+CREATE INDEX IF NOT EXISTS idx_import_task_file_task_id ON import_task_file(task_id);
+CREATE INDEX IF NOT EXISTS idx_import_task_file_status ON import_task_file(status);
 `
 
 var TableDefinitions = map[string]TableDefinition{
@@ -513,6 +550,44 @@ var TableDefinitions = map[string]TableDefinition{
 		Indexes: []IndexDefinition{
 			{Name: "idx_name", Columns: []string{"name"}},
 			{Name: "idx_enabled", Columns: []string{"enabled"}},
+		},
+	},
+	"import_task": {
+		Name: "import_task",
+		Columns: []ColumnDefinition{
+			{Name: "id", Type: "INTEGER", PrimaryKey: true, AutoIncrement: true},
+			{Name: "task_id", Type: "TEXT", NotNull: true},
+			{Name: "status", Type: "TEXT", Default: "'pending'"},
+			{Name: "total_files", Type: "INTEGER", Default: "0"},
+			{Name: "processed_files", Type: "INTEGER", Default: "0"},
+			{Name: "total_events", Type: "INTEGER", Default: "0"},
+			{Name: "files_imported", Type: "INTEGER", Default: "0"},
+			{Name: "files_failed", Type: "INTEGER", Default: "0"},
+			{Name: "current_file", Type: "TEXT"},
+			{Name: "error_message", Type: "TEXT"},
+			{Name: "created_at", Type: "TEXT", NotNull: true},
+			{Name: "updated_at", Type: "TEXT", NotNull: true},
+			{Name: "completed_at", Type: "TEXT"},
+		},
+		Indexes: []IndexDefinition{
+			{Name: "idx_task_id", Columns: []string{"task_id"}},
+			{Name: "idx_status", Columns: []string{"status"}},
+			{Name: "idx_created_at", Columns: []string{"created_at"}},
+		},
+	},
+	"import_task_file": {
+		Name: "import_task_file",
+		Columns: []ColumnDefinition{
+			{Name: "id", Type: "INTEGER", PrimaryKey: true, AutoIncrement: true},
+			{Name: "task_id", Type: "TEXT", NotNull: true},
+			{Name: "file_path", Type: "TEXT", NotNull: true},
+			{Name: "status", Type: "TEXT", Default: "'pending'"},
+			{Name: "events_count", Type: "INTEGER", Default: "0"},
+			{Name: "error_message", Type: "TEXT"},
+		},
+		Indexes: []IndexDefinition{
+			{Name: "idx_file_task_id", Columns: []string{"task_id"}},
+			{Name: "idx_file_status", Columns: []string{"status"}},
 		},
 	},
 }

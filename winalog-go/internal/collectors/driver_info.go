@@ -25,6 +25,16 @@ type Driver struct {
 	Status      string
 }
 
+type DriverWithSignature struct {
+	Name        string
+	DisplayName string
+	Description string
+	Path        string
+	Status      string
+	SigStatus   string
+	Signer      string
+}
+
 func NewDriverInfoCollector() *DriverInfoCollector {
 	return &DriverInfoCollector{
 		BaseCollector: BaseCollector{
@@ -53,24 +63,15 @@ func (c *DriverInfoCollector) Collect(ctx context.Context) ([]interface{}, error
 func (c *DriverInfoCollector) collectDriverInfo() ([]*types.DriverInfo, error) {
 	drivers := make([]*types.DriverInfo, 0)
 
-	driverList, err := ListDrivers()
+	driverList, err := ListDriversWithSignature()
 	if err != nil {
 		return drivers, err
 	}
 
 	for _, driver := range driverList {
-		signer := ""
-		sigStatus := ""
-		if driver.Path != "" {
-			isSigned, signerName, _ := IsDriverSigned(driver.Path)
-			if isSigned {
-				sigStatus = "Signed"
-			} else if signerName != "" {
-				signerName = signerName
-			} else {
-				sigStatus = "Unsigned"
-			}
-			signer = signerName
+		sigStatus := driver.SigStatus
+		if sigStatus == "" {
+			sigStatus = "Unknown"
 		}
 
 		drivers = append(drivers, &types.DriverInfo{
@@ -81,7 +82,7 @@ func (c *DriverInfoCollector) collectDriverInfo() ([]*types.DriverInfo, error) {
 			Started:     driver.Status == "Running",
 			FilePath:    driver.Path,
 			Signature:   sigStatus,
-			Signer:      signer,
+			Signer:      driver.Signer,
 		})
 	}
 
@@ -143,6 +144,71 @@ func ListDrivers() ([]Driver, error) {
 
 	log.Printf("[INFO] ListDrivers: parsed %d drivers", parseCount)
 
+	return drivers, nil
+}
+
+func ListDriversWithSignature() ([]DriverWithSignature, error) {
+	drivers := make([]DriverWithSignature, 0)
+
+	cmd := `Get-WmiObject -Class Win32_SystemDriver | ForEach-Object {
+		$sig = $null
+		$status = 'Unknown'
+		$signer = ''
+		if ($_.PathName) {
+			try {
+				$sig = Get-AuthenticodeSignature $_.PathName -ErrorAction Stop
+				if ($sig.Status -eq 'Valid') {
+					$status = 'Signed'
+				} else {
+					$status = 'Unsigned'
+				}
+				if ($sig.SignerCertificate) {
+					$signer = $sig.SignerCertificate.Subject
+				}
+			} catch {
+				$status = 'Unsigned'
+			}
+		}
+		[PSCustomObject]@{
+			Name        = $_.Name
+			DisplayName = $_.DisplayName
+			Description = $_.Description
+			Path        = $_.PathName
+			Status      = $_.State
+			SigStatus   = $status
+			Signer      = $signer
+		}
+	} | ConvertTo-Json -Depth 3 -Compress`
+
+	log.Printf("[INFO] ListDriversWithSignature: executing combined WMI + signature query")
+
+	result := utils.RunPowerShell(cmd)
+	if !result.Success() {
+		log.Printf("[ERROR] ListDriversWithSignature: PowerShell command failed: %v", result.Error)
+		return drivers, result.Error
+	}
+
+	output := strings.TrimSpace(result.Output)
+	if output == "" {
+		log.Printf("[WARN] ListDriversWithSignature: empty result")
+		return drivers, nil
+	}
+
+	if strings.HasPrefix(output, "[") {
+		if err := json.Unmarshal([]byte(output), &drivers); err != nil {
+			log.Printf("[WARN] ListDriversWithSignature: failed to parse JSON array: %v", err)
+			return drivers, err
+		}
+	} else if strings.HasPrefix(output, "{") {
+		var singleDriver DriverWithSignature
+		if err := json.Unmarshal([]byte(output), &singleDriver); err != nil {
+			log.Printf("[WARN] ListDriversWithSignature: failed to parse single driver: %v", err)
+			return drivers, err
+		}
+		drivers = append(drivers, singleDriver)
+	}
+
+	log.Printf("[INFO] ListDriversWithSignature: got %d drivers with signature info", len(drivers))
 	return drivers, nil
 }
 

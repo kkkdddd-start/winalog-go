@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkkdddd-start/winalog-go/internal/observability"
 	"github.com/kkkdddd-start/winalog-go/internal/persistence"
+	"github.com/kkkdddd-start/winalog-go/internal/storage"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 )
 
 type PersistenceHandler struct {
+	db               *storage.DB
 	cache            *DetectionCache
 	cacheMutex       sync.RWMutex
 	detectorConfig   map[string]bool
@@ -50,7 +52,7 @@ type DetectionCache struct {
 // @Description 初始化PersistenceHandler，注册所有持久化检测器
 // @Tags persistence
 // @Router /api/persistence [get]
-func NewPersistenceHandler() *PersistenceHandler {
+func NewPersistenceHandler(db *storage.DB) *PersistenceHandler {
 	engine := persistence.NewDetectionEngine()
 	engine.RegisterAll(persistence.AllDetectors())
 
@@ -77,17 +79,20 @@ func NewPersistenceHandler() *PersistenceHandler {
 	for _, d := range engine.ListDetectors() {
 		detectorName := d.Name
 		if config, exists := defaultRuleConfigs[detectorName]; exists {
-			engine.SetDetectorConfig(detectorName, &persistence.DetectorConfig{
+			if err := engine.SetDetectorConfig(detectorName, &persistence.DetectorConfig{
 				Enabled:   config.Enabled,
 				EventIDs:  config.EventIDs,
 				Patterns:  config.Patterns,
 				Whitelist: config.Whitelist,
-			})
+			}); err != nil {
+				log.Printf("[WARN] [PERSISTENCE] Failed to set config for %s: %v", detectorName, err)
+			}
 			log.Printf("[INFO] [PERSISTENCE] Enabled detector: %s (enabled=%v)", detectorName, config.Enabled)
 		}
 	}
 
 	return &PersistenceHandler{
+		db: db,
 		cache: &DetectionCache{
 			ttl: defaultCacheTTL,
 		},
@@ -290,6 +295,15 @@ func (h *PersistenceHandler) Detect(c *gin.Context) {
 		h.cache.timestamp = time.Now()
 		h.cache.params = cacheParams
 		h.cacheMutex.Unlock()
+	}
+
+	if h.db != nil && len(result.Detections) > 0 {
+		repo := storage.NewPersistenceDetectionRepo(h.db)
+		if err := repo.SaveResult(result); err != nil {
+			log.Printf("[ERROR] Failed to save persistence detections: %v", err)
+		} else {
+			log.Printf("[INFO] Saved %d persistence detections to database", len(result.Detections))
+		}
 	}
 
 	if format == "csv" {

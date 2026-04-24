@@ -21,6 +21,7 @@ const (
 	WhitelistTypeAccessibility
 	WhitelistTypeCOM
 	WhitelistTypeWMI
+	WhitelistTypeScheduledTask
 )
 
 type WhitelistEntry struct {
@@ -100,6 +101,7 @@ func (w *Whitelist) LoadDefaults() {
 	w.addLSAWhitelist()
 	w.addBootExecuteWhitelist()
 	w.addAccessibilityWhitelist()
+	w.addScheduledTaskWhitelist()
 
 	w.loaded = true
 }
@@ -461,4 +463,41 @@ func (w *Whitelist) addAccessibilityWhitelist() {
 	for _, item := range accessibilityPrograms {
 		w.Add(item.key, WhitelistTypeAccessibility, item.reason, "microsoft")
 	}
+}
+
+func (w *Whitelist) addScheduledTaskWhitelist() {
+	knownSafeTasks := []struct {
+		name    string
+		author  string
+		reason  string
+	}{
+		{"PcaPatchDbTask", "Microsoft", "Windows Patch Diagnostics"},
+		{"StartupAppTask", "Microsoft", "Startup Application Task"},
+		{"CleanupTemporaryState", "Microsoft", "Cleanup Temporary State"},
+		{"Pre-staged app cleanup", "Microsoft", "App Cleanup"},
+		{"Proxy", "Microsoft", "Network Proxy"},
+		{"maintenancetasks", "Microsoft", "Maintenance Tasks"},
+		{"Microsoft-Windows-DiskDiagnosticDataCollector", "Microsoft", "Disk Diagnostics"},
+		{"PCR Prediction Framework Firmware Update Task", "Microsoft", "PCR Prediction"},
+		{"MaintenanceTasks", "Microsoft", "Maintenance Tasks"},
+		{"WsSwapAssessmentTask", "Microsoft", "Windows Swap Assessment"},
+		{"SynchronizeTimeZone", "Microsoft", "Time Zone Sync"},
+		{"BfeOnServiceStartTypeChange", "Microsoft", "Base Filtering Engine"},
+		{"Automatic-Device-Join", "Microsoft", "Device Join"},
+		{"Recovery-Check", "Microsoft", "System Recovery"},
+		{"SecurityHealth", "Microsoft", "Windows Security"},
+		{"WindowsUpdate", "Microsoft", "Windows Update"},
+		{"AuditPolicy", "Microsoft", "Audit Policy"},
+		{"DiskCleanup", "Microsoft", "Disk Cleanup"},
+		{"Temp", "Microsoft", "Temporary Cleanup"},
+		{"UserProfile", "Microsoft", "User Profile"},
+		{"Welcome", "Microsoft", "Welcome Experience"},
+		{"SMB1", "Microsoft", "SMB1 Protocol"},
+	}
+
+	for _, task := range knownSafeTasks {
+		w.Add(task.name, WhitelistTypeScheduledTask, task.reason, "microsoft")
+	}
+
+	w.Add("*\\Microsoft\\Windows\\*", WhitelistTypeScheduledTask, "Microsoft Official Tasks", "microsoft")
 }

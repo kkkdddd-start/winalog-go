@@ -214,7 +214,8 @@ func isSystemVariable(value string) bool {
 }
 
 func isSystemPath(value string) bool {
-	valueLower := strings.ToLower(value)
+	valueExpanded := os.ExpandEnv(value)
+	valueLower := strings.ToLower(valueExpanded)
 	systemPaths := []string{
 		`c:\windows\system32`, `c:\windows\syswow64`,
 		`c:\program files`, `c:\programdata`,

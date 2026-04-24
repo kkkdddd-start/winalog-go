@@ -45,7 +45,11 @@ func SetupRoutes(r *gin.Engine, alertHandler *AlertHandler, importHandler *Impor
 		importGroup := api.Group("/import")
 		{
 			importGroup.POST("/logs", importHandler.ImportLogs)
+			importGroup.POST("/logs/async", importHandler.ImportLogsAsync)
 			importGroup.GET("/status", importHandler.GetImportStatus)
+			importGroup.GET("/status/:task_id", importHandler.GetImportTaskStatus)
+			importGroup.GET("/history", importHandler.GetImportHistory)
+			importGroup.DELETE("/cancel/:task_id", importHandler.CancelImportTask)
 		}
 
 		live := api.Group("/live")

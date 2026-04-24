@@ -206,12 +206,12 @@ function Query() {
 
       <div className="db-status-bar">
         <span className={`db-status-indicator ${dbStatus}`}>
-          {dbStatus === 'connected' && '🟢 Database Connected'}
-          {dbStatus === 'disconnected' && '🔴 Database Disconnected'}
-          {dbStatus === 'unknown' && '🟡 Checking database...'}
+          {dbStatus === 'connected' && t('query.dbConnected')}
+          {dbStatus === 'disconnected' && t('query.dbDisconnected')}
+          {dbStatus === 'unknown' && t('query.dbChecking')}
         </span>
         <button className="db-check-btn" onClick={checkDbConnection}>
-          Check Connection
+          {t('query.checkConnection')}
         </button>
       </div>
 
@@ -236,7 +236,7 @@ function Query() {
             className="history-btn" 
             onClick={() => setShowHistory(!showHistory)}
           >
-            📜 {t('query.history') || 'History'} ({history.length})
+            📜 {t('query.history')} ({history.length})
           </button>
         </div>
       </div>
@@ -244,14 +244,14 @@ function Query() {
       {showHistory && (
         <div className="query-history-panel">
           <div className="history-header">
-            <h4>{t('query.recentQueries') || 'Recent Queries'}</h4>
+            <h4>{t('query.recentQueries')}</h4>
             <button className="clear-btn" onClick={clearHistory}>
-              🗑️ Clear
+              🗑️ {t('query.clearHistory')}
             </button>
           </div>
           <div className="history-list">
             {history.length === 0 ? (
-              <p className="empty-history">No query history</p>
+              <p className="empty-history">{t('query.noQueryHistory')}</p>
             ) : (
               history.map(item => (
                 <div 
@@ -262,7 +262,7 @@ function Query() {
                   <div className="history-sql">{item.sql}</div>
                   <div className="history-meta">
                     <span className="history-status">{item.success ? '✓' : '✗'}</span>
-                    <span className="history-rows">{item.rowCount} rows</span>
+                    <span className="history-rows">{item.rowCount} {t('query.rows')}</span>
                     {item.duration && <span className="history-duration">{item.duration}s</span>}
                     <span className="history-time">{new Date(item.timestamp).toLocaleTimeString()}</span>
                   </div>
@@ -295,7 +295,7 @@ function Query() {
                 setSql(formatted)
               }}
             >
-              🎨 Format
+              🎨 {t('query.format')}
             </button>
           </div>
         </div>
@@ -314,7 +314,7 @@ function Query() {
           />
         </div>
         <div className="editor-hint">
-          Press Ctrl+Enter to execute | SQL syntax is SQLite compatible
+          {t('query.editorHint')}
         </div>
       </div>
 
@@ -341,10 +341,10 @@ function Query() {
         {result && (
           <div className="result-actions">
             <button className="export-btn" onClick={() => exportResults('json')}>
-              📥 JSON
+              📥 {t('query.exportJson')}
             </button>
             <button className="export-btn" onClick={() => exportResults('csv')}>
-              📥 CSV
+              📥 {t('query.exportCsv')}
             </button>
           </div>
         )}

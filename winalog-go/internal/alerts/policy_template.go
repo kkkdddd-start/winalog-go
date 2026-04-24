@@ -283,7 +283,7 @@ func (m *PolicyManager) applyUpgradePolicy(e *Engine, template *PolicyTemplate, 
 
 			threshold := 5
 			if t, ok := inst.Parameters["threshold"]; ok {
-				fmt.Sscanf(t, "%d", &threshold)
+				_, _ = fmt.Sscanf(t, "%d", &threshold)
 			}
 
 			upgradeRule := &types.AlertUpgradeRule{
@@ -306,7 +306,7 @@ func (m *PolicyManager) applySuppressPolicy(e *Engine, template *PolicyTemplate,
 			duration := 24 * time.Hour
 			if d, ok := inst.Parameters["duration"]; ok {
 				var hours int
-				fmt.Sscanf(d, "%d", &hours)
+				_, _ = fmt.Sscanf(d, "%d", &hours)
 				duration = time.Duration(hours) * time.Hour
 			}
 

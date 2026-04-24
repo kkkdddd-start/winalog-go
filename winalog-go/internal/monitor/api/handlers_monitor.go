@@ -34,6 +34,10 @@ func NewMonitorHandler(engine *monitor.MonitorEngine) *MonitorHandler {
 }
 
 func (h *MonitorHandler) GetStats(c *gin.Context) {
+	if h.engine == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"stats": &types.MonitorStats{IsRunning: false}})
+		return
+	}
 	stats := h.engine.GetStats()
 	c.JSON(http.StatusOK, gin.H{
 		"stats": stats,
@@ -41,6 +45,16 @@ func (h *MonitorHandler) GetStats(c *gin.Context) {
 }
 
 func (h *MonitorHandler) ListEvents(c *gin.Context) {
+	if h.engine == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"events": []*types.MonitorEvent{},
+			"total":  0,
+			"limit":  50,
+			"offset": 0,
+		})
+		return
+	}
+
 	filter := &monitor.EventFilter{}
 
 	if eventType := c.Query("type"); eventType != "" {
@@ -88,6 +102,11 @@ func (h *MonitorHandler) ListEvents(c *gin.Context) {
 }
 
 func (h *MonitorHandler) UpdateConfig(c *gin.Context) {
+	if h.engine == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Monitor engine not available"})
+		return
+	}
+
 	var req monitor.MonitorConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -108,6 +127,11 @@ func (h *MonitorHandler) UpdateConfig(c *gin.Context) {
 }
 
 func (h *MonitorHandler) StartStop(c *gin.Context) {
+	if h.engine == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Monitor engine not available"})
+		return
+	}
+
 	var req struct {
 		Action string `json:"action"`
 	}

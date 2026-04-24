@@ -153,11 +153,67 @@ export interface ImportOptions {
   skip_patterns?: string[]
 }
 
+export interface ImportTaskStatus {
+  task_id: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  total_files: number
+  processed_files: number
+  current_file: string
+  total_events: number
+  files_imported: number
+  files_failed: number
+  created_at: string
+  updated_at: string
+  completed_at?: string
+  duration?: string
+  error_message?: string
+  errors?: Array<{ file: string; error: string }>
+}
+
+export interface ImportTask {
+  task_id: string
+  status: string
+  total_files: number
+  files_imported: number
+  files_failed: number
+  total_events: number
+  created_at: string
+  completed_at?: string
+  duration?: string
+}
+
+export interface ImportHistoryResponse {
+  total: number
+  tasks: ImportTask[]
+}
+
 export const importAPI = {
   importLogs: (filePaths: string[], options?: ImportOptions) =>
     api.post('/import/logs', { files: filePaths, ...options }),
   importLogsWithAlert: (filePaths: string[]) =>
     api.post('/import/logs', { files: filePaths, alert_on_import: true }),
+  importLogsAsync: (params: {
+    files: string[]
+    log_name?: string
+    incremental?: boolean
+    workers?: number
+    batch_size?: number
+    skip_patterns?: string[]
+    alert_on_import?: boolean
+    enabled_formats?: string[]
+  }) => api.post('/import/logs/async', params),
+  getImportStatus: (taskId: string) =>
+    api.get(`/import/status/${taskId}`),
+  getImportHistory: (params?: { limit?: number; offset?: number; status?: string }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.limit !== undefined) queryParams.append('limit', String(params.limit))
+    if (params?.offset !== undefined) queryParams.append('offset', String(params.offset))
+    if (params?.status) queryParams.append('status', params.status)
+    const query = queryParams.toString()
+    return api.get(`/import/history${query ? `?${query}` : ''}`)
+  },
+  cancelImportTask: (taskId: string) =>
+    api.delete(`/import/cancel/${taskId}`),
   getStatus: () =>
     api.get('/import/status'),
 }

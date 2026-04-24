@@ -368,7 +368,9 @@ func (h *QueryHandler) ListTables(c *gin.Context) {
 	result := make([]TableInfo, 0)
 	for _, table := range tables {
 		var count int64
-		h.db.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count)
+		if err := h.db.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count); err != nil {
+			count = 0
+		}
 
 		var cols []ColumnInfo
 		colRows, err := h.db.Query("PRAGMA table_info(" + table + ")")
@@ -379,7 +381,9 @@ func (h *QueryHandler) ListTables(c *gin.Context) {
 				var ctype, cname string
 				var cnotnull, cpk int
 				var cdefault interface{}
-				colRows.Scan(&cid, &cname, &ctype, &cnotnull, &cdefault, &cpk)
+				if err := colRows.Scan(&cid, &cname, &ctype, &cnotnull, &cdefault, &cpk); err != nil {
+					continue
+				}
 				ci.Name = cname
 				ci.Type = ctype
 				ci.NotNull = cnotnull == 1

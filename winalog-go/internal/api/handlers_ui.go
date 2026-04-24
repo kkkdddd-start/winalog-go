@@ -127,7 +127,7 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 		var count int64
 		row := h.db.QueryRowWithContext(ctx, `SELECT COUNT(*) FROM events WHERE timestamp >= ?`, last24h.Format(time.RFC3339))
 		if row != nil {
-			row.Scan(&count)
+			_ = row.Scan(&count)
 		}
 		events24hMu.Lock()
 		eventsLast24h = count
@@ -139,7 +139,7 @@ func (h *UIHandler) GetDashboardOverview(c *gin.Context) {
 		var count int64
 		row := h.db.QueryRowWithContext(ctx, `SELECT COUNT(*) FROM alerts WHERE first_seen >= ?`, last24h.Format(time.RFC3339))
 		if row != nil {
-			row.Scan(&count)
+			_ = row.Scan(&count)
 		}
 		alerts24hMu.Lock()
 		alertsLast24h = count

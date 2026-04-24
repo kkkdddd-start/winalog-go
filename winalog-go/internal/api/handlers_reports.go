@@ -238,7 +238,10 @@ func (h *ReportsHandler) GenerateReport(c *gin.Context) {
 
 	reportID := fmt.Sprintf("report_%s_%d", req.Type, time.Now().UnixNano())
 	reportDir := filepath.Join(os.TempDir(), "winalog_reports")
-	os.MkdirAll(reportDir, 0755)
+	if err := os.MkdirAll(reportDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to create report directory"})
+		return
+	}
 
 	generatedAt := time.Now()
 
@@ -267,6 +270,15 @@ func (h *ReportsHandler) GenerateReport(c *gin.Context) {
 }
 
 func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest, generatedAt time.Time) {
+	defer func() {
+		if r := recover(); r != nil {
+			errMsg := fmt.Sprintf("panic recovered: %v", r)
+			log.Printf("[ERROR] generateReportAsync panic: %s", errMsg)
+			_, _ = h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+				errMsg, time.Now(), reportID)
+		}
+	}()
+
 	report, err := h.svc.GenerateFromAPIRequest(&reports.APIReportRequest{
 		Type:         req.Type,
 		Format:       req.Format,
@@ -280,13 +292,13 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 		Description:  req.Description,
 	})
 	if err != nil {
-		h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+		_, _ = h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
 			err.Error(), time.Now(), reportID)
 		return
 	}
 
 	reportDir := filepath.Join(os.TempDir(), "winalog_reports")
-	os.MkdirAll(reportDir, 0755)
+	_ = os.MkdirAll(reportDir, 0755)
 	fileName := fmt.Sprintf("%s.%s", reportID, req.Format)
 	filePath := filepath.Join(reportDir, fileName)
 
@@ -312,12 +324,12 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 			err = h.svc.ExportPDF(pdfReq, f)
 			f.Close()
 			if err != nil {
-				h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+				_, _ = h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
 					err.Error(), time.Now(), reportID)
 				return
 			}
 		} else {
-			h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+			_, _ = h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
 				err.Error(), time.Now(), reportID)
 			return
 		}
@@ -326,12 +338,12 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 			err = h.svc.ExportHTMLFromReport(report, f)
 			f.Close()
 			if err != nil {
-				h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+				_, _ = h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
 					err.Error(), time.Now(), reportID)
 				return
 			}
 		} else {
-			h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+			_, _ = h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
 				err.Error(), time.Now(), reportID)
 			return
 		}
@@ -339,7 +351,7 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 		apiContent := reports.AdaptReportToAPI(report)
 		data, _ := json.MarshalIndent(apiContent, "", "  ")
 		if err := os.WriteFile(filePath, data, 0644); err != nil {
-			h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
+			_, _ = h.db.Exec(`UPDATE reports SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`,
 				err.Error(), time.Now(), reportID)
 			return
 		}
@@ -351,7 +363,7 @@ func (h *ReportsHandler) generateReportAsync(reportID string, req ReportRequest,
 		fileSize = fi.Size()
 	}
 
-	h.db.Exec(`UPDATE reports SET status = 'completed', completed_at = ?, file_path = ?, file_size = ? WHERE id = ?`,
+	_, _ = h.db.Exec(`UPDATE reports SET status = 'completed', completed_at = ?, file_path = ?, file_size = ? WHERE id = ?`,
 		time.Now(), filePath, fileSize, reportID)
 }
 
@@ -670,7 +682,10 @@ func (h *ReportsHandler) ExportData(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=events_export.%s", format))
 	c.Header("Content-Type", exporter.ContentType())
 
-	exporter.Export(events, c.Writer)
+	if err := exporter.Export(events, c.Writer); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 }
 
 // SetupReportsRoutes godoc

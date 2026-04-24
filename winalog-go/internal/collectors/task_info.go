@@ -312,27 +312,30 @@ func (c *TaskInfoCollector) getTaskNextRunTime(taskName, taskPath string) time.T
 func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 	tasks := make([]ScheduledTaskInfo, 0)
 
-	cmd := `Get-ScheduledTask | ForEach-Object {
-		$task = $_
-		$info = Get-ScheduledTaskInfo -TaskName $_.TaskName -TaskPath $_.TaskPath -ErrorAction SilentlyContinue
-		$action = ($_.Actions | Select-Object -First 1).Execute
-		$trigger = ($_.Triggers | Select-Object -First 1).CimClass.Name -replace 'MSFT_Task(.*)Trigger','$1'
+	cmd := `$tasks = Get-ScheduledTask | ForEach-Object {
+		$info = $null
+		try {
+			$info = Get-ScheduledTaskInfo -TaskName $_.TaskName -TaskPath $_.TaskPath -ErrorAction Stop
+		} catch {}
+		$action = if($_.Actions) { ($_.Actions | Select-Object -First 1).Execute } else { '' }
+		$trigger = if($_.Triggers) { ($_.Triggers | Select-Object -First 1).CimClass.Name -replace 'MSFT_Task(.*)Trigger','$1' } else { '' }
 		[PSCustomObject]@{
 			TaskName = $_.TaskName
 			TaskPath = $_.TaskPath
-			State = $_.State
+			State = $_.State.ToString()
 			Description = $_.Description
 			Author = $_.Author
-			NextRunTime = if($info.NextRunTime) { $info.NextRunTime.ToString('yyyy-MM-dd HH:mm:ss') } else { '' }
-			LastRunTime = if($info.LastRunTime) { $info.LastRunTime.ToString('yyyy-MM-dd HH:mm:ss') } else { '' }
-			LastResult = $info.LastTaskResult
-			RunAsUser = $_.Principal.UserId
+			NextRunTime = if($info -and $info.NextRunTime) { $info.NextRunTime.ToString('yyyy-MM-dd HH:mm:ss') } else { '' }
+			LastRunTime = if($info -and $info.LastRunTime) { $info.LastRunTime.ToString('yyyy-MM-dd HH:mm:ss') } else { '' }
+			LastResult = if($info) { $info.LastTaskResult } else { 0 }
+			RunAsUser = if($_.Principal) { $_.Principal.UserId } else { '' }
 			Action = $action
 			TriggerType = $trigger
-		} | ConvertTo-Json -Compress
-	}`
+		}
+	}
+	$tasks | ConvertTo-Json -Depth 3 -Compress`
 
-	log.Printf("[INFO] Collecting scheduled tasks with command: Get-ScheduledTask")
+	log.Printf("[INFO] Collecting scheduled tasks with optimized pipeline")
 
 	result := utils.RunPowerShellWithTimeout(cmd, 180*time.Second)
 	if !result.Success() {
@@ -348,12 +351,50 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 
 	log.Printf("[DEBUG] Get-ScheduledTask raw output length: %d", len(output))
 
+	if strings.HasPrefix(output, "[") {
+		var taskRawList []struct {
+			TaskName    string      `json:"TaskName"`
+			TaskPath    string      `json:"TaskPath"`
+			State       interface{} `json:"State"`
+			Description string      `json:"Description"`
+			Author      string      `json:"Author"`
+			NextRunTime string      `json:"NextRunTime"`
+			LastRunTime string      `json:"LastRunTime"`
+			LastResult  int         `json:"LastResult"`
+			RunAsUser   string      `json:"RunAsUser"`
+			Action      string      `json:"Action"`
+			TriggerType string      `json:"TriggerType"`
+		}
+		if err := json.Unmarshal([]byte(output), &taskRawList); err != nil {
+			log.Printf("[WARN] Failed to parse task JSON array: %v", err)
+		} else {
+			for _, taskRaw := range taskRawList {
+				stateStr := fmt.Sprintf("%v", taskRaw.State)
+				tasks = append(tasks, ScheduledTaskInfo{
+					TaskName:    taskRaw.TaskName,
+					TaskPath:    taskRaw.TaskPath,
+					State:       stateStr,
+					Description: taskRaw.Description,
+					Author:      taskRaw.Author,
+					NextRunTime: taskRaw.NextRunTime,
+					LastRunTime: taskRaw.LastRunTime,
+					LastResult:  taskRaw.LastResult,
+					RunAsUser:   taskRaw.RunAsUser,
+					Action:      taskRaw.Action,
+					TriggerType: taskRaw.TriggerType,
+				})
+			}
+			log.Printf("[INFO] Get-ScheduledTask parsed %d tasks from JSON array", len(taskRawList))
+			return tasks, nil
+		}
+	}
+
 	lines := strings.Split(output, "\n")
 	parseCount := 0
 	errorCount := 0
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" || line == "null" {
+		if line == "" || line == "null" || line == "[]" {
 			continue
 		}
 
@@ -366,9 +407,9 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 			NextRunTime string      `json:"NextRunTime"`
 			LastRunTime string      `json:"LastRunTime"`
 			LastResult  int         `json:"LastResult"`
-			RunAsUser  string      `json:"RunAsUser"`
-			Action     string      `json:"Action"`
-			TriggerType string     `json:"TriggerType"`
+			RunAsUser   string      `json:"RunAsUser"`
+			Action      string      `json:"Action"`
+			TriggerType string      `json:"TriggerType"`
 		}
 
 		if err := json.Unmarshal([]byte(line), &taskRaw); err != nil {
@@ -379,22 +420,22 @@ func ListScheduledTasks() ([]ScheduledTaskInfo, error) {
 
 		stateStr := fmt.Sprintf("%v", taskRaw.State)
 		tasks = append(tasks, ScheduledTaskInfo{
-			TaskName:     taskRaw.TaskName,
-			TaskPath:     taskRaw.TaskPath,
-			State:        stateStr,
-			Description:  taskRaw.Description,
-			Author:       taskRaw.Author,
-			NextRunTime:  taskRaw.NextRunTime,
-			LastRunTime:  taskRaw.LastRunTime,
-			LastResult:   taskRaw.LastResult,
-			RunAsUser:    taskRaw.RunAsUser,
-			Action:       taskRaw.Action,
-			TriggerType:  taskRaw.TriggerType,
+			TaskName:    taskRaw.TaskName,
+			TaskPath:    taskRaw.TaskPath,
+			State:       stateStr,
+			Description: taskRaw.Description,
+			Author:      taskRaw.Author,
+			NextRunTime: taskRaw.NextRunTime,
+			LastRunTime: taskRaw.LastRunTime,
+			LastResult:  taskRaw.LastResult,
+			RunAsUser:   taskRaw.RunAsUser,
+			Action:      taskRaw.Action,
+			TriggerType: taskRaw.TriggerType,
 		})
 		parseCount++
 	}
 
-	log.Printf("[INFO] Get-ScheduledTask parsed %d tasks, %d errors, total lines: %d", parseCount, errorCount, len(lines))
+	log.Printf("[INFO] Get-ScheduledTask parsed %d tasks, %d errors", parseCount, errorCount)
 
 	return tasks, nil
 }

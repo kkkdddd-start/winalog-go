@@ -144,7 +144,10 @@ func (h *SettingsHandler) ResetSettings(c *gin.Context) {
 
 	if h.configPath != "" {
 		loader := config.NewLoader()
-		loader.Save(h.cfg, h.configPath)
+		if err := loader.Save(h.cfg, h.configPath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{

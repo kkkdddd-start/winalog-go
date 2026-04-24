@@ -312,8 +312,8 @@ func (h *SystemHandler) GetMetrics(c *gin.Context) {
 	var totalAlerts int64
 
 	if h.db != nil {
-		h.db.QueryRow("SELECT COUNT(*) FROM events").Scan(&totalEvents)
-		h.db.QueryRow("SELECT COUNT(*) FROM alerts").Scan(&totalAlerts)
+		_ = h.db.QueryRow("SELECT COUNT(*) FROM events").Scan(&totalEvents)
+		_ = h.db.QueryRow("SELECT COUNT(*) FROM alerts").Scan(&totalAlerts)
 	}
 
 	var m runtime.MemStats
@@ -446,8 +446,8 @@ func (h *SystemHandler) GetPrometheusMetrics(c *gin.Context) {
 	var totalAlerts int64
 
 	if h.db != nil {
-		h.db.QueryRow("SELECT COUNT(*) FROM events").Scan(&totalEvents)
-		h.db.QueryRow("SELECT COUNT(*) FROM alerts").Scan(&totalAlerts)
+		_ = h.db.QueryRow("SELECT COUNT(*) FROM events").Scan(&totalEvents)
+		_ = h.db.QueryRow("SELECT COUNT(*) FROM alerts").Scan(&totalAlerts)
 	}
 
 	var m runtime.MemStats
@@ -518,6 +518,7 @@ func SetupSystemRoutes(r *gin.Engine, systemHandler *SystemHandler) {
 
 		system.GET("/processes/export", systemHandler.ExportProcesses)
 		system.GET("/network/export", systemHandler.ExportNetworkConnections)
+		system.GET("/dlls/export", systemHandler.ExportLoadedDLLs)
 		system.GET("/env/export", systemHandler.ExportEnvironmentVariables)
 		system.GET("/drivers/export", systemHandler.ExportDrivers)
 		system.GET("/users/export", systemHandler.ExportUsers)

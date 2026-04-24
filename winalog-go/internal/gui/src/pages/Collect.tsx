@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useI18n } from '../locales/I18n'
 import { collectAPI, importAPI } from '../api'
 import {
@@ -12,6 +12,7 @@ import {
   Col,
   Space,
   Spin,
+  Progress,
   message,
   Tooltip
 } from 'antd'
@@ -208,6 +209,89 @@ function Collect() {
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState('')
 
+  // 异步导入任务状态
+  const [importTaskId, setImportTaskId] = useState<string | null>(null)
+  const [importProgress, setImportProgress] = useState<{
+    total_files: number
+    processed_files: number
+    current_file: string
+    total_events: number
+    files_imported: number
+    files_failed: number
+    status: string
+  } | null>(null)
+
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // 轮询导入任务状态
+  useEffect(() => {
+    if (!importTaskId) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
+      return
+    }
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const statusRes = await importAPI.getImportStatus(importTaskId)
+        if (statusRes.data.success && statusRes.data.data) {
+          const task = statusRes.data.data
+          setImportProgress({
+            total_files: task.total_files,
+            processed_files: task.processed_files,
+            current_file: task.current_file || '',
+            total_events: task.total_events,
+            files_imported: task.files_imported,
+            files_failed: task.files_failed,
+            status: task.status,
+          })
+
+          const progressPercent = task.total_files > 0
+            ? Math.round((task.processed_files / task.total_files) * 100)
+            : 0
+          setStatus(`导入中: ${progressPercent}% (${task.processed_files}/${task.total_files}) - ${task.current_file || '处理中'}...`)
+
+          if (task.status === 'completed') {
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current)
+              pollIntervalRef.current = null
+            }
+            const stats = `
+导入完成!
+- 成功: ${task.files_imported} 个文件
+- 失败: ${task.files_failed} 个文件
+- 事件: ${task.total_events} 条
+${task.errors?.length > 0 ? `- 错误: ${task.errors.length} 个` : ''}`
+            setStatus(stats)
+            setImportProgress(null)
+            setImportTaskId(null)
+            message.success('导入完成')
+          } else if (task.status === 'failed') {
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current)
+              pollIntervalRef.current = null
+            }
+            setStatus(`导入失败: ${task.error_message || '未知错误'}`)
+            setImportProgress(null)
+            setImportTaskId(null)
+            message.error('导入失败')
+          }
+        }
+      } catch (pollError) {
+        console.error('轮询状态失败:', pollError)
+      }
+    }, 1000)
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
+    }
+  }, [importTaskId])
+
   // ============ 处理函数 ============
 
   // 刷新通道列表
@@ -370,31 +454,32 @@ function Collect() {
     }
 
     setLoading(true)
-    setStatus(`正在导入 ${paths.length} 个通道的日志...`)
+    setStatus(`正在启动导入 ${paths.length} 个通道的任务...`)
+    setImportProgress(null)
+    setImportTaskId(null)
 
     try {
-      const response = await importAPI.importLogs(paths, {
+      const response = await importAPI.importLogsAsync({
+        files: paths,
         enabled_formats: enabledFormats,
         skip_patterns: exclusions.filter(e => e.type === 'path' && e.enabled).map(e => e.pattern),
       })
 
-      if (response.data.success) {
-        const stats = `
-导入完成!
-- 成功: ${response.data.files_imported} 个文件
-- 失败: ${response.data.files_failed} 个文件
-- 事件: ${response.data.events_imported} 条
-${response.data.errors?.length > 0 ? `- 错误: ${response.data.errors.length} 个` : ''}`
-        setStatus(stats)
-        message.success('导入完成')
-      } else {
-        setStatus(`导入失败: ${response.data.errors?.join(', ')}`)
+      if (!response.data.success) {
+        setStatus(`导入失败: ${response.data.error || '未知错误'}`)
         message.error('导入失败')
+        setLoading(false)
+        return
       }
+
+      const taskId = response.data.task_id
+      setImportTaskId(taskId)
+      setStatus(`正在导入 ${paths.length} 个通道...`)
+      message.info('导入任务已启动，正在监控进度...')
+      setLoading(false)
     } catch (error: any) {
       setStatus(`导入失败: ${error.message}`)
       message.error('导入失败')
-    } finally {
       setLoading(false)
     }
   }
@@ -482,32 +567,50 @@ ${response.data.errors?.length > 0 ? `- 错误: ${response.data.errors.length} �
     }
 
     setLoading(true)
-    setStatus('正在导入...')
+    setStatus('正在启动导入任务...')
+    setImportProgress(null)
+    setImportTaskId(null)
 
     try {
-      const response = await importAPI.importLogs(customPathsList, {
+      const response = await importAPI.importLogsAsync({
+        files: customPathsList,
         enabled_formats: enabledFormats,
         skip_patterns: exclusions.filter(e => e.type === 'path' && e.enabled).map(e => e.pattern),
       })
 
-      if (response.data.success) {
-        const stats = `
-导入完成!
-- 成功: ${response.data.files_imported} 个文件
-- 失败: ${response.data.files_failed} 个文件
-- 事件: ${response.data.events_imported} 条
-${response.data.errors?.length > 0 ? `- 错误: ${response.data.errors.length} 个` : ''}`
-        setStatus(stats)
-        message.success('导入完成')
-      } else {
-        setStatus(`导入失败: ${response.data.errors?.join(', ')}`)
+      if (!response.data.success) {
+        setStatus(`导入失败: ${response.data.error || '未知错误'}`)
         message.error('导入失败')
+        setLoading(false)
+        return
       }
+
+      const taskId = response.data.task_id
+      setImportTaskId(taskId)
+      setStatus('正在导入...')
+      message.info('导入任务已启动，正在监控进度...')
+      setLoading(false)
     } catch (error: any) {
       setStatus(`导入失败: ${error.message}`)
       message.error('导入失败')
-    } finally {
       setLoading(false)
+    }
+  }
+
+  const cancelImportTask = async () => {
+    if (!importTaskId) return
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+    try {
+      await importAPI.cancelImportTask(importTaskId)
+      message.info('导入任务已取消')
+      setStatus('导入任务已取消')
+      setImportProgress(null)
+      setImportTaskId(null)
+    } catch (error: any) {
+      message.error(`取消失败: ${error.message}`)
     }
   }
 
@@ -520,43 +623,31 @@ ${response.data.errors?.length > 0 ? `- 错误: ${response.data.errors.length} �
     }
 
     setLoading(true)
-    setStatus('正在导入并分析...')
+    setStatus('正在启动导入并分析任务...')
+    setImportProgress(null)
+    setImportTaskId(null)
 
     try {
-      const response = await importAPI.importLogsWithAlert(customPathsList)
+      const response = await importAPI.importLogsAsync({
+        files: customPathsList,
+        alert_on_import: true,
+      })
 
-      if (response.data.success !== undefined) {
-        if (response.data.success) {
-          const stats = `
-导入并分析已提交!
-- 成功: ${response.data.files_imported} 个文件
-- 失败: ${response.data.files_failed} 个文件
-- 事件: ${response.data.events_imported} 条
-- 告警分析: 已触发（后台执行）`
-          setStatus(stats)
-          message.success('导入完成，告警分析已触发')
-        } else {
-          setStatus(`操作失败: ${response.data.errors?.join(', ') || response.data.message || '未知错误'}`)
-          message.error('操作失败')
-        }
-      } else if (response.data.status === 'completed') {
-        const stats = `
-导入并分析完成!
-- 导入: ${response.data.imported} 个文件
-- 失败: ${response.data.failed} 个文件
-- 事件: ${response.data.total_events} 条
-- 告警: ${response.data.alerts_generated || 0} 条
-${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : ''}`
-        setStatus(stats)
-        message.success('导入并分析完成')
-      } else {
-        setStatus(`操作失败: ${response.data.message}`)
-        message.error('操作失败')
+      if (!response.data.success) {
+        setStatus(`导入失败: ${response.data.error || '未知错误'}`)
+        message.error('导入失败')
+        setLoading(false)
+        return
       }
+
+      const taskId = response.data.task_id
+      setImportTaskId(taskId)
+      setStatus('正在导入并分析...')
+      message.info('导入任务已启动，正在监控进度...')
+      setLoading(false)
     } catch (error: any) {
-      setStatus(`操作失败: ${error.message}`)
-      message.error('操作失败')
-    } finally {
+      setStatus(`导入失败: ${error.message}`)
+      message.error('导入失败')
       setLoading(false)
     }
   }
@@ -1084,18 +1175,47 @@ ${response.data.alert_error ? `- 告警错误: ${response.data.alert_error}` : '
           {/* 操作按钮 */}
           <div className="action-section">
             <Space size="large">
-              <Button type="primary" size="large" icon={<UploadOutlined />} onClick={handleImport} loading={loading}>
+              <Button type="primary" size="large" icon={<UploadOutlined />} onClick={handleImport} loading={loading} disabled={!!importTaskId}>
                 导入日志
               </Button>
-              <Button size="large" icon={<WarningOutlined />} onClick={handleImportWithAlert} loading={loading}>
+              <Button size="large" icon={<WarningOutlined />} onClick={handleImportWithAlert} loading={loading} disabled={!!importTaskId}>
                 导入并分析（触发告警）
               </Button>
+              {importTaskId && (
+                <Button danger size="large" onClick={cancelImportTask}>
+                  取消导入
+                </Button>
+              )}
             </Space>
             <div className="action-hint">
               <InfoCircleOutlined />
               <span>导入日志: 仅解析并存入数据库 | 导入分析: 导入同时触发告警引擎</span>
             </div>
           </div>
+
+          {/* 导入进度显示 */}
+          {importProgress && (
+            <div className="section">
+              <div className="section-header">
+                <h4>导入进度</h4>
+                <span style={{ color: '#00d9ff' }}>
+                  {importProgress.files_imported} 成功 / {importProgress.files_failed} 失败
+                </span>
+              </div>
+              <Progress
+                percent={importProgress.total_files > 0
+                  ? Math.round((importProgress.processed_files / importProgress.total_files) * 100)
+                  : 0}
+                status={importProgress.status === 'failed' ? 'exception' : 'active'}
+                format={(percent) => `${percent}%`}
+              />
+              {importProgress.current_file && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
+                  当前处理: {importProgress.current_file}
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       )}
 

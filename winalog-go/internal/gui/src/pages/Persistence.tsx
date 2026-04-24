@@ -88,7 +88,6 @@ function Persistence() {
   const [stats, setStats] = useState<DetectionStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [hasStarted, setHasStarted] = useState(false)
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null)
   const [filter, setFilter] = useState<{
     severity?: string
@@ -130,7 +129,7 @@ function Persistence() {
       setShowDetectorConfig(false)
     } catch (err) {
       console.error('Failed to save detector config:', err)
-      alert('Failed to save configuration')
+      alert(t('persistence.saveConfigFailed'))
     }
   }
 
@@ -154,7 +153,7 @@ function Persistence() {
         const response = await persistenceAPI.listRules()
         const rule = response.data.rules?.[0]
         if (!rule) {
-          alert('当前没有可编辑的检测规则')
+          alert(t('persistence.noEditableRule'))
           return
         }
         setEditingRule({
@@ -184,7 +183,7 @@ function Persistence() {
       setEditingRule(null)
     } catch (err) {
       console.error('Failed to save rule:', err)
-      alert('Failed to save rule configuration')
+      alert(t('persistence.saveRuleFailed'))
     }
   }
 
@@ -256,7 +255,6 @@ function Persistence() {
     try {
       setLoading(true)
       setError(null)
-      setHasStarted(true)
       const params: { category?: string; technique?: string; force?: boolean } = {}
       if (filter.category) params.category = filter.category
       if (filter.technique) params.technique = filter.technique
@@ -286,10 +284,32 @@ function Persistence() {
         format: reportFormat,
       })
       if (response.data.id) {
-        const link = document.createElement('a')
-        link.href = `/api/reports/${response.data.id}/download?format=${reportFormat}`
-        link.download = `persistence_report_${new Date().toISOString().slice(0, 10)}.${reportFormat}`
-        link.click()
+        const reportId = response.data.id
+        let status = response.data.status
+        const maxAttempts = 30
+        let attempts = 0
+
+        while (status === 'generating' && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          try {
+            const statusResponse = await reportsAPI.get(reportId)
+            status = statusResponse.data.status
+            attempts++
+          } catch {
+            break
+          }
+        }
+
+        if (status === 'completed') {
+          const link = document.createElement('a')
+          link.href = `/api/reports/${reportId}/download?format=${reportFormat}`
+          link.download = `persistence_report_${new Date().toISOString().slice(0, 10)}.${reportFormat}`
+          link.click()
+        } else if (status === 'failed') {
+          alert(t('persistence.reportGenerationFailed'))
+        } else {
+          alert(t('persistence.reportGenerationTimeout'))
+        }
       }
     } catch (err: any) {
       alert(err.message || 'Failed to generate report')
@@ -297,6 +317,45 @@ function Persistence() {
     } finally {
       setGeneratingReport(false)
     }
+  }
+
+  const handleExportCSV = () => {
+    if (filteredDetections.length === 0) {
+      alert(t('persistence.exportNoData'))
+      return
+    }
+    const headers = ['Time', 'Technique', 'Category', 'Severity', 'Title', 'Description', 'Evidence Type', 'Evidence Key', 'Evidence Value', 'Recommended Action', 'False Positive Risk']
+    const csvContent = [
+      headers.join(','),
+      ...filteredDetections.map(d => [
+        d.time || '',
+        d.technique || '',
+        d.category || '',
+        d.severity || '',
+        `"${(d.title || '').replace(/"/g, '""')}"`,
+        `"${(d.description || '').replace(/"/g, '""')}"`,
+        d.evidence?.type || '',
+        `"${(d.evidence?.key || '').replace(/"/g, '""')}"`,
+        `"${(d.evidence?.value || '').replace(/"/g, '""')}"`,
+        `"${(d.recommended_action || '').replace(/"/g, '""')}"`,
+        d.false_positive_risk || '',
+      ].join(','))
+    ].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `persistence_detections_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportFromBackend = () => {
+    const params = new URLSearchParams()
+    if (filter.category) params.append('category', filter.category)
+    if (filter.technique) params.append('technique', filter.technique)
+    params.append('format', 'csv')
+    window.open(`/api/persistence/detect?${params.toString()}`, '_blank')
   }
 
   const filteredDetections = detections
@@ -337,71 +396,68 @@ function Persistence() {
     ],
   }
 
-  if (loading) {
-    return (
-      <div className="persistence-page">
-        <div className="page-header">
-          <h1>{t('persistence.title')}</h1>
-        </div>
-        <div className="loading-state">
+  const defaultStats = {
+    total_detections: 0,
+    duration_ms: 0,
+    error_count: 0,
+    by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+    by_category: {} as Record<string, number>,
+    by_technique: {} as Record<string, number>,
+  }
+
+  const displayStats = stats || defaultStats
+
+  return (
+    <div className="persistence-page">
+      {loading && (
+        <div className="loading-overlay">
           <div className="spinner"></div>
           <p>{t('persistence.scanning')}</p>
           <p className="hint">{t('persistence.scanningHint')}</p>
         </div>
-      </div>
-    )
-  }
+      )}
 
-  if (!hasStarted) {
-    return (
-      <div className="persistence-page">
-        <div className="page-header">
-          <h1>{t('persistence.title')}</h1>
-        </div>
-        <div className="empty-state">
-          <p>{t('persistence.clickToStart')}</p>
-          <button onClick={() => fetchDetections(true)} className="btn btn-primary">
-            {t('persistence.startScan')}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="persistence-page">
-        <div className="page-header">
-          <h1>{t('persistence.title')}</h1>
-        </div>
-        <div className="error">{t('common.error')}: {error}</div>
-        <button onClick={() => fetchDetections()} className="btn btn-primary">
-          {t('common.confirm')}
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="persistence-page">
       <div className="page-header">
-        <h1>{t('persistence.title')}</h1>
-        <button onClick={() => fetchDetections(true)} className="btn btn-primary">
+        <div className="header-left">
+          <h1>{t('persistence.title')}</h1>
+        </div>
+        <div className="header-right">
+          <div className="export-dropdown">
+            <button onClick={() => {
+              const menu = document.getElementById('persistence-export-menu')
+              if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none'
+            }} className="btn btn-secondary">
+              导出 CSV ▾
+            </button>
+            <div id="persistence-export-menu" className="export-menu">
+              <button onClick={handleExportCSV}>前端导出（已加载数据）</button>
+              <button onClick={handleExportFromBackend}>后端导出（完整数据）</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="action-bar">
+        <button onClick={() => fetchDetections(false)} className="btn btn-primary" disabled={loading}>
+          {t('persistence.startScan')}
+        </button>
+        <button onClick={() => fetchDetections(true)} className="btn btn-secondary" disabled={loading}>
           {t('persistence.rescan')}
         </button>
         <button onClick={handleShowDetectorConfig} className="btn btn-secondary">
           {t('persistence.detectorConfig')}
         </button>
-        <select
-          value={reportFormat}
-          onChange={e => setReportFormat(e.target.value)}
-          className="report-format-select"
-          style={{ marginRight: '8px', padding: '8px', borderRadius: '6px', background: '#16213e', color: '#eee', border: '1px solid #333' }}
-        >
-          <option value="html">{t('persistence.formatHTML')}</option>
-          <option value="pdf">{t('persistence.formatPDF')}</option>
-          <option value="json">{t('persistence.formatJSON')}</option>
-        </select>
+        <div className="report-format-selector">
+          <select
+            value={reportFormat}
+            onChange={e => setReportFormat(e.target.value)}
+            className="report-format-select"
+          >
+            <option value="html">{t('persistence.formatHTML')}</option>
+            <option value="pdf">{t('persistence.formatPDF')}</option>
+            <option value="json">{t('persistence.formatJSON')}</option>
+          </select>
+        </div>
         <button onClick={handleGenerateReport} className="btn btn-secondary" disabled={generatingReport}>
           {generatingReport ? t('persistence.generating') : t('persistence.generateReport')}
         </button>
@@ -461,38 +517,35 @@ function Persistence() {
         </div>
       )}
 
-      {stats && (
-        <>
-          <div className="stats-header">
-            <span className="stats-info">
-              {t('persistence.detectionsFound').replace('{count}', String(stats.total_detections))}
-              {stats.duration_ms > 0 && <span> {t('persistence.scanDuration').replace('{seconds}', String((stats.duration_ms / 1000).toFixed(1)))}</span>}
-            </span>
-          </div>
-          <div className="stats-grid">
-            <div className="stat-card stat-total">
-              <div className="stat-value">{stats.total_detections}</div>
-              <div className="stat-label">{t('persistence.total')}</div>
-            </div>
-            <div className="stat-card stat-critical">
-              <div className="stat-value">{stats.by_severity.critical}</div>
-              <div className="stat-label">{t('persistence.critical')}</div>
-            </div>
-            <div className="stat-card stat-high">
-              <div className="stat-value">{stats.by_severity.high}</div>
-              <div className="stat-label">{t('persistence.high')}</div>
-            </div>
-            <div className="stat-card stat-medium">
-              <div className="stat-value">{stats.by_severity.medium}</div>
-              <div className="stat-label">{t('persistence.medium')}</div>
-            </div>
-            <div className="stat-card stat-low">
-              <div className="stat-value">{stats.by_severity.low}</div>
-              <div className="stat-label">{t('persistence.low')}</div>
-            </div>
-          </div>
-        </>
+      {error && (
+        <div className="error-banner">
+          {t('common.error')}: {error}
+          <button onClick={() => fetchDetections(false)} className="btn btn-small">重试</button>
+        </div>
       )}
+
+      <div className="stats-grid">
+        <div className="stat-card stat-total">
+          <div className="stat-value">{displayStats.total_detections}</div>
+          <div className="stat-label">{t('persistence.total')}</div>
+        </div>
+        <div className="stat-card stat-critical">
+          <div className="stat-value">{displayStats.by_severity.critical}</div>
+          <div className="stat-label">{t('persistence.critical')}</div>
+        </div>
+        <div className="stat-card stat-high">
+          <div className="stat-value">{displayStats.by_severity.high}</div>
+          <div className="stat-label">{t('persistence.high')}</div>
+        </div>
+        <div className="stat-card stat-medium">
+          <div className="stat-value">{displayStats.by_severity.medium}</div>
+          <div className="stat-label">{t('persistence.medium')}</div>
+        </div>
+        <div className="stat-card stat-low">
+          <div className="stat-value">{displayStats.by_severity.low}</div>
+          <div className="stat-label">{t('persistence.low')}</div>
+        </div>
+      </div>
 
       <div className="charts-grid">
         <div className="chart-card">
@@ -542,19 +595,25 @@ function Persistence() {
       </div>
 
       <div className="detections-table-container">
-        <table className="detections-table">
-          <thead>
-            <tr>
-              <th>{t('persistence.severity')}</th>
-              <th>{t('persistence.technique')}</th>
-              <th>{t('persistence.category')}</th>
-              <th>{t('persistence.title')}</th>
-              <th>{t('persistence.evidence')}</th>
-              <th>{t('persistence.falsePositiveRisk')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredDetections.map(detection => (
+        {filteredDetections.length === 0 ? (
+          <div className="empty-detections">
+            <p>暂无检测数据</p>
+            <p className="hint">点击上方"开始检测"按钮进行扫描</p>
+          </div>
+        ) : (
+          <table className="detections-table">
+            <thead>
+              <tr>
+                <th>{t('persistence.severity')}</th>
+                <th>{t('persistence.technique')}</th>
+                <th>{t('persistence.category')}</th>
+                <th>{t('persistence.title')}</th>
+                <th>{t('persistence.evidence')}</th>
+                <th>{t('persistence.falsePositiveRisk')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDetections.map(detection => (
               <tr
                 key={detection.id}
                 onClick={() => setSelectedDetection(detection)}
@@ -577,8 +636,9 @@ function Persistence() {
                 <td>{t(`persistence.${detection.false_positive_risk?.toLowerCase()}Risk`) || detection.false_positive_risk}</td>
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        )}
       </div>
 
       {selectedDetection && (

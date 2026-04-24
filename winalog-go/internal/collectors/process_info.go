@@ -10,7 +10,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/kkkdddd-start/winalog-go/internal/forensics"
 	"github.com/kkkdddd-start/winalog-go/internal/types"
 	"github.com/kkkdddd-start/winalog-go/internal/utils"
 	"golang.org/x/sys/windows"
@@ -96,9 +95,18 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 	}
 	commandLines := batchGetCommandLines(pids)
 	memMap, cpuMap := batchGetProcessMemoryAndCPU(pids)
+	pathMap, userMap := batchGetProcessPathAndUser(pids)
+	sigMap := batchGetProcessSignatures(pathMap)
 
 	for _, p := range procList {
-		exePath := getProcessPath(p.pid)
+		exePath := pathMap[p.pid]
+		if exePath == "" {
+			exePath = getProcessPath(p.pid)
+		}
+		user := userMap[p.pid]
+		if user == "" {
+			user = getProcessUser(p.pid)
+		}
 
 		proc := &types.ProcessInfo{
 			PID:         int32(p.pid),
@@ -106,26 +114,23 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 			Name:        p.name,
 			Path:        exePath,
 			CommandLine: commandLines[p.pid],
-			User:        getProcessUser(p.pid),
+			User:        user,
 			StartTime:   getProcessStartTime(p.pid),
 			IsElevated:  isProcessElevated(p.pid),
 			MemoryMB:    memMap[p.pid],
 			CPUPercent:  cpuMap[p.pid],
 		}
 
-		if exePath != "" && !strings.HasSuffix(strings.ToLower(exePath), ".tmp") {
-			sigInfo, _ := forensics.VerifySignature(exePath)
-			if sigInfo != nil {
-				proc.IsSigned = sigInfo.Status == "Valid"
-				if sigInfo.Status != "Error" && sigInfo.Status != "Unsupported" {
-					proc.Signature = &types.SignatureInfo{
-						Status:     sigInfo.Status,
-						Issuer:     sigInfo.Issuer,
-						Subject:    sigInfo.Signer,
-						ValidFrom:  formatTime(sigInfo.NotBefore),
-						ValidTo:    formatTime(sigInfo.NotAfter),
-						Thumbprint: sigInfo.Thumbprint,
-					}
+		if sigInfo, ok := sigMap[p.pid]; ok && sigInfo != nil {
+			proc.IsSigned = sigInfo.Status == "Valid"
+			if sigInfo.Status != "Invalid" {
+				proc.Signature = &types.SignatureInfo{
+					Status:     sigInfo.Status,
+					Issuer:     sigInfo.Issuer,
+					Subject:    sigInfo.Signer,
+					ValidFrom:  sigInfo.ValidFrom,
+					ValidTo:    sigInfo.ValidTo,
+					Thumbprint: sigInfo.Thumbprint,
 				}
 			}
 		}
@@ -350,6 +355,191 @@ func batchGetProcessMemoryAndCPU(pids []uint32) (map[uint32]float64, map[uint32]
 	return memMap, cpuMap
 }
 
+func batchGetProcessPathAndUser(pids []uint32) (map[uint32]string, map[uint32]string) {
+	pathMap := make(map[uint32]string)
+	userMap := make(map[uint32]string)
+
+	if len(pids) == 0 {
+		return pathMap, userMap
+	}
+
+	script := `Get-CimInstance Win32_Process | ForEach-Object {
+		$owner = $_.GetOwner()
+		$user = ''
+		if ($owner.Domain -and $owner.User) {
+			$user = $owner.Domain + '\' + $owner.User
+		}
+		[PSCustomObject]@{
+			ProcessId = $_.ProcessId
+			Path = $_.ExecutablePath
+			User = $user
+		}
+	} | ConvertTo-Json -Compress`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	result := utils.RunPowerShellWithContext(ctx, script)
+	if !result.Success() || result.Output == "" {
+		return pathMap, userMap
+	}
+
+	var entries []struct {
+		ProcessID uint32 `json:"ProcessId"`
+		Path      string `json:"Path"`
+		User      string `json:"User"`
+	}
+
+	if err := json.Unmarshal([]byte(result.Output), &entries); err != nil {
+		var single struct {
+			ProcessID uint32 `json:"ProcessId"`
+			Path      string `json:"Path"`
+			User      string `json:"User"`
+		}
+		if err2 := json.Unmarshal([]byte(result.Output), &single); err2 == nil && single.ProcessID != 0 {
+			pathMap[single.ProcessID] = single.Path
+			userMap[single.ProcessID] = single.User
+		}
+		return pathMap, userMap
+	}
+
+	pidSet := make(map[uint32]bool)
+	for _, pid := range pids {
+		pidSet[pid] = true
+	}
+
+	for _, e := range entries {
+		if pidSet[e.ProcessID] {
+			pathMap[e.ProcessID] = e.Path
+			userMap[e.ProcessID] = e.User
+		}
+	}
+
+	return pathMap, userMap
+}
+
+type ProcessSignature struct {
+	PID           uint32
+	Status        string
+	Signer        string
+	Issuer        string
+	Thumbprint    string
+	ValidFrom      string
+	ValidTo        string
+}
+
+func batchGetProcessSignatures(paths map[uint32]string) map[uint32]*ProcessSignature {
+	result := make(map[uint32]*ProcessSignature)
+
+	if len(paths) == 0 {
+		return result
+	}
+
+	var pathList []string
+	pidByPath := make(map[string]uint32)
+	for pid, path := range paths {
+		if path != "" && !strings.HasSuffix(strings.ToLower(path), ".tmp") {
+			pathList = append(pathList, path)
+			pidByPath[path] = pid
+		}
+	}
+
+	if len(pathList) == 0 {
+		return result
+	}
+
+	batchSize := 50
+	for i := 0; i < len(pathList); i += batchSize {
+		end := i + batchSize
+		if end > len(pathList) {
+			end = len(pathList)
+		}
+		batch := pathList[i:end]
+
+		script := `$paths = @('%s')
+		foreach ($p in $paths) {
+			$sig = Get-AuthenticodeSignature -FilePath $p -ErrorAction SilentlyContinue
+			$status = if ($sig.Status -eq 'Valid') { 'Valid' } else { 'Invalid' }
+			$signer = ''
+			$issuer = ''
+			$thumbprint = ''
+			$validFrom = ''
+			$validTo = ''
+			if ($sig.SignerCertificate) {
+				$signer = $sig.SignerCertificate.Subject
+				$issuer = $sig.SignerCertificate.Issuer
+				$thumbprint = $sig.SignerCertificate.Thumbprint
+				$validFrom = $sig.SignerCertificate.NotBefore.ToString('o')
+				$validTo = $sig.SignerCertificate.NotAfter.ToString('o')
+			}
+			[PSCustomObject]@{
+				p = $p
+				s = $status
+				si = $signer
+				i = $issuer
+				t = $thumbprint
+				vf = $validFrom
+				vt = $validTo
+			}
+		} | ConvertTo-Json -Compress`
+
+		psPaths := strings.Join(batch, "','")
+		script = fmt.Sprintf(script, psPaths)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+
+		cmdResult := utils.RunPowerShellWithContext(ctx, script)
+		if !cmdResult.Success() || cmdResult.Output == "" {
+			continue
+		}
+
+		var sigResults []struct {
+			P  string `json:"p"`
+			S  string `json:"s"`
+			Si string `json:"si"`
+			I  string `json:"i"`
+			T  string `json:"t"`
+			Vf string `json:"vf"`
+			Vt string `json:"vt"`
+		}
+
+		if strings.HasPrefix(cmdResult.Output, "[") {
+			if err := json.Unmarshal([]byte(cmdResult.Output), &sigResults); err != nil {
+				continue
+			}
+		} else if strings.HasPrefix(cmdResult.Output, "{") {
+			var single struct {
+				P  string `json:"p"`
+				S  string `json:"s"`
+				Si string `json:"si"`
+				I  string `json:"i"`
+				T  string `json:"t"`
+				Vf string `json:"vf"`
+				Vt string `json:"vt"`
+			}
+			if err := json.Unmarshal([]byte(cmdResult.Output), &single); err == nil && single.P != "" {
+				sigResults = append(sigResults, single)
+			}
+		}
+
+		for _, sr := range sigResults {
+			if pid, ok := pidByPath[sr.P]; ok {
+				result[pid] = &ProcessSignature{
+					Status:     sr.S,
+					Signer:     sr.Si,
+					Issuer:     sr.I,
+					Thumbprint: sr.T,
+					ValidFrom:  sr.Vf,
+					ValidTo:    sr.Vt,
+				}
+			}
+		}
+	}
+
+	return result
+}
+
 func getProcessStartTime(pid uint32) time.Time {
 	defer func() {
 		if r := recover(); r != nil {
@@ -434,16 +624,24 @@ func ListProcesses() ([]Process, error) {
 		pids[i] = p.pid
 	}
 	commandLines := batchGetCommandLines(pids)
+	pathMap, userMap := batchGetProcessPathAndUser(pids)
 
 	for _, p := range procList {
-		exePath := getProcessPath(p.pid)
+		exePath := pathMap[p.pid]
+		if exePath == "" {
+			exePath = getProcessPath(p.pid)
+		}
+		user := userMap[p.pid]
+		if user == "" {
+			user = getProcessUser(p.pid)
+		}
 		processes = append(processes, Process{
 			PID:     int(p.pid),
 			PPID:    int(p.ppid),
 			Name:    p.name,
 			Path:    exePath,
 			Command: commandLines[p.pid],
-			User:    getProcessUser(p.pid),
+			User:    user,
 		})
 	}
 

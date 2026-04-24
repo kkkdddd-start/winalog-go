@@ -78,20 +78,6 @@ func (h *CollectHandler) CollectChannels(c *gin.Context) {
 	})
 }
 
-// getDefaultChannels 返回默认的日志通道
-func getDefaultChannels() []string {
-	return []string{
-		"Security",
-		"System",
-		"Application",
-		"Setup",
-		"Microsoft-Windows-Sysmon/Operational",
-		"Microsoft-Windows-PowerShell/Operational",
-		"Microsoft-Windows-WMI-Activity/Operational",
-		"Microsoft-Windows-TaskScheduler/Operational",
-	}
-}
-
 type LogCollectResponse struct {
 	Status         string         `json:"status"`
 	Message        string         `json:"message"`

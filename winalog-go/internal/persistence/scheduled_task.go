@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -185,16 +186,27 @@ func (d *ScheduledTaskDetector) isSuspiciousTask(task ScheduledTaskInfo) bool {
 		return false
 	}
 
+	taskAuthorLower := strings.ToLower(task.Author)
+	isMicrosoftTask := strings.Contains(taskAuthorLower, "microsoft") ||
+		strings.Contains(taskAuthorLower, "system") ||
+		taskAuthorLower == "" || taskAuthorLower == "author"
+
 	for _, action := range task.Actions {
 		actionLower := strings.ToLower(action)
+		actionExpanded := os.ExpandEnv(action)
+		actionExpandedLower := strings.ToLower(actionExpanded)
+
 		for _, indicator := range SuspiciousScheduledTaskIndicators {
 			if strings.Contains(actionLower, strings.ToLower(indicator)) {
+				if isMicrosoftTask && isSystemPath(actionExpanded) {
+					continue
+				}
 				return true
 			}
 		}
 	}
 
-	if strings.Contains(strings.ToLower(task.Author), "unknown") && len(task.Actions) > 0 {
+	if strings.Contains(taskAuthorLower, "unknown") && len(task.Actions) > 0 {
 		for _, action := range task.Actions {
 			if !isSystemPath(action) {
 				return true

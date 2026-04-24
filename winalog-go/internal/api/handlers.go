@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -69,20 +68,6 @@ type ListEventsRequest struct {
 	EndTime   string   `form:"end_time"`
 	SortBy    string   `form:"sort_by"`
 	SortOrder string   `form:"sort_order"`
-}
-
-func internalError(c *gin.Context, err error) {
-	c.JSON(http.StatusInternalServerError, ErrorResponse{
-		Error: err.Error(),
-		Code:  types.ErrCodeInternalError,
-	})
-}
-
-func badRequestError(c *gin.Context, err error) {
-	c.JSON(http.StatusBadRequest, ErrorResponse{
-		Error: err.Error(),
-		Code:  types.ErrCodeInvalidRequest,
-	})
 }
 
 type ListEventsResponse struct {
@@ -410,11 +395,17 @@ func (h *AlertHandler) ExportEvents(c *gin.Context) {
 	case "csv":
 		c.Header("Content-Type", exporter.ContentType())
 		c.Header("Content-Disposition", "attachment; filename=events_export.csv")
-		exporter.Export(events, c.Writer)
+		if err := exporter.Export(events, c.Writer); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
 	case "excel", "xlsx":
 		c.Header("Content-Type", exporter.ContentType())
 		c.Header("Content-Disposition", "attachment; filename=events_export.xlsx")
-		exporter.Export(events, c.Writer)
+		if err := exporter.Export(events, c.Writer); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
 	default:
 		c.JSON(200, gin.H{
 			"events": events,
@@ -953,7 +944,9 @@ func (h *AlertHandler) ExportAlerts(c *gin.Context) {
 	case "csv":
 		c.Header("Content-Type", "text/csv")
 		c.Header("Content-Disposition", "attachment; filename=alerts.csv")
-		c.Writer.Write([]byte("ID,RuleName,Severity,Message,Count,FirstSeen,LastSeen,Resolved\n"))
+		if _, err := c.Writer.Write([]byte("ID,RuleName,Severity,Message,Count,FirstSeen,LastSeen,Resolved\n")); err != nil {
+			return
+		}
 		for _, a := range alerts {
 			resolved := "false"
 			if a.Resolved {
@@ -962,7 +955,9 @@ func (h *AlertHandler) ExportAlerts(c *gin.Context) {
 			line := fmt.Sprintf("%d,%s,%s,%s,%d,%s,%s,%s\n",
 				a.ID, a.RuleName, a.Severity, a.Message, a.Count,
 				a.FirstSeen.Format(time.RFC3339), a.LastSeen.Format(time.RFC3339), resolved)
-			c.Writer.Write([]byte(line))
+			if _, err := c.Writer.Write([]byte(line)); err != nil {
+				return
+			}
 		}
 	default:
 		c.Header("Content-Type", "application/json")
@@ -972,17 +967,6 @@ func (h *AlertHandler) ExportAlerts(c *gin.Context) {
 			"total":  len(alerts),
 		})
 	}
-}
-
-func parseTime(s string) (*time.Time, error) {
-	if s == "" {
-		return nil, nil
-	}
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
 }
 
 // ImportRequest represents request body for importing logs
@@ -1045,9 +1029,10 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 		log.Printf("[IMPORT] Processing batch %d-%d (%d files)", i, end, len(batch))
 
 		batchReq := &engine.ImportRequest{
-			Paths:         batch,
-			BatchSize:     1000,
-			SkipPatterns:  req.SkipPatterns,
+			Paths:          batch,
+			BatchSize:      1000,
+			SkipPatterns:   req.SkipPatterns,
+			EnabledFormats: req.EnabledFormats,
 		}
 
 		result, err := eng.Import(c.Request.Context(), batchReq, nil)
@@ -1084,7 +1069,7 @@ func (h *ImportHandler) ImportLogs(c *gin.Context) {
 			if len(events) > 0 {
 				alerts, _ := h.alertEngine.EvaluateBatch(context.Background(), events)
 				if len(alerts) > 0 {
-					h.alertEngine.SaveAlerts(alerts)
+					_ = h.alertEngine.SaveAlerts(alerts)
 				}
 			}
 		}
@@ -1131,6 +1116,340 @@ func (h *ImportHandler) GetImportStatus(c *gin.Context) {
 	}
 
 	c.JSON(200, log)
+}
+
+// AsyncImportRequest represents request body for async import
+type AsyncImportRequest struct {
+	Files          []string `json:"files" binding:"required"`
+	LogName        string   `json:"log_name"`
+	Incremental    bool     `json:"incremental"`
+	Workers        int      `json:"workers"`
+	BatchSize      int      `json:"batch_size"`
+	SkipPatterns   []string `json:"skip_patterns"`
+	AlertOnImport  bool     `json:"alert_on_import"`
+	EnabledFormats []string `json:"enabled_formats"`
+}
+
+// AsyncImportResponse represents response for async import
+type AsyncImportResponse struct {
+	Success   bool   `json:"success"`
+	TaskID    string `json:"task_id"`
+	Status    string `json:"status"`
+	Message   string `json:"message"`
+	StatusURL string `json:"status_url"`
+}
+
+// ImportLogsAsync godoc
+// @Summary Import log files asynchronously
+// @Description Start an asynchronous import operation and return a task ID for tracking
+// @Tags import
+// @Accept json
+// @Produce json
+// @Param request body AsyncImportRequest true "Async import request"
+// @Success 202 {object} AsyncImportResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/import/logs/async [post]
+func (h *ImportHandler) ImportLogsAsync(c *gin.Context) {
+	var req AsyncImportRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[IMPORT] Failed to parse async request: %v", err)
+		c.JSON(400, ErrorResponse{Error: err.Error(), Code: types.ErrCodeInvalidRequest})
+		return
+	}
+
+	if len(req.Files) == 0 {
+		c.JSON(400, ErrorResponse{Error: "no files provided", Code: types.ErrCodeInvalidRequest})
+		return
+	}
+
+	log.Printf("[IMPORT] Received async import request with %d files", len(req.Files))
+
+	taskID := fmt.Sprintf("import_%s", time.Now().Format("20060102_150405"))
+	if len(req.Files) > 0 && len(req.Files[0]) > 0 {
+		taskID = taskID + "_" + fmt.Sprintf("%x", time.Now().UnixNano())[:6]
+	}
+
+	_, err := h.db.CreateImportTask(taskID, len(req.Files))
+	if err != nil {
+		log.Printf("[IMPORT] Failed to create import task: %v", err)
+		c.JSON(500, ErrorResponse{Error: "failed to create import task", Code: types.ErrCodeInternalError})
+		return
+	}
+
+	if err := h.db.CreateImportTaskFiles(taskID, req.Files); err != nil {
+		log.Printf("[IMPORT] Failed to create import task files: %v", err)
+		c.JSON(500, ErrorResponse{Error: "failed to create import task files", Code: types.ErrCodeInternalError})
+		return
+	}
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[PANIC] ImportLogsAsync goroutine recovered: %v", r)
+				if h.db != nil {
+					_ = h.db.UpdateImportTask(taskID, "failed", len(req.Files), 0, 0, 0, "", fmt.Sprintf("panic: %v", r))
+				}
+			}
+		}()
+
+		eng := engine.NewEngine(h.db)
+
+		workers := req.Workers
+		if workers <= 0 {
+			workers = 4
+		}
+		batchSize := req.BatchSize
+		if batchSize <= 0 {
+			batchSize = 10000
+		}
+
+		importReq := &engine.ImportRequest{
+			Paths:          req.Files,
+			LogName:        req.LogName,
+			Incremental:    req.Incremental,
+			BatchSize:      batchSize,
+			SkipPatterns:   req.SkipPatterns,
+			EnabledFormats: req.EnabledFormats,
+			Workers:        workers,
+			TaskID:         taskID,
+		}
+
+		progressCallback := func(progress *engine.ImportProgress) {
+			if h.db != nil && progress != nil {
+				_ = h.db.UpdateImportTask(
+					taskID,
+					"running",
+					progress.CurrentFile,
+					0,
+					0,
+					progress.EventsImported,
+					progress.CurrentFileName,
+					"",
+				)
+			}
+		}
+
+		ctx := context.Background()
+		result, err := eng.Import(ctx, importReq, progressCallback)
+
+		status := "completed"
+		errorMsg := ""
+		if err != nil {
+			status = "failed"
+			errorMsg = err.Error()
+		}
+
+		filesImported := 0
+		filesFailed := 0
+		if result != nil {
+			filesImported = result.FilesImported
+			filesFailed = result.FilesFailed
+		}
+
+		if h.db != nil {
+			_ = h.db.UpdateImportTask(
+				taskID,
+				status,
+				len(req.Files),
+				filesImported,
+				filesFailed,
+				0,
+				"",
+				errorMsg,
+			)
+
+			if result != nil && result.Errors != nil {
+				for _, fileErr := range result.Errors {
+					if fileErr != nil {
+						_ = h.db.UpdateImportTaskFile(taskID, fileErr.FilePath, "failed", 0, fileErr.Error)
+					}
+				}
+			}
+		}
+
+		log.Printf("[IMPORT] Async task %s completed: %d files imported, %d failed",
+			taskID, filesImported, filesFailed)
+	}()
+
+	c.JSON(202, AsyncImportResponse{
+		Success:   true,
+		TaskID:    taskID,
+		Status:    "running",
+		Message:   "Import task started",
+		StatusURL: fmt.Sprintf("/api/import/status/%s", taskID),
+	})
+}
+
+// GetImportTaskStatus godoc
+// @Summary Get import task status
+// @Description Get the status of an import task by task ID
+// @Tags import
+// @Accept json
+// @Produce json
+// @Param task_id path string true "Task ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/import/status/{task_id} [get]
+func (h *ImportHandler) GetImportTaskStatus(c *gin.Context) {
+	taskID := c.Param("task_id")
+	if taskID == "" {
+		c.JSON(400, ErrorResponse{Error: "task_id parameter required", Code: types.ErrCodeInvalidRequest})
+		return
+	}
+
+	task, err := h.db.GetImportTask(taskID)
+	if err != nil {
+		c.JSON(404, ErrorResponse{Error: "import task not found"})
+		return
+	}
+
+	response := gin.H{
+		"task_id":         task.TaskID,
+		"status":          task.Status,
+		"total_files":     task.TotalFiles,
+		"processed_files": task.ProcessedFiles,
+		"current_file":    task.CurrentFile,
+		"total_events":    task.TotalEvents,
+		"files_imported":  task.FilesImported,
+		"files_failed":    task.FilesFailed,
+		"created_at":      task.CreatedAt.Format(time.RFC3339),
+		"updated_at":      task.UpdatedAt.Format(time.RFC3339),
+	}
+
+	if task.CompletedAt != nil {
+		response["completed_at"] = task.CompletedAt.Format(time.RFC3339)
+		response["duration"] = task.CompletedAt.Sub(task.CreatedAt).String()
+	}
+
+	if task.ErrorMessage != "" {
+		response["error_message"] = task.ErrorMessage
+	}
+
+	if task.Status == "completed" || task.Status == "failed" {
+		errors, _ := h.db.GetImportTaskErrors(taskID)
+		if len(errors) > 0 {
+			var errorList []gin.H
+			for _, e := range errors {
+				errorList = append(errorList, gin.H{
+					"file":  e.FilePath,
+					"error": e.ErrorMessage,
+				})
+			}
+			response["errors"] = errorList
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data":    response,
+	})
+}
+
+// GetImportHistory godoc
+// @Summary Get import history
+// @Description Get a list of past import tasks
+// @Tags import
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of tasks to return" default(20)
+// @Param offset query int false "Offset for pagination" default(0)
+// @Param status query string false "Filter by status"
+// @Success 200 {object} SuccessResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/import/history [get]
+func (h *ImportHandler) GetImportHistory(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, _ := strconv.Atoi(limitStr)
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, _ := strconv.Atoi(offsetStr)
+	if offset < 0 {
+		offset = 0
+	}
+
+	status := c.Query("status")
+
+	tasks, total, err := h.db.GetImportTasks(limit, offset, status)
+	if err != nil {
+		log.Printf("[IMPORT] Failed to get import history: %v", err)
+		c.JSON(500, ErrorResponse{Error: "failed to get import history", Code: types.ErrCodeInternalError})
+		return
+	}
+
+	var taskList []gin.H
+	for _, task := range tasks {
+		taskData := gin.H{
+			"task_id":        task.TaskID,
+			"status":         task.Status,
+			"total_files":    task.TotalFiles,
+			"files_imported": task.FilesImported,
+			"files_failed":   task.FilesFailed,
+			"total_events":   task.TotalEvents,
+			"created_at":     task.CreatedAt.Format(time.RFC3339),
+		}
+
+		if task.CompletedAt != nil {
+			taskData["completed_at"] = task.CompletedAt.Format(time.RFC3339)
+			taskData["duration"] = task.CompletedAt.Sub(task.CreatedAt).String()
+		}
+
+		taskList = append(taskList, taskData)
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data": gin.H{
+			"total":  total,
+			"tasks":  taskList,
+		},
+	})
+}
+
+// CancelImportTask godoc
+// @Summary Cancel an import task
+// @Description Cancel a running import task
+// @Tags import
+// @Accept json
+// @Produce json
+// @Param task_id path string true "Task ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/import/cancel/{task_id} [delete]
+func (h *ImportHandler) CancelImportTask(c *gin.Context) {
+	taskID := c.Param("task_id")
+	if taskID == "" {
+		c.JSON(400, ErrorResponse{Error: "task_id parameter required", Code: types.ErrCodeInvalidRequest})
+		return
+	}
+
+	task, err := h.db.GetImportTask(taskID)
+	if err != nil {
+		c.JSON(404, ErrorResponse{Error: "import task not found"})
+		return
+	}
+
+	if task.Status != "pending" && task.Status != "running" {
+		c.JSON(400, ErrorResponse{Error: fmt.Sprintf("cannot cancel task with status: %s", task.Status), Code: types.ErrCodeInvalidRequest})
+		return
+	}
+
+	_ = h.db.UpdateImportTask(taskID, "cancelled", task.ProcessedFiles, task.FilesImported, task.FilesFailed, task.TotalEvents, "", "cancelled by user")
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"data": gin.H{
+			"task_id": taskID,
+			"status":  "cancelled",
+			"message": "Task cancelled successfully",
+		},
+	})
 }
 
 // TimelineHandler handles timeline-related operations

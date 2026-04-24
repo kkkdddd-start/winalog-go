@@ -269,7 +269,7 @@ func BenchmarkQueryHandler_Execute_Full(b *testing.B) {
 
 	now := time.Now().Format(time.RFC3339)
 	for i := 0; i < 100; i++ {
-		db.Exec(`
+		_, _ = db.Exec(`
 			INSERT INTO events (timestamp, event_id, level, log_name, computer, message, import_time)
 			VALUES (?, ?, ?, ?, ?, ?, ?)
 		`, now, 4624, 1, "Security", "WORKSTATION1", "Test event", now)
@@ -296,7 +296,7 @@ func BenchmarkSupppressHandler_List(b *testing.B) {
 
 	now := time.Now().Format(time.RFC3339)
 	for i := 0; i < 50; i++ {
-		db.Exec(`
+		_, _ = db.Exec(`
 			INSERT INTO suppress_rules (name, conditions, duration, scope, enabled, created_at)
 			VALUES (?, ?, ?, ?, ?, ?)
 		`, "rule", "[]", 60, "global", 1, now)
