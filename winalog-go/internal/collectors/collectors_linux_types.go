@@ -45,6 +45,8 @@ type DLLModuleInfo struct {
 	Path        string
 	Size        uint32
 	Version     string
+	IsSigned    bool
+	Signer      string
 }
 
 type Driver struct {

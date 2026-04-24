@@ -84,7 +84,17 @@ interface DetectorRule {
 
 function Persistence() {
   const { t } = useI18n()
-  const [detections, setDetections] = useState<Detection[]>([])
+  const [detections, setDetections] = useState<Detection[]>(() => {
+    const saved = localStorage.getItem('persistence_detections')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        // ignore parse errors
+      }
+    }
+    return []
+  })
   const [stats, setStats] = useState<DetectionStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -261,12 +271,14 @@ function Persistence() {
       if (force) params.force = true
       const response = await persistenceAPI.detect(params)
       const data = response.data
-      setDetections(data.detections || [])
-      setStats(calculateStats(data.detections || []))
+      const dets = data.detections || []
+      setDetections(dets)
+      localStorage.setItem('persistence_detections', JSON.stringify(dets))
+      setStats(calculateStats(dets))
     } catch (err: any) {
-      const msg = err.response?.status === 404 
+      const msg = err.response?.status === 404
         ? 'Persistence detection not available (Windows only feature)'
-        : err.response?.data?.error 
+        : err.response?.data?.error
           ? `Error: ${err.response.data.error}`
           : err.message || 'Failed to fetch detections'
       setError(msg)

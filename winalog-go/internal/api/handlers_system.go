@@ -127,6 +127,7 @@ type DLLInfo struct {
 	Size        uint32 `json:"size"`
 	Version     string `json:"version"`
 	IsSigned    bool   `json:"is_signed"`
+	Signer      string `json:"signer"`
 }
 
 type ProcessDLLResponse struct {
@@ -635,6 +636,8 @@ func (h *SystemHandler) GetLoadedDLLs(c *gin.Context) {
 			Path:        dll.Path,
 			Size:        dll.Size,
 			Version:     dll.Version,
+			IsSigned:    dll.IsSigned,
+			Signer:      dll.Signer,
 		})
 		if len(result) >= limit {
 			break

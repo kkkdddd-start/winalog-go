@@ -37,6 +37,8 @@ type DLLModuleInfo struct {
 	Path        string
 	Size        uint32
 	Version     string
+	IsSigned    bool
+	Signer      string
 }
 
 func NewDLLInfoCollector() *DLLInfoCollector {
@@ -166,7 +168,111 @@ func ListLoadedDLLs() ([]DLLModuleInfo, error) {
 		log.Printf("[WARN] [DLL] No processes found at all - CreateToolhelp32Snapshot may have failed silently")
 	}
 
+	if len(dlls) > 0 {
+		log.Printf("[INFO] [DLL] Collecting signatures for %d DLLs...", len(dlls))
+		sigMap := batchGetDLLSignatures(dlls)
+		for i := range dlls {
+			if sig, ok := sigMap[dlls[i].Path]; ok {
+				dlls[i].IsSigned = sig.IsSigned
+				dlls[i].Signer = sig.Signer
+			}
+		}
+		log.Printf("[INFO] [DLL] Signature collection completed")
+	}
+
 	return dlls, nil
+}
+
+type DLLSignature struct {
+	IsSigned bool
+	Signer   string
+}
+
+func batchGetDLLSignatures(dlls []DLLModuleInfo) map[string]DLLSignature {
+	result := make(map[string]DLLSignature)
+
+	if len(dlls) == 0 {
+		return result
+	}
+
+	pathSet := make(map[string]struct{})
+	var pathList []string
+	for _, dll := range dlls {
+		if dll.Path != "" {
+			if _, exists := pathSet[dll.Path]; !exists {
+				pathSet[dll.Path] = struct{}{}
+				pathList = append(pathList, dll.Path)
+			}
+		}
+	}
+
+	if len(pathList) == 0 {
+		return result
+	}
+
+	batchSize := 50
+	for i := 0; i < len(pathList); i += batchSize {
+		end := i + batchSize
+		if end > len(pathList) {
+			end = len(pathList)
+		}
+		batch := pathList[i:end]
+
+		script := `$paths = @('%s')
+foreach ($p in $paths) {
+	$sig = Get-AuthenticodeSignature -FilePath $p -ErrorAction SilentlyContinue
+	$status = 'Unsigned'
+	$signer = ''
+	if ($sig.Status -eq 'Valid') { $status = 'Signed' }
+	if ($sig.SignerCertificate) { $signer = $sig.SignerCertificate.Subject }
+	[PSCustomObject]@{
+		p = $p
+		s = $status
+		si = $signer
+	}
+} | ConvertTo-Json -Compress`
+
+		psPaths := strings.Join(batch, "','")
+		script = fmt.Sprintf(script, psPaths)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+
+		cmdResult := utils.RunPowerShellWithContext(ctx, script)
+		if !cmdResult.Success() || cmdResult.Output == "" {
+			continue
+		}
+
+		var sigResults []struct {
+			P  string `json:"p"`
+			S  string `json:"s"`
+			Si string `json:"si"`
+		}
+
+		if strings.HasPrefix(cmdResult.Output, "[") {
+			if err := json.Unmarshal([]byte(cmdResult.Output), &sigResults); err != nil {
+				continue
+			}
+		} else if strings.HasPrefix(cmdResult.Output, "{") {
+			var single struct {
+				P  string `json:"p"`
+				S  string `json:"s"`
+				Si string `json:"si"`
+			}
+			if err := json.Unmarshal([]byte(cmdResult.Output), &single); err == nil && single.P != "" {
+				sigResults = append(sigResults, single)
+			}
+		}
+
+		for _, sr := range sigResults {
+			result[sr.P] = DLLSignature{
+				IsSigned: sr.S == "Signed",
+				Signer:   sr.Si,
+			}
+		}
+	}
+
+	return result
 }
 
 func enumProcessModules(pid int, processName string) ([]DLLModuleInfo, error) {

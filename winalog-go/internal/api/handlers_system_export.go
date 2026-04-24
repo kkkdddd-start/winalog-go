@@ -135,7 +135,7 @@ func (h *SystemHandler) ExportEnvironmentVariables(c *gin.Context) {
 }
 
 func (h *SystemHandler) ExportDrivers(c *gin.Context) {
-	drivers, err := collectors.ListDrivers()
+	drivers, err := collectors.ListDriversWithSignature()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -145,7 +145,7 @@ func (h *SystemHandler) ExportDrivers(c *gin.Context) {
 	c.Header("Content-Type", "text/csv")
 
 	w := csv.NewWriter(c.Writer)
-	w.Write([]string{"Name", "DisplayName", "Description", "Path", "Status"})
+	w.Write([]string{"Name", "DisplayName", "Description", "Path", "Status", "SignatureStatus", "Signer"})
 	for _, d := range drivers {
 		w.Write([]string{
 			d.Name,
@@ -153,6 +153,8 @@ func (h *SystemHandler) ExportDrivers(c *gin.Context) {
 			d.Description,
 			d.Path,
 			d.Status,
+			d.SigStatus,
+			d.Signer,
 		})
 	}
 	w.Flush()

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 	"unsafe"
@@ -134,8 +135,6 @@ func (c *ProcessInfoCollector) collectProcessInfo() ([]*types.ProcessInfo, error
 				}
 			}
 		}
-
-		processes = append(processes, proc)
 	}
 
 	return processes, nil
@@ -432,6 +431,7 @@ func batchGetProcessSignatures(paths map[uint32]string) map[uint32]*ProcessSigna
 	result := make(map[uint32]*ProcessSignature)
 
 	if len(paths) == 0 {
+		log.Printf("[DEBUG] batchGetProcessSignatures: paths map is empty")
 		return result
 	}
 
@@ -445,8 +445,11 @@ func batchGetProcessSignatures(paths map[uint32]string) map[uint32]*ProcessSigna
 	}
 
 	if len(pathList) == 0 {
+		log.Printf("[DEBUG] batchGetProcessSignatures: pathList is empty after filtering")
 		return result
 	}
+
+	log.Printf("[DEBUG] batchGetProcessSignatures: processing %d paths, first 3: %v", len(pathList), pathList[:min(3, len(pathList))])
 
 	batchSize := 50
 	for i := 0; i < len(pathList); i += batchSize {
@@ -490,7 +493,8 @@ func batchGetProcessSignatures(paths map[uint32]string) map[uint32]*ProcessSigna
 		defer cancel()
 
 		cmdResult := utils.RunPowerShellWithContext(ctx, script)
-		if !cmdResult.Success() || cmdResult.Output == "" {
+		if cmdResult.Output == "" {
+			log.Printf("[WARN] batchGetProcessSignatures: empty output for batch starting at %d", i)
 			continue
 		}
 
@@ -504,11 +508,13 @@ func batchGetProcessSignatures(paths map[uint32]string) map[uint32]*ProcessSigna
 			Vt string `json:"vt"`
 		}
 
-		if strings.HasPrefix(cmdResult.Output, "[") {
-			if err := json.Unmarshal([]byte(cmdResult.Output), &sigResults); err != nil {
+		output := cmdResult.Output
+		if strings.HasPrefix(output, "[") {
+			if err := json.Unmarshal([]byte(output), &sigResults); err != nil {
+				log.Printf("[WARN] batchGetProcessSignatures: JSON array parse error at batch %d: %v, output: %s", i/50, err, truncateString(output, 200))
 				continue
 			}
-		} else if strings.HasPrefix(cmdResult.Output, "{") {
+		} else if strings.HasPrefix(output, "{") {
 			var single struct {
 				P  string `json:"p"`
 				S  string `json:"s"`
@@ -518,13 +524,23 @@ func batchGetProcessSignatures(paths map[uint32]string) map[uint32]*ProcessSigna
 				Vf string `json:"vf"`
 				Vt string `json:"vt"`
 			}
-			if err := json.Unmarshal([]byte(cmdResult.Output), &single); err == nil && single.P != "" {
+			if err := json.Unmarshal([]byte(output), &single); err == nil && single.P != "" {
 				sigResults = append(sigResults, single)
 			}
+		} else {
+			log.Printf("[WARN] batchGetProcessSignatures: unexpected output format at batch %d: %s", i/50, truncateString(output, 200))
+			continue
 		}
 
 		for _, sr := range sigResults {
-			if pid, ok := pidByPath[sr.P]; ok {
+			pid, ok := pidByPath[sr.P]
+			if !ok {
+				pid, ok = pidByPath[strings.ToLower(sr.P)]
+			}
+			if !ok {
+				pid, ok = pidByPath[strings.ToUpper(sr.P)]
+			}
+			if ok {
 				result[pid] = &ProcessSignature{
 					Status:     sr.S,
 					Signer:     sr.Si,
@@ -533,6 +549,8 @@ func batchGetProcessSignatures(paths map[uint32]string) map[uint32]*ProcessSigna
 					ValidFrom:  sr.Vf,
 					ValidTo:    sr.Vt,
 				}
+			} else {
+				log.Printf("[DEBUG] batchGetProcessSignatures: path not found in pidByPath: %s", sr.P)
 			}
 		}
 	}
@@ -673,4 +691,11 @@ func IsProcessRunning(pid int) bool {
 
 func GetProcessStartTime(pid int) time.Time {
 	return getProcessStartTime(uint32(pid))
+}
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }

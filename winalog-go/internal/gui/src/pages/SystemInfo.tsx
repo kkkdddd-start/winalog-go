@@ -104,6 +104,7 @@ interface DllInfo {
   size: number
   version: string
   is_signed: boolean
+  signer: string
 }
 
 interface TaskInfo {
@@ -214,17 +215,18 @@ function SystemInfo() {
       setProcesses([])
       return
     }
-    if (processes.length > 0) return
     setLoading(true)
     systemAPI.getProcesses(10000, enabled)
       .then(res => {
-        setProcesses(res.data.processes || [])
+        const data = res.data.processes || []
+        setProcesses(data)
+        localStorage.setItem('systeminfo_processes', JSON.stringify(data))
         setModuleErrors(m => ({ ...m, processes: '' }))
         setLoading(false)
       })
       .catch((err: any) => {
-        const msg = err.response?.status === 404 
-          ? '进程信息不可用（仅支持 Windows）' 
+        const msg = err.response?.status === 404
+          ? '进程信息不可用（仅支持 Windows）'
           : (err.message || '获取进程信息失败')
         setModuleErrors(m => ({ ...m, processes: msg }))
         setLoading(false)
@@ -237,11 +239,12 @@ function SystemInfo() {
       setNetworkConnections([])
       return
     }
-    if (networkConnections.length > 0) return
     setLoading(true)
     systemAPI.getNetwork(10000, enabled)
       .then(res => {
-        setNetworkConnections(res.data.connections || [])
+        const data = res.data.connections || []
+        setNetworkConnections(data)
+        localStorage.setItem('systeminfo_network', JSON.stringify(data))
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -269,14 +272,18 @@ function SystemInfo() {
       setSelectedDllPid(pid)
       systemAPI.getProcessDLLs(pid)
         .then(res => {
-          setDlls(res.data.dlls || [])
+          const data = res.data.dlls || []
+          setDlls(data)
+          localStorage.setItem('systeminfo_dlls', JSON.stringify(data))
           setLoading(false)
         })
         .catch(() => setLoading(false))
     } else {
-      systemAPI.getLoadedDLLs(10000, enabled)
+      systemAPI.getLoadedDLLs(100000, enabled)
         .then(res => {
-          setDlls(res.data.modules || [])
+          const data = res.data.modules || []
+          setDlls(data)
+          localStorage.setItem('systeminfo_dlls', JSON.stringify(data))
           setLoading(false)
         })
         .catch(() => setLoading(false))
@@ -289,11 +296,12 @@ function SystemInfo() {
       setDrivers([])
       return
     }
-    if (drivers.length > 0) return
     setLoading(true)
     systemAPI.getDrivers(enabled)
       .then(res => {
-        setDrivers(res.data.drivers || [])
+        const data = res.data.drivers || []
+        setDrivers(data)
+        localStorage.setItem('systeminfo_drivers', JSON.stringify(data))
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -305,21 +313,15 @@ function SystemInfo() {
       setUsers([])
       return
     }
-    if (users.length > 0) return
     setLoading(true)
     systemAPI.getUsers(enabled)
       .then(res => {
-        setUsers(res.data.users || [])
-        setModuleErrors(m => ({ ...m, users: '' }))
+        const data = res.data.users || []
+        setUsers(data)
+        localStorage.setItem('systeminfo_users', JSON.stringify(data))
         setLoading(false)
       })
-      .catch((err: any) => {
-        const msg = err.response?.status === 404 
-          ? '用户信息不可用（仅支持 Windows）' 
-          : (err.message || '获取用户信息失败')
-        setModuleErrors(m => ({ ...m, users: msg }))
-        setLoading(false)
-      })
+      .catch(() => setLoading(false))
   }
 
   const fetchRegistry = () => {
@@ -328,7 +330,6 @@ function SystemInfo() {
       setRegistry([])
       return
     }
-    if (registry.length > 0) return
     setLoading(true)
     systemAPI.getRegistry(enabled)
       .then(res => {
@@ -346,6 +347,7 @@ function SystemInfo() {
           ...(data.browser_helpers || []),
         ]
         setRegistry(allKeys)
+        localStorage.setItem('systeminfo_registry', JSON.stringify(allKeys))
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -357,7 +359,6 @@ function SystemInfo() {
       setStartupFolders([])
       return
     }
-    if (startupFolders.length > 0) return
     setLoading(true)
     systemAPI.getRegistry(enabled)
       .then(res => {
@@ -373,12 +374,12 @@ function SystemInfo() {
       setTasks([])
       return
     }
-    if (tasks.length > 0) return
     setLoading(true)
     systemAPI.getTasks(enabled)
       .then(res => {
-        setTasks(res.data.tasks || [])
-        setModuleErrors(m => ({ ...m, tasks: '' }))
+        const data = res.data.tasks || []
+        setTasks(data)
+        localStorage.setItem('systeminfo_tasks', JSON.stringify(data))
         setLoading(false)
       })
       .catch((err: any) => {
@@ -1099,9 +1100,15 @@ function SystemInfo() {
                   <td className="mono highlight">{dll.name}</td>
                   <td className="mono">{dll.version || '-'}</td>
                   <td>
-                    <span className={`signature-badge ${dll.is_signed ? 'signed' : 'unsigned'}`}>
-                      {dll.is_signed ? (t('systemInfo.signed') || '已签名') : (t('systemInfo.unsigned') || '未签名')}
-                    </span>
+                    {dll.is_signed ? (
+                      <span className="signature-badge signed" title={dll.signer || ''}>
+                        ✓ {dll.signer || t('systemInfo.signed') || '已签名'}
+                      </span>
+                    ) : (
+                      <span className="signature-badge unsigned">
+                        ✗ {t('systemInfo.unsigned') || '未签名'}
+                      </span>
+                    )}
                   </td>
                   <td className="truncate" title={dll.path}>{dll.path}</td>
                   <td className="mono">{(dll.size / 1024).toFixed(1)} KB</td>
